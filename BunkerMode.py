@@ -1,13 +1,33 @@
+import json
+import os
+
 missoes = []
 total_concluidas = 0
 
+def carregar_dados():
+    """
+        Carrega os dados do arquivo 'missoes_json.json'.
+        Retorna um dicionário com a chave "missoes": lista de registros
+    """
+    if os.path.exists("missoes.json"):
+        with open("missoes.json", "r", encoding="utf-8") as arquivo:
+            return json.load(arquivo)
+    return []
+
+def salvar_dados(dados):
+    """
+    Salva os dados (missoes) no arquivo missoes_json.json
+    """
+    with open("missoes.json", 'w', encoding='utf8') as arquivo:
+        json.dump(dados, arquivo, indent=4, ensure_ascii=False)
 
 def exibir_cabecalho():
     """
     => Função que exibe o cabeçalho do programa
     """
+    titulo = "🔥 \033[7;30;42mSistema BunkerMode\033[m 🔥"
     print("~=" * 20)
-    print(f"{'Sistema BunkerMode':^35}")
+    print(f"{titulo:^46}")
     print("~=" * 20)
 
 
@@ -36,6 +56,7 @@ def criar_missoes():
     dados["status"] = "Aguardando Recruta"
 
     missoes.append(dados.copy())
+    salvar_dados(missoes)
     print("--- Missão cadastrada com sucesso! ---")
 
 
@@ -95,6 +116,7 @@ def marcar_concluida(indice):
     global total_concluidas
     missoes[indice]["status"] = "Concluída"
     total_concluidas += 1
+    salvar_dados(missoes)
     print(f"Missão '{missoes[indice]['missao']}' marcada como concluída!")
 
 
@@ -115,11 +137,13 @@ def remover_missoes():
 
             if removida["status"] == "Concluída":
                 total_concluidas -= 1
+            salvar_dados(missoes)        
 
             print(f"Missão '{removida['missao']}'\nRemovida com sucesso!")
-
+    
     except (ValueError, IndexError):
         print("Opção inválida!")
+    
 
 
 def exibir_relatorio():
@@ -146,6 +170,9 @@ def menu_principal():
     """
     => Função para exibir e controlar o Menu principal do Programa.
     """
+    global missoes
+    missoes = carregar_dados()
+
     while True:
 
         print("1. = > Adicionar Missão")
