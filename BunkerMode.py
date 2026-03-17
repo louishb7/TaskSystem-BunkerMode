@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timedelta
 
 missoes = []
 total_concluidas = 0
@@ -51,6 +52,34 @@ def criar_missoes():
 
         except ValueError:
             print("Entrada inválida! Escolha um número entre 1 a 3.")
+    
+    while True:
+        try:
+            print('Prazo para o soldado cumprir a missão: ')
+            print('(1) Hoje\n(2) Amanhã\n(3) Data específica\n(4) Todo santo dia.')
+            prazo_temp = int(input("Escolha uma opção(1 a 4): "))
+            
+
+            if prazo_temp == 1:
+                hoje = datetime.today()
+                hoje_formatado = hoje.strftime("%d/%m/%Y")
+                dados["prazo"] = hoje_formatado
+            elif prazo_temp == 2:
+                amanha = datetime.today() + timedelta(days=1)
+                amanha_formatado = amanha.strftime("%d/%m/%Y")
+                dados["prazo"] = amanha_formatado
+            elif prazo_temp == 3:
+                especifica = input('Digite a data específica(dia/mês/ano): ')
+                especifica_formatado = datetime.strptime(especifica, "%d/%m/%Y")
+                especifica_final = especifica_formatado.strftime("%d/%m/%Y")
+                dados["prazo"] = especifica_final
+            elif prazo_temp == 4:
+                dados["prazo"] = None
+            else:
+                raise ValueError
+            break
+        except ValueError:
+            print("Entrada inválida! Escolha um número entre 1 a 4")
 
     dados["descriçao"] = input("Informe a missão para o seu soldado: ")
     dados["status"] = "Aguardando Recruta"
@@ -74,7 +103,8 @@ def listar_missoes():
         else:
             print(f"=>  Baixa prioridade.   <=")
         print(
-            f"Missão nº {index}: {item['missao'].capitalize()}\nStatus: {item['status']}"
+            f"Missão nº {index}: {item['missao'].capitalize()}\n"
+            f"Status: {item['status']} | Prazo: {item['prazo'] or 'Permanente'}"
         )
         print("-" * 35)
 
@@ -87,7 +117,8 @@ def listar_missoes():
                 f"Missão => {detalhar['missao'].title()}\n"
                 f"Prioridade => {detalhar['prioridade']}\n"
                 f"Descrição => {detalhar['descriçao'].capitalize()}\n"
-                f"Status => {detalhar['status'].capitalize()}"
+                f"Status => {detalhar['status'].capitalize()}\n",
+                f"Prazo => {detalhar['prazo'] or 'Permanente'}"
             )
             print("=" * 35)
 
