@@ -45,7 +45,7 @@ class Missao:
 
 
 class RepositorioJSON:
-    """Responsável apenas por salvar e carregar missões em arquivo JSON."""
+    """Gerencia persistência simples em arquivo, convertendo objetos em dicionários e vice-versa."""
 
     def carregar_dados(self):
         """Retorna uma lista vazia se o arquivo não for encontrado,
@@ -64,29 +64,74 @@ class RepositorioJSON:
 
 
 class GerenciadorDeMissoes:
-    """
-    Controlador central de missões.
-
-    Gerencia o ciclo de vida das missões (criação, listagem, remoção e conclusão)
-    mantendo o estado na lista interna 'self.missoes'.
-    """
+    """Centraliza as regras de manipulação da lista de missões."""
 
     def __init__(self, missoes):
-        """Inicializa o gerenciador com uma lista existente de objetos Missao."""
-        self.missoes = missoes
+        """Garante que a lista inicial já esteja ordenada por prioridade."""
+        self.missoes = sorted(missoes, key=lambda x: x.prioridade)
 
-    def adicionar_missao(self):
-        """
-        Interage com o usuário via terminal para criar e registrar uma nova missão.
+    def adicionar_missao(self, dados_missao):
+        """Recebe um dicionário com os dados da missão e adiciona à lista."""
+        nova_missao = Missao(**dados_missao)
+        self.missoes.append(nova_missao)
+        self.missoes.sort(key=lambda x: x.prioridade)
+        return nova_missao
 
-        Solicita título, prioridade (1-3), prazo e descrição, instanciando
-        um novo objeto Missao e adicionando-o à lista.
-        """
+    def remover_missao(self, indice):
+        """Remove missão pelo índice informado e retorna a missão removida."""
+        if 0 <= indice < len(self.missoes):
+            return self.missoes.pop(indice)
+        return None
+
+    def listar_missoes(self):
+        """Retorna todas as missões ordenadas por prioridade."""
+        return self.missoes
+
+    def detalhar_missao(self, indice):
+        """Retorna os detalhes de uma missão específica."""
+        if 0 <= indice < len(self.missoes):
+            return self.missoes[indice]
+        return None
+
+    def concluir_missao(self, indice):
+        """Marca missão como concluída e retorna a missão atualizada."""
+        if 0 <= indice < len(self.missoes):
+            self.missoes[indice].status = "Concluída"
+            return self.missoes[indice]
+        return None
+
+    def gerar_relatorio(self):
+        """Retorna um dicionário com resumo das missões."""
+        concluidas = [
+            m
+            for m in self.missoes
+            if m.status.strip().lower() in ["concluída", "concluida"]
+        ]
+        pendentes = [
+            m
+            for m in self.missoes
+            if m.status.strip().lower() not in ["concluída", "concluida"]
+        ]
+        return {
+            "total": len(self.missoes),
+            "concluidas": concluidas,
+            "pendentes": pendentes,
+        }
+
+
+class InterfaceConsole:
+    """
+    Responsável apenas pela interação com o usuário via terminal.
+    Coleta entradas e exibe saídas, sem manipular diretamente as missões.
+    """
+
+    def solicitar_dados_missao(self):
+        """Coleta informações necessárias para criar uma nova missão."""
         missao = input("Título da missão: ")
         prioridade = int(input("Prioridade (1-3): "))
 
         print("Escolha o prazo: ")
-        print("1. Hoje | 2. Amanhã | 3. Data específica (DD/MM/AAAA)")
+        print("1. Hoje | 2. Amanhã | 3. Data específica (DD-MM-YYYY)")
         escolha = int(input("Opção: "))
 
         if escolha == 1:
@@ -94,148 +139,87 @@ class GerenciadorDeMissoes:
         elif escolha == 2:
             prazo = "amanha"
         elif escolha == 3:
-            prazo = input("Digite a data (DIA/MÊS/ANO): ")
+            prazo = input("Digite a data (DD-MM-YYYY): ")
         else:
             print("Opção inválida. Prazo definido para Hoje.")
-            prazo == "hoje"
+            prazo = "hoje"
 
         descricao = input("Instruções/Descrição: ")
-        status = "Aguardando Recruta!"
 
-        nova_missao = Missao(
-            missao=missao,
-            prioridade=prioridade,
-            prazo=prazo,
-            descricao=descricao,
-            status=status,
-        )
-        self.missoes.append(nova_missao)
-        print("Missão criada!")
+        return {
+            "missao": missao,
+            "prioridade": prioridade,
+            "prazo": prazo,
+            "descricao": descricao,
+            "status": "Aguardando Recruta!",
+        }
 
-    def remover_missao(self):
-        """
-        Exibe a lista numerada de missões e remove uma entrada selecionada pelo índice.
-
-        Trata entradas inválidas (não numéricas ou fora do intervalo) para evitar quebras.
-        """
-        if not self.missoes:
-            print("Nenhuma missão cadastrada para remover.")
-            return
-
-        print("\n=== REMOVER MISSÃO ===")
-        for index, missao in enumerate(self.missoes, start=1):
-            print(
-                f"{index}. {missao.missao} (Prioridade {missao.prioridade}, Prazo: {missao.prazo})"
-            )
-
-        try:
-            escolha = int(
-                input("Digite o número da missão que deseja remover: ")
-            )
-            if 1 <= escolha <= len(self.missoes):
-                removida = self.missoes.pop(escolha - 1)
-                print(f"Missão '{removida.missao}' removida com sucesso!")
-            else:
-                print("Número inválido. Nenhuma missão removida.")
-        except ValueError:
-            print("Entrada inválida! Digite apenas números.")
-
-    def listar_missao(self):
-        """
-        Exibe missões ordenadas por prioridade e permite detalhar/concluir um item.
-
-        Ordena a visualização da maior prioridade (1) para a menor (3) e abre
-        um submenu interativo para alteração de status da missão escolhida.
-        """
-        if not self.missoes:
+    def exibir_missoes(self, missoes):
+        """Mostra as missões formatadas para o usuário."""
+        if not missoes:
             print("Nenhuma missão cadastrada.")
             return
 
-        print(f"{' =>   OBJETIVOS    <=':<20}")
+        print(f"{' =>   OBJETIVOS DO DIA    <=':<20}")
         print("=" * 35)
 
-        # Ordena pela prioridade
-        missoes_ordenada = sorted(self.missoes, key=lambda x: x.prioridade)
-        for index, item in enumerate(missoes_ordenada, start=1):
-            if item.prioridade == 1:
+        for index, m in enumerate(missoes, start=1):
+            # Tratamento de prioridade
+            if m.prioridade == 1:
                 print("= > Faça!! Prioridade máxima. < =")
-            elif item.prioridade == 2:
+            elif m.prioridade == 2:
                 print("=>  Deve fazer! <=")
             else:
                 print("=>  Baixa prioridade.   <=")
 
+            # Informações principais
             print(
-                f"Missão nº {index}: {item.missao.capitalize()}\n"
-                f"Status: {item.status} | Prazo: {item.prazo or 'Permanente'}"
+                f"Missão nº {index}: {m.missao.capitalize()}\n"
+                f"Status: {m.status} | Prazo: {m.prazo or 'Permanente'}"
             )
             print("-" * 35)
 
-        try:
-            escolha = int(
-                input("Escolha o número da missão para mais detalhes: ")
-            )
-            if 1 <= escolha <= len(missoes_ordenada):
-                detalhar = missoes_ordenada[escolha - 1]
-                print("=" * 35)
-                print(
-                    f"Missão => {detalhar.missao.title()}\n"
-                    f"Prioridade => {detalhar.prioridade}\n"
-                    f"Descrição => {detalhar.descricao.capitalize()}\n"
-                    f"Status => {detalhar.status.capitalize()}\n"
-                    f"Prazo => {detalhar.prazo or 'Permanente'}"
-                )
-                print("=" * 35)
+    def exibir_detalhes_missao(self, missao):
+        """Exibe os detalhes de uma missão específica, incluindo prioridade textual."""
+        if missao:
+            print("\n=== DETALHES DA MISSÃO ===")
+            print(f"Título: {missao.missao}")
 
-                # Entrada da função de marcar como concluída
-                if detalhar.status.lower() != "concluída":
-                    concluir = (
-                        input("Deseja marcar como concluída? (s/n): ")
-                        .lower()
-                        .strip()
-                    )
-                    if concluir.startswith("s"):
-                        detalhar.status = "Concluída"
-                        print("Missão marcada como concluída!")
-                else:
-                    print(
-                        "[!] Relatório: Esta missão já consta como FINALIZADA no sistema."
-                    )
-        except ValueError:
-            print("Entrada inválida! Tente novamente.")
+            # Tratamento de prioridade
+            if missao.prioridade == 1:
+                prioridade_texto = "Faça!! Prioridade máxima."
+            elif missao.prioridade == 2:
+                prioridade_texto = "Deve fazer!"
+            else:
+                prioridade_texto = "Baixa prioridade."
 
-    def exibir_relatorio(self):
-        """
-        Calcula o total de missões, contagem de concluídas vs. pendentes e
-        lista os títulos de cada categoria separadamente.
-        """
-        if not self.missoes:
-            print("Nenhuma missão cadastrada.")
-            return
+            print(f"Prioridade: {missao.prioridade} ({prioridade_texto})")
+            print(f"Prazo: {missao.prazo or 'Permanente'}")
+            print(f"Descrição: {missao.descricao}")
+            print(f"Status: {missao.status}")
+            print("=" * 35)
+        else:
+            print("Missão não encontrada.")
 
+    def exibir_relatorio(self, relatorio):
+        """Mostra o relatório formatado."""
         print("\n=== RELATÓRIO DE OPERAÇÕES ===")
-        concluidas = [
-            m for m in self.missoes if m.status.lower() == "concluida"
-        ]
-        pendentes = [
-            m for m in self.missoes if m.status.lower() != "concluída"
-        ]
-
-        print(f"Total de missões: {len(self.missoes)}")
-        print(f"Concluídas: {len(concluidas)}")
-        print(f"Pendentes: {len(pendentes)}")
+        print(f"Total: {relatorio['total']}")
+        print(f"Concluídas: {len(relatorio['concluidas'])}")
+        print(f"Pendentes: {len(relatorio['pendentes'])}")
         print("=" * 40)
 
-        if pendentes:
+        if relatorio["pendentes"]:
             print(">>> MISSÕES PENDENTES <<<")
-            for m in pendentes:
+            for m in relatorio["pendentes"]:
                 print(
                     f"- {m.missao} | Prazo: {m.prazo} | Prioridade: {m.prioridade}"
                 )
             print("-" * 40)
 
-        if concluidas:
+        if relatorio["concluidas"]:
             print(">>> MISSÕES CONCLUÍDAS <<<")
-            for m in concluidas:
+            for m in relatorio["concluidas"]:
                 print(f"- {m.missao} | Finalizada em: {m.prazo}")
             print("-" * 40)
 
@@ -247,7 +231,10 @@ class Menu:
     """
 
     def __init__(
-        self, repositorio: RepositorioJSON, gerenciador: GerenciadorDeMissoes
+        self,
+        repositorio: RepositorioJSON,
+        gerenciador: GerenciadorDeMissoes,
+        interface: InterfaceConsole,
     ):
         """
         Injeta as dependências necessárias para o funcionamento do menu.
@@ -258,37 +245,93 @@ class Menu:
         """
         self.repositorio = repositorio
         self.gerenciador = gerenciador
+        self.interface = interface
 
     def exibir_menu(self):
-        """
-        Apresenta as opções visuais e gerencia o fluxo de navegação.
-        Salva os dados automaticamente no disco após cada operação bem-sucedida
-        para evitar perda de progresso.
-        """
         while True:
-            print("1. = > Adicionar Missão")
-            print("2. = > Listar Missões/Marcar")
-            print("3. = > Remover Missão")
-            print("4. = > Relatório do dia")
-            print("5. = > Sair")
+            print("\n=== MENU PRINCIPAL ===")
+            print("1. Adicionar Missão")
+            print("2. Listar Missões/Marcar Concluída")
+            print("3. Remover Missão")
+            print("4. Relatório do dia")
+            print("5. Sair")
 
             opcao = input("Escolha uma opção: ")
 
             if opcao == "1":
-                self.gerenciador.adicionar_missao()
+                dados = self.interface.solicitar_dados_missao()
+                nova = self.gerenciador.adicionar_missao(dados)
+                print(f"Missão '{nova.missao}' criada com sucesso!")
+
             elif opcao == "2":
-                self.gerenciador.listar_missao()
+                missoes = self.gerenciador.listar_missoes()
+                if not missoes:
+                    print("Nenhuma missão cadastrada.")
+                else:
+                    self.interface.exibir_missoes(missoes)
+
+                    try:
+                        indice = (
+                            int(
+                                input(
+                                    "Digite o número da missão para ver detalhes (ou 0 para voltar): "
+                                )
+                            )
+                            - 1
+                        )
+                        if indice >= 0:
+                            missao = self.gerenciador.detalhar_missao(indice)
+                            self.interface.exibir_detalhes_missao(missao)
+
+                            escolha = (
+                                input(
+                                    "Deseja marcar esta missão como concluída? (s/n): "
+                                )
+                                .strip()
+                                .lower()
+                            )
+                            if escolha == "s":
+                                concluida = self.gerenciador.concluir_missao(
+                                    indice
+                                )
+                                print(
+                                    f"Missão '{concluida.missao}' marcada como concluída!"
+                                )
+                    except ValueError:
+                        print("Entrada inválida.")
+
             elif opcao == "3":
-                self.gerenciador.remover_missao()
+                missoes = self.gerenciador.listar_missoes()
+                self.interface.exibir_missoes(missoes)
+
+                try:
+                    indice = (
+                        int(input("Digite o número da missão para remover: "))
+                        - 1
+                    )
+                    removida = self.gerenciador.remover_missao(indice)
+                    if removida:
+                        print(
+                            f"Missão '{removida.missao}' removida com sucesso!"
+                        )
+                    else:
+                        print("Índice inválido.")
+                except ValueError:
+                    print("Entrada inválida.")
+
             elif opcao == "4":
-                self.gerenciador.exibir_relatorio()
+                relatorio = self.gerenciador.gerar_relatorio()
+                self.interface.exibir_relatorio(relatorio)
+
             elif opcao == "5":
                 print("Até logo!")
                 self.repositorio.salvar_dados(self.gerenciador.missoes)
                 break
+
             else:
                 print("Opção inválida! Escolha novamente.")
 
+            # Salva sempre após cada operação
             self.repositorio.salvar_dados(self.gerenciador.missoes)
 
 
@@ -297,5 +340,6 @@ if __name__ == "__main__":
     repositorio = RepositorioJSON()
     missoes = repositorio.carregar_dados()
     gerenciador = GerenciadorDeMissoes(missoes)
-    menu = Menu(repositorio, gerenciador)
+    interface = InterfaceConsole()
+    menu = Menu(repositorio, gerenciador, interface)
     menu.exibir_menu()
