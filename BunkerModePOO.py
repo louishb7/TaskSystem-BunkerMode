@@ -14,6 +14,7 @@ class Missao:
 
     def __init__(
         self,
+        id,
         missao,
         prioridade,
         prazo,
@@ -44,6 +45,7 @@ class Missao:
         self.prazo = prazo
         self.descricao = descricao
         self.status = status
+        self.id = id
 
 
 class RepositorioJSON:
@@ -74,32 +76,44 @@ class GerenciadorDeMissoes:
 
     def adicionar_missao(self, dados_missao):
         """Recebe um dicionário com os dados da missão e adiciona à lista."""
+        if not self.missoes:
+            proximo_id = 1
+        else:
+            proximo_id = max(m.id for m in self.missoes) + 1
+        dados_missao["id"] = proximo_id
         nova_missao = Missao(**dados_missao)
         self.missoes.append(nova_missao)
         self.missoes.sort(key=lambda x: x.prioridade)
         return nova_missao
 
-    def remover_missao(self, indice):
-        """Remove missão pelo índice informado e retorna a missão removida."""
-        if 0 <= indice < len(self.missoes):
-            return self.missoes.pop(indice)
+    def remover_missao(self, id_procurado):
+        """Remove missão pelo id real e retorna a missão removida."""
+        missao = self.buscar_por_id(id_procurado)
+        if missao:
+            self.missoes.remove(missao)
+            return missao
         return None
 
     def listar_missoes(self):
         """Retorna todas as missões ordenadas por prioridade."""
         return self.missoes
 
-    def detalhar_missao(self, indice):
+    def detalhar_missao(self, id_procurado):
         """Acessa diretamente uma missão específica sem alterar nada."""
-        if 0 <= indice < len(self.missoes):
-            return self.missoes[indice]
+        return self.buscar_por_id(id_procurado)
+
+    def concluir_missao(self, id_procurado):
+        """Altera o status da missão, preservando o restante dos dados."""
+        missao = self.buscar_por_id(id_procurado)
+        if missao:
+            missao.status = "Concluída"
+            return missao
         return None
 
-    def concluir_missao(self, indice):
-        """Altera o status da missão, preservando o restante dos dados."""
-        if 0 <= indice < len(self.missoes):
-            self.missoes[indice].status = "Concluída"
-            return self.missoes[indice]
+    def buscar_por_id(self, id_procurado):
+        for missao in self.missoes:
+            if missao.id == id_procurado:
+                return missao
         return None
 
     def gerar_relatorio(self):
@@ -238,7 +252,7 @@ class InterfaceConsole:
             print(">>> MISSÕES PENDENTES <<<")
             for m in relatorio["pendentes"]:
                 print(
-                    f"- {m.missao} | Prazo: {m.prazo or 'Só acabou por hoje, soldado!'} | Prioridade: {m.prioridade}"
+                    f"- {m.missao} | Prazo: {m.prazo or 'Só a de hoje, soldado!'} | Prioridade: {m.prioridade}"
                 )
             print("-" * 40)
 
@@ -246,7 +260,7 @@ class InterfaceConsole:
             print(">>> MISSÕES CONCLUÍDAS <<<")
             for m in relatorio["concluidas"]:
                 print(
-                    f"- {m.missao} | Finalizada em: {m.prazo or 'Só acabou por hoje, soldado!'}"
+                    f"- {m.missao} | Finalizada em: {m.prazo or 'Só a de hoje, soldado!'}"
                 )
             print("-" * 40)
 
@@ -295,10 +309,9 @@ class Menu:
             elif opcao == "2":
                 missoes = self.gerenciador.listar_missoes()
                 if not missoes:
-                    print("Nenhuma missão cadastrada.")
+                    self.interface.exibir_missoes(missoes)
                 else:
                     self.interface.exibir_missoes(missoes)
-
                     try:
                         indice = (
                             int(
@@ -308,8 +321,8 @@ class Menu:
                             )
                             - 1
                         )
-                        if indice >= 0:
-                            missao = self.gerenciador.detalhar_missao(indice)
+                        if 0 <= indice < len(missoes):
+                            missao = missoes[indice]
                             self.interface.exibir_detalhes_missao(missao)
                             if missao.status != "Concluída":
                                 escolha = (
@@ -322,7 +335,7 @@ class Menu:
                                 if escolha == "s":
                                     concluida = (
                                         self.gerenciador.concluir_missao(
-                                            indice
+                                            missao.id
                                         )
                                     )
                                     print(
@@ -336,22 +349,33 @@ class Menu:
 
             elif opcao == "3":
                 missoes = self.gerenciador.listar_missoes()
-                self.interface.exibir_missoes(missoes)
-
-                try:
-                    indice = (
-                        int(input("Digite o número da missão para remover: "))
-                        - 1
-                    )
-                    removida = self.gerenciador.remover_missao(indice)
-                    if removida:
-                        print(
-                            f"Missão '{removida.missao}' removida com sucesso!"
+                if not missoes:
+                    self.interface.exibir_missoes(missoes)
+                else:
+                    self.interface.exibir_missoes(missoes)
+                    try:
+                        indice = (
+                            int(
+                                input(
+                                    "Digite o número da missão para remover: "
+                                )
+                            )
+                            - 1
                         )
-                    else:
-                        print("Índice inválido.")
-                except ValueError:
-                    print("Entrada inválida.")
+                        if 0 <= indice < len(missoes):
+                            missao = missoes[indice]
+                            removida = self.gerenciador.remover_missao(
+                                missao.id
+                            )
+                            print(
+                                f"Missão '{removida.missao}' removida com sucesso!"
+                            )
+
+                        else:
+                            print("Índice inválido.")
+
+                    except ValueError:
+                        print("Entrada inválida.")
 
             elif opcao == "4":
                 relatorio = self.gerenciador.gerar_relatorio()
