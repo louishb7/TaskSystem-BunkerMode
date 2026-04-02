@@ -29,6 +29,8 @@ class Missao:
             prazo = hoje.strftime("%d-%m-%Y")
         elif prazo == "amanha":
             prazo = (hoje + timedelta(days=1)).strftime("%d-%m-%Y")
+        elif prazo is None:
+            pass
         else:
             try:
                 prazo = datetime.strptime(prazo, "%d-%m-%Y").strftime(
@@ -88,20 +90,20 @@ class GerenciadorDeMissoes:
         return self.missoes
 
     def detalhar_missao(self, indice):
-        """Retorna os detalhes de uma missão específica."""
+        """Acessa diretamente uma missão específica sem alterar nada."""
         if 0 <= indice < len(self.missoes):
             return self.missoes[indice]
         return None
 
     def concluir_missao(self, indice):
-        """Marca missão como concluída e retorna a missão atualizada."""
+        """Altera o status da missão, preservando o restante dos dados."""
         if 0 <= indice < len(self.missoes):
             self.missoes[indice].status = "Concluída"
             return self.missoes[indice]
         return None
 
     def gerar_relatorio(self):
-        """Retorna um dicionário com resumo das missões."""
+        """Separa missões por status usando comparação tolerante a variações de texto."""
         concluidas = [
             m
             for m in self.missoes
@@ -125,24 +127,48 @@ class InterfaceConsole:
     Coleta entradas e exibe saídas, sem manipular diretamente as missões.
     """
 
+    def exibir_cabecalho(self):
+        """
+        => Método que exibe o cabeçalho do programa
+        """
+        titulo = "🔥 \033[7;30;42mSistema BunkerMode\033[m 🔥"
+        print("~=" * 20)
+        print(f"{titulo:^46}")
+        print("~=" * 20)
+
     def solicitar_dados_missao(self):
         """Coleta informações necessárias para criar uma nova missão."""
         missao = input("Título da missão: ")
-        prioridade = int(input("Prioridade (1-3): "))
+        while True:
+            try:
+                prioridade = int(input("Prioridade (1-3): "))
+                if prioridade in (1, 2, 3):
+                    break
+                print("O número deve estar entre 1 e 3.")
+            except ValueError:
+                print("Entrada inválida!")
 
         print("Escolha o prazo: ")
         print("1. Hoje | 2. Amanhã | 3. Data específica (DD-MM-YYYY)")
-        escolha = int(input("Opção: "))
+        print("4. TODO SANTO DIA!!")
 
-        if escolha == 1:
-            prazo = "hoje"
-        elif escolha == 2:
-            prazo = "amanha"
-        elif escolha == 3:
-            prazo = input("Digite a data (DD-MM-YYYY): ")
-        else:
-            print("Opção inválida. Prazo definido para Hoje.")
-            prazo = "hoje"
+        while True:
+            try:
+                escolha = int(input("Opção: "))
+                if escolha == 1:
+                    prazo = "hoje"
+                elif escolha == 2:
+                    prazo = "amanha"
+                elif escolha == 3:
+                    prazo = input("Digite a data (DD-MM-YYYY): ")
+                elif escolha == 4:
+                    prazo = None
+                else:
+                    print("Opção inválida. Prazo definido para Hoje.")
+                    prazo = "hoje"
+                break
+            except ValueError:
+                print("Entrada inválida! Escolha um número.")
 
         descricao = input("Instruções/Descrição: ")
 
@@ -164,9 +190,8 @@ class InterfaceConsole:
         print("=" * 35)
 
         for index, m in enumerate(missoes, start=1):
-            # Tratamento de prioridade
             if m.prioridade == 1:
-                print("= > Faça!! Prioridade máxima. < =")
+                print("= > Faça! Prioridade máxima. < =")
             elif m.prioridade == 2:
                 print("=>  Deve fazer! <=")
             else:
@@ -180,14 +205,14 @@ class InterfaceConsole:
             print("-" * 35)
 
     def exibir_detalhes_missao(self, missao):
-        """Exibe os detalhes de uma missão específica, incluindo prioridade textual."""
+        """Mostra todos os campos de uma missão de forma organizada."""
         if missao:
             print("\n=== DETALHES DA MISSÃO ===")
             print(f"Título: {missao.missao}")
 
             # Tratamento de prioridade
             if missao.prioridade == 1:
-                prioridade_texto = "Faça!! Prioridade máxima."
+                prioridade_texto = "Faça! Prioridade máxima."
             elif missao.prioridade == 2:
                 prioridade_texto = "Deve fazer!"
             else:
@@ -213,21 +238,23 @@ class InterfaceConsole:
             print(">>> MISSÕES PENDENTES <<<")
             for m in relatorio["pendentes"]:
                 print(
-                    f"- {m.missao} | Prazo: {m.prazo} | Prioridade: {m.prioridade}"
+                    f"- {m.missao} | Prazo: {m.prazo or 'Só acabou por hoje, soldado!'} | Prioridade: {m.prioridade}"
                 )
             print("-" * 40)
 
         if relatorio["concluidas"]:
             print(">>> MISSÕES CONCLUÍDAS <<<")
             for m in relatorio["concluidas"]:
-                print(f"- {m.missao} | Finalizada em: {m.prazo}")
+                print(
+                    f"- {m.missao} | Finalizada em: {m.prazo or 'Só acabou por hoje, soldado!'}"
+                )
             print("-" * 40)
 
 
 class Menu:
     """
-    Traduz as entradas do usuário em chamadas para o Gerenciador de Missões
-    e garante a persistência através do Repositório.
+    Orquestra o fluxo da aplicação: recebe ações do usuário e delega
+    para as camadas corretas, garantindo persistência ao final de cada operação.
     """
 
     def __init__(
@@ -242,14 +269,16 @@ class Menu:
         Args:
             repositorio: Instância responsável por ler/salvar arquivos.
             gerenciador: Instância que contém as regras de negócio das missões.
+            interface: Instância responsável pela interação do usuário.
         """
         self.repositorio = repositorio
         self.gerenciador = gerenciador
         self.interface = interface
 
     def exibir_menu(self):
+        """Loop principal que mantém o programa em execução até saída explícita."""
+        self.interface.exibir_cabecalho()
         while True:
-            print("\n=== MENU PRINCIPAL ===")
             print("1. Adicionar Missão")
             print("2. Listar Missões/Marcar Concluída")
             print("3. Remover Missão")
@@ -282,21 +311,26 @@ class Menu:
                         if indice >= 0:
                             missao = self.gerenciador.detalhar_missao(indice)
                             self.interface.exibir_detalhes_missao(missao)
+                            if missao.status != "Concluída":
+                                escolha = (
+                                    input(
+                                        "Deseja marcar esta missão como concluída? (s/n): "
+                                    )
+                                    .strip()
+                                    .lower()
+                                )
+                                if escolha == "s":
+                                    concluida = (
+                                        self.gerenciador.concluir_missao(
+                                            indice
+                                        )
+                                    )
+                                    print(
+                                        f"Missão '{concluida.missao}' marcada como concluída!"
+                                    )
+                            else:
+                                print("Esta missão já está concluída.")
 
-                            escolha = (
-                                input(
-                                    "Deseja marcar esta missão como concluída? (s/n): "
-                                )
-                                .strip()
-                                .lower()
-                            )
-                            if escolha == "s":
-                                concluida = self.gerenciador.concluir_missao(
-                                    indice
-                                )
-                                print(
-                                    f"Missão '{concluida.missao}' marcada como concluída!"
-                                )
                     except ValueError:
                         print("Entrada inválida.")
 
