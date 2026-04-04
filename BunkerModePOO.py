@@ -5,11 +5,10 @@ from datetime import date, datetime, timedelta
 
 class Missao:
     """
-    Classe base que define os atributos e regras de uma missão.
+    Representa uma missão do sistema com seus dados essenciais.
 
-    Responsável por garantir a integridade dos dados, validando se a
-    prioridade está no intervalo permitido e normalizando o formato
-    das datas para o padrão brasileiro (DD-MM-YYYY).
+    Garante a integridade básica da entidade, validando a prioridade
+    permitida e o formato final do prazo quando ele for informado.
     """
 
     def __init__(
@@ -21,7 +20,7 @@ class Missao:
         instrucao,
         status="Aguardando Recruta!",
     ):
-        # Validação da prioridade na missão
+
         if prioridade not in [1, 2, 3]:
             raise ValueError("Prioridade deve ser entre 1 e 3")
 
@@ -31,7 +30,7 @@ class Missao:
                     "%d-%m-%Y"
                 )
             except ValueError:
-                raise ValueError("Formato de data inválido. Use DIA-MÊS-ANO")
+                raise ValueError("Formato de data inválido. Use DD-MM-YYYY")
 
         self.missao = missao
         self.prioridade = prioridade
@@ -42,14 +41,26 @@ class Missao:
 
 
 class RepositorioJSON:
-    """Gerencia persistência simples em arquivo, convertendo objetos em dicionários e vice-versa."""
+    """
+    Responsável por persistir as missões em um arquivo JSON local.
+
+    Converte objetos em dicionários na escrita e recria instâncias
+    de Missao durante a leitura.
+    """
 
     def carregar_dados(self):
-        """Retorna uma lista vazia se o arquivo não for encontrado,
-        evitando erros de execução no início do programa."""
+        """
+        Carrega as missões salvas no arquivo local.
+
+        Retorna uma lista vazia se o arquivo não existir
+        ou se o conteúdo estiver inválido.
+        """
         if os.path.exists("missoes.json"):
             with open("missoes.json", "r", encoding="utf-8") as arq:
-                dados = json.load(arq)
+                try:
+                    dados = json.load(arq)
+                except json.JSONDecodeError:
+                    return []
                 return [Missao(**d) for d in dados]
         return []
 
@@ -80,8 +91,12 @@ class GerenciadorDeMissoes:
         return nova_missao
 
     def editar_missao(self, id_procurado, novos_dados):
-        """Faz uma busca por ID, e altera apenas o conteúdo de novos_dados.
-        No fim, re-ordena a lista por prioridade"""
+        """
+        Atualiza apenas os campos informados de uma missão já existente.
+
+        Busca a missão pelo ID, aplica alterações parciais e reordena
+        a lista caso a prioridade tenha sido modificada.
+        """
         missao = self.buscar_por_id(id_procurado)
         if not missao:
             return None
@@ -92,6 +107,11 @@ class GerenciadorDeMissoes:
         if "instrucao" in novos_dados:
             missao.instrucao = novos_dados["instrucao"]
 
+        if "prioridade" in novos_dados:
+            if novos_dados["prioridade"] not in [1, 2, 3]:
+                raise ValueError("Prioridade deve ser entre 1 e 3")
+            missao.prioridade = novos_dados["prioridade"]
+
         if "prazo" in novos_dados:
             prazo = novos_dados["prazo"]
             if prazo is not None:
@@ -100,7 +120,7 @@ class GerenciadorDeMissoes:
                         "%d-%m-%Y"
                     )
                 except ValueError:
-                    print("Formato de data inválido.")
+                    raise ValueError("Formato de data inválido.")
             missao.prazo = prazo
 
         self.missoes.sort(key=lambda x: x.prioridade)
@@ -132,6 +152,11 @@ class GerenciadorDeMissoes:
         return None
 
     def buscar_por_id(self, id_procurado):
+        """
+        Retorna a missão correspondente ao ID informado.
+
+        Se nenhuma missão for encontrada, retorna None.
+        """
         for missao in self.missoes:
             if missao.id == id_procurado:
                 return missao
@@ -158,19 +183,15 @@ class GerenciadorDeMissoes:
 
 class InterfaceConsole:
     """
-    Responsável apenas pela interação com o usuário via terminal.
-    Coleta entradas e exibe saídas, sem manipular diretamente as missões.
-    => CLASSE DIVIDIDA EM:
-    1º Exibição;
-    2º Coleta de dados;
-    3º Auxiliares Internos
+    Responsável pela interação com o usuário via terminal.
+
+    Centraliza a exibição de informações, a coleta de entradas e
+    alguns métodos auxiliares usados apenas no fluxo do console.
     """
 
     #   ===== EXIBIÇÃO =====
     def exibir_cabecalho(self):
-        """
-        => Método que exibe o cabeçalho do programa
-        """
+        """Exibe o título principal do sistema no terminal."""
         titulo = "🔥 \033[7;30;42mSistema BunkerMode\033[m 🔥"
         print("~=" * 20)
         print(f"{titulo:^46}")
@@ -193,9 +214,8 @@ class InterfaceConsole:
             else:
                 print("=>  Baixa prioridade.   <=")
 
-            # Informações principais
             print(
-                f"Missão nº {index}: {m.missao.capitalize()}\n"
+                f"[ID {m.id}] {m.missao.capitalize()}\n"
                 f"Status: {m.status} | Prazo: {m.prazo or 'Permanente'}"
             )
             print("-" * 35)
@@ -206,7 +226,6 @@ class InterfaceConsole:
             print("\n=== DETALHES DA MISSÃO ===")
             print(f"Título: {missao.missao}")
 
-            # Tratamento de prioridade
             if missao.prioridade == 1:
                 prioridade_texto = "Faça! Prioridade máxima."
             elif missao.prioridade == 2:
@@ -270,7 +289,12 @@ class InterfaceConsole:
         }
 
     def editar_missao_interface(self, missao):
-        """Adicionar alguma docstring depois"""
+        """
+        Coleta alterações parciais para uma missão já existente.
+
+        Campos deixados em branco mantêm seus valores atuais. Retorna
+        apenas os dados que o usuário decidiu modificar.
+        """
         print("\n--- EDITANDO MISSÃO ---")
 
         novo_titulo = input(f"Título [{missao.missao}]: ").strip()
@@ -290,7 +314,7 @@ class InterfaceConsole:
             dados["missao"] = novo_titulo
 
         if nova_instrucao:
-            dados["descricao"] = nova_instrucao
+            dados["instrucao"] = nova_instrucao
 
         if nova_prioridade:
             dados["prioridade"] = int(nova_prioridade)
@@ -301,8 +325,9 @@ class InterfaceConsole:
 
         return dados
 
+    #   ===== AUXILIARES =====
     def _solicitar_prazo(self):
-        """Adicionar alguma docstring depois"""
+        """Exibe as opções de prazo e retorna o valor já tratado para uso no sistema."""
         print("Escolha o prazo: ")
         print("1. Hoje | 2. Amanhã | 3. Data específica (DD-MM-YYYY)")
         print("4. TODO SANTO DIA!!")
@@ -315,7 +340,12 @@ class InterfaceConsole:
                 print("Entrada inválida! Escolha um número.")
 
     def _normalizar_prazo(self, escolha):
-        """Adicionar alguma docstring depois"""
+        """
+        Converte a opção escolhida no console para o valor final do prazo.
+
+        Retorna a data formatada, None para missões permanentes
+        ou solicita uma data manual quando necessário.
+        """
         hoje = date.today()
 
         if escolha == 1:
@@ -323,7 +353,7 @@ class InterfaceConsole:
         elif escolha == 2:
             return (hoje + timedelta(days=1)).strftime("%d-%m-%Y")
         elif escolha == 3:
-            return input("Digite a data (DD-MM-ANO): ")
+            return input("Digite a data (DD-MM-YYYY): ")
         elif escolha == 4:
             return None
         else:
@@ -374,114 +404,62 @@ class Menu:
                 print(f"Missão '{nova.missao}' criada com sucesso!")
 
             elif opcao == "2":
-                missoes = self.gerenciador.listar_missoes()
-                if not missoes:
-                    self.interface.exibir_missoes(missoes)
-                else:
-                    self.interface.exibir_missoes(missoes)
-                    try:
-                        indice = (
-                            int(
-                                input(
-                                    "Digite o número da missão para ver detalhes (ou 0 para voltar): "
-                                )
-                            )
-                            - 1
-                        )
-                        if 0 <= indice < len(missoes):
-                            missao = missoes[indice]
-                            self.interface.exibir_detalhes_missao(missao)
-                            if missao.status != "Concluída":
-                                escolha = (
-                                    input(
-                                        "Deseja marcar esta missão como concluída? (s/n): "
-                                    )
-                                    .strip()
-                                    .lower()
-                                )
-                                if escolha == "s":
-                                    concluida = (
-                                        self.gerenciador.concluir_missao(
-                                            missao.id
-                                        )
-                                    )
-                                    print(
-                                        f"Missão '{concluida.missao}' marcada como concluída!"
-                                    )
-                            else:
-                                print("Esta missão já está concluída.")
+                missao = self._selecionar_missao(
+                    "Digite o ID da missão para ver detalhes: "
+                )
 
-                    except ValueError:
-                        print("Entrada inválida.")
+                if missao is not None:
+                    self.interface.exibir_detalhes_missao(missao)
 
-            elif opcao == "3":
-                missoes = self.gerenciador.listar_missoes()
-                if not missoes:
-                    self.interface.exibir_missoes(missoes)
-                else:
-                    self.interface.exibir_missoes(missoes)
-                    try:
-                        indice = (
-                            int(
-                                input(
-                                    "Digite o número da missão para editar: "
-                                )
+                    if missao.status != "Concluída":
+                        escolha = (
+                            input(
+                                "Deseja marcar esta missão como concluída? (s/n): "
                             )
-                            - 1
+                            .strip()
+                            .lower()
                         )
 
-                        if 0 <= indice < len(missoes):
-                            missao = missoes[indice]
-                            self.interface.exibir_detalhes_missao(missao)
-
-                            novos_dados = (
-                                self.interface.editar_missao_interface(missao)
-                            )
-
-                            if not novos_dados:
-                                print("Nenhuma alteração foi feita.")
-                            else:
-                                editada = self.gerenciador.editar_missao(
-                                    missao.id, novos_dados
-                                )
-                                print(
-                                    f"Missão '{editada.missao}' atualizada com sucesso!"
-                                )
-
-                        else:
-                            print("Índice inválido.")
-                    except ValueError:
-                        print("Entrada inválida.")
-
-            elif opcao == "4":
-                missoes = self.gerenciador.listar_missoes()
-                if not missoes:
-                    self.interface.exibir_missoes(missoes)
-                else:
-                    self.interface.exibir_missoes(missoes)
-                    try:
-                        indice = (
-                            int(
-                                input(
-                                    "Digite o número da missão para remover: "
-                                )
-                            )
-                            - 1
-                        )
-                        if 0 <= indice < len(missoes):
-                            missao = missoes[indice]
-                            removida = self.gerenciador.remover_missao(
+                        if escolha == "s":
+                            concluida = self.gerenciador.concluir_missao(
                                 missao.id
                             )
                             print(
-                                f"Missão '{removida.missao}' removida com sucesso!"
+                                f"Missão '{concluida.missao}' marcada como concluída!"
                             )
+                    else:
+                        print("Esta missão já está concluída.")
 
-                        else:
-                            print("Índice inválido.")
+            elif opcao == "3":
+                missao = self._selecionar_missao(
+                    "Digite o ID da missão para editar: "
+                )
 
-                    except ValueError:
-                        print("Entrada inválida.")
+                if missao is not None:
+                    self.interface.exibir_detalhes_missao(missao)
+
+                    novos_dados = self.interface.editar_missao_interface(
+                        missao
+                    )
+
+                    if not novos_dados:
+                        print("Nenhuma alteração foi feita.")
+                    else:
+                        editada = self.gerenciador.editar_missao(
+                            missao.id, novos_dados
+                        )
+                        print(
+                            f"Missão '{editada.missao}' atualizada com sucesso!"
+                        )
+
+            elif opcao == "4":
+                missao = self._selecionar_missao(
+                    "Digite o ID da missão para remover: "
+                )
+
+                if missao is not None:
+                    removida = self.gerenciador.remover_missao(missao.id)
+                    print(f"Missão '{removida.missao}' removida com sucesso!")
 
             elif opcao == "5":
                 relatorio = self.gerenciador.gerar_relatorio()
@@ -497,6 +475,44 @@ class Menu:
 
             # Salva sempre após cada operação
             self.repositorio.salvar_dados(self.gerenciador.missoes)
+
+    # ===== MÉTODOS AUXILIARES =====
+    def _obter_missoes_exibidas(self):
+        """
+        Retorna a lista atual de missões após exibi-la no terminal.
+
+        Se não houver missões cadastradas, informa isso ao usuário e
+        retorna uma lista vazia.
+        """
+        missoes = self.gerenciador.listar_missoes()
+        self.interface.exibir_missoes(missoes)
+        return missoes
+
+    def _selecionar_missao(self, mensagem):
+        """
+        Exibe as missões e retorna a missão escolhida pelo ID informado.
+
+        Se não houver missões, se o ID for inválido ou se a entrada
+        não puder ser convertida, retorna None.
+        """
+        missoes = self._obter_missoes_exibidas()
+
+        if not missoes:
+            return None
+
+        try:
+            id_procurado = int(input(mensagem))
+            missao = self.gerenciador.buscar_por_id(id_procurado)
+
+            if missao:
+                return missao
+
+            print("ID inválido.")
+            return None
+
+        except ValueError:
+            print("Entrada inválida.")
+            return None
 
 
 # Inicializa os objetos e dá o START no programa.
