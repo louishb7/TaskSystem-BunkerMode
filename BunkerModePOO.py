@@ -18,32 +18,25 @@ class Missao:
         missao,
         prioridade,
         prazo,
-        descricao,
+        instrucao,
         status="Aguardando Recruta!",
     ):
         # Validação da prioridade na missão
         if prioridade not in [1, 2, 3]:
             raise ValueError("Prioridade deve ser entre 1 e 3")
 
-        hoje = date.today()
-        if prazo == "hoje":
-            prazo = hoje.strftime("%d-%m-%Y")
-        elif prazo == "amanha":
-            prazo = (hoje + timedelta(days=1)).strftime("%d-%m-%Y")
-        elif prazo is None:
-            pass
-        else:
+        if prazo is not None:
             try:
                 prazo = datetime.strptime(prazo, "%d-%m-%Y").strftime(
                     "%d-%m-%Y"
                 )
             except ValueError:
-                raise ValueError("Formato de data inválido. Use DD-MM-YYYY.")
+                raise ValueError("Formato de data inválido. Use DIA-MÊS-ANO")
 
         self.missao = missao
         self.prioridade = prioridade
         self.prazo = prazo
-        self.descricao = descricao
+        self.instrucao = instrucao
         self.status = status
         self.id = id
 
@@ -162,6 +155,18 @@ class InterfaceConsole:
             except ValueError:
                 print("Entrada inválida!")
 
+        instrucao = input("Instruções: ")
+
+        return {
+            "missao": missao,
+            "prioridade": prioridade,
+            "prazo": self._solicitar_prazo(),
+            "instrucao": instrucao,
+            "status": "Aguardando Recruta!",
+        }
+
+    def _solicitar_prazo(self):
+        """Adicionar alguma docstring depois"""
         print("Escolha o prazo: ")
         print("1. Hoje | 2. Amanhã | 3. Data específica (DD-MM-YYYY)")
         print("4. TODO SANTO DIA!!")
@@ -169,30 +174,25 @@ class InterfaceConsole:
         while True:
             try:
                 escolha = int(input("Opção: "))
-                if escolha == 1:
-                    prazo = "hoje"
-                elif escolha == 2:
-                    prazo = "amanha"
-                elif escolha == 3:
-                    prazo = input("Digite a data (DD-MM-YYYY): ")
-                elif escolha == 4:
-                    prazo = None
-                else:
-                    print("Opção inválida. Prazo definido para Hoje.")
-                    prazo = "hoje"
-                break
+                return self._normalizar_prazo(escolha)
             except ValueError:
                 print("Entrada inválida! Escolha um número.")
 
-        descricao = input("Instruções/Descrição: ")
+    def _normalizar_prazo(self, escolha):
+        """Adicionar alguma docstring depois"""
+        hoje = date.today()
 
-        return {
-            "missao": missao,
-            "prioridade": prioridade,
-            "prazo": prazo,
-            "descricao": descricao,
-            "status": "Aguardando Recruta!",
-        }
+        if escolha == 1:
+            return hoje.strftime("%d-%m-%Y")
+        elif escolha == 2:
+            return (hoje + timedelta(days=1)).strftime("%d-%m-%Y")
+        elif escolha == 3:
+            return input("Digite a data (DD-MM-ANO): ")
+        elif escolha == 4:
+            return None
+        else:
+            print("Opção inválida. Prazo definido para Hoje.")
+            return hoje.strftime("%d-%m-%Y")
 
     def exibir_missoes(self, missoes):
         """Mostra as missões formatadas para o usuário."""
@@ -234,7 +234,7 @@ class InterfaceConsole:
 
             print(f"Prioridade: {missao.prioridade} ({prioridade_texto})")
             print(f"Prazo: {missao.prazo or 'Permanente'}")
-            print(f"Descrição: {missao.descricao}")
+            print(f"Instrução: {missao.instrucao}")
             print(f"Status: {missao.status}")
             print("=" * 35)
         else:
