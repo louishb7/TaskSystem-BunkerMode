@@ -79,6 +79,34 @@ class GerenciadorDeMissoes:
         self.missoes.sort(key=lambda x: x.prioridade)
         return nova_missao
 
+    def editar_missao(self, id_procurado, novos_dados):
+        """Faz uma busca por ID, e altera apenas o conteúdo de novos_dados.
+        No fim, re-ordena a lista por prioridade"""
+        missao = self.buscar_por_id(id_procurado)
+        if not missao:
+            return None
+
+        if "missao" in novos_dados:
+            missao.missao = novos_dados["missao"]
+
+        if "instrucao" in novos_dados:
+            missao.instrucao = novos_dados["instrucao"]
+
+        if "prazo" in novos_dados:
+            prazo = novos_dados["prazo"]
+            if prazo is not None:
+                try:
+                    prazo = datetime.strptime(prazo, "%d-%m-%Y").strftime(
+                        "%d-%m-%Y"
+                    )
+                except ValueError:
+                    print("Formato de data inválido.")
+            missao.prazo = prazo
+
+        self.missoes.sort(key=lambda x: x.prioridade)
+
+        return missao
+
     def remover_missao(self, id_procurado):
         """Remove missão pelo id real e retorna a missão removida."""
         missao = self.buscar_por_id(id_procurado)
@@ -132,8 +160,13 @@ class InterfaceConsole:
     """
     Responsável apenas pela interação com o usuário via terminal.
     Coleta entradas e exibe saídas, sem manipular diretamente as missões.
+    => CLASSE DIVIDIDA EM:
+    1º Exibição;
+    2º Coleta de dados;
+    3º Auxiliares Internos
     """
 
+    #   ===== EXIBIÇÃO =====
     def exibir_cabecalho(self):
         """
         => Método que exibe o cabeçalho do programa
@@ -142,57 +175,6 @@ class InterfaceConsole:
         print("~=" * 20)
         print(f"{titulo:^46}")
         print("~=" * 20)
-
-    def solicitar_dados_missao(self):
-        """Coleta informações necessárias para criar uma nova missão."""
-        missao = input("Título da missão: ")
-        while True:
-            try:
-                prioridade = int(input("Prioridade (1-3): "))
-                if prioridade in (1, 2, 3):
-                    break
-                print("O número deve estar entre 1 e 3.")
-            except ValueError:
-                print("Entrada inválida!")
-
-        instrucao = input("Instruções: ")
-
-        return {
-            "missao": missao,
-            "prioridade": prioridade,
-            "prazo": self._solicitar_prazo(),
-            "instrucao": instrucao,
-            "status": "Aguardando Recruta!",
-        }
-
-    def _solicitar_prazo(self):
-        """Adicionar alguma docstring depois"""
-        print("Escolha o prazo: ")
-        print("1. Hoje | 2. Amanhã | 3. Data específica (DD-MM-YYYY)")
-        print("4. TODO SANTO DIA!!")
-
-        while True:
-            try:
-                escolha = int(input("Opção: "))
-                return self._normalizar_prazo(escolha)
-            except ValueError:
-                print("Entrada inválida! Escolha um número.")
-
-    def _normalizar_prazo(self, escolha):
-        """Adicionar alguma docstring depois"""
-        hoje = date.today()
-
-        if escolha == 1:
-            return hoje.strftime("%d-%m-%Y")
-        elif escolha == 2:
-            return (hoje + timedelta(days=1)).strftime("%d-%m-%Y")
-        elif escolha == 3:
-            return input("Digite a data (DD-MM-ANO): ")
-        elif escolha == 4:
-            return None
-        else:
-            print("Opção inválida. Prazo definido para Hoje.")
-            return hoje.strftime("%d-%m-%Y")
 
     def exibir_missoes(self, missoes):
         """Mostra as missões formatadas para o usuário."""
@@ -264,6 +246,90 @@ class InterfaceConsole:
                 )
             print("-" * 40)
 
+    #   ===== ENTRADA =====
+    def solicitar_dados_missao(self):
+        """Coleta informações necessárias para criar uma nova missão."""
+        missao = input("Título da missão: ")
+        while True:
+            try:
+                prioridade = int(input("Prioridade (1-3): "))
+                if prioridade in (1, 2, 3):
+                    break
+                print("O número deve estar entre 1 e 3.")
+            except ValueError:
+                print("Entrada inválida!")
+
+        instrucao = input("Instruções: ")
+
+        return {
+            "missao": missao,
+            "prioridade": prioridade,
+            "prazo": self._solicitar_prazo(),
+            "instrucao": instrucao,
+            "status": "Aguardando Recruta!",
+        }
+
+    def editar_missao_interface(self, missao):
+        """Adicionar alguma docstring depois"""
+        print("\n--- EDITANDO MISSÃO ---")
+
+        novo_titulo = input(f"Título [{missao.missao}]: ").strip()
+        nova_instrucao = input(f"Instrução [{missao.instrucao}]: ").strip()
+
+        nova_prioridade = input(
+            f"Prioridade (1-3) [{missao.prioridade}]: "
+        ).strip()
+
+        print("Alterar prazo?")
+        print("1. Hoje | 2. Amanhã | 3. Data específica | 4. Manter atual")
+        escolha_prazo = input("Opção: ").strip()
+
+        dados = {}
+
+        if novo_titulo:
+            dados["missao"] = novo_titulo
+
+        if nova_instrucao:
+            dados["descricao"] = nova_instrucao
+
+        if nova_prioridade:
+            dados["prioridade"] = int(nova_prioridade)
+
+        if escolha_prazo != "4":
+            prazo = self._normalizar_prazo(int(escolha_prazo))
+            dados["prazo"] = prazo
+
+        return dados
+
+    def _solicitar_prazo(self):
+        """Adicionar alguma docstring depois"""
+        print("Escolha o prazo: ")
+        print("1. Hoje | 2. Amanhã | 3. Data específica (DD-MM-YYYY)")
+        print("4. TODO SANTO DIA!!")
+
+        while True:
+            try:
+                escolha = int(input("Opção: "))
+                return self._normalizar_prazo(escolha)
+            except ValueError:
+                print("Entrada inválida! Escolha um número.")
+
+    def _normalizar_prazo(self, escolha):
+        """Adicionar alguma docstring depois"""
+        hoje = date.today()
+
+        if escolha == 1:
+            return hoje.strftime("%d-%m-%Y")
+        elif escolha == 2:
+            return (hoje + timedelta(days=1)).strftime("%d-%m-%Y")
+        elif escolha == 3:
+            return input("Digite a data (DD-MM-ANO): ")
+        elif escolha == 4:
+            return None
+        else:
+            print("Opção inválida. Prazo definido para Hoje.")
+            return hoje.strftime("%d-%m-%Y")
+
 
 class Menu:
     """
@@ -295,9 +361,10 @@ class Menu:
         while True:
             print("1. Adicionar Missão")
             print("2. Listar Missões/Marcar Concluída")
-            print("3. Remover Missão")
-            print("4. Relatório do dia")
-            print("5. Sair")
+            print("3. Editar Missão")
+            print("4. Remover Missão")
+            print("5. Relatório do dia")
+            print("6. Sair")
 
             opcao = input("Escolha uma opção: ")
 
@@ -357,6 +424,45 @@ class Menu:
                         indice = (
                             int(
                                 input(
+                                    "Digite o número da missão para editar: "
+                                )
+                            )
+                            - 1
+                        )
+
+                        if 0 <= indice < len(missoes):
+                            missao = missoes[indice]
+                            self.interface.exibir_detalhes_missao(missao)
+
+                            novos_dados = (
+                                self.interface.editar_missao_interface(missao)
+                            )
+
+                            if not novos_dados:
+                                print("Nenhuma alteração foi feita.")
+                            else:
+                                editada = self.gerenciador.editar_missao(
+                                    missao.id, novos_dados
+                                )
+                                print(
+                                    f"Missão '{editada.missao}' atualizada com sucesso!"
+                                )
+
+                        else:
+                            print("Índice inválido.")
+                    except ValueError:
+                        print("Entrada inválida.")
+
+            elif opcao == "4":
+                missoes = self.gerenciador.listar_missoes()
+                if not missoes:
+                    self.interface.exibir_missoes(missoes)
+                else:
+                    self.interface.exibir_missoes(missoes)
+                    try:
+                        indice = (
+                            int(
+                                input(
                                     "Digite o número da missão para remover: "
                                 )
                             )
@@ -377,11 +483,11 @@ class Menu:
                     except ValueError:
                         print("Entrada inválida.")
 
-            elif opcao == "4":
+            elif opcao == "5":
                 relatorio = self.gerenciador.gerar_relatorio()
                 self.interface.exibir_relatorio(relatorio)
 
-            elif opcao == "5":
+            elif opcao == "6":
                 print("Até logo!")
                 self.repositorio.salvar_dados(self.gerenciador.missoes)
                 break
