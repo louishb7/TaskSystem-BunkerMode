@@ -20,10 +20,40 @@ class Missao:
         instrucao,
         status="Aguardando Recruta!",
     ):
+        self.id = id
+        self.missao = missao
+        self.prioridade = prioridade
+        self.prazo = prazo
+        self.instrucao = instrucao
+        self.status = status
 
+    def _validar_prioridade(self, prioridade):
         if prioridade not in [1, 2, 3]:
             raise ValueError("Prioridade deve ser entre 1 e 3")
+        return prioridade
 
+    def _validar_prazo(self, prazo):
+        if prazo is not None:
+            try:
+                return datetime.strptime(prazo, "%d-%m-%Y").strftime(
+                    "%d-%m-%Y"
+                )
+            except ValueError:
+                raise ValueError("Formato de data inválido. Use DD-MM-YYYY")
+        return prazo
+
+    def atualizar_titulo(self, titulo):
+        self.missao = titulo
+
+    def atualizar_instrucao(self, instrucao):
+        self.instrucao = instrucao
+
+    def atualizar_prioridade(self, prioridade):
+        if prioridade not in [1, 2, 3]:
+            raise ValueError("Prioridade deve ser entre 1 e 3")
+        self.prioridade = prioridade
+
+    def atualizar_prazo(self, prazo):
         if prazo is not None:
             try:
                 prazo = datetime.strptime(prazo, "%d-%m-%Y").strftime(
@@ -31,13 +61,14 @@ class Missao:
                 )
             except ValueError:
                 raise ValueError("Formato de data inválido. Use DD-MM-YYYY")
-
-        self.missao = missao
-        self.prioridade = prioridade
         self.prazo = prazo
-        self.instrucao = instrucao
-        self.status = status
-        self.id = id
+
+    def concluir(self):
+        self.status = "Concluída"
+
+
+class MissaoNaoEncontrada(Exception):
+    pass
 
 
 class RepositorioJSON:
@@ -55,6 +86,7 @@ class RepositorioJSON:
         Retorna uma lista vazia se o arquivo não existir
         ou se o conteúdo estiver inválido.
         """
+
         caminho_arquivo = os.path.join(
             os.path.dirname(__file__), "missoes.json"
         )
@@ -80,9 +112,16 @@ class RepositorioJSON:
 class GerenciadorDeMissoes:
     """Centraliza as regras de manipulação da lista de missões."""
 
-    def __init__(self, missoes):
-        """Garante que a lista inicial já esteja ordenada por prioridade."""
-        self.missoes = sorted(missoes, key=lambda x: x.prioridade)
+    def __init__(self, repositorio):
+        """
+        Garante que a lista inicial já esteja ordenada por prioridade.
+        #MELHORAR DOCSTRING
+        """
+
+        self.repositorio = repositorio
+        self.missoes = sorted(
+            self.repositorio.carregar_dados(), key=lambda x: x.prioridade
+        )
 
     def adicionar_missao(self, dados_missao):
         """Recebe um dicionário com os dados da missão e adiciona à lista."""
@@ -90,10 +129,12 @@ class GerenciadorDeMissoes:
             proximo_id = 1
         else:
             proximo_id = max(m.id for m in self.missoes) + 1
+
         dados_missao["id"] = proximo_id
         nova_missao = Missao(**dados_missao)
         self.missoes.append(nova_missao)
         self.missoes.sort(key=lambda x: x.prioridade)
+        self._salvar()
         return nova_missao
 
     def editar_missao(self, id_procurado, novos_dados):
@@ -104,46 +145,33 @@ class GerenciadorDeMissoes:
         a lista caso a prioridade tenha sido modificada.
         """
         missao = self.buscar_por_id(id_procurado)
-        if not missao:
-            return None
 
         if "missao" in novos_dados:
-            missao.missao = novos_dados["missao"]
+            missao.atualizar_titulo(novos_dados["missao"])
 
         if "instrucao" in novos_dados:
-            missao.instrucao = novos_dados["instrucao"]
+            missao.atualizar_instrucao(novos_dados["instrucao"])
 
         if "prioridade" in novos_dados:
-            if novos_dados["prioridade"] not in [1, 2, 3]:
-                raise ValueError("Prioridade deve ser entre 1 e 3")
-            missao.prioridade = novos_dados["prioridade"]
+            missao.atualizar_prioridade(novos_dados["prioridade"])
 
         if "prazo" in novos_dados:
-            prazo = novos_dados["prazo"]
-            if prazo is not None:
-                try:
-                    prazo = datetime.strptime(prazo, "%d-%m-%Y").strftime(
-                        "%d-%m-%Y"
-                    )
-                except ValueError:
-                    raise ValueError("Formato de data inválido.")
-            missao.prazo = prazo
+            missao.atualizar_prazo(novos_dados["prazo"])
 
         self.missoes.sort(key=lambda x: x.prioridade)
-
+        self._salvar()
         return missao
 
     def remover_missao(self, id_procurado):
         """Remove missão pelo id real e retorna a missão removida."""
         missao = self.buscar_por_id(id_procurado)
-        if missao:
-            self.missoes.remove(missao)
-            return missao
-        return None
+        self.missoes.remove(missao)
+        self._salvar()
+        return missao
 
     def listar_missoes(self):
         """Retorna todas as missões ordenadas por prioridade."""
-        return self.missoes
+        return list(self.missoes)
 
     def detalhar_missao(self, id_procurado):
         """Acessa diretamente uma missão específica sem alterar nada."""
@@ -152,21 +180,20 @@ class GerenciadorDeMissoes:
     def concluir_missao(self, id_procurado):
         """Altera o status da missão, preservando o restante dos dados."""
         missao = self.buscar_por_id(id_procurado)
-        if missao:
-            missao.status = "Concluída"
-            return missao
-        return None
+        missao.concluir()
+        self._salvar()
+        return missao
 
     def buscar_por_id(self, id_procurado):
         """
         Retorna a missão correspondente ao ID informado.
 
-        Se nenhuma missão for encontrada, retorna None.
+        Levanta MissaoNaoEncontrada caso não exista.
         """
         for missao in self.missoes:
             if missao.id == id_procurado:
                 return missao
-        return None
+        raise MissaoNaoEncontrada(f"Missão {id_procurado} não encontrada")
 
     def gerar_relatorio(self):
         """Separa missões por status usando comparação tolerante a variações de texto."""
@@ -185,6 +212,11 @@ class GerenciadorDeMissoes:
             "concluidas": concluidas,
             "pendentes": pendentes,
         }
+
+    #   ===== MÉTODOS AUXILIARES =====
+    def _salvar(self):
+        """MEHORAR DOCSTRING"""
+        self.repositorio.salvar_dados(self.missoes)
 
 
 class InterfaceConsole:
@@ -375,7 +407,6 @@ class Menu:
 
     def __init__(
         self,
-        repositorio: RepositorioJSON,
         gerenciador: GerenciadorDeMissoes,
         interface: InterfaceConsole,
     ):
@@ -387,7 +418,6 @@ class Menu:
             gerenciador: Instância que contém as regras de negócio das missões.
             interface: Instância responsável pela interação do usuário.
         """
-        self.repositorio = repositorio
         self.gerenciador = gerenciador
         self.interface = interface
 
@@ -410,62 +440,86 @@ class Menu:
                 print(f"Missão '{nova.missao}' criada com sucesso!")
 
             elif opcao == "2":
-                missao = self._selecionar_missao(
-                    "Digite o ID da missão para ver detalhes: "
-                )
+                missoes = self._obter_missoes_exibidas()
 
-                if missao is not None:
-                    self.interface.exibir_detalhes_missao(missao)
+                if missoes:
+                    id_procurado = self._solicitar_id_missao(
+                        "Digite o ID da missão para ver detalhes: "
+                    )
 
-                    if missao.status != "Concluída":
-                        escolha = (
-                            input(
-                                "Deseja marcar esta missão como concluída? (s/n): "
+                    if id_procurado is not None:
+                        missao = self._selecionar_missao(id_procurado)
+
+                        if missao is not None:
+                            self.interface.exibir_detalhes_missao(missao)
+
+                            if missao.status != "Concluída":
+                                escolha = (
+                                    input(
+                                        "Deseja marcar esta missão como concluída? (s/n): "
+                                    )
+                                    .strip()
+                                    .lower()
+                                )
+
+                                if escolha == "s":
+                                    concluida = (
+                                        self.gerenciador.concluir_missao(
+                                            missao.id
+                                        )
+                                    )
+                                    print(
+                                        f"Missão '{concluida.missao}' marcada como concluída!"
+                                    )
+                            else:
+                                print("Esta missão já está concluída.")
+
+            elif opcao == "3":
+                missoes = self._obter_missoes_exibidas()
+
+                if missoes:
+                    id_procurado = self._solicitar_id_missao(
+                        "Digite o ID da missão para editar: "
+                    )
+
+                    if id_procurado is not None:
+                        missao = self._selecionar_missao(id_procurado)
+
+                        if missao is not None:
+                            self.interface.exibir_detalhes_missao(missao)
+
+                            novos_dados = (
+                                self.interface.editar_missao_interface(missao)
                             )
-                            .strip()
-                            .lower()
-                        )
 
-                        if escolha == "s":
-                            concluida = self.gerenciador.concluir_missao(
+                            if not novos_dados:
+                                print("Nenhuma alteração foi feita.")
+                            else:
+                                editada = self.gerenciador.editar_missao(
+                                    missao.id, novos_dados
+                                )
+                                print(
+                                    f"Missão '{editada.missao}' atualizada com sucesso!"
+                                )
+
+            elif opcao == "4":
+                missoes = self._obter_missoes_exibidas()
+
+                if missoes:
+                    id_procurado = self._solicitar_id_missao(
+                        "Digite o ID da missão para remover: "
+                    )
+
+                    if id_procurado is not None:
+                        missao = self._selecionar_missao(id_procurado)
+
+                        if missao is not None:
+                            removida = self.gerenciador.remover_missao(
                                 missao.id
                             )
                             print(
-                                f"Missão '{concluida.missao}' marcada como concluída!"
+                                f"Missão '{removida.missao}' removida com sucesso!"
                             )
-                    else:
-                        print("Esta missão já está concluída.")
-
-            elif opcao == "3":
-                missao = self._selecionar_missao(
-                    "Digite o ID da missão para editar: "
-                )
-
-                if missao is not None:
-                    self.interface.exibir_detalhes_missao(missao)
-
-                    novos_dados = self.interface.editar_missao_interface(
-                        missao
-                    )
-
-                    if not novos_dados:
-                        print("Nenhuma alteração foi feita.")
-                    else:
-                        editada = self.gerenciador.editar_missao(
-                            missao.id, novos_dados
-                        )
-                        print(
-                            f"Missão '{editada.missao}' atualizada com sucesso!"
-                        )
-
-            elif opcao == "4":
-                missao = self._selecionar_missao(
-                    "Digite o ID da missão para remover: "
-                )
-
-                if missao is not None:
-                    removida = self.gerenciador.remover_missao(missao.id)
-                    print(f"Missão '{removida.missao}' removida com sucesso!")
 
             elif opcao == "5":
                 relatorio = self.gerenciador.gerar_relatorio()
@@ -473,14 +527,10 @@ class Menu:
 
             elif opcao == "6":
                 print("Até logo!")
-                self.repositorio.salvar_dados(self.gerenciador.missoes)
                 break
 
             else:
                 print("Opção inválida! Escolha novamente.")
-
-            # Salva sempre após cada operação
-            self.repositorio.salvar_dados(self.gerenciador.missoes)
 
     # ===== MÉTODOS AUXILIARES =====
     def _obter_missoes_exibidas(self):
@@ -494,28 +544,21 @@ class Menu:
         self.interface.exibir_missoes(missoes)
         return missoes
 
-    def _selecionar_missao(self, mensagem):
+    def _selecionar_missao(self, id_procurado):
         """
-        Exibe as missões e retorna a missão escolhida pelo ID informado.
+        Retorna a missão pelo ID informado.
 
-        Se não houver missões, se o ID for inválido ou se a entrada
-        não puder ser convertida, retorna None.
+        Exibe uma mensagem caso a missão não exista e retorna None.
         """
-        missoes = self._obter_missoes_exibidas()
-
-        if not missoes:
-            return None
-
         try:
-            id_procurado = int(input(mensagem))
-            missao = self.gerenciador.buscar_por_id(id_procurado)
-
-            if missao:
-                return missao
-
-            print("ID inválido.")
+            return self.gerenciador.buscar_por_id(id_procurado)
+        except MissaoNaoEncontrada as e:
+            print(e)
             return None
 
+    def _solicitar_id_missao(self, mensagem):
+        try:
+            return int(input(mensagem))
         except ValueError:
             print("Entrada inválida.")
             return None
@@ -524,8 +567,7 @@ class Menu:
 # Inicializa os objetos e dá o START no programa.
 if __name__ == "__main__":
     repositorio = RepositorioJSON()
-    missoes = repositorio.carregar_dados()
-    gerenciador = GerenciadorDeMissoes(missoes)
+    gerenciador = GerenciadorDeMissoes(repositorio)
     interface = InterfaceConsole()
-    menu = Menu(repositorio, gerenciador, interface)
+    menu = Menu(gerenciador, interface)
     menu.exibir_menu()
