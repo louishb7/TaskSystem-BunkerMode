@@ -1,23 +1,38 @@
 # BunkerMode
 
-Sistema de gerenciamento de missões desenvolvido em Python.
+Sistema de gerenciamento de missões em Python com arquitetura modular, preparado para evolução para API.
 
 ## Estrutura
 
-- **Missao**: representa uma missão única, com validações de prioridade e prazo.
-- **RepositorioJSON**: responsável por salvar e carregar missões em arquivo JSON.
-- **GerenciadorDeMissoes**: manipula as missões (adicionar, listar, remover, relatório).
-- **Menu**: interface de interação com o usuário.
+- **missao.py**  
+  Entidade principal. Responsável por validação de prioridade e prazo, além das regras da missão.
+
+- **gerenciador.py**  
+  Camada de regras de negócio. Controla criação, edição, conclusão, remoção e listagem.
+
+- **repositorio.py**  
+  Persistência em JSON. Converte objetos em dados e vice-versa.
+
+- **interface.py**  
+  Responsável pela entrada e saída via terminal.
+
+- **menu.py**  
+  Orquestra o fluxo da aplicação (CLI).
+
+- **main.py**  
+  Ponto de entrada do sistema.
 
 ## Funcionalidades
 
-- Adicionar missões com título, prioridade e prazo.
-- Listar missões ordenadas por prioridade.
-- Detalhar e marcar missões como concluídas.
-- Remover missões.
-- Gerar relatório com pendentes e concluídas.
+- Criar missão
+- Listar missões por prioridade
+- Visualizar detalhes
+- Editar missão
+- Marcar como concluída
+- Remover missão
+- Gerar relatório (pendentes/concluídas)
 
 ## Execução
 
 ```bash
-python BunkerModePOO.py
+python main.py
