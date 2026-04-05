@@ -1,0 +1,111 @@
+from missao import Missao, STATUS_CONCLUIDA
+
+
+class MissaoNaoEncontrada(Exception):
+    pass
+
+
+class GerenciadorDeMissoes:
+    """Centraliza as regras de manipulação da lista de missões."""
+
+    def __init__(self, repositorio):
+        """
+        Inicializa o gerenciador com o repositório informado.
+
+        Carrega as missões persistidas e mantém a lista ordenada
+        por prioridade desde o início da execução.
+        """
+
+        self.repositorio = repositorio
+        self.missoes = sorted(
+            self.repositorio.carregar_dados(), key=lambda x: x.prioridade
+        )
+
+    def adicionar_missao(self, dados_missao):
+        """Cria uma nova missão, atribui um ID único e persiste a alteração."""
+        if not self.missoes:
+            proximo_id = 1
+        else:
+            proximo_id = max(m.id for m in self.missoes) + 1
+
+        dados_missao["id"] = proximo_id
+        nova_missao = Missao(**dados_missao)
+        self.missoes.append(nova_missao)
+        self.missoes.sort(key=lambda x: x.prioridade)
+        self._salvar()
+        return nova_missao
+
+    def editar_missao(self, id_procurado, novos_dados):
+        """
+        Atualiza apenas os campos informados de uma missão já existente.
+
+        Busca a missão pelo ID, aplica alterações parciais e reordena
+        a lista caso a prioridade tenha sido modificada.
+        """
+        missao = self.buscar_por_id(id_procurado)
+
+        if "missao" in novos_dados:
+            missao.atualizar_titulo(novos_dados["missao"])
+
+        if "instrucao" in novos_dados:
+            missao.atualizar_instrucao(novos_dados["instrucao"])
+
+        if "prioridade" in novos_dados:
+            missao.atualizar_prioridade(novos_dados["prioridade"])
+
+        if "prazo" in novos_dados:
+            missao.atualizar_prazo(novos_dados["prazo"])
+
+        self.missoes.sort(key=lambda x: x.prioridade)
+        self._salvar()
+        return missao
+
+    def remover_missao(self, id_procurado):
+        """Remove a missão pelo ID informado e salva a alteração."""
+        missao = self.buscar_por_id(id_procurado)
+        self.missoes.remove(missao)
+        self._salvar()
+        return missao
+
+    def listar_missoes(self):
+        """Retorna todas as missões ordenadas por prioridade."""
+        return list(self.missoes)
+
+    def detalhar_missao(self, id_procurado):
+        """Retorna uma missão específica sem modificar seu estado.."""
+        return self.buscar_por_id(id_procurado)
+
+    def concluir_missao(self, id_procurado):
+        """Marca a missão como concluída e persiste a alteração."""
+        missao = self.buscar_por_id(id_procurado)
+        missao.concluir()
+        self._salvar()
+        return missao
+
+    def buscar_por_id(self, id_procurado):
+        """
+        Retorna a missão correspondente ao ID informado.
+
+        Levanta MissaoNaoEncontrada caso não exista.
+        """
+        for missao in self.missoes:
+            if missao.id == id_procurado:
+                return missao
+        raise MissaoNaoEncontrada(f"Missão {id_procurado} não encontrada")
+
+    def gerar_relatorio(self):
+        """Agrupa as missões em concluídas e pendentes com base no status atual."""
+        concluidas = [m for m in self.missoes if m.status == STATUS_CONCLUIDA]
+
+        pendentes = [m for m in self.missoes if m.status != STATUS_CONCLUIDA]
+
+        return {
+            "total": len(self.missoes),
+            "concluidas": concluidas,
+            "pendentes": pendentes,
+        }
+
+    #   ===== MÉTODOS AUXILIARES =====
+    def _salvar(self):
+        """Persiste no repositório o estado atual da lista de missões."""
+        self.repositorio.salvar_dados(self.missoes)
