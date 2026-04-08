@@ -23,8 +23,8 @@ class Missao:
     ):
         self.id = id
         self.missao = missao
-        self.prioridade = prioridade
-        self.prazo = prazo
+        self.prioridade = self._validar_prioridade(prioridade)
+        self.prazo = self._validar_prazo(prazo)
         self.instrucao = instrucao
         self.status = status
 

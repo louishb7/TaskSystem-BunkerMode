@@ -73,17 +73,16 @@ class InterfaceConsole:
         if relatorio["pendentes"]:
             print(">>> MISSÕES PENDENTES <<<")
             for m in relatorio["pendentes"]:
+                prazo = m.prazo or "Sem prazo definido"
                 print(
-                    f"- {m.missao} | Prazo: {m.prazo or 'Só a de hoje, soldado!'} | Prioridade: {m.prioridade}"
+                    f"- {m.missao} | Prazo: {prazo} | Prioridade: {m.prioridade}"
                 )
             print("-" * 40)
 
         if relatorio["concluidas"]:
             print(">>> MISSÕES CONCLUÍDAS <<<")
             for m in relatorio["concluidas"]:
-                print(
-                    f"- {m.missao} | Finalizada em: {m.prazo or 'Só a de hoje, soldado!'}"
-                )
+                print(f"- {m.missao}")
             print("-" * 40)
 
     #   ===== ENTRADA =====

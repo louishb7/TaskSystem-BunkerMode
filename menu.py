@@ -23,89 +23,111 @@ class Menu:
     def exibir_menu(self):
         """Executa o loop principal do sistema até o usuario escolher sair."""
         self.interface.exibir_cabecalho()
+
         while True:
             print("1. Adicionar Missão")
-            print("2. Listar Missões/Marcar Concluída")
-            print("3. Editar Missão")
-            print("4. Remover Missão")
-            print("5. Relatório do dia")
-            print("6. Sair")
+            print("2. Listar Missões")
+            print("3. Ver Detalhes da Missão")
+            print("4. Concluir Missão")
+            print("5. Editar Missão")
+            print("6. Remover Missão")
+            print("7. Relatório")
+            print("8. Sair")
 
             opcao = input("Escolha uma opção: ")
 
             if opcao == "1":
-                dados = self.interface.solicitar_dados_missao()
-                nova = self.gerenciador.adicionar_missao(dados)
-                print(f"Missão '{nova.missao}' criada com sucesso!")
-
+                self._opcao_adicionar_missao()
             elif opcao == "2":
-                missao = self._obter_missao_por_input(
-                    "Digite o ID da missão para ver detalhes: "
-                )
-
-                if missao is not None:
-                    self.interface.exibir_detalhes_missao(missao)
-
-                    if missao.status != STATUS_CONCLUIDA:
-                        escolha = (
-                            input(
-                                "Deseja marcar esta missão como concluída? (s/n): "
-                            )
-                            .strip()
-                            .lower()
-                        )
-
-                        if escolha == "s":
-                            concluida = self.gerenciador.concluir_missao(
-                                missao.id
-                            )
-                            print(
-                                f"Missão '{concluida.missao}' marcada como concluída!"
-                            )
-                    else:
-                        print("Esta missão já está concluída.")
-
+                self._opcao_listar_missoes()
             elif opcao == "3":
-                missao = self._obter_missao_por_input(
-                    "Digite o ID da missão para editar: "
-                )
-
-                if missao is not None:
-                    self.interface.exibir_detalhes_missao(missao)
-
-                    novos_dados = self.interface.editar_missao_interface(
-                        missao
-                    )
-
-                    if not novos_dados:
-                        print("Nenhuma alteração foi feita.")
-                    else:
-                        editada = self.gerenciador.editar_missao(
-                            missao.id, novos_dados
-                        )
-                        print(
-                            f"Missão '{editada.missao}' atualizada com sucesso!"
-                        )
-
+                self._opcao_detalhar_missao()
             elif opcao == "4":
-                missao = self._obter_missao_por_input(
-                    "Digite o ID da missão para remover: "
-                )
-
-                if missao is not None:
-                    removida = self.gerenciador.remover_missao(missao.id)
-                    print(f"Missão '{removida.missao}' removida com sucesso!")
-
+                self._opcao_concluir_missao()
             elif opcao == "5":
-                relatorio = self.gerenciador.gerar_relatorio()
-                self.interface.exibir_relatorio(relatorio)
-
+                self._opcao_editar_missao()
             elif opcao == "6":
+                self._opcao_remover_missao()
+            elif opcao == "7":
+                self._opcao_exibir_relatorio()
+            elif opcao == "8":
                 print("Até logo!")
                 break
-
             else:
                 print("Opção inválida! Escolha novamente.")
+
+    # ===== AÇÕES DO MENU =====
+    def _opcao_adicionar_missao(self):
+        """Coleta os dados da missão, cria a missão e exibe confirmação."""
+        dados = self.interface.solicitar_dados_missao()
+        nova = self.gerenciador.adicionar_missao(dados)
+        print(f"Missão '{nova.missao}' criada com sucesso!")
+
+    def _opcao_listar_missoes(self):
+        """Lista todas as missões cadastradas."""
+        missoes = self.gerenciador.listar_missoes()
+        self.interface.exibir_missoes(missoes)
+
+    def _opcao_detalhar_missao(self):
+        """Obtém uma missão pelo ID informado e exibe seus detalhes."""
+        missao = self._obter_missao_por_input(
+            "Digite o ID da missão para ver detalhes: "
+        )
+
+        if missao is not None:
+            self.interface.exibir_detalhes_missao(missao)
+
+    def _opcao_concluir_missao(self):
+        """Conclui uma missão pendente escolhida pelo usuário."""
+        missao = self._obter_missao_por_input(
+            "Digite o ID da missão para concluir: "
+        )
+
+        if missao is None:
+            return
+
+        if missao.status == STATUS_CONCLUIDA:
+            print("Esta missão já está concluída.")
+            return
+
+        concluida = self.gerenciador.concluir_missao(missao.id)
+        print(f"Missão '{concluida.missao}' marcada como concluída.")
+
+    def _opcao_editar_missao(self):
+        """Exibe a missão selecionada, coleta alterações e aplica a edição."""
+        missao = self._obter_missao_por_input(
+            "Digite o ID da missão para editar: "
+        )
+
+        if missao is None:
+            return
+
+        self.interface.exibir_detalhes_missao(missao)
+        novos_dados = self.interface.editar_missao_interface(missao)
+
+        if not novos_dados:
+            print("Nenhuma alteração foi feita.")
+            return
+
+        editada = self.gerenciador.editar_missao(missao.id, novos_dados)
+        print(f"Missão '{editada.missao}' atualizada com sucesso!")
+
+    def _opcao_remover_missao(self):
+        """Remove a missão selecionada e exibe confirmação."""
+        missao = self._obter_missao_por_input(
+            "Digite o ID da missão para remover: "
+        )
+
+        if missao is None:
+            return
+
+        removida = self.gerenciador.remover_missao(missao.id)
+        print(f"Missão '{removida.missao}' removida com sucesso!")
+
+    def _opcao_exibir_relatorio(self):
+        """Gera e exibe o relatório atual das missões."""
+        relatorio = self.gerenciador.gerar_relatorio()
+        self.interface.exibir_relatorio(relatorio)
 
     # ===== MÉTODOS AUXILIARES =====
     def _obter_missoes_exibidas(self):
