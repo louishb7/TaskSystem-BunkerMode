@@ -17,8 +17,8 @@ class Missao:
     """
     Representa uma missão do sistema com seus dados essenciais.
 
-    Garante a integridade básica da entidade, validando a prioridade
-    permitida e o formato final do prazo quando ele for informado.
+    Garante a integridade da entidade validando ID, título, instrução,
+    prioridade, prazo e status no momento da criação e das atualizações.
     """
 
     def __init__(
@@ -30,63 +30,28 @@ class Missao:
         instrucao,
         status=StatusMissao.PENDENTE,
     ):
-        self.id = id
-        self.titulo = titulo
+        self.id = self._validar_id(id)
+        self.titulo = self._validar_titulo(titulo)
         self.prioridade = self._validar_prioridade(prioridade)
         self.prazo = self._validar_prazo(prazo)
-        self.instrucao = instrucao
+        self.instrucao = self._validar_instrucao(instrucao)
         self.status = self._validar_status(status)
-
-    def _validar_prioridade(self, prioridade):
-        """Garante que a prioridade da missão seja um valor válido do domínio."""
-        if isinstance(prioridade, PrioridadeMissao):
-            return prioridade
-
-        try:
-            return PrioridadeMissao(prioridade)
-        except ValueError:
-            raise ValueError("Prioridade deve ser entre 1 e 3.")
-
-    def _validar_prazo(self, prazo):
-        """
-        Valida e normaliza o prazo para o formato DD-MM-YYYY.
-
-        Retorna None quando a missão não possui prazo definido.
-        """
-        if prazo is not None:
-            try:
-                return datetime.strptime(prazo, "%d-%m-%Y").strftime(
-                    "%d-%m-%Y"
-                )
-            except ValueError:
-                raise ValueError("Formato de data inválido. Use DD-MM-YYYY")
-        return prazo
-
-    def _validar_status(self, status):
-        """Garante que o status da missão seja um valor válido do domínio."""
-        if isinstance(status, StatusMissao):
-            return status
-
-        try:
-            return StatusMissao(status)
-        except ValueError:
-            raise ValueError("Status de missão inválido.")
 
     def descricao_prioridade(self):
         """Retorna a descrição textual da prioridade."""
         if self.prioridade == PrioridadeMissao.ALTA:
             return "Faça! Prioridade máxima."
-        elif self.prioridade == PrioridadeMissao.MEDIA:
-            return "Média Prioridade!"
+        if self.prioridade == PrioridadeMissao.MEDIA:
+            return "Média prioridade."
         return "Baixa prioridade."
 
     def atualizar_titulo(self, titulo):
-        """Atualiza o título da missão"""
-        self.titulo = titulo
+        """Atualiza o título da missão com validação."""
+        self.titulo = self._validar_titulo(titulo)
 
     def atualizar_instrucao(self, instrucao):
-        """Atualiza a instrução da missão."""
-        self.instrucao = instrucao
+        """Atualiza a instrução da missão com validação."""
+        self.instrucao = self._validar_instrucao(instrucao)
 
     def atualizar_prioridade(self, prioridade):
         """Atualiza a prioridade da missão com validação."""
@@ -112,3 +77,74 @@ class Missao:
             "instrucao": self.instrucao,
             "status": self.status.value,
         }
+
+    # ===== MÉTODOS AUXILIARES =====
+    def _validar_id(self, id):
+        """Garante que o ID da missão seja um inteiro positivo."""
+        if not isinstance(id, int):
+            raise ValueError("ID da missão deve ser um número inteiro.")
+
+        if id < 1:
+            raise ValueError("ID da missão deve ser maior que zero.")
+
+        return id
+
+    def _validar_prioridade(self, prioridade):
+        """Garante que a prioridade da missão seja um valor válido do domínio."""
+        if isinstance(prioridade, PrioridadeMissao):
+            return prioridade
+
+        try:
+            return PrioridadeMissao(prioridade)
+        except ValueError as e:
+            raise ValueError("Prioridade deve ser entre 1 e 3.") from e
+
+    def _validar_prazo(self, prazo):
+        """
+        Valida e normaliza o prazo para o formato DD-MM-YYYY.
+
+        Retorna None quando a missão não possui prazo definido.
+        """
+        if prazo is None:
+            return None
+
+        try:
+            return datetime.strptime(prazo, "%d-%m-%Y").strftime("%d-%m-%Y")
+        except ValueError as e:
+            raise ValueError(
+                "Formato de data inválido. Use DD-MM-YYYY."
+            ) from e
+
+    def _validar_status(self, status):
+        """Garante que o status da missão seja um valor válido do domínio."""
+        if isinstance(status, StatusMissao):
+            return status
+
+        try:
+            return StatusMissao(status)
+        except ValueError as e:
+            raise ValueError("Status de missão inválido.") from e
+
+    def _validar_titulo(self, titulo):
+        """Valida e normaliza o título da missão."""
+        if not isinstance(titulo, str):
+            raise ValueError("Título da missão deve ser um texto.")
+
+        titulo = titulo.strip()
+
+        if not titulo:
+            raise ValueError("Título da missão não pode ser vazio.")
+
+        return titulo
+
+    def _validar_instrucao(self, instrucao):
+        """Valida e normaliza a instrução da missão."""
+        if not isinstance(instrucao, str):
+            raise ValueError("Instrução da missão deve ser um texto.")
+
+        instrucao = instrucao.strip()
+
+        if not instrucao:
+            raise ValueError("Instrução da missão não pode ser vazia.")
+
+        return instrucao

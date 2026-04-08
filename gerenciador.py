@@ -2,7 +2,7 @@ from missao import Missao, StatusMissao
 
 
 class MissaoNaoEncontrada(Exception):
-    pass
+    """Erro levantado quando uma missão não é encontrada pelo ID."""
 
 
 class GerenciadorDeMissoes:
@@ -15,7 +15,6 @@ class GerenciadorDeMissoes:
         Carrega as missões persistidas e mantém a lista ordenada
         por prioridade desde o início da execução.
         """
-
         self.repositorio = repositorio
         self.missoes = self.repositorio.carregar_dados()
         self._ordenar_missoes()
@@ -33,8 +32,8 @@ class GerenciadorDeMissoes:
         """
         Atualiza apenas os campos informados de uma missão já existente.
 
-        Busca a missão pelo ID, aplica alterações parciais e reordena
-        a lista caso a prioridade tenha sido modificada.
+        Busca a missão pelo ID, aplica alterações parciais e persiste
+        o novo estado da lista após a edição.
         """
         missao = self.buscar_por_id(id_procurado)
 
@@ -55,18 +54,18 @@ class GerenciadorDeMissoes:
         return missao
 
     def remover_missao(self, id_procurado):
-        """Remove a missão pelo ID informado e salva a alteração."""
+        """Remove a missão pelo ID informado e persiste a alteração."""
         missao = self.buscar_por_id(id_procurado)
         self.missoes.remove(missao)
         self._salvar()
         return missao
 
     def listar_missoes(self):
-        """Retorna todas as missões ordenadas por prioridade."""
+        """Retorna uma cópia da lista de missões ordenadas."""
         return list(self.missoes)
 
     def detalhar_missao(self, id_procurado):
-        """Retorna uma missão específica sem modificar seu estado.."""
+        """Retorna uma missão específica sem modificar seu estado."""
         return self.buscar_por_id(id_procurado)
 
     def concluir_missao(self, id_procurado):
@@ -85,16 +84,21 @@ class GerenciadorDeMissoes:
         for missao in self.missoes:
             if missao.id == id_procurado:
                 return missao
+
         raise MissaoNaoEncontrada(f"Missão {id_procurado} não encontrada")
 
     def gerar_relatorio(self):
-        """Agrupa as missões em concluídas e pendentes com base no status atual."""
+        """Agrupa as missões em concluídas e pendentes com base no status."""
         concluidas = [
-            m for m in self.missoes if m.status == StatusMissao.CONCLUIDA
+            missao
+            for missao in self.missoes
+            if missao.status == StatusMissao.CONCLUIDA
         ]
 
         pendentes = [
-            m for m in self.missoes if m.status != StatusMissao.CONCLUIDA
+            missao
+            for missao in self.missoes
+            if missao.status != StatusMissao.CONCLUIDA
         ]
 
         return {
@@ -103,16 +107,16 @@ class GerenciadorDeMissoes:
             "pendentes": pendentes,
         }
 
-    #   ===== MÉTODOS AUXILIARES =====
+    # ===== MÉTODOS AUXILIARES =====
     def _ordenar_missoes(self):
         """Mantém a lista de missões ordenada por prioridade."""
-        self.missoes.sort(key=lambda x: x.prioridade.value)
+        self.missoes.sort(key=lambda missao: missao.prioridade.value)
 
     def _proximo_id(self):
         """Retorna o próximo ID disponível para uma nova missão."""
         if not self.missoes:
             return 1
-        return max(m.id for m in self.missoes) + 1
+        return max(missao.id for missao in self.missoes) + 1
 
     def _salvar(self):
         """Persiste no repositório o estado atual da lista de missões."""

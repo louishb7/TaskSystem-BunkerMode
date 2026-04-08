@@ -4,10 +4,14 @@ from interface import InterfaceConsole
 from menu import Menu
 
 
-# Inicializa os objetos e dá o START no programa.
 if __name__ == "__main__":
-    repositorio = RepositorioJSON()
-    gerenciador = GerenciadorDeMissoes(repositorio)
     interface = InterfaceConsole()
-    menu = Menu(gerenciador, interface)
-    menu.exibir_menu()
+
+    try:
+        repositorio = RepositorioJSON()
+        gerenciador = GerenciadorDeMissoes(repositorio)
+    except ValueError as e:
+        interface.exibir_erro(str(e))
+    else:
+        menu = Menu(gerenciador, interface)
+        menu.exibir_menu()
