@@ -1,4 +1,4 @@
-from missao import Missao, STATUS_CONCLUIDA
+from missao import Missao, StatusMissao
 
 
 class MissaoNaoEncontrada(Exception):
@@ -17,21 +17,15 @@ class GerenciadorDeMissoes:
         """
 
         self.repositorio = repositorio
-        self.missoes = sorted(
-            self.repositorio.carregar_dados(), key=lambda x: x.prioridade
-        )
+        self.missoes = self.repositorio.carregar_dados()
+        self._ordenar_missoes()
 
     def adicionar_missao(self, dados_missao):
         """Cria uma nova missão, atribui um ID único e persiste a alteração."""
-        if not self.missoes:
-            proximo_id = 1
-        else:
-            proximo_id = max(m.id for m in self.missoes) + 1
-
-        dados_missao["id"] = proximo_id
+        dados_missao["id"] = self._proximo_id()
         nova_missao = Missao(**dados_missao)
         self.missoes.append(nova_missao)
-        self.missoes.sort(key=lambda x: x.prioridade)
+        self._ordenar_missoes()
         self._salvar()
         return nova_missao
 
@@ -44,8 +38,8 @@ class GerenciadorDeMissoes:
         """
         missao = self.buscar_por_id(id_procurado)
 
-        if "missao" in novos_dados:
-            missao.atualizar_titulo(novos_dados["missao"])
+        if "titulo" in novos_dados:
+            missao.atualizar_titulo(novos_dados["titulo"])
 
         if "instrucao" in novos_dados:
             missao.atualizar_instrucao(novos_dados["instrucao"])
@@ -56,7 +50,7 @@ class GerenciadorDeMissoes:
         if "prazo" in novos_dados:
             missao.atualizar_prazo(novos_dados["prazo"])
 
-        self.missoes.sort(key=lambda x: x.prioridade)
+        self._ordenar_missoes()
         self._salvar()
         return missao
 
@@ -95,9 +89,13 @@ class GerenciadorDeMissoes:
 
     def gerar_relatorio(self):
         """Agrupa as missões em concluídas e pendentes com base no status atual."""
-        concluidas = [m for m in self.missoes if m.status == STATUS_CONCLUIDA]
+        concluidas = [
+            m for m in self.missoes if m.status == StatusMissao.CONCLUIDA
+        ]
 
-        pendentes = [m for m in self.missoes if m.status != STATUS_CONCLUIDA]
+        pendentes = [
+            m for m in self.missoes if m.status != StatusMissao.CONCLUIDA
+        ]
 
         return {
             "total": len(self.missoes),
@@ -106,6 +104,16 @@ class GerenciadorDeMissoes:
         }
 
     #   ===== MÉTODOS AUXILIARES =====
+    def _ordenar_missoes(self):
+        """Mantém a lista de missões ordenada por prioridade."""
+        self.missoes.sort(key=lambda x: x.prioridade.value)
+
+    def _proximo_id(self):
+        """Retorna o próximo ID disponível para uma nova missão."""
+        if not self.missoes:
+            return 1
+        return max(m.id for m in self.missoes) + 1
+
     def _salvar(self):
         """Persiste no repositório o estado atual da lista de missões."""
         self.repositorio.salvar_dados(self.missoes)

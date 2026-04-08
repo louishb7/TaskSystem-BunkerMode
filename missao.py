@@ -1,7 +1,16 @@
 from datetime import datetime
+from enum import Enum
 
-STATUS_PENDENTE = "Aguardando Recruta!"
-STATUS_CONCLUIDA = "Concluída"
+
+class StatusMissao(Enum):
+    PENDENTE = "Aguardando Recruta!"
+    CONCLUIDA = "Concluída"
+
+
+class PrioridadeMissao(Enum):
+    ALTA = 1
+    MEDIA = 2
+    BAIXA = 3
 
 
 class Missao:
@@ -15,24 +24,28 @@ class Missao:
     def __init__(
         self,
         id,
-        missao,
+        titulo,
         prioridade,
         prazo,
         instrucao,
-        status=STATUS_PENDENTE,
+        status=StatusMissao.PENDENTE,
     ):
         self.id = id
-        self.missao = missao
+        self.titulo = titulo
         self.prioridade = self._validar_prioridade(prioridade)
         self.prazo = self._validar_prazo(prazo)
         self.instrucao = instrucao
-        self.status = status
+        self.status = self._validar_status(status)
 
     def _validar_prioridade(self, prioridade):
-        """Valida se a prioridade está dentro do intervalo permitido."""
-        if prioridade not in [1, 2, 3]:
-            raise ValueError("Prioridade deve ser entre 1 e 3")
-        return prioridade
+        """Garante que a prioridade da missão seja um valor válido do domínio."""
+        if isinstance(prioridade, PrioridadeMissao):
+            return prioridade
+
+        try:
+            return PrioridadeMissao(prioridade)
+        except ValueError:
+            raise ValueError("Prioridade deve ser entre 1 e 3.")
 
     def _validar_prazo(self, prazo):
         """
@@ -49,9 +62,27 @@ class Missao:
                 raise ValueError("Formato de data inválido. Use DD-MM-YYYY")
         return prazo
 
+    def _validar_status(self, status):
+        """Garante que o status da missão seja um valor válido do domínio."""
+        if isinstance(status, StatusMissao):
+            return status
+
+        try:
+            return StatusMissao(status)
+        except ValueError:
+            raise ValueError("Status de missão inválido.")
+
+    def descricao_prioridade(self):
+        """Retorna a descrição textual da prioridade."""
+        if self.prioridade == PrioridadeMissao.ALTA:
+            return "Faça! Prioridade máxima."
+        elif self.prioridade == PrioridadeMissao.MEDIA:
+            return "Média Prioridade!"
+        return "Baixa prioridade."
+
     def atualizar_titulo(self, titulo):
         """Atualiza o título da missão"""
-        self.missao = titulo
+        self.titulo = titulo
 
     def atualizar_instrucao(self, instrucao):
         """Atualiza a instrução da missão."""
@@ -67,4 +98,17 @@ class Missao:
 
     def concluir(self):
         """Marca a missão como concluída."""
-        self.status = STATUS_CONCLUIDA
+        if self.status == StatusMissao.CONCLUIDA:
+            raise ValueError("Esta missão já está concluída.")
+        self.status = StatusMissao.CONCLUIDA
+
+    def para_dict(self):
+        """Retorna uma representação serializável da missão."""
+        return {
+            "id": self.id,
+            "titulo": self.titulo,
+            "prioridade": self.prioridade.value,
+            "prazo": self.prazo,
+            "instrucao": self.instrucao,
+            "status": self.status.value,
+        }

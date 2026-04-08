@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from missao import STATUS_PENDENTE
+from missao import StatusMissao
 
 
 class InterfaceConsole:
@@ -18,6 +18,14 @@ class InterfaceConsole:
         print(f"{titulo:^46}")
         print("~=" * 20)
 
+    def exibir_mensagem(self, mensagem):
+        """Exibe uma mensagem padrão ao usuário."""
+        print(mensagem)
+
+    def exibir_erro(self, mensagem):
+        """Exibe uma mensagem de erro ao usuário."""
+        print(f"[ERRO] {mensagem}")
+
     def exibir_missoes(self, missoes):
         """Exibe a lista de missões em formato resumido."""
         if not missoes:
@@ -28,16 +36,11 @@ class InterfaceConsole:
         print("=" * 35)
 
         for index, m in enumerate(missoes, start=1):
-            if m.prioridade == 1:
-                print("= > Faça! Prioridade máxima. < =")
-            elif m.prioridade == 2:
-                print("=>  Deve fazer! <=")
-            else:
-                print("=>  Baixa prioridade.   <=")
+            print(f"=> {m.descricao_prioridade()} <=")
 
             print(
-                f"[ID {m.id}] {m.missao.capitalize()}\n"
-                f"Status: {m.status} | Prazo: {m.prazo or 'Permanente'}"
+                f"[ID {m.id}] {m.titulo.capitalize()}\n"
+                f"Status: {m.status.value} | Prazo: {m.prazo or 'Permanente'}"
             )
             print("-" * 35)
 
@@ -45,19 +48,16 @@ class InterfaceConsole:
         """Exibe todos os dados relevantes de uma missão."""
         if missao:
             print("\n=== DETALHES DA MISSÃO ===")
-            print(f"Título: {missao.missao}")
+            print(f"Título: {missao.titulo}")
 
-            if missao.prioridade == 1:
-                prioridade_texto = "Faça! Prioridade máxima."
-            elif missao.prioridade == 2:
-                prioridade_texto = "Deve fazer!"
-            else:
-                prioridade_texto = "Baixa prioridade."
+            prioridade_texto = missao.descricao_prioridade()
 
-            print(f"Prioridade: {missao.prioridade} ({prioridade_texto})")
+            print(
+                f"Prioridade: {missao.prioridade.value} ({prioridade_texto})"
+            )
             print(f"Prazo: {missao.prazo or 'Permanente'}")
             print(f"Instrução: {missao.instrucao}")
-            print(f"Status: {missao.status}")
+            print(f"Status: {missao.status.value}")
             print("=" * 35)
         else:
             print("Missão não encontrada.")
@@ -75,37 +75,35 @@ class InterfaceConsole:
             for m in relatorio["pendentes"]:
                 prazo = m.prazo or "Sem prazo definido"
                 print(
-                    f"- {m.missao} | Prazo: {prazo} | Prioridade: {m.prioridade}"
+                    f"- {m.titulo} | Prazo: {prazo} | Prioridade: {m.prioridade.value}"
                 )
             print("-" * 40)
 
         if relatorio["concluidas"]:
             print(">>> MISSÕES CONCLUÍDAS <<<")
             for m in relatorio["concluidas"]:
-                print(f"- {m.missao}")
+                print(f"- {m.titulo}")
             print("-" * 40)
 
     #   ===== ENTRADA =====
     def solicitar_dados_missao(self):
         """Coleta os dados necessários para criação de uma nova missão."""
-        missao = input("Título da missão: ")
+        titulo = input("Título da missão: ")
         while True:
             try:
                 prioridade = int(input("Prioridade (1-3): "))
-                if prioridade in (1, 2, 3):
-                    break
-                print("O número deve estar entre 1 e 3.")
+                break
             except ValueError:
-                print("Entrada inválida!")
+                self.exibir_erro("Entrada inválida! Digite um número inteiro.")
 
         instrucao = input("Instruções: ")
 
         return {
-            "missao": missao,
+            "titulo": titulo,
             "prioridade": prioridade,
             "prazo": self._solicitar_prazo(),
             "instrucao": instrucao,
-            "status": STATUS_PENDENTE,
+            "status": StatusMissao.PENDENTE,
         }
 
     def editar_missao_interface(self, missao):
@@ -116,11 +114,11 @@ class InterfaceConsole:
         """
         print("\n--- EDITANDO MISSÃO ---")
 
-        novo_titulo = input(f"Título [{missao.missao}]: ").strip()
+        novo_titulo = input(f"Título [{missao.titulo}]: ").strip()
         nova_instrucao = input(f"Instrução [{missao.instrucao}]: ").strip()
 
         nova_prioridade = input(
-            f"Prioridade (1-3) [{missao.prioridade}]: "
+            f"Prioridade (1-3) [{missao.prioridade.value}]: "
         ).strip()
 
         print("Alterar prazo?")
@@ -130,7 +128,7 @@ class InterfaceConsole:
         dados = {}
 
         if novo_titulo:
-            dados["missao"] = novo_titulo
+            dados["titulo"] = novo_titulo
 
         if nova_instrucao:
             dados["instrucao"] = nova_instrucao
@@ -145,8 +143,7 @@ class InterfaceConsole:
             try:
                 dados["prazo"] = self._normalizar_prazo(int(escolha_prazo))
             except ValueError:
-                raise ValueError("Prazo inválido. Alteração ignorada.")
-
+                self.exibir_erro("Prazo inválido. Alteração ignorada.")
         return dados
 
     #   ===== AUXILIARES =====
@@ -161,7 +158,7 @@ class InterfaceConsole:
                 escolha = int(input("Opção: "))
                 return self._normalizar_prazo(escolha)
             except ValueError:
-                print("Entrada inválida! Escolha um número.")
+                self.exibir_erro("Entrada inválida! Escolha um número.")
 
     def _normalizar_prazo(self, escolha):
         """
@@ -181,5 +178,5 @@ class InterfaceConsole:
         elif escolha == 4:
             return None
         else:
-            print("Opção inválida. Prazo definido para Hoje.")
+            self.exibir_erro("Opção inválida. Prazo definido para Hoje.")
             return hoje.strftime("%d-%m-%Y")

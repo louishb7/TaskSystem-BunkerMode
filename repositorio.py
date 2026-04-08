@@ -8,9 +8,19 @@ class RepositorioJSON:
     Responsável por carregar e salvar as missões em um arquivo JSON local.
     """
 
+    def __init__(self, caminho_arquivo=None):
+        """
+        Inicializa o repositório com um caminho opcional para o arquivo JSON.
+
+        Se nenhum caminho for informado, usa o arquivo padrao do projeto.
+        """
+        self.caminho_arquivo = caminho_arquivo or os.path.join(
+            os.path.dirname(__file__), "missoes.json"
+        )
+
     def _obter_caminho_arquivo(self):
         """Retorna o caminho absoluto do arquivo de persistência."""
-        return os.path.join(os.path.dirname(__file__), "missoes.json")
+        return self.caminho_arquivo
 
     def carregar_dados(self):
         """
@@ -31,11 +41,8 @@ class RepositorioJSON:
         return []
 
     def salvar_dados(self, missoes):
-        """
-        Salva no arquivo JSON o estado atual da lista de missões.
-        """
         caminho_arquivo = self._obter_caminho_arquivo()
-        dados = [m.__dict__ for m in missoes]
+        dados = [m.para_dict() for m in missoes]
 
         with open(caminho_arquivo, "w", encoding="utf-8") as arq:
             json.dump(dados, arq, indent=4, ensure_ascii=False)

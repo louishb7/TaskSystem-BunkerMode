@@ -1,6 +1,4 @@
-from gerenciador import GerenciadorDeMissoes, MissaoNaoEncontrada
-from interface import InterfaceConsole
-from missao import STATUS_CONCLUIDA
+from gerenciador import MissaoNaoEncontrada
 
 
 class Menu:
@@ -9,11 +7,7 @@ class Menu:
     e regras de negócio.
     """
 
-    def __init__(
-        self,
-        gerenciador: GerenciadorDeMissoes,
-        interface: InterfaceConsole,
-    ):
+    def __init__(self, gerenciador, interface):
         """
         Recebe as dependências necessárias para executar o fluxo do menu.
         """
@@ -51,17 +45,22 @@ class Menu:
             elif opcao == "7":
                 self._opcao_exibir_relatorio()
             elif opcao == "8":
-                print("Até logo!")
+                self.interface.exibir_mensagem("Até logo!")
                 break
             else:
-                print("Opção inválida! Escolha novamente.")
+                self.interface.exibir_erro("Opção inválida!")
 
     # ===== AÇÕES DO MENU =====
     def _opcao_adicionar_missao(self):
         """Coleta os dados da missão, cria a missão e exibe confirmação."""
-        dados = self.interface.solicitar_dados_missao()
-        nova = self.gerenciador.adicionar_missao(dados)
-        print(f"Missão '{nova.missao}' criada com sucesso!")
+        try:
+            dados = self.interface.solicitar_dados_missao()
+            novo = self.gerenciador.adicionar_missao(dados)
+            self.interface.exibir_mensagem(
+                f"Missão '{novo.titulo}' criada com sucesso!"
+            )
+        except ValueError as e:
+            self.interface.exibir_erro(str(e))
 
     def _opcao_listar_missoes(self):
         """Lista todas as missões cadastradas."""
@@ -86,12 +85,13 @@ class Menu:
         if missao is None:
             return
 
-        if missao.status == STATUS_CONCLUIDA:
-            print("Esta missão já está concluída.")
-            return
-
-        concluida = self.gerenciador.concluir_missao(missao.id)
-        print(f"Missão '{concluida.missao}' marcada como concluída.")
+        try:
+            concluida = self.gerenciador.concluir_missao(missao.id)
+            self.interface.exibir_mensagem(
+                f"Missão '{concluida.titulo}' marcada como concluída."
+            )
+        except ValueError as e:
+            self.interface.exibir_erro(str(e))
 
     def _opcao_editar_missao(self):
         """Exibe a missão selecionada, coleta alterações e aplica a edição."""
@@ -103,14 +103,20 @@ class Menu:
             return
 
         self.interface.exibir_detalhes_missao(missao)
-        novos_dados = self.interface.editar_missao_interface(missao)
 
-        if not novos_dados:
-            print("Nenhuma alteração foi feita.")
-            return
+        try:
+            novos_dados = self.interface.editar_missao_interface(missao)
 
-        editada = self.gerenciador.editar_missao(missao.id, novos_dados)
-        print(f"Missão '{editada.missao}' atualizada com sucesso!")
+            if not novos_dados:
+                self.interface.exibir_mensagem("Nenhuma alteração foi feita.")
+                return
+
+            editado = self.gerenciador.editar_missao(missao.id, novos_dados)
+            self.interface.exibir_mensagem(
+                f"Missão '{editado.titulo}' atualizada com sucesso!"
+            )
+        except ValueError as e:
+            self.interface.exibir_erro(str(e))
 
     def _opcao_remover_missao(self):
         """Remove a missão selecionada e exibe confirmação."""
@@ -121,8 +127,10 @@ class Menu:
         if missao is None:
             return
 
-        removida = self.gerenciador.remover_missao(missao.id)
-        print(f"Missão '{removida.missao}' removida com sucesso!")
+        removido = self.gerenciador.remover_missao(missao.id)
+        self.interface.exibir_mensagem(
+            f"Missão '{removido.titulo}' removida com sucesso!"
+        )
 
     def _opcao_exibir_relatorio(self):
         """Gera e exibe o relatório atual das missões."""
@@ -130,14 +138,6 @@ class Menu:
         self.interface.exibir_relatorio(relatorio)
 
     # ===== MÉTODOS AUXILIARES =====
-    def _obter_missoes_exibidas(self):
-        """
-        Obtém as missões atuais, exibe no terminal e retorna a lista.
-        """
-        missoes = self.gerenciador.listar_missoes()
-        self.interface.exibir_missoes(missoes)
-        return missoes
-
     def _selecionar_missao(self, id_procurado):
         """
         Retorna a missão pelo ID informado.
@@ -147,7 +147,7 @@ class Menu:
         try:
             return self.gerenciador.buscar_por_id(id_procurado)
         except MissaoNaoEncontrada as e:
-            print(e)
+            self.interface.exibir_erro(str(e))
             return None
 
     def _solicitar_id_missao(self, mensagem):
@@ -155,15 +155,18 @@ class Menu:
         try:
             return int(input(mensagem))
         except ValueError:
-            print("Entrada inválida.")
+            self.interface.exibir_erro("Entrada inválida.")
             return None
 
     def _obter_missao_por_input(self, mensagem):
         """Exibe as missões, solicita um ID e retorna a missão correspondente."""
-        missoes = self._obter_missoes_exibidas()
+        missoes = self.gerenciador.listar_missoes()
 
         if not missoes:
+            print("Nenhuma missão cadastrada.")
             return None
+
+        self.interface.exibir_missoes(missoes)
 
         id_procurado = self._solicitar_id_missao(mensagem)
         if id_procurado is None:
