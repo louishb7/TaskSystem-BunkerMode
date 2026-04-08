@@ -164,7 +164,13 @@ class InterfaceConsole:
         """Solicita uma prioridade válida ao usuário."""
         while True:
             try:
-                return int(input(mensagem).strip())
+                prioridade = int(input(mensagem).strip())
+
+                if prioridade not in [1, 2, 3]:
+                    self.exibir_erro("Prioridade inválida. Escolha 1, 2 ou 3.")
+                    continue
+
+                return prioridade
             except ValueError:
                 self.exibir_erro("Entrada inválida! Digite um número inteiro.")
 

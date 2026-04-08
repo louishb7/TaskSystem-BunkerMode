@@ -109,8 +109,10 @@ class GerenciadorDeMissoes:
 
     # ===== MÉTODOS AUXILIARES =====
     def _ordenar_missoes(self):
-        """Mantém a lista de missões ordenada por prioridade."""
-        self.missoes.sort(key=lambda missao: missao.prioridade.value)
+        """Mantém a lista de missões ordenada por prioridade e ID."""
+        self.missoes.sort(
+            key=lambda missao: (missao.prioridade.value, missao.id)
+        )
 
     def _proximo_id(self):
         """Retorna o próximo ID disponível para uma nova missão."""
