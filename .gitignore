@@ -2,3 +2,4 @@ missoes.json
 pycache/
 *.pyc
 .venv/
+.envrc

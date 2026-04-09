@@ -39,11 +39,12 @@ class Missao:
 
     def descricao_prioridade(self):
         """Retorna a descrição textual da prioridade."""
-        if self.prioridade == PrioridadeMissao.ALTA:
-            return "Faça! Prioridade máxima."
-        if self.prioridade == PrioridadeMissao.MEDIA:
-            return "Média prioridade."
-        return "Baixa prioridade."
+        descricoes = {
+            PrioridadeMissao.ALTA: "Faça! Prioridade máxima.",
+            PrioridadeMissao.MEDIA: "Média prioridade.",
+            PrioridadeMissao.BAIXA: "Baixa prioridade.",
+        }
+        return descricoes[self.prioridade]
 
     def atualizar_titulo(self, titulo):
         """Atualiza o título da missão com validação."""
@@ -107,6 +108,9 @@ class Missao:
         """
         if prazo is None:
             return None
+
+        if not isinstance(prazo, str):
+            raise ValueError("Formato de data inválido. Use DD-MM-YYYY.")
 
         try:
             return datetime.strptime(prazo, "%d-%m-%Y").strftime("%d-%m-%Y")
