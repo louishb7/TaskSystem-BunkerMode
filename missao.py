@@ -23,11 +23,11 @@ class Missao:
 
     def __init__(
         self,
-        missao_id,
-        titulo,
-        prioridade,
-        prazo,
-        instrucao,
+        missao_id=None,
+        titulo=None,
+        prioridade=None,
+        prazo=None,
+        instrucao=None,
         status=StatusMissao.PENDENTE,
     ):
         self.missao_id = self._validar_missao_id(missao_id)
@@ -45,6 +45,10 @@ class Missao:
             PrioridadeMissao.BAIXA: "Baixa prioridade.",
         }
         return descricoes[self.prioridade]
+
+    def atualizar_missao_id(self, missao_id):
+        """Atualiza o ID da missão após a persistência no banco."""
+        self.missao_id = self._validar_missao_id(missao_id)
 
     def atualizar_titulo(self, titulo):
         """Atualiza o título da missão com validação."""
@@ -68,20 +72,11 @@ class Missao:
             raise ValueError("Esta missão já está concluída.")
         self.status = StatusMissao.CONCLUIDA
 
-    def para_dict(self):
-        """Retorna uma representação serializável da missão."""
-        return {
-            "id": self.missao_id,
-            "titulo": self.titulo,
-            "prioridade": self.prioridade.value,
-            "prazo": self.prazo,
-            "instrucao": self.instrucao,
-            "status": self.status.value,
-        }
-
-    # ===== MÉTODOS AUXILIARES =====
     def _validar_missao_id(self, missao_id):
-        """Garante que o ID da missão seja um inteiro positivo."""
+        """Garante que o ID da missão seja um inteiro positivo ou ausente."""
+        if missao_id is None:
+            return None
+
         if not isinstance(missao_id, int):
             raise ValueError("ID da missão deve ser um número inteiro.")
 
@@ -97,8 +92,8 @@ class Missao:
 
         try:
             return PrioridadeMissao(prioridade)
-        except ValueError as e:
-            raise ValueError("Prioridade deve ser entre 1 e 3.") from e
+        except ValueError as erro:
+            raise ValueError("Prioridade deve ser entre 1 e 3.") from erro
 
     def _validar_prazo(self, prazo):
         """
@@ -114,10 +109,10 @@ class Missao:
 
         try:
             return datetime.strptime(prazo, "%d-%m-%Y").strftime("%d-%m-%Y")
-        except ValueError as e:
+        except ValueError as erro:
             raise ValueError(
                 "Formato de data inválido. Use DD-MM-YYYY."
-            ) from e
+            ) from erro
 
     def _validar_status(self, status):
         """Garante que o status da missão seja um valor válido do domínio."""
@@ -126,8 +121,8 @@ class Missao:
 
         try:
             return StatusMissao(status)
-        except ValueError as e:
-            raise ValueError("Status de missão inválido.") from e
+        except ValueError as erro:
+            raise ValueError("Status de missão inválido.") from erro
 
     def _validar_titulo(self, titulo):
         """Valida e normaliza o título da missão."""

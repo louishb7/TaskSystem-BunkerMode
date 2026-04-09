@@ -31,7 +31,7 @@ def test_criar_missao_valida():
     assert missao.status == StatusMissao.PENDENTE
 
 
-@pytest.mark.parametrize("id_invalido", [0, -1, "1", 1.5, None])
+@pytest.mark.parametrize("id_invalido", [0, -1, "1", 1.5])
 def test_id_invalido(id_invalido):
     with pytest.raises(ValueError):
         Missao(
@@ -41,6 +41,17 @@ def test_id_invalido(id_invalido):
             prazo="10-04-2026",
             instrucao="Missão inválida",
         )
+
+
+def test_criar_missao_sem_id_inicial():
+    missao = Missao(
+        titulo="Teste",
+        prioridade=1,
+        prazo="10-04-2026",
+        instrucao="Missão válida",
+    )
+
+    assert missao.missao_id is None
 
 
 @pytest.mark.parametrize("titulo_invalido", ["", "   ", None, 123])
@@ -170,6 +181,11 @@ def test_descricao_prioridade(prioridade, descricao):
     assert missao.descricao_prioridade() == descricao
 
 
+def test_atualizar_missao_id(missao_base):
+    missao_base.atualizar_missao_id(2)
+    assert missao_base.missao_id == 2
+
+
 def test_atualizar_titulo(missao_base):
     missao_base.atualizar_titulo("Novo título")
     assert missao_base.titulo == "Novo título"
@@ -237,14 +253,3 @@ def test_nao_permitir_concluir_missao_ja_concluida(missao_base):
 
     with pytest.raises(ValueError):
         missao_base.concluir()
-
-
-def test_para_dict(missao_base):
-    assert missao_base.para_dict() == {
-        "id": 1,
-        "titulo": "Treinar",
-        "prioridade": 1,
-        "prazo": "10-04-2026",
-        "instrucao": "Treinar pesado",
-        "status": "Aguardando Recruta!",
-    }

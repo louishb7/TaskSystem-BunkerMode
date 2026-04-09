@@ -20,12 +20,11 @@ class GerenciadorDeMissoes:
         self._ordenar_missoes()
 
     def adicionar_missao(self, dados_missao):
-        """Cria uma nova missão, atribui um ID único e persiste a alteração."""
-        dados_missao["missao_id"] = self._proximo_id()
+        """Cria uma nova missão e persiste a alteração."""
         nova_missao = Missao(**dados_missao)
+        self.repositorio.adicionar_missao(nova_missao)
         self.missoes.append(nova_missao)
         self._ordenar_missoes()
-        self._salvar()
         return nova_missao
 
     def editar_missao(self, id_procurado, novos_dados):
@@ -33,7 +32,7 @@ class GerenciadorDeMissoes:
         Atualiza apenas os campos informados de uma missão já existente.
 
         Busca a missão pelo ID, aplica alterações parciais e persiste
-        o novo estado da lista após a edição.
+        o novo estado da missão após a edição.
         """
         missao = self.buscar_por_id(id_procurado)
 
@@ -50,14 +49,14 @@ class GerenciadorDeMissoes:
             missao.atualizar_prazo(novos_dados["prazo"])
 
         self._ordenar_missoes()
-        self._salvar()
+        self.repositorio.atualizar_missao(missao)
         return missao
 
     def remover_missao(self, id_procurado):
         """Remove a missão pelo ID informado e persiste a alteração."""
         missao = self.buscar_por_id(id_procurado)
         self.missoes.remove(missao)
-        self._salvar()
+        self.repositorio.remover_missao(id_procurado)
         return missao
 
     def listar_missoes(self):
@@ -72,7 +71,7 @@ class GerenciadorDeMissoes:
         """Marca a missão como concluída e persiste a alteração."""
         missao = self.buscar_por_id(id_procurado)
         missao.concluir()
-        self._salvar()
+        self.repositorio.atualizar_missao(missao)
         return missao
 
     def buscar_por_id(self, id_procurado):
@@ -94,7 +93,6 @@ class GerenciadorDeMissoes:
             for missao in self.missoes
             if missao.status == StatusMissao.CONCLUIDA
         ]
-
         pendentes = [
             missao
             for missao in self.missoes
@@ -107,19 +105,8 @@ class GerenciadorDeMissoes:
             "pendentes": pendentes,
         }
 
-    # ===== MÉTODOS AUXILIARES =====
     def _ordenar_missoes(self):
         """Mantém a lista de missões ordenada por prioridade e ID."""
         self.missoes.sort(
             key=lambda missao: (missao.prioridade.value, missao.missao_id)
         )
-
-    def _proximo_id(self):
-        """Retorna o próximo ID disponível para uma nova missão."""
-        if not self.missoes:
-            return 1
-        return max(missao.missao_id for missao in self.missoes) + 1
-
-    def _salvar(self):
-        """Persiste no repositório o estado atual da lista de missões."""
-        self.repositorio.salvar_dados(self.missoes)
