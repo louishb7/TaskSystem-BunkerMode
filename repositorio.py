@@ -43,7 +43,19 @@ class RepositorioJSON:
             )
 
         try:
-            return [Missao(**dado) for dado in dados]
+            missoes = []
+            for dado in dados:
+                missoes.append(
+                    Missao(
+                        missao_id=dado.get("id"),
+                        titulo=dado.get("titulo"),
+                        prioridade=dado.get("prioridade"),
+                        prazo=dado.get("prazo"),
+                        instrucao=dado.get("instrucao"),
+                        status=dado.get("status"),
+                    )
+                )
+            return missoes
         except (TypeError, ValueError) as e:
             raise ValueError(
                 f"Dados de missão inválidos no arquivo: {self.caminho_arquivo}"

@@ -21,7 +21,7 @@ class GerenciadorDeMissoes:
 
     def adicionar_missao(self, dados_missao):
         """Cria uma nova missão, atribui um ID único e persiste a alteração."""
-        dados_missao["id"] = self._proximo_id()
+        dados_missao["missao_id"] = self._proximo_id()
         nova_missao = Missao(**dados_missao)
         self.missoes.append(nova_missao)
         self._ordenar_missoes()
@@ -82,7 +82,7 @@ class GerenciadorDeMissoes:
         Levanta MissaoNaoEncontrada caso não exista.
         """
         for missao in self.missoes:
-            if missao.id == id_procurado:
+            if missao.missao_id == id_procurado:
                 return missao
 
         raise MissaoNaoEncontrada(f"Missão {id_procurado} não encontrada")
@@ -111,14 +111,14 @@ class GerenciadorDeMissoes:
     def _ordenar_missoes(self):
         """Mantém a lista de missões ordenada por prioridade e ID."""
         self.missoes.sort(
-            key=lambda missao: (missao.prioridade.value, missao.id)
+            key=lambda missao: (missao.prioridade.value, missao.missao_id)
         )
 
     def _proximo_id(self):
         """Retorna o próximo ID disponível para uma nova missão."""
         if not self.missoes:
             return 1
-        return max(missao.id for missao in self.missoes) + 1
+        return max(missao.missao_id for missao in self.missoes) + 1
 
     def _salvar(self):
         """Persiste no repositório o estado atual da lista de missões."""

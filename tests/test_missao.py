@@ -6,7 +6,7 @@ from missao import Missao, PrioridadeMissao, StatusMissao
 @pytest.fixture
 def missao_base():
     return Missao(
-        id=1,
+        missao_id=1,
         titulo="Treinar",
         prioridade=1,
         prazo="10-04-2026",
@@ -16,14 +16,14 @@ def missao_base():
 
 def test_criar_missao_valida():
     missao = Missao(
-        id=1,
+        missao_id=1,
         titulo="Treinar",
         prioridade=1,
         prazo="10-04-2026",
         instrucao="Treinar pesado",
     )
 
-    assert missao.id == 1
+    assert missao.missao_id == 1
     assert missao.titulo == "Treinar"
     assert missao.prioridade == PrioridadeMissao.ALTA
     assert missao.prazo == "10-04-2026"
@@ -35,7 +35,7 @@ def test_criar_missao_valida():
 def test_id_invalido(id_invalido):
     with pytest.raises(ValueError):
         Missao(
-            id=id_invalido,
+            missao_id=id_invalido,
             titulo="Teste",
             prioridade=1,
             prazo="10-04-2026",
@@ -47,7 +47,7 @@ def test_id_invalido(id_invalido):
 def test_titulo_invalido(titulo_invalido):
     with pytest.raises(ValueError):
         Missao(
-            id=1,
+            missao_id=1,
             titulo=titulo_invalido,
             prioridade=1,
             prazo="10-04-2026",
@@ -59,7 +59,7 @@ def test_titulo_invalido(titulo_invalido):
 def test_instrucao_invalida(instrucao_invalida):
     with pytest.raises(ValueError):
         Missao(
-            id=1,
+            missao_id=1,
             titulo="Teste",
             prioridade=1,
             prazo="10-04-2026",
@@ -71,7 +71,7 @@ def test_instrucao_invalida(instrucao_invalida):
 def test_prioridade_invalida(prioridade_invalida):
     with pytest.raises(ValueError):
         Missao(
-            id=1,
+            missao_id=1,
             titulo="Teste",
             prioridade=prioridade_invalida,
             prazo="10-04-2026",
@@ -81,7 +81,7 @@ def test_prioridade_invalida(prioridade_invalida):
 
 def test_criar_missao_com_prioridade_enum():
     missao = Missao(
-        id=1,
+        missao_id=1,
         titulo="Teste",
         prioridade=PrioridadeMissao.MEDIA,
         prazo="10-04-2026",
@@ -94,7 +94,7 @@ def test_criar_missao_com_prioridade_enum():
 @pytest.mark.parametrize("prazo_valido", [None, "10-04-2026"])
 def test_prazo_valido(prazo_valido):
     missao = Missao(
-        id=1,
+        missao_id=1,
         titulo="Estudar",
         prioridade=1,
         prazo=prazo_valido,
@@ -116,7 +116,7 @@ def test_prazo_valido(prazo_valido):
 def test_prazo_invalido(prazo_invalido, erro_esperado):
     with pytest.raises(erro_esperado):
         Missao(
-            id=1,
+            missao_id=1,
             titulo="Estudar",
             prioridade=1,
             prazo=prazo_invalido,
@@ -128,7 +128,7 @@ def test_prazo_invalido(prazo_invalido, erro_esperado):
 def test_status_invalido(status_invalido):
     with pytest.raises(ValueError):
         Missao(
-            id=1,
+            missao_id=1,
             titulo="Teste",
             prioridade=1,
             prazo="10-04-2026",
@@ -139,7 +139,7 @@ def test_status_invalido(status_invalido):
 
 def test_criar_missao_com_status_enum():
     missao = Missao(
-        id=1,
+        missao_id=1,
         titulo="Teste",
         prioridade=1,
         prazo="10-04-2026",
@@ -160,7 +160,7 @@ def test_criar_missao_com_status_enum():
 )
 def test_descricao_prioridade(prioridade, descricao):
     missao = Missao(
-        id=1,
+        missao_id=1,
         titulo="Teste",
         prioridade=prioridade,
         prazo="10-04-2026",

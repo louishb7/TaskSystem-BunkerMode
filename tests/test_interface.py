@@ -21,7 +21,7 @@ def interface():
 @pytest.fixture
 def missao_exemplo():
     return Missao(
-        id=1,
+        missao_id=1,
         titulo="Treinar",
         prioridade=1,
         prazo="10-04-2026",
@@ -84,7 +84,7 @@ def test_exibir_detalhes_missao(interface, capsys, missao_exemplo):
 
 def test_exibir_relatorio(interface, capsys, missao_exemplo):
     concluida = Missao(
-        id=2,
+        missao_id=2,
         titulo="Ler",
         prioridade=2,
         prazo=None,

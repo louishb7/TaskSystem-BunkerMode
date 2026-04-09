@@ -50,7 +50,7 @@ class InterfaceConsole:
         for missao in missoes:
             print(f"=> {missao.descricao_prioridade()} <=")
             print(
-                f"[ID {missao.id}] {missao.titulo}\n"
+                f"[ID {missao.missao_id}] {missao.titulo}\n"
                 f"Status: {missao.status.value} | "
                 f"Prazo: {missao.prazo or 'Permanente'}"
             )

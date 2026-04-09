@@ -79,7 +79,7 @@ class Menu:
         if missao is None:
             return
 
-        concluida = self.gerenciador.concluir_missao(missao.id)
+        concluida = self.gerenciador.concluir_missao(missao.missao_id)
         self.interface.exibir_mensagem(
             f"Missão '{concluida.titulo}' marcada como concluída."
         )
@@ -99,7 +99,7 @@ class Menu:
             self.interface.exibir_mensagem("Nenhuma alteração foi feita.")
             return
 
-        editada = self.gerenciador.editar_missao(missao.id, novos_dados)
+        editada = self.gerenciador.editar_missao(missao.missao_id, novos_dados)
         self.interface.exibir_mensagem(
             f"Missão '{editada.titulo}' atualizada com sucesso!"
         )
@@ -112,7 +112,7 @@ class Menu:
         if missao is None:
             return
 
-        removida = self.gerenciador.remover_missao(missao.id)
+        removida = self.gerenciador.remover_missao(missao.missao_id)
         self.interface.exibir_mensagem(
             f"Missão '{removida.titulo}' removida com sucesso!"
         )

@@ -27,14 +27,14 @@ def test_salvar_dados_cria_json_serializado(tmp_path):
 
     missoes = [
         Missao(
-            id=1,
+            missao_id=1,
             titulo="Estudar pytest",
             prioridade=1,
             prazo="10-04-2026",
             instrucao="Revisar testes",
         ),
         Missao(
-            id=2,
+            missao_id=2,
             titulo="Correr",
             prioridade=2,
             prazo=None,

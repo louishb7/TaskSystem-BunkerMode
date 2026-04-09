@@ -23,14 +23,14 @@ class Missao:
 
     def __init__(
         self,
-        id,
+        missao_id,
         titulo,
         prioridade,
         prazo,
         instrucao,
         status=StatusMissao.PENDENTE,
     ):
-        self.id = self._validar_id(id)
+        self.missao_id = self._validar_missao_id(missao_id)
         self.titulo = self._validar_titulo(titulo)
         self.prioridade = self._validar_prioridade(prioridade)
         self.prazo = self._validar_prazo(prazo)
@@ -71,7 +71,7 @@ class Missao:
     def para_dict(self):
         """Retorna uma representação serializável da missão."""
         return {
-            "id": self.id,
+            "id": self.missao_id,
             "titulo": self.titulo,
             "prioridade": self.prioridade.value,
             "prazo": self.prazo,
@@ -80,15 +80,15 @@ class Missao:
         }
 
     # ===== MÉTODOS AUXILIARES =====
-    def _validar_id(self, id):
+    def _validar_missao_id(self, missao_id):
         """Garante que o ID da missão seja um inteiro positivo."""
-        if not isinstance(id, int):
+        if not isinstance(missao_id, int):
             raise ValueError("ID da missão deve ser um número inteiro.")
 
-        if id < 1:
+        if missao_id < 1:
             raise ValueError("ID da missão deve ser maior que zero.")
 
-        return id
+        return missao_id
 
     def _validar_prioridade(self, prioridade):
         """Garante que a prioridade da missão seja um valor válido do domínio."""

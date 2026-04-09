@@ -81,7 +81,7 @@ def test_inicializa_ordenado_por_prioridade_e_id():
 def test_adicionar_missao(gerenciador, repositorio, dados_missao):
     missao = gerenciador.adicionar_missao(dados_missao)
 
-    assert missao.id == 1
+    assert missao.missao_id == 1
     assert missao.titulo == "Estudar Python"
     assert missao.prioridade == PrioridadeMissao.ALTA
     assert len(gerenciador.listar_missoes()) == 1
@@ -111,14 +111,14 @@ def test_adicionar_missao_gera_proximo_id_mesmo_com_ids_existentes():
         }
     )
 
-    assert primeira.id == 1
-    assert segunda.id == 2
+    assert primeira.missao_id == 1
+    assert segunda.missao_id == 2
 
 
 
 def test_buscar_missao_existente(gerenciador, dados_missao):
     criada = gerenciador.adicionar_missao(dados_missao)
-    encontrada = gerenciador.buscar_por_id(criada.id)
+    encontrada = gerenciador.buscar_por_id(criada.missao_id)
 
     assert encontrada is criada
 
@@ -132,7 +132,7 @@ def test_buscar_missao_inexistente(gerenciador):
 
 def test_detalhar_missao(gerenciador, dados_missao):
     criada = gerenciador.adicionar_missao(dados_missao)
-    detalhada = gerenciador.detalhar_missao(criada.id)
+    detalhada = gerenciador.detalhar_missao(criada.missao_id)
 
     assert detalhada is criada
 
@@ -148,7 +148,7 @@ def test_concluir_missao(gerenciador, repositorio):
             "status": StatusMissao.PENDENTE,
         }
     )
-    concluida = gerenciador.concluir_missao(missao.id)
+    concluida = gerenciador.concluir_missao(missao.missao_id)
 
     assert concluida.status == StatusMissao.CONCLUIDA
     assert repositorio.salvou is True
@@ -179,7 +179,7 @@ def test_editar_missao(gerenciador, repositorio):
         "prazo": "11-04-2026",
     }
 
-    editada = gerenciador.editar_missao(missao.id, novos_dados)
+    editada = gerenciador.editar_missao(missao.missao_id, novos_dados)
 
     assert editada.titulo == "Estudar pytest"
     assert editada.prioridade == PrioridadeMissao.ALTA
@@ -217,9 +217,9 @@ def test_editar_missao_reordena_por_prioridade():
         }
     )
 
-    gerenciador.editar_missao(baixa.id, {"prioridade": 1})
+    gerenciador.editar_missao(baixa.missao_id, {"prioridade": 1})
 
-    ids = [missao.id for missao in gerenciador.listar_missoes()]
+    ids = [missao.missao_id for missao in gerenciador.listar_missoes()]
     assert ids == [1, 2]
 
 
@@ -234,9 +234,9 @@ def test_remover_missao(gerenciador, repositorio):
             "status": StatusMissao.PENDENTE,
         }
     )
-    removida = gerenciador.remover_missao(missao.id)
+    removida = gerenciador.remover_missao(missao.missao_id)
 
-    assert removida.id == missao.id
+    assert removida.missao_id == missao.missao_id
     assert len(gerenciador.listar_missoes()) == 0
     assert repositorio.salvou is True
 
@@ -276,7 +276,7 @@ def test_gerar_relatorio(gerenciador):
 
     missao_1 = gerenciador.adicionar_missao(dados_1)
     gerenciador.adicionar_missao(dados_2)
-    gerenciador.concluir_missao(missao_1.id)
+    gerenciador.concluir_missao(missao_1.missao_id)
 
     relatorio = gerenciador.gerar_relatorio()
 
