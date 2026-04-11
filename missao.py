@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 
 
@@ -17,8 +17,10 @@ class Missao:
     """
     Representa uma missão do sistema com seus dados essenciais.
 
-    Garante a integridade da entidade validando ID, título, instrução,
-    prioridade, prazo e status no momento da criação e das atualizações.
+    Mantém a validação do domínio concentrada na entidade.
+    O prazo é armazenado internamente como ``date`` para evitar conversões
+    espalhadas pela aplicação, mas continua sendo exposto em ``DD-MM-YYYY``
+    para não quebrar a interface atual.
     """
 
     def __init__(
@@ -33,9 +35,21 @@ class Missao:
         self.missao_id = self._validar_missao_id(missao_id)
         self.titulo = self._validar_titulo(titulo)
         self.prioridade = self._validar_prioridade(prioridade)
-        self.prazo = self._validar_prazo(prazo)
+        self._prazo = self._validar_prazo(prazo)
         self.instrucao = self._validar_instrucao(instrucao)
         self.status = self._validar_status(status)
+
+    @property
+    def prazo(self):
+        """Retorna o prazo formatado em DD-MM-YYYY para a camada externa."""
+        if self._prazo is None:
+            return None
+        return self._prazo.strftime("%d-%m-%Y")
+
+    @property
+    def prazo_date(self):
+        """Retorna o prazo como objeto ``date`` para persistência."""
+        return self._prazo
 
     def descricao_prioridade(self):
         """Retorna a descrição textual da prioridade."""
@@ -64,7 +78,7 @@ class Missao:
 
     def atualizar_prazo(self, prazo):
         """Atualiza o prazo da missão com validação e normalização."""
-        self.prazo = self._validar_prazo(prazo)
+        self._prazo = self._validar_prazo(prazo)
 
     def concluir(self):
         """Marca a missão como concluída."""
@@ -97,18 +111,24 @@ class Missao:
 
     def _validar_prazo(self, prazo):
         """
-        Valida e normaliza o prazo para o formato DD-MM-YYYY.
+        Valida e normaliza o prazo para ``date``.
 
-        Retorna None quando a missão não possui prazo definido.
+        Aceita ``None``, string no formato ``DD-MM-YYYY`` ou ``date``.
         """
         if prazo is None:
             return None
+
+        if isinstance(prazo, datetime):
+            return prazo.date()
+
+        if isinstance(prazo, date):
+            return prazo
 
         if not isinstance(prazo, str):
             raise ValueError("Formato de data inválido. Use DD-MM-YYYY.")
 
         try:
-            return datetime.strptime(prazo, "%d-%m-%Y").strftime("%d-%m-%Y")
+            return datetime.strptime(prazo, "%d-%m-%Y").date()
         except ValueError as erro:
             raise ValueError(
                 "Formato de data inválido. Use DD-MM-YYYY."

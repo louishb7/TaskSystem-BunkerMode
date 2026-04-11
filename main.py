@@ -1,8 +1,8 @@
-from db_config import get_connection_string
+from db_config import ConfiguracaoBancoError, get_connection_string
 from gerenciador import GerenciadorDeMissoes
 from interface import InterfaceConsole
 from menu import Menu
-from repositorio_postgres import RepositorioPostgres
+from repositorio_postgres import ErroRepositorio, RepositorioPostgres
 
 
 if __name__ == "__main__":
@@ -12,7 +12,7 @@ if __name__ == "__main__":
         connection_string = get_connection_string()
         repositorio = RepositorioPostgres(connection_string)
         gerenciador = GerenciadorDeMissoes(repositorio)
-    except ValueError as erro:
+    except (ConfiguracaoBancoError, ErroRepositorio, ValueError) as erro:
         interface.exibir_erro(str(erro))
     else:
         menu = Menu(gerenciador, interface)

@@ -1,11 +1,9 @@
 import psycopg
 
-conn = psycopg.connect(
-    "dbname=bunkermode user=henrique password=aileen2199 host=localhost"
-)
+from db_config import get_connection_string
 
-with conn.cursor() as cur:
-    cur.execute("SELECT current_user, current_database();")
-    print(cur.fetchone())
 
-conn.close()
+with psycopg.connect(get_connection_string()) as conexao:
+    with conexao.cursor() as cursor:
+        cursor.execute("SELECT current_user, current_database();")
+        print(cursor.fetchone())

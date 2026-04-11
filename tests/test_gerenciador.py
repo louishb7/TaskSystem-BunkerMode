@@ -13,12 +13,22 @@ class RepositorioFake:
         )
 
     def carregar_dados(self):
-        return list(self.missoes)
+        return sorted(
+            self.missoes,
+            key=lambda m: (m.prioridade.value, m.missao_id),
+        )
 
     def adicionar_missao(self, missao):
         missao.atualizar_missao_id(self.proximo_id)
         self.proximo_id += 1
+        self.missoes.append(missao)
         self.persistiu = True
+
+    def buscar_por_id(self, missao_id):
+        for missao in self.missoes:
+            if missao.missao_id == missao_id:
+                return missao
+        return None
 
     def atualizar_missao(self, missao_atualizada):
         for indice, missao in enumerate(self.missoes):
