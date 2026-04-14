@@ -39,6 +39,16 @@ class Missao:
         self.instrucao = self._validar_instrucao(instrucao)
         self.status = self._validar_status(status)
 
+    def to_dict(self):
+        return {
+            "id": self.missao_id,
+            "titulo": self.titulo,
+            "prioridade": self.prioridade.value,
+            "prazo": self.prazo,
+            "instrucao": self.instrucao,
+            "status": self.status.value,
+        }
+
     @property
     def prazo(self):
         """Retorna o prazo formatado em DD-MM-YYYY para a camada externa."""
