@@ -1,8 +1,34 @@
-missoes.json
-pycache/
+# Env
+.env
+.env.*
+.envrc
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Virtualenv
 .venv/
-.env
-.envrc
+venv/
+
+# Pytest / coverage
+.pytest_cache/
 .coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temp
+*.tmp
+*.swp
+
+# Build
+dist/
+build/

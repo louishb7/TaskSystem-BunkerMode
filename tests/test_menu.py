@@ -1,4 +1,4 @@
-from gerenciador import MissaoNaoEncontrada
+from core_exceptions import MissaoNaoEncontrada
 from menu import Menu
 from missao import Missao, PrioridadeMissao, StatusMissao
 

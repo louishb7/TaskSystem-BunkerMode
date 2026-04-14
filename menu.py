@@ -1,4 +1,4 @@
-from gerenciador import MissaoNaoEncontrada
+from core_exceptions import MissaoNaoEncontrada
 
 
 class Menu:
@@ -131,9 +131,11 @@ class Menu:
         """
         try:
             return self.gerenciador.buscar_por_id(id_procurado)
-        except MissaoNaoEncontrada as e:
-            self.interface.exibir_erro(str(e))
-            return None
+        except Exception as e:
+            if isinstance(e, MissaoNaoEncontrada) or e.__class__.__name__ == "MissaoNaoEncontrada":
+                self.interface.exibir_erro(str(e))
+                return None
+            raise
 
     def _solicitar_id_missao(self, mensagem):
         """Solicita ao usuário um ID de missão e retorna o valor convertido."""

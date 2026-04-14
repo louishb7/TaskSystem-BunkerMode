@@ -1,4 +1,12 @@
-import api.entrypoint as api_main
+import importlib.util
+from pathlib import Path
+
+
+ENTRYPOINT_PATH = Path(__file__).resolve().parents[1] / "api" / "entrypoint.py"
+spec = importlib.util.spec_from_file_location("bunkermode_api_entrypoint", ENTRYPOINT_PATH)
+api_main = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(api_main)
 
 
 def test_main_executa_uvicorn_com_configuracao_padrao(monkeypatch):

@@ -1,10 +1,8 @@
+from core_exceptions import MissaoNaoEncontrada
 from typing import Protocol
 
-from missao import Missao, StatusMissao
-
-
-class MissaoNaoEncontrada(Exception):
-    """Erro levantado quando uma missão não é encontrada pelo ID."""
+from missao import Missao
+from services.missao_service import MissaoService
 
 
 class RepositorioDeMissoes(Protocol):
@@ -27,85 +25,32 @@ class RepositorioDeMissoes(Protocol):
 
 
 class GerenciadorDeMissoes:
-    """Centraliza as regras de negócio de manipulação das missões."""
+    """Fachada compatível com CLI para a camada de serviço de missões."""
 
     def __init__(self, repositorio: RepositorioDeMissoes):
-        """Inicializa o gerenciador com um repositório compatível."""
         self.repositorio = repositorio
+        self.service = MissaoService(repositorio)
 
     def adicionar_missao(self, dados: dict) -> Missao:
-        """Cria uma nova missão e delega a persistência ao repositório."""
-        missao = Missao(**dados)
-        self.repositorio.adicionar_missao(missao)
-        return missao
+        return self.service.criar_missao(dados)
 
     def editar_missao(self, id_procurado: int, novos_dados: dict) -> Missao:
-        """Atualiza apenas os campos informados de uma missão existente."""
-        missao = self.buscar_por_id(id_procurado)
-        self._aplicar_atualizacoes(missao, novos_dados)
-        self.repositorio.atualizar_missao(missao)
-        return missao
+        return self.service.editar_missao(id_procurado, novos_dados)
 
     def remover_missao(self, id_procurado: int) -> Missao:
-        """Remove a missão pelo ID informado e persiste a alteração."""
-        missao = self.buscar_por_id(id_procurado)
-        self.repositorio.remover_missao(id_procurado)
-        return missao
+        return self.service.remover_missao(id_procurado)
 
     def listar_missoes(self) -> list[Missao]:
-        """Retorna as missões ordenadas conforme o contrato do repositório."""
-        return self.repositorio.carregar_dados()
+        return self.service.listar_missoes()
 
     def detalhar_missao(self, id_procurado: int) -> Missao:
-        """Retorna uma missão específica sem modificar seu estado."""
-        return self.buscar_por_id(id_procurado)
+        return self.service.detalhar_missao(id_procurado)
 
     def concluir_missao(self, id_procurado: int) -> Missao:
-        """Marca a missão como concluída e persiste a alteração."""
-        missao = self.buscar_por_id(id_procurado)
-        missao.concluir()
-        self.repositorio.atualizar_missao(missao)
-        return missao
+        return self.service.concluir_missao(id_procurado)
 
     def buscar_por_id(self, id_procurado: int) -> Missao:
-        """Busca a missão no repositório e levanta erro se não existir."""
-        missao = self.repositorio.buscar_por_id(id_procurado)
-
-        if missao is None:
-            raise MissaoNaoEncontrada(f"Missão {id_procurado} não encontrada")
-
-        return missao
+        return self.service.buscar_por_id(id_procurado)
 
     def gerar_relatorio(self) -> dict:
-        """Agrupa as missões em concluídas e pendentes com base no status."""
-        missoes = self.repositorio.carregar_dados()
-        concluidas = [
-            missao
-            for missao in missoes
-            if missao.status == StatusMissao.CONCLUIDA
-        ]
-        pendentes = [
-            missao
-            for missao in missoes
-            if missao.status != StatusMissao.CONCLUIDA
-        ]
-
-        return {
-            "total": len(missoes),
-            "concluidas": concluidas,
-            "pendentes": pendentes,
-        }
-
-    def _aplicar_atualizacoes(self, missao: Missao, novos_dados: dict) -> None:
-        """Aplica mudanças parciais na entidade antes da persistência."""
-        if "titulo" in novos_dados:
-            missao.atualizar_titulo(novos_dados["titulo"])
-
-        if "instrucao" in novos_dados:
-            missao.atualizar_instrucao(novos_dados["instrucao"])
-
-        if "prioridade" in novos_dados:
-            missao.atualizar_prioridade(novos_dados["prioridade"])
-
-        if "prazo" in novos_dados:
-            missao.atualizar_prazo(novos_dados["prazo"])
+        return self.service.gerar_relatorio()
