@@ -1,6 +1,6 @@
 import os
-
 import uvicorn
+from api.routes import app
 
 
 def run() -> None:

@@ -4,7 +4,6 @@ except ModuleNotFoundError:  # pragma: no cover
     psycopg = None
 
 from auditoria import EventoAuditoria
-from gerenciador import RepositorioDeMissoes
 from missao import Missao
 from usuario import PapelUsuario, Usuario
 
@@ -37,7 +36,7 @@ class UsuarioNaoPersistidoError(ErroRepositorio):
     """Erro levantado quando o usuário esperado não existe no banco."""
 
 
-class RepositorioPostgres(RepositorioDeMissoes):
+class RepositorioPostgres:
     """Responsável por carregar e persistir dados do BunkerMode no PostgreSQL."""
 
     def __init__(self, connection_string: str):
@@ -56,7 +55,6 @@ class RepositorioPostgres(RepositorioDeMissoes):
             ) from erro
 
     def inicializar_schema(self) -> None:
-        """Cria as tabelas necessárias para a API v2 sem quebrar a base atual."""
         comandos = [
             """
             CREATE TABLE IF NOT EXISTS usuarios (
@@ -153,6 +151,7 @@ class RepositorioPostgres(RepositorioDeMissoes):
         return [self._reconstruir_missao(linha) for linha in linhas]
 
     def carregar_dados_por_responsavel(self, responsavel_id: int) -> list[Missao]:
+        self.inicializar_schema()
         try:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
@@ -202,8 +201,7 @@ class RepositorioPostgres(RepositorioDeMissoes):
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO missoes
-                        (titulo, prioridade, prazo, instrucao, status)
+                        INSERT INTO missoes (titulo, prioridade, prazo, instrucao, status)
                         VALUES (%s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
@@ -264,12 +262,23 @@ class RepositorioPostgres(RepositorioDeMissoes):
         try:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
-                    cursor.execute("DELETE FROM missao_contextos WHERE missao_id = %s;", (missao_id,))
-                    cursor.execute("DELETE FROM missoes WHERE missao_id = %s;", (missao_id,))
+                    cursor.execute(
+                        "DELETE FROM missoes WHERE missao_id = %s;",
+                        (missao_id,),
+                    )
                     if cursor.rowcount == 0:
                         raise MissaoNaoPersistidaError(
                             f"Missão {missao_id} não encontrada para remoção."
                         )
+
+                    for tabela_auxiliar in ("missao_contextos", "auditoria_eventos"):
+                        try:
+                            cursor.execute(
+                                f"DELETE FROM {tabela_auxiliar} WHERE missao_id = %s;",
+                                (missao_id,),
+                            )
+                        except psycopg.Error:
+                            pass
                 conexao.commit()
         except ErroRepositorio:
             raise
@@ -320,7 +329,7 @@ class RepositorioPostgres(RepositorioDeMissoes):
             raise
         except psycopg.Error as erro:
             raise LeituraRepositorioError(
-                "Erro ao buscar usuário no banco de dados."
+                "Erro ao buscar usuário pelo username no banco de dados."
             ) from erro
         return None if linha is None else self._reconstruir_usuario(linha)
 
@@ -338,7 +347,7 @@ class RepositorioPostgres(RepositorioDeMissoes):
             raise
         except psycopg.Error as erro:
             raise LeituraRepositorioError(
-                "Erro ao buscar usuário no banco de dados."
+                "Erro ao buscar usuário pelo ID no banco de dados."
             ) from erro
         return None if linha is None else self._reconstruir_usuario(linha)
 
@@ -356,9 +365,9 @@ class RepositorioPostgres(RepositorioDeMissoes):
                         """
                         INSERT INTO missao_contextos (missao_id, criada_por_id, responsavel_id)
                         VALUES (%s, %s, %s)
-                        ON CONFLICT (missao_id) DO UPDATE SET
-                            criada_por_id = EXCLUDED.criada_por_id,
-                            responsavel_id = EXCLUDED.responsavel_id;
+                        ON CONFLICT (missao_id)
+                        DO UPDATE SET criada_por_id = EXCLUDED.criada_por_id,
+                                      responsavel_id = EXCLUDED.responsavel_id;
                         """,
                         (missao_id, criada_por_id, responsavel_id),
                     )
@@ -376,7 +385,7 @@ class RepositorioPostgres(RepositorioDeMissoes):
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
                     cursor.execute(
-                        "SELECT missao_id, criada_por_id, responsavel_id FROM missao_contextos WHERE missao_id = %s;",
+                        "SELECT criada_por_id, responsavel_id FROM missao_contextos WHERE missao_id = %s;",
                         (missao_id,),
                     )
                     linha = cursor.fetchone()
@@ -388,8 +397,11 @@ class RepositorioPostgres(RepositorioDeMissoes):
             ) from erro
         if linha is None:
             return None
-        _, criada_por_id, responsavel_id = linha
-        return {"criada_por_id": criada_por_id, "responsavel_id": responsavel_id}
+        criada_por_id, responsavel_id = linha
+        return {
+            "criada_por_id": criada_por_id,
+            "responsavel_id": responsavel_id,
+        }
 
     def registrar_auditoria(self, evento: EventoAuditoria) -> None:
         self.inicializar_schema()
@@ -399,7 +411,8 @@ class RepositorioPostgres(RepositorioDeMissoes):
                     cursor.execute(
                         """
                         INSERT INTO auditoria_eventos (missao_id, usuario_id, acao, detalhes, criado_em)
-                        VALUES (%s, %s, %s, %s, %s);
+                        VALUES (%s, %s, %s, %s, %s)
+                        RETURNING evento_id;
                         """,
                         (
                             evento.missao_id,
@@ -409,6 +422,7 @@ class RepositorioPostgres(RepositorioDeMissoes):
                             evento.criado_em,
                         ),
                     )
+                    evento.evento_id = cursor.fetchone()[0]
                 conexao.commit()
         except ErroRepositorio:
             raise
@@ -436,6 +450,6 @@ class RepositorioPostgres(RepositorioDeMissoes):
             raise
         except psycopg.Error as erro:
             raise LeituraRepositorioError(
-                "Erro ao carregar auditoria da missão no banco de dados."
+                "Erro ao listar auditoria da missão no banco de dados."
             ) from erro
         return [self._reconstruir_evento(linha) for linha in linhas]
