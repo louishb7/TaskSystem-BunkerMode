@@ -1,19 +1,10 @@
-from db_config import ConfiguracaoBancoError, get_connection_string
-from gerenciador import GerenciadorDeMissoes
-from interface import InterfaceConsole
-from menu import Menu
-from repositorio_postgres import ErroRepositorio, RepositorioPostgres
+from fastapi import FastAPI
+from api.routes import router
 
+app = FastAPI(
+    title="BunkerMode API",
+    version="1.0.0",
+    description="Backend para gerenciamento de missões com sistema General/Soldado"
+)
 
-if __name__ == "__main__":
-    interface = InterfaceConsole()
-
-    try:
-        connection_string = get_connection_string()
-        repositorio = RepositorioPostgres(connection_string)
-        gerenciador = GerenciadorDeMissoes(repositorio)
-    except (ConfiguracaoBancoError, ErroRepositorio, ValueError) as erro:
-        interface.exibir_erro(str(erro))
-    else:
-        menu = Menu(gerenciador, interface)
-        menu.exibir_menu()
+app.include_router(router)
