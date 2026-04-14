@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from api import app, get_gerenciador
+from api.routes import app, get_gerenciador
 from gerenciador import GerenciadorDeMissoes
 from missao import StatusMissao
 
@@ -41,7 +41,6 @@ class RepositorioFake:
         ]
 
 
-
 def criar_cliente():
     repositorio = RepositorioFake()
     gerenciador = GerenciadorDeMissoes(repositorio)
@@ -53,10 +52,8 @@ def criar_cliente():
     return TestClient(app), gerenciador
 
 
-
 def limpar_overrides():
     app.dependency_overrides.clear()
-
 
 
 def test_post_cria_missao_com_contrato_padronizado():
@@ -82,7 +79,6 @@ def test_post_cria_missao_com_contrato_padronizado():
         "status": "Aguardando Recruta!",
     }
     limpar_overrides()
-
 
 
 def test_get_lista_missoes():
@@ -113,7 +109,6 @@ def test_get_lista_missoes():
     limpar_overrides()
 
 
-
 def test_get_detalha_missao_existente():
     client, gerenciador = criar_cliente()
     missao = gerenciador.adicionar_missao(
@@ -134,7 +129,6 @@ def test_get_detalha_missao_existente():
     limpar_overrides()
 
 
-
 def test_get_retorna_404_quando_missao_nao_existe():
     client, _ = criar_cliente()
 
@@ -143,7 +137,6 @@ def test_get_retorna_404_quando_missao_nao_existe():
     assert resposta.status_code == 404
     assert resposta.json() == {"detail": "Missão 999 não encontrada"}
     limpar_overrides()
-
 
 
 def test_patch_atualiza_missao():
@@ -169,7 +162,6 @@ def test_patch_atualiza_missao():
     limpar_overrides()
 
 
-
 def test_patch_conclui_missao():
     client, gerenciador = criar_cliente()
     missao = gerenciador.adicionar_missao(
@@ -187,7 +179,6 @@ def test_patch_conclui_missao():
     assert resposta.status_code == 200
     assert resposta.json()["status"] == "Concluída"
     limpar_overrides()
-
 
 
 def test_delete_remove_missao_e_retorna_mensagem_padronizada():
@@ -211,7 +202,6 @@ def test_delete_remove_missao_e_retorna_mensagem_padronizada():
     limpar_overrides()
 
 
-
 def test_post_retorna_400_para_erro_de_dominio():
     client, _ = criar_cliente()
 
@@ -228,7 +218,6 @@ def test_post_retorna_400_para_erro_de_dominio():
     assert resposta.status_code == 400
     assert resposta.json() == {"detail": "Prioridade deve ser entre 1 e 3."}
     limpar_overrides()
-
 
 
 def test_post_retorna_422_para_json_sem_campo_obrigatorio():

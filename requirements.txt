@@ -1,5 +1,5 @@
-iniconfig==2.3.0
-packaging==26.0
-pluggy==1.6.0
-Pygments==2.20.0
+fastapi==0.115.12
+psycopg[binary]==3.2.9
+pydantic==2.11.4
 pytest==9.0.3
+uvicorn==0.34.2

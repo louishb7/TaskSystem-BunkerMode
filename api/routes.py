@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from db_config import ConfiguracaoBancoError, get_connection_string
 from gerenciador import GerenciadorDeMissoes, MissaoNaoEncontrada
 from repositorio_postgres import ErroRepositorio, RepositorioPostgres
-from schemas import (
+from .schemas import (
     ErroResponse,
     MensagemResponse,
     MissaoCreate,
@@ -78,9 +78,15 @@ async def tratar_erro_repositorio(request: Request, exc: ErroRepositorio):
     response_model=MissaoResponse,
     summary="Criar uma nova missão",
     responses={
-        400: {"model": ErroResponse, "description": "Dados inválidos de domínio"},
+        400: {
+            "model": ErroResponse,
+            "description": "Dados inválidos de domínio",
+        },
         422: {"description": "JSON inválido para o contrato da rota"},
-        500: {"model": ErroResponse, "description": "Erro interno de persistência"},
+        500: {
+            "model": ErroResponse,
+            "description": "Erro interno de persistência",
+        },
     },
 )
 def criar_missao(dados: MissaoCreate, gerenciador: GerenciadorDep):
@@ -93,7 +99,10 @@ def criar_missao(dados: MissaoCreate, gerenciador: GerenciadorDep):
     response_model=list[MissaoResponse],
     summary="Listar todas as missões",
     responses={
-        500: {"model": ErroResponse, "description": "Erro interno de persistência"},
+        500: {
+            "model": ErroResponse,
+            "description": "Erro interno de persistência",
+        },
     },
 )
 def listar_missoes(gerenciador: GerenciadorDep):
@@ -107,7 +116,10 @@ def listar_missoes(gerenciador: GerenciadorDep):
     summary="Detalhar uma missão por ID",
     responses={
         404: {"model": ErroResponse, "description": "Missão não encontrada"},
-        500: {"model": ErroResponse, "description": "Erro interno de persistência"},
+        500: {
+            "model": ErroResponse,
+            "description": "Erro interno de persistência",
+        },
     },
 )
 def detalhar_missao(missao_id: int, gerenciador: GerenciadorDep):
@@ -120,10 +132,16 @@ def detalhar_missao(missao_id: int, gerenciador: GerenciadorDep):
     response_model=MissaoResponse,
     summary="Atualizar parcialmente uma missão",
     responses={
-        400: {"model": ErroResponse, "description": "Dados inválidos de domínio"},
+        400: {
+            "model": ErroResponse,
+            "description": "Dados inválidos de domínio",
+        },
         404: {"model": ErroResponse, "description": "Missão não encontrada"},
         422: {"description": "JSON inválido para o contrato da rota"},
-        500: {"model": ErroResponse, "description": "Erro interno de persistência"},
+        500: {
+            "model": ErroResponse,
+            "description": "Erro interno de persistência",
+        },
     },
 )
 def atualizar_missao(
@@ -143,9 +161,15 @@ def atualizar_missao(
     response_model=MissaoResponse,
     summary="Concluir uma missão",
     responses={
-        400: {"model": ErroResponse, "description": "Missão já concluída ou dado inválido"},
+        400: {
+            "model": ErroResponse,
+            "description": "Missão já concluída ou dado inválido",
+        },
         404: {"model": ErroResponse, "description": "Missão não encontrada"},
-        500: {"model": ErroResponse, "description": "Erro interno de persistência"},
+        500: {
+            "model": ErroResponse,
+            "description": "Erro interno de persistência",
+        },
     },
 )
 def concluir_missao(missao_id: int, gerenciador: GerenciadorDep):
@@ -159,7 +183,10 @@ def concluir_missao(missao_id: int, gerenciador: GerenciadorDep):
     summary="Remover uma missão",
     responses={
         404: {"model": ErroResponse, "description": "Missão não encontrada"},
-        500: {"model": ErroResponse, "description": "Erro interno de persistência"},
+        500: {
+            "model": ErroResponse,
+            "description": "Erro interno de persistência",
+        },
     },
 )
 def remover_missao(missao_id: int, gerenciador: GerenciadorDep):
