@@ -1,27 +1,17 @@
-from enum import Enum
-
-
-class PapelUsuario(Enum):
-    GENERAL = "general"
-    SOLDADO = "soldado"
-
-
 class Usuario:
     """Representa um usuário autenticável do sistema."""
 
     def __init__(
         self,
         usuario_id=None,
-        username=None,
-        nome=None,
-        papel=PapelUsuario.SOLDADO,
+        usuario=None,
+        email=None,
         senha_hash=None,
         ativo=True,
     ):
         self.usuario_id = self._validar_usuario_id(usuario_id)
-        self.username = self._validar_username(username)
-        self.nome = self._validar_nome(nome)
-        self.papel = self._validar_papel(papel)
+        self.usuario = self._validar_usuario(usuario)
+        self.email = self._validar_email(email)
         self.senha_hash = self._validar_senha_hash(senha_hash)
         self.ativo = self._validar_ativo(ativo)
 
@@ -32,31 +22,23 @@ class Usuario:
             raise ValueError("ID do usuário deve ser um inteiro positivo.")
         return usuario_id
 
-    def _validar_username(self, username):
-        if not isinstance(username, str):
-            raise ValueError("Username deve ser um texto.")
-        username = username.strip().lower()
-        if len(username) < 3:
-            raise ValueError("Username deve ter pelo menos 3 caracteres.")
-        if " " in username:
-            raise ValueError("Username não pode conter espaços.")
-        return username
+    def _validar_usuario(self, usuario):
+        if not isinstance(usuario, str):
+            raise ValueError("Usuário deve ser um texto.")
+        usuario = usuario.strip()
+        if len(usuario) < 3:
+            raise ValueError("Usuário deve ter pelo menos 3 caracteres.")
+        return usuario
 
-    def _validar_nome(self, nome):
-        if not isinstance(nome, str):
-            raise ValueError("Nome do usuário deve ser um texto.")
-        nome = nome.strip()
-        if not nome:
-            raise ValueError("Nome do usuário não pode ser vazio.")
-        return nome
-
-    def _validar_papel(self, papel):
-        if isinstance(papel, PapelUsuario):
-            return papel
-        try:
-            return PapelUsuario(papel)
-        except ValueError as erro:
-            raise ValueError("Papel do usuário inválido.") from erro
+    def _validar_email(self, email):
+        if not isinstance(email, str):
+            raise ValueError("Email deve ser um texto.")
+        email = email.strip().lower()
+        if not email or "@" not in email or email.startswith("@") or email.endswith("@"):
+            raise ValueError("Email inválido.")
+        if " " in email:
+            raise ValueError("Email não pode conter espaços.")
+        return email
 
     def _validar_senha_hash(self, senha_hash):
         if not isinstance(senha_hash, str) or not senha_hash.strip():

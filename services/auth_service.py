@@ -1,6 +1,6 @@
 from auth import decode_token, generate_token, hash_password, verify_password
 from services.exceptions import AutenticacaoError, UsuarioJaExisteError, UsuarioNaoEncontrado
-from usuario import PapelUsuario, Usuario
+from usuario import Usuario
 
 
 class AuthService:
@@ -10,29 +10,26 @@ class AuthService:
         self.repositorio = repositorio
 
     def registrar_usuario(self, dados: dict) -> Usuario:
-        existente = self.repositorio.buscar_usuario_por_username(dados["username"])
+        existente = self.repositorio.buscar_usuario_por_email(dados["email"])
         if existente is not None:
-            raise UsuarioJaExisteError("Username já está em uso.")
+            raise UsuarioJaExisteError("Email já está em uso.")
 
         usuario = Usuario(
-            username=dados["username"],
-            nome=dados["nome"],
-            papel=dados.get("papel", PapelUsuario.SOLDADO),
+            usuario=dados["usuario"],
+            email=dados["email"],
             senha_hash=hash_password(dados["senha"]),
         )
         self.repositorio.adicionar_usuario(usuario)
         return usuario
 
-    def autenticar(self, username: str, senha: str) -> dict:
-        usuario = self.repositorio.buscar_usuario_por_username(username)
+    def autenticar(self, email: str, senha: str) -> dict:
+        usuario = self.repositorio.buscar_usuario_por_email(email)
         if usuario is None or not verify_password(senha, usuario.senha_hash):
             raise AutenticacaoError("Credenciais inválidas.")
         if not usuario.ativo:
             raise AutenticacaoError("Usuário inativo.")
 
-        token = generate_token(
-            {"sub": usuario.usuario_id, "role": usuario.papel.value, "username": usuario.username}
-        )
+        token = generate_token({"sub": usuario.usuario_id, "email": usuario.email})
         return {"access_token": token, "token_type": "bearer", "usuario": usuario}
 
     def obter_usuario_por_token(self, token: str) -> Usuario:

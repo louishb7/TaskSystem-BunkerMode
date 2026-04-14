@@ -1,8 +1,6 @@
 from auditoria import EventoAuditoria
 from core_exceptions import MissaoNaoEncontrada
 from missao import Missao
-from services.exceptions import PermissaoNegadaError
-from usuario import PapelUsuario
 
 
 class MissaoService:
@@ -12,8 +10,6 @@ class MissaoService:
         self.repositorio = repositorio
 
     def criar_missao(self, dados: dict, usuario=None) -> Missao:
-        self._validar_permissao_criacao(usuario)
-
         campos_missao = {
             "titulo": dados["titulo"],
             "prioridade": dados["prioridade"],
@@ -43,13 +39,10 @@ class MissaoService:
         return missao
 
     def listar_missoes(self, usuario=None) -> list[Missao]:
-        if usuario is not None and usuario.papel == PapelUsuario.SOLDADO:
-            return list(self.repositorio.carregar_dados_por_responsavel(usuario.usuario_id))
         return list(self.repositorio.carregar_dados())
 
     def concluir_missao(self, missao_id: int, usuario=None) -> Missao:
         missao = self.buscar_por_id(missao_id)
-        self._validar_permissao_conclusao(missao_id, usuario)
         missao.concluir()
         self.repositorio.atualizar_missao(missao)
 
@@ -72,22 +65,6 @@ class MissaoService:
         if missao is None:
             raise MissaoNaoEncontrada(f"Missão {missao_id} não encontrada")
         return missao
-
-    def _validar_permissao_criacao(self, usuario) -> None:
-        if usuario is None:
-            return
-        if usuario.papel != PapelUsuario.GENERAL:
-            raise PermissaoNegadaError("Apenas generals podem criar missões.")
-
-    def _validar_permissao_conclusao(self, missao_id: int, usuario) -> None:
-        if usuario is None or usuario.papel == PapelUsuario.GENERAL:
-            return
-
-        contexto = self.repositorio.buscar_contexto_missao(missao_id)
-        if contexto is None or contexto.get("responsavel_id") != usuario.usuario_id:
-            raise PermissaoNegadaError(
-                "Você não tem permissão para concluir esta missão."
-            )
 
     def _registrar_auditoria(
         self,

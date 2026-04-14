@@ -2,14 +2,13 @@ from pydantic import BaseModel, Field
 
 
 class RegistroPayload(BaseModel):
-    username: str = Field(min_length=3)
-    nome: str = Field(min_length=1)
-    papel: str
+    usuario: str = Field(min_length=3)
+    email: str = Field(min_length=5)
     senha: str = Field(min_length=6)
 
 
 class LoginPayload(BaseModel):
-    username: str = Field(min_length=3)
+    email: str = Field(min_length=5)
     senha: str = Field(min_length=6)
 
 

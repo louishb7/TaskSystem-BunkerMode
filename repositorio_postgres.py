@@ -5,7 +5,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 from auditoria import EventoAuditoria
 from missao import Missao
-from usuario import PapelUsuario, Usuario
+from usuario import Usuario
 
 
 class ErroRepositorio(ValueError):
@@ -59,9 +59,8 @@ class RepositorioPostgres:
             """
             CREATE TABLE IF NOT EXISTS usuarios (
                 usuario_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                nome TEXT NOT NULL,
-                papel TEXT NOT NULL,
+                usuario TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
                 senha_hash TEXT NOT NULL,
                 ativo BOOLEAN NOT NULL DEFAULT TRUE
             );
@@ -109,12 +108,11 @@ class RepositorioPostgres:
         )
 
     def _reconstruir_usuario(self, linha: tuple) -> Usuario:
-        usuario_id, username, nome, papel, senha_hash, ativo = linha
+        usuario_id, usuario, email, senha_hash, ativo = linha
         return Usuario(
             usuario_id=usuario_id,
-            username=username,
-            nome=nome,
-            papel=PapelUsuario(papel),
+            usuario=usuario,
+            email=email,
             senha_hash=senha_hash,
             ativo=ativo,
         )
@@ -294,14 +292,13 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO usuarios (username, nome, papel, senha_hash, ativo)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO usuarios (usuario, email, senha_hash, ativo)
+                        VALUES (%s, %s, %s, %s)
                         RETURNING usuario_id;
                         """,
                         (
-                            usuario.username,
-                            usuario.nome,
-                            usuario.papel.value,
+                            usuario.usuario,
+                            usuario.email,
                             usuario.senha_hash,
                             usuario.ativo,
                         ),
@@ -315,21 +312,21 @@ class RepositorioPostgres:
                 "Erro ao adicionar usuário no banco de dados."
             ) from erro
 
-    def buscar_usuario_por_username(self, username: str) -> Usuario | None:
+    def buscar_usuario_por_email(self, email: str) -> Usuario | None:
         self.inicializar_schema()
         try:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
                     cursor.execute(
-                        "SELECT usuario_id, username, nome, papel, senha_hash, ativo FROM usuarios WHERE username = %s;",
-                        (username.strip().lower(),),
+                        "SELECT usuario_id, usuario, email, senha_hash, ativo FROM usuarios WHERE email = %s;",
+                        (email.strip().lower(),),
                     )
                     linha = cursor.fetchone()
         except ErroRepositorio:
             raise
         except psycopg.Error as erro:
             raise LeituraRepositorioError(
-                "Erro ao buscar usuário pelo username no banco de dados."
+                "Erro ao buscar usuário pelo email no banco de dados."
             ) from erro
         return None if linha is None else self._reconstruir_usuario(linha)
 
@@ -339,7 +336,7 @@ class RepositorioPostgres:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
                     cursor.execute(
-                        "SELECT usuario_id, username, nome, papel, senha_hash, ativo FROM usuarios WHERE usuario_id = %s;",
+                        "SELECT usuario_id, usuario, email, senha_hash, ativo FROM usuarios WHERE usuario_id = %s;",
                         (usuario_id,),
                     )
                     linha = cursor.fetchone()

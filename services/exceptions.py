@@ -3,7 +3,7 @@ class UsuarioNaoEncontrado(Exception):
 
 
 class UsuarioJaExisteError(ValueError):
-    """Erro levantado quando o username já está em uso."""
+    """Erro levantado quando o email já está em uso."""
 
 
 class AutenticacaoError(ValueError):

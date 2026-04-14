@@ -7,7 +7,6 @@ from auditoria import EventoAuditoria
 from services.auth_service import AuthService
 from services.missao_service import MissaoService
 from missao import Missao, StatusMissao
-from usuario import PapelUsuario, Usuario
 
 
 class RepositorioV2Fake:
@@ -57,10 +56,10 @@ class RepositorioV2Fake:
         self.proximo_usuario_id += 1
         self.usuarios.append(usuario)
 
-    def buscar_usuario_por_username(self, username):
-        username = username.strip().lower()
+    def buscar_usuario_por_email(self, email):
+        email = email.strip().lower()
         for usuario in self.usuarios:
-            if usuario.username == username:
+            if usuario.email == email:
                 return usuario
         return None
 
@@ -101,26 +100,26 @@ class AmbienteV2:
     def cleanup(self):
         app.dependency_overrides.clear()
 
-    def registrar(self, username, nome, papel, senha="segredo123"):
+    def registrar(self, usuario, email, senha="segredo123"):
         return self.client.post(
             "/api/v2/auth/register",
-            json={"username": username, "nome": nome, "papel": papel, "senha": senha},
+            json={"usuario": usuario, "email": email, "senha": senha},
         )
 
-    def login(self, username, senha="segredo123"):
+    def login(self, email, senha="segredo123"):
         return self.client.post(
-            "/api/v2/auth/login", json={"username": username, "senha": senha}
+            "/api/v2/auth/login", json={"email": email, "senha": senha}
         )
 
 
 def test_auth_register_login_e_me_v2():
     env = AmbienteV2()
     try:
-        resposta_registro = env.registrar("general1", "General One", "general")
+        resposta_registro = env.registrar("Henrique", "henrique@email.com")
         assert resposta_registro.status_code == 201
-        assert resposta_registro.json()["papel"] == "general"
+        assert resposta_registro.json()["email"] == "henrique@email.com"
 
-        resposta_login = env.login("general1")
+        resposta_login = env.login("henrique@email.com")
         assert resposta_login.status_code == 200
         token = resposta_login.json()["access_token"]
 
@@ -129,35 +128,33 @@ def test_auth_register_login_e_me_v2():
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resposta_me.status_code == 200
-        assert resposta_me.json()["username"] == "general1"
+        assert resposta_me.json()["usuario"] == "Henrique"
     finally:
         env.cleanup()
 
 
-def test_general_cria_missao_atribuida_e_soldado_lista_apenas_sua_missao():
+def test_usuario_autenticado_cria_e_lista_missao():
     env = AmbienteV2()
     try:
-        general = env.registrar("general1", "General One", "general")
-        soldado = env.registrar("soldado1", "Soldado One", "soldado")
-        general_token = env.login("general1").json()["access_token"]
-        soldado_token = env.login("soldado1").json()["access_token"]
+        usuario = env.registrar("Henrique", "henrique@email.com")
+        token = env.login("henrique@email.com").json()["access_token"]
 
         resposta_criacao = env.client.post(
             "/api/v2/missoes",
-            headers={"Authorization": f"Bearer {general_token}"},
+            headers={"Authorization": f"Bearer {token}"},
             json={
                 "titulo": "Missão crítica",
                 "prioridade": 1,
                 "prazo": "20-04-2026",
                 "instrucao": "Executar operação",
-                "responsavel_id": soldado.json()["id"],
+                "responsavel_id": usuario.json()["id"],
             },
         )
         assert resposta_criacao.status_code == 201
 
         resposta_lista = env.client.get(
             "/api/v2/missoes",
-            headers={"Authorization": f"Bearer {soldado_token}"},
+            headers={"Authorization": f"Bearer {token}"},
         )
         assert resposta_lista.status_code == 200
         assert len(resposta_lista.json()) == 1
@@ -166,37 +163,23 @@ def test_general_cria_missao_atribuida_e_soldado_lista_apenas_sua_missao():
         env.cleanup()
 
 
-def test_soldado_nao_pode_criar_missao_v2():
+def test_login_retorna_401_com_email_invalido():
     env = AmbienteV2()
     try:
-        env.registrar("soldado1", "Soldado One", "soldado")
-        soldado_token = env.login("soldado1").json()["access_token"]
-
-        resposta = env.client.post(
-            "/api/v2/missoes",
-            headers={"Authorization": f"Bearer {soldado_token}"},
-            json={
-                "titulo": "Missão proibida",
-                "prioridade": 1,
-                "prazo": "20-04-2026",
-                "instrucao": "Tentar criar",
-            },
-        )
-        assert resposta.status_code == 403
+        env.registrar("Henrique", "henrique@email.com")
+        resposta = env.login("inexistente@email.com")
+        assert resposta.status_code == 401
     finally:
         env.cleanup()
 
 
-def test_soldado_conclui_apenas_missao_atribuida():
+def test_usuario_autenticado_conclui_missao():
     env = AmbienteV2()
     try:
-        soldado = env.auth.registrar_usuario(
-            {"username": "soldado1", "nome": "Soldado One", "papel": "soldado", "senha": "segredo123"}
+        usuario = env.auth.registrar_usuario(
+            {"usuario": "Henrique", "email": "henrique@email.com", "senha": "segredo123"}
         )
-        general = env.auth.registrar_usuario(
-            {"username": "general1", "nome": "General One", "papel": "general", "senha": "segredo123"}
-        )
-        token = env.auth.autenticar("soldado1", "segredo123")["access_token"]
+        token = env.auth.autenticar("henrique@email.com", "segredo123")["access_token"]
         missao = Missao(
             titulo="Executar",
             prioridade=2,
@@ -207,8 +190,8 @@ def test_soldado_conclui_apenas_missao_atribuida():
         env.repo.adicionar_missao(missao)
         env.repo.salvar_contexto_missao(
             missao.missao_id,
-            criada_por_id=general.usuario_id,
-            responsavel_id=soldado.usuario_id,
+            criada_por_id=usuario.usuario_id,
+            responsavel_id=usuario.usuario_id,
         )
 
         resposta = env.client.patch(
@@ -224,10 +207,10 @@ def test_soldado_conclui_apenas_missao_atribuida():
 def test_historico_retorna_eventos_da_missao():
     env = AmbienteV2()
     try:
-        general = env.auth.registrar_usuario(
-            {"username": "general1", "nome": "General One", "papel": "general", "senha": "segredo123"}
+        usuario = env.auth.registrar_usuario(
+            {"usuario": "Henrique", "email": "henrique@email.com", "senha": "segredo123"}
         )
-        token = env.auth.autenticar("general1", "segredo123")["access_token"]
+        token = env.auth.autenticar("henrique@email.com", "segredo123")["access_token"]
         missao = Missao(
             titulo="Auditar",
             prioridade=1,
@@ -236,11 +219,11 @@ def test_historico_retorna_eventos_da_missao():
             status=StatusMissao.PENDENTE,
         )
         env.repo.adicionar_missao(missao)
-        env.repo.salvar_contexto_missao(missao.missao_id, general.usuario_id, None)
+        env.repo.salvar_contexto_missao(missao.missao_id, usuario.usuario_id, None)
         env.repo.registrar_auditoria(
             EventoAuditoria(
                 missao_id=missao.missao_id,
-                usuario_id=general.usuario_id,
+                usuario_id=usuario.usuario_id,
                 acao="missao_criada",
                 detalhes="Missão criada no teste.",
                 criado_em=datetime(2026, 4, 14, 12, 0, 0),

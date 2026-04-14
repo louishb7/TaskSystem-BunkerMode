@@ -5,12 +5,7 @@ from core_exceptions import MissaoNaoEncontrada
 from db_config import get_connection_string
 from repositorio_postgres import RepositorioPostgres
 from services.auth_service import AuthService
-from services.exceptions import (
-    AutenticacaoError,
-    PermissaoNegadaError,
-    UsuarioJaExisteError,
-    UsuarioNaoEncontrado,
-)
+from services.exceptions import AutenticacaoError, UsuarioJaExisteError, UsuarioNaoEncontrado
 from services.missao_service import MissaoService
 
 app = FastAPI(title="BunkerMode API")
@@ -52,9 +47,8 @@ def registrar_usuario(
 
     return {
         "id": usuario.usuario_id,
-        "username": usuario.username,
-        "nome": usuario.nome,
-        "papel": usuario.papel.value,
+        "usuario": usuario.usuario,
+        "email": usuario.email,
         "ativo": usuario.ativo,
     }
 
@@ -65,7 +59,7 @@ def login(
     auth_service: AuthService = Depends(get_auth_service),
 ):
     try:
-        resultado = auth_service.autenticar(payload.username, payload.senha)
+        resultado = auth_service.autenticar(payload.email, payload.senha)
     except (AutenticacaoError, ValueError) as erro:
         raise HTTPException(status_code=401, detail=str(erro)) from erro
 
@@ -75,9 +69,8 @@ def login(
         "token_type": resultado["token_type"],
         "usuario": {
             "id": usuario.usuario_id,
-            "username": usuario.username,
-            "nome": usuario.nome,
-            "papel": usuario.papel.value,
+            "usuario": usuario.usuario,
+            "email": usuario.email,
         },
     }
 
@@ -86,9 +79,8 @@ def login(
 def obter_usuario_atual(usuario=Depends(get_current_user)):
     return {
         "id": usuario.usuario_id,
-        "username": usuario.username,
-        "nome": usuario.nome,
-        "papel": usuario.papel.value,
+        "usuario": usuario.usuario,
+        "email": usuario.email,
         "ativo": usuario.ativo,
     }
 
@@ -101,8 +93,6 @@ def criar_missao(
 ):
     try:
         missao = missao_service.criar_missao(payload.model_dump(), usuario=usuario)
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
     except ValueError as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
     return missao.to_dict()
@@ -126,8 +116,6 @@ def concluir_missao(
         missao = missao_service.concluir_missao(missao_id, usuario=usuario)
     except MissaoNaoEncontrada as erro:
         raise HTTPException(status_code=404, detail=str(erro)) from erro
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
     except ValueError as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
     return missao.to_dict()

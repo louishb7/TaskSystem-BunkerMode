@@ -1,6 +1,6 @@
 # BunkerMode Task System
 
-Backend em FastAPI para autenticação, criação de missões, controle de acesso por papel e histórico de auditoria.
+Backend em FastAPI para autenticação, criação de missões, autenticação de usuários, missões e histórico de auditoria.
 
 ## Stack
 - FastAPI
