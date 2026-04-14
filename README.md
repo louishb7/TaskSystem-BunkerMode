@@ -1,38 +1,135 @@
-# BunkerMode
+# BunkerMode Task System
 
-Sistema de gerenciamento de missões em Python com arquitetura modular, preparado para evolução para API.
+Sistema de gerenciamento de tarefas com foco em disciplina e execução.
 
-## Estrutura
+O projeto começou como uma CLI e hoje é um backend completo com API, autenticação e controle de acesso.
 
-- **missao.py**  
-  Entidade principal. Responsável por validação de prioridade e prazo, além das regras da missão.
+---
 
-- **gerenciador.py**  
-  Camada de regras de negócio. Controla criação, edição, conclusão, remoção e listagem.
+## Ideia do sistema
 
-- **repositorio.py**  
-  Persistência em JSON. Converte objetos em dados e vice-versa.
+Dois modos:
 
-- **interface.py**  
-  Responsável pela entrada e saída via terminal.
+- General → planeja
+- Soldado → executa
 
-- **menu.py**  
-  Orquestra o fluxo da aplicação (CLI).
+A ideia é simples: separar quem decide do que precisa ser feito de quem só executa.
 
-- **main.py**  
-  Ponto de entrada do sistema.
+---
 
-## Funcionalidades
+## O que o sistema já faz
 
-- Criar missão
-- Listar missões por prioridade
-- Visualizar detalhes
-- Editar missão
-- Marcar como concluída
-- Remover missão
-- Gerar relatório (pendentes/concluídas)
+- Criar, editar, listar e remover missões
+- Concluir missões
+- Autenticação com usuário e senha
+- Controle de acesso (general / soldado)
+- Suporte a múltiplos usuários
+- Histórico de ações (auditoria)
+- API REST funcional
+- Testes automatizados
 
-## Execução
+---
 
-```bash
-python main.py
+## Tecnologias
+
+- Python
+- FastAPI
+- PostgreSQL
+- Pytest
+
+---
+
+## Como rodar o projeto
+
+### 1. Clonar
+
+```
+git clone <repo>
+cd TaskSystem-BunkerMode
+```
+
+### 2. Criar ambiente virtual
+
+```
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Instalar dependências
+
+```
+pip install -r requirements.txt
+```
+
+### 4. Configurar ambiente
+
+Crie um arquivo `.env`:
+
+```
+BUNKERMODE_DB_NAME=bunkermode
+BUNKERMODE_DB_USER=usuario
+BUNKERMODE_DB_PASSWORD=senha
+BUNKERMODE_DB_HOST=localhost
+BUNKERMODE_DB_PORT=5432
+```
+
+### 5. Rodar API
+
+```
+uvicorn api.routes:app --reload
+```
+
+ou
+
+```
+python -m api
+```
+
+---
+
+## Testes
+
+Rodar todos:
+
+```
+pytest
+```
+
+Teste com banco real (opcional):
+
+```
+export BUNKERMODE_TEST_DB_URL="sua_string"
+pytest -m integration
+```
+
+---
+
+## Estrutura (simplificada)
+
+```
+api/        → rotas HTTP
+services/   → regras de negócio
+tests/      → testes
+```
+
+---
+
+## Estado atual
+
+Backend já está sólido:
+
+- API funcionando
+- autenticação pronta
+- regras de acesso implementadas
+- persistência com PostgreSQL
+- testes cobrindo o sistema
+
+---
+
+## Próximo passo
+
+Construir o frontend consumindo a API.
+
+---
+
+Projeto focado em aprendizado e evolução prática de backend.
