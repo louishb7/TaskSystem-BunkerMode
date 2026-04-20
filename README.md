@@ -1,6 +1,6 @@
 # BunkerMode Task System
 
-Backend em FastAPI para autenticação, criação de missões, autenticação de usuários, missões e histórico de auditoria.
+Backend em FastAPI para autenticação, criação de missões, listagem de missões e histórico de auditoria.
 
 ## Stack
 - FastAPI
@@ -18,6 +18,18 @@ Backend em FastAPI para autenticação, criação de missões, autenticação de
 - `BUNKERMODE_API_HOST`
 - `BUNKERMODE_API_PORT`
 - `BUNKERMODE_API_RELOAD`
+- `BUNKERMODE_CORS_ALLOW_ORIGINS`
+
+## CORS
+A API aceita origens configuradas pela variável `BUNKERMODE_CORS_ALLOW_ORIGINS`.
+
+Exemplo:
+
+```bash
+BUNKERMODE_CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:5173
+```
+
+Se a variável não for definida, a API sobe com `*`, o que facilita testes locais com uma interface simples.
 
 ## Rodar a API
 ```bash
@@ -27,6 +39,16 @@ python -m api
 ## Documentação
 - `/docs`
 - `/redoc`
+
+## Endpoints úteis para integração
+- `GET /api/v2/health`
+- `POST /api/v2/auth/register`
+- `POST /api/v2/auth/login`
+- `GET /api/v2/usuarios/me`
+- `GET /api/v2/missoes`
+- `POST /api/v2/missoes`
+- `PATCH /api/v2/missoes/{missao_id}/concluir`
+- `GET /api/v2/missoes/{missao_id}/historico`
 
 ## Testes
 ```bash

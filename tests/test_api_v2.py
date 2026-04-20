@@ -238,3 +238,30 @@ def test_historico_retorna_eventos_da_missao():
         assert resposta.json()[0]["acao"] == "missao_criada"
     finally:
         env.cleanup()
+
+
+def test_healthcheck_retorna_status_ok():
+    env = AmbienteV2()
+    try:
+        resposta = env.client.get("/api/v2/health")
+        assert resposta.status_code == 200
+        assert resposta.json() == {"status": "ok"}
+    finally:
+        env.cleanup()
+
+
+def test_preflight_cors_retorna_headers_permitidos():
+    env = AmbienteV2()
+    try:
+        resposta = env.client.options(
+            "/api/v2/missoes",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        assert resposta.status_code == 200
+        assert resposta.headers["access-control-allow-origin"] == "http://localhost:3000"
+        assert "POST" in resposta.headers["access-control-allow-methods"]
+    finally:
+        env.cleanup()

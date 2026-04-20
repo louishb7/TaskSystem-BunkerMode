@@ -1,4 +1,7 @@
+import os
+
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.schemas import LoginPayload, MissaoCreatePayload, RegistroPayload
 from core_exceptions import MissaoNaoEncontrada
@@ -10,6 +13,21 @@ from services.missao_service import MissaoService
 
 app = FastAPI(title="BunkerMode API")
 router = APIRouter(prefix="/api/v2", tags=["v2"])
+
+
+def get_allowed_origins() -> list[str]:
+    raw_origins = os.getenv("BUNKERMODE_CORS_ALLOW_ORIGINS", "*")
+    origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+    return origins or ["*"]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_allowed_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def get_auth_service() -> AuthService:
@@ -33,6 +51,13 @@ def get_current_user(
         return auth_service.obter_usuario_por_token(token)
     except (AutenticacaoError, UsuarioNaoEncontrado, ValueError) as erro:
         raise HTTPException(status_code=401, detail=str(erro)) from erro
+
+
+
+
+@router.get("/health")
+def healthcheck():
+    return {"status": "ok"}
 
 
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED)
