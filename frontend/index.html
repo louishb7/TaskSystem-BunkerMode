@@ -3,43 +3,79 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BunkerMode Test UI v3</title>
+  <title>BunkerMode Mission Console v4</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <main class="container">
-    <header class="page-header">
+    <header class="hero card">
       <div>
         <p class="eyebrow">BunkerMode</p>
-        <h1>Test UI v3</h1>
-        <p class="subtitle">Integração real com a API, sessão persistida e gerenciamento básico de missões.</p>
+        <h1>Mission Console v4</h1>
+        <p class="subtitle">Interface mínima, mas já com fluxo de uso real: autenticação, criação, busca, filtros e ações por missão.</p>
       </div>
-      <section class="card compact">
-        <h2>Estado da sessão</h2>
-        <p id="sessionStatus" class="status muted">Não autenticado.</p>
-        <div class="actions-row">
-          <button type="button" id="restoreSessionButton">Restaurar sessão</button>
-          <button type="button" id="logoutButton" class="danger ghost">Logout</button>
-        </div>
-      </section>
+      <div class="hero-actions">
+        <button type="button" id="restoreSessionButton" class="ghost">Restaurar sessão</button>
+        <button type="button" id="logoutButton" class="danger ghost">Logout</button>
+      </div>
     </header>
 
-    <section class="grid two-columns">
+    <section class="stats-grid">
+      <article class="card stat-card">
+        <p class="stat-label">Sessão</p>
+        <h2 id="sessionHeadline">Não autenticado</h2>
+        <p id="sessionStatus" class="status muted">Faça login para habilitar as ações protegidas da API.</p>
+      </article>
+      <article class="card stat-card">
+        <p class="stat-label">Missões carregadas</p>
+        <h2 id="totalMissoes">0</h2>
+        <p class="subtitle">Total atualmente exibido na interface.</p>
+      </article>
+      <article class="card stat-card">
+        <p class="stat-label">Pendentes</p>
+        <h2 id="totalPendentes">0</h2>
+        <p class="subtitle">Missões ainda não concluídas.</p>
+      </article>
+      <article class="card stat-card">
+        <p class="stat-label">Concluídas</p>
+        <h2 id="totalConcluidas">0</h2>
+        <p class="subtitle">Missões concluídas pela API.</p>
+      </article>
+    </section>
+
+    <section class="grid two-columns align-start">
       <article class="card">
-        <h2>Registro</h2>
-        <label>Usuário<input id="registroUsuario" placeholder="Seu usuário" /></label>
-        <label>Email<input id="registroEmail" placeholder="Seu email" /></label>
-        <label>Senha<input id="registroSenha" type="password" placeholder="Sua senha" /></label>
-        <button type="button" id="registerButton">Registrar</button>
-        <p id="registroStatus" class="status"></p>
+        <h2>Configuração da API</h2>
+        <label>Base URL da API
+          <input id="apiUrlInput" placeholder="http://127.0.0.1:8000/api/v2" />
+        </label>
+        <div class="actions-row">
+          <button type="button" id="saveApiUrlButton">Salvar URL</button>
+          <button type="button" id="resetApiUrlButton" class="ghost">Voltar ao padrão</button>
+          <button type="button" id="healthcheckButton" class="ghost">Testar /health</button>
+        </div>
+        <p id="apiStatus" class="status muted">Usando URL padrão da API.</p>
       </article>
 
       <article class="card">
-        <h2>Login</h2>
-        <label>Email<input id="loginEmail" placeholder="Seu email" /></label>
-        <label>Senha<input id="loginSenha" type="password" placeholder="Sua senha" /></label>
-        <button type="button" id="loginButton">Login</button>
-        <p id="loginStatus" class="status"></p>
+        <h2>Autenticação</h2>
+        <div class="grid compact-grid">
+          <div>
+            <h3>Registro</h3>
+            <label>Usuário<input id="registroUsuario" placeholder="Seu usuário" /></label>
+            <label>Email<input id="registroEmail" placeholder="Seu email" /></label>
+            <label>Senha<input id="registroSenha" type="password" placeholder="Sua senha" /></label>
+            <button type="button" id="registerButton">Registrar</button>
+            <p id="registroStatus" class="status"></p>
+          </div>
+          <div>
+            <h3>Login</h3>
+            <label>Email<input id="loginEmail" placeholder="Seu email" /></label>
+            <label>Senha<input id="loginSenha" type="password" placeholder="Sua senha" /></label>
+            <button type="button" id="loginButton">Login</button>
+            <p id="loginStatus" class="status"></p>
+          </div>
+        </div>
       </article>
     </section>
 
@@ -58,7 +94,10 @@
         <label>Instrução<input id="instrucao" placeholder="Instrução da missão" /></label>
         <label>Prazo<input id="prazo" placeholder="DD-MM-YYYY" /></label>
         <label>Prioridade<input id="prioridade" type="number" min="1" max="3" value="1" /></label>
-        <button type="button" id="createMissionButton">Criar missão</button>
+        <div class="actions-row">
+          <button type="button" id="createMissionButton">Criar missão</button>
+          <button type="button" id="clearMissionFormButton" class="ghost">Limpar formulário</button>
+        </div>
         <p id="missaoStatus" class="status"></p>
       </article>
     </section>
@@ -67,18 +106,41 @@
       <div class="section-header">
         <div>
           <h2>Missões</h2>
-          <p class="subtitle">Liste, conclua, veja histórico e apague missões pela interface.</p>
+          <p class="subtitle">Agora com busca, filtros e ações diretamente nos cards.</p>
         </div>
         <div class="actions-row">
           <button type="button" id="listMissionsButton">Atualizar lista</button>
-          <button type="button" id="clearMissionsButton" class="ghost">Limpar saída</button>
+          <button type="button" id="clearMissionsButton" class="ghost">Limpar lista</button>
         </div>
+      </div>
+
+      <div class="toolbar">
+        <label>Buscar por título ou instrução
+          <input id="searchInput" placeholder="Ex.: crítica, operação, reunião..." />
+        </label>
+        <label>Status
+          <select id="statusFilter">
+            <option value="todas">Todas</option>
+            <option value="pendente">Pendentes</option>
+            <option value="concluida">Concluídas</option>
+          </select>
+        </label>
+        <label>Ordenação
+          <select id="sortFilter">
+            <option value="prioridade">Prioridade</option>
+            <option value="titulo">Título</option>
+            <option value="prazo">Prazo</option>
+          </select>
+        </label>
       </div>
 
       <p id="missoesStatus" class="status muted">Nenhuma missão carregada.</p>
       <div id="missionList" class="mission-list empty-state">Nenhuma missão carregada.</div>
-      <h3>JSON bruto</h3>
-      <pre id="missoesOutput">Nenhuma missão carregada.</pre>
+
+      <details class="debug-panel">
+        <summary>Ver JSON bruto</summary>
+        <pre id="missoesOutput">Nenhuma missão carregada.</pre>
+      </details>
     </section>
   </main>
 

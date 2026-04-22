@@ -87,3 +87,23 @@ Comportamento:
 - retorna `204 No Content` ao apagar com sucesso
 - retorna `404` se a missão não existir
 - exige autenticação por Bearer token
+
+
+## Frontend v4
+
+A interface mínima em `frontend/` evoluiu para uma versão mais próxima de uma aplicação real, ainda em HTML + JS puro:
+
+- configuração da Base URL da API pela própria interface
+- healthcheck via botão
+- sessão persistida com `localStorage`
+- cards de missão com ações diretas
+- busca por texto, filtro por status e ordenação
+- formulário de missão com limpeza rápida
+
+Fluxo sugerido:
+
+1. subir a API com `python -m api`
+2. abrir `frontend/index.html` no navegador
+3. testar `/health`
+4. registrar ou logar
+5. criar, listar, concluir, filtrar e apagar missões
