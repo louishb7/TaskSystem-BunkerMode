@@ -40,16 +40,16 @@
       </article>
     </section>
 
-    <section class="panel compact-panel">
+    <section class="panel compact-panel access-panel">
       <div class="panel-heading">
         <div>
           <h2>Configuração e Acesso</h2>
-          <p class="subtitle">Sessão, API e autenticação em um só lugar.</p>
+          <p class="subtitle">Conecte a API e autentique antes de operar missões.</p>
         </div>
       </div>
 
       <div class="settings-grid">
-        <form id="apiForm" class="form-stack">
+        <form id="apiForm" class="form-stack subpanel">
           <label for="apiUrlInput">Base URL da API</label>
           <div class="inline-control">
             <input id="apiUrlInput" placeholder="http://127.0.0.1:8000/api/v2" />
@@ -62,7 +62,7 @@
           <p id="apiStatus" class="feedback muted">Usando URL padrão da API.</p>
         </form>
 
-        <form id="registerForm" class="form-stack">
+        <form id="registerForm" class="form-stack subpanel">
           <h3>Registro</h3>
           <label for="registroUsuario">Usuário</label>
           <input id="registroUsuario" placeholder="Seu usuário" autocomplete="username" />
@@ -74,7 +74,7 @@
           <p id="registroStatus" class="feedback"></p>
         </form>
 
-        <form id="loginForm" class="form-stack">
+        <form id="loginForm" class="form-stack subpanel">
           <h3>Login</h3>
           <label for="loginEmail">Email</label>
           <input id="loginEmail" placeholder="Seu email" autocomplete="email" />
@@ -99,7 +99,7 @@
         <div class="panel-heading">
           <div>
             <h2 id="missionsTitle">Missões</h2>
-            <p class="subtitle">Lista operacional do usuário autenticado.</p>
+            <p class="subtitle">Planeje, edite e execute as missões do usuário autenticado.</p>
           </div>
           <div class="actions-row">
             <button type="button" id="listMissionsButton" class="button">Atualizar</button>
@@ -130,7 +130,7 @@
           </div>
         </div>
 
-        <p id="missoesStatus" class="feedback muted">Nenhuma missão carregada.</p>
+        <p id="missoesStatus" class="feedback feedback-block muted">Nenhuma missão carregada.</p>
         <div id="missionList" class="mission-list empty-state">Nenhuma missão carregada.</div>
 
         <details class="debug-panel">
@@ -183,7 +183,7 @@
             <button type="button" id="clearMissionFormButton" class="button secondary">Limpar campos</button>
             <button type="button" id="cancelMissionEditButton" class="button secondary hidden">Cancelar edição</button>
           </div>
-          <p id="missaoStatus" class="feedback"></p>
+          <p id="missaoStatus" class="feedback feedback-block"></p>
         </form>
       </aside>
     </section>

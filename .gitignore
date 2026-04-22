@@ -25,6 +25,11 @@ htmlcov/
 # Logs
 *.log
 
+# Node / frontend
+node_modules/
+frontend-react/node_modules/
+frontend-react/dist/
+
 # Temp
 *.tmp
 *.swp

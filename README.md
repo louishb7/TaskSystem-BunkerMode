@@ -55,27 +55,34 @@ python -m api
 pytest
 ```
 
-## Interface mínima de teste (v3)
+## Frontend React
 
-A pasta `frontend/` contém uma interface simples em HTML, CSS e JavaScript puro para testar a API manualmente.
+A interface principal fica em `frontend-react/`.
 
-Arquivos:
-- `frontend/index.html`
-- `frontend/style.css`
-- `frontend/app.js`
+```bash
+cd frontend-react
+npm install
+npm run dev
+```
+
+Por padrão, o frontend usa a API em `http://127.0.0.1:8000/api/v2`.
+Para alterar:
+
+```bash
+VITE_API_URL=http://127.0.0.1:8000/api/v2 npm run dev
+```
 
 Fluxos disponíveis:
-- registrar usuário
-- login
-- restaurar sessão com `localStorage`
-- consultar `/usuarios/me`
-- criar missão
-- listar missões
-- concluir missão
-- ver histórico de uma missão
-- apagar missão
+- cadastro e login como entrada da aplicação
+- logout
+- criação de missão
+- listagem, filtros e ordenação
+- edição de missão
+- conclusão de missão
+- histórico de missão
+- exclusão de missão
 
-Abra o arquivo `frontend/index.html` no navegador e mantenha a API rodando localmente em `http://127.0.0.1:8000`.
+A pasta `frontend/` foi mantida temporariamente como referência legada da versão HTML/CSS/JS puro.
 
 ## Exclusão de missão
 
@@ -88,22 +95,3 @@ Comportamento:
 - retorna `404` se a missão não existir
 - exige autenticação por Bearer token
 
-
-## Frontend v4
-
-A interface mínima em `frontend/` evoluiu para uma versão mais próxima de uma aplicação real, ainda em HTML + JS puro:
-
-- configuração da Base URL da API pela própria interface
-- healthcheck via botão
-- sessão persistida com `localStorage`
-- cards de missão com ações diretas
-- busca por texto, filtro por status e ordenação
-- formulário de missão com limpeza rápida
-
-Fluxo sugerido:
-
-1. subir a API com `python -m api`
-2. abrir `frontend/index.html` no navegador
-3. testar `/health`
-4. registrar ou logar
-5. criar, listar, concluir, filtrar e apagar missões

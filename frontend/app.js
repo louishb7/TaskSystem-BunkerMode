@@ -323,7 +323,7 @@ function renderStatusBadge(mission) {
   return badge;
 }
 
-function createMissionAction(label, action, missionId, className = "button secondary") {
+function createMissionAction(label, action, missionId, className = "button secondary compact") {
   const button = createElement("button", className, label);
   button.type = "button";
   button.dataset.action = action;
@@ -358,11 +358,11 @@ function renderMissionItem(mission) {
   ]);
 
   if (!isMissionDone(mission)) {
-    actions.appendChild(createMissionAction("Concluir", "concluir", mission.id, "button"));
+    actions.appendChild(createMissionAction("Concluir", "concluir", mission.id, "button compact"));
   }
   actions.appendChild(createMissionAction("Histórico", "historico", mission.id));
   actions.appendChild(createMissionAction("Editar", "editar", mission.id));
-  actions.appendChild(createMissionAction("Apagar", "remover", mission.id, "button danger secondary"));
+  actions.appendChild(createMissionAction("Apagar", "remover", mission.id, "button danger secondary compact"));
 
   appendChildren(card, [header, meta, description, actions, history]);
   return card;
