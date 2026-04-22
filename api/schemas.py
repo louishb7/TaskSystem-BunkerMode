@@ -18,3 +18,10 @@ class MissaoCreatePayload(BaseModel):
     prazo: str | None = None
     instrucao: str = Field(min_length=1)
     responsavel_id: int | None = None
+
+
+class MissaoUpdatePayload(BaseModel):
+    titulo: str | None = Field(default=None, min_length=1)
+    prioridade: int | None = None
+    prazo: str | None = None
+    instrucao: str | None = Field(default=None, min_length=1)

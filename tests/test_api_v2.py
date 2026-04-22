@@ -227,6 +227,86 @@ def test_login_retorna_401_com_email_invalido():
         env.cleanup()
 
 
+def test_usuario_autenticado_edita_missao():
+    env = AmbienteV2()
+    try:
+        usuario = env.auth.registrar_usuario(
+            {"usuario": "Henrique", "email": "henrique@email.com", "senha": "segredo123"}
+        )
+        token = env.auth.autenticar("henrique@email.com", "segredo123")["access_token"]
+        missao = Missao(
+            titulo="Original",
+            prioridade=2,
+            prazo="20-04-2026",
+            instrucao="Executar missão original",
+            status=StatusMissao.PENDENTE,
+        )
+        env.repo.adicionar_missao(missao)
+        env.repo.salvar_contexto_missao(
+            missao.missao_id,
+            criada_por_id=usuario.usuario_id,
+            responsavel_id=usuario.usuario_id,
+        )
+
+        resposta = env.client.patch(
+            f"/api/v2/missoes/{missao.missao_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "titulo": "Atualizada",
+                "instrucao": "Executar missão atualizada",
+                "prioridade": 1,
+                "prazo": "22-04-2026",
+            },
+        )
+
+        assert resposta.status_code == 200
+        assert resposta.json()["titulo"] == "Atualizada"
+        assert resposta.json()["instrucao"] == "Executar missão atualizada"
+        assert resposta.json()["prioridade"] == 1
+        assert resposta.json()["prazo"] == "22-04-2026"
+        assert env.repo.auditoria[-1].acao == "missao_atualizada"
+    finally:
+        env.cleanup()
+
+
+def test_usuario_nao_edita_missao_de_outro_usuario():
+    env = AmbienteV2()
+    try:
+        dono = env.auth.registrar_usuario(
+            {"usuario": "Dono", "email": "dono@email.com", "senha": "segredo123"}
+        )
+        env.auth.registrar_usuario(
+            {"usuario": "Outro", "email": "outro@email.com", "senha": "segredo123"}
+        )
+        token_outro = env.auth.autenticar("outro@email.com", "segredo123")[
+            "access_token"
+        ]
+        missao = Missao(
+            titulo="Protegida",
+            prioridade=2,
+            prazo="20-04-2026",
+            instrucao="Somente o dono edita",
+            status=StatusMissao.PENDENTE,
+        )
+        env.repo.adicionar_missao(missao)
+        env.repo.salvar_contexto_missao(
+            missao.missao_id,
+            criada_por_id=dono.usuario_id,
+            responsavel_id=dono.usuario_id,
+        )
+
+        resposta = env.client.patch(
+            f"/api/v2/missoes/{missao.missao_id}",
+            headers={"Authorization": f"Bearer {token_outro}"},
+            json={"titulo": "Tentativa indevida"},
+        )
+
+        assert resposta.status_code == 404
+        assert env.repo.buscar_por_id(missao.missao_id).titulo == "Protegida"
+    finally:
+        env.cleanup()
+
+
 def test_usuario_autenticado_conclui_missao():
     env = AmbienteV2()
     try:
@@ -258,6 +338,43 @@ def test_usuario_autenticado_conclui_missao():
         env.cleanup()
 
 
+def test_usuario_nao_conclui_missao_de_outro_usuario():
+    env = AmbienteV2()
+    try:
+        dono = env.auth.registrar_usuario(
+            {"usuario": "Dono", "email": "dono@email.com", "senha": "segredo123"}
+        )
+        outro = env.auth.registrar_usuario(
+            {"usuario": "Outro", "email": "outro@email.com", "senha": "segredo123"}
+        )
+        token_outro = env.auth.autenticar("outro@email.com", "segredo123")[
+            "access_token"
+        ]
+        missao = Missao(
+            titulo="Protegida",
+            prioridade=2,
+            prazo="20-04-2026",
+            instrucao="Somente o dono conclui",
+            status=StatusMissao.PENDENTE,
+        )
+        env.repo.adicionar_missao(missao)
+        env.repo.salvar_contexto_missao(
+            missao.missao_id,
+            criada_por_id=dono.usuario_id,
+            responsavel_id=dono.usuario_id,
+        )
+
+        resposta = env.client.patch(
+            f"/api/v2/missoes/{missao.missao_id}/concluir",
+            headers={"Authorization": f"Bearer {token_outro}"},
+        )
+
+        assert outro.usuario_id != dono.usuario_id
+        assert resposta.status_code == 404
+    finally:
+        env.cleanup()
+
+
 def test_historico_retorna_eventos_da_missao():
     env = AmbienteV2()
     try:
@@ -273,7 +390,11 @@ def test_historico_retorna_eventos_da_missao():
             status=StatusMissao.PENDENTE,
         )
         env.repo.adicionar_missao(missao)
-        env.repo.salvar_contexto_missao(missao.missao_id, usuario.usuario_id, None)
+        env.repo.salvar_contexto_missao(
+            missao.missao_id,
+            criada_por_id=usuario.usuario_id,
+            responsavel_id=usuario.usuario_id,
+        )
         env.repo.registrar_auditoria(
             EventoAuditoria(
                 missao_id=missao.missao_id,
@@ -290,6 +411,42 @@ def test_historico_retorna_eventos_da_missao():
         )
         assert resposta.status_code == 200
         assert resposta.json()[0]["acao"] == "missao_criada"
+    finally:
+        env.cleanup()
+
+
+def test_usuario_nao_ve_historico_de_missao_de_outro_usuario():
+    env = AmbienteV2()
+    try:
+        dono = env.auth.registrar_usuario(
+            {"usuario": "Dono", "email": "dono@email.com", "senha": "segredo123"}
+        )
+        env.auth.registrar_usuario(
+            {"usuario": "Outro", "email": "outro@email.com", "senha": "segredo123"}
+        )
+        token_outro = env.auth.autenticar("outro@email.com", "segredo123")[
+            "access_token"
+        ]
+        missao = Missao(
+            titulo="Auditar protegida",
+            prioridade=1,
+            prazo=None,
+            instrucao="Histórico protegido",
+            status=StatusMissao.PENDENTE,
+        )
+        env.repo.adicionar_missao(missao)
+        env.repo.salvar_contexto_missao(
+            missao.missao_id,
+            criada_por_id=dono.usuario_id,
+            responsavel_id=dono.usuario_id,
+        )
+
+        resposta = env.client.get(
+            f"/api/v2/missoes/{missao.missao_id}/historico",
+            headers={"Authorization": f"Bearer {token_outro}"},
+        )
+
+        assert resposta.status_code == 404
     finally:
         env.cleanup()
 
@@ -339,6 +496,44 @@ def test_usuario_autenticado_remove_missao():
         assert resposta_lista.json() == []
     finally:
         env.cleanup()
+
+
+def test_usuario_nao_remove_missao_de_outro_usuario():
+    env = AmbienteV2()
+    try:
+        dono = env.auth.registrar_usuario(
+            {"usuario": "Dono", "email": "dono@email.com", "senha": "segredo123"}
+        )
+        env.auth.registrar_usuario(
+            {"usuario": "Outro", "email": "outro@email.com", "senha": "segredo123"}
+        )
+        token_outro = env.auth.autenticar("outro@email.com", "segredo123")[
+            "access_token"
+        ]
+        missao = Missao(
+            titulo="Remoção protegida",
+            prioridade=1,
+            prazo="20-04-2026",
+            instrucao="Somente o dono remove",
+            status=StatusMissao.PENDENTE,
+        )
+        env.repo.adicionar_missao(missao)
+        env.repo.salvar_contexto_missao(
+            missao.missao_id,
+            criada_por_id=dono.usuario_id,
+            responsavel_id=dono.usuario_id,
+        )
+
+        resposta = env.client.delete(
+            f"/api/v2/missoes/{missao.missao_id}",
+            headers={"Authorization": f"Bearer {token_outro}"},
+        )
+
+        assert resposta.status_code == 404
+        assert env.repo.buscar_por_id(missao.missao_id) is missao
+    finally:
+        env.cleanup()
+
 
 def test_preflight_cors_retorna_headers_permitidos():
     env = AmbienteV2()

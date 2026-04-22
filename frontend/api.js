@@ -84,6 +84,13 @@ function createApiClient({ getBaseUrl, getToken, onUnauthorized }) {
         body: JSON.stringify(payload),
       });
     },
+    updateMission(missionId, payload) {
+      return request(`/missoes/${missionId}`, {
+        method: "PATCH",
+        headers: buildHeaders({ auth: true, json: true }),
+        body: JSON.stringify(payload),
+      });
+    },
     completeMission(missionId) {
       return request(`/missoes/${missionId}/concluir`, {
         method: "PATCH",

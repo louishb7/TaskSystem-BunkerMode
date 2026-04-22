@@ -7,6 +7,7 @@ const state = {
   token: null,
   usuario: null,
   missoes: [],
+  editingMissionId: null,
   apiUrl: localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL,
   loading: {
     api: false,
@@ -37,6 +38,8 @@ const elements = {
   sortFilter: document.getElementById("sortFilter"),
   prazoTipo: document.getElementById("prazoTipo"),
   prazoDataField: document.getElementById("prazoDataField"),
+  missionFormTitle: document.getElementById("missionFormTitle"),
+  missionFormSubtitle: document.getElementById("missionFormSubtitle"),
   saveApiUrlButton: document.getElementById("saveApiUrlButton"),
   resetApiUrlButton: document.getElementById("resetApiUrlButton"),
   healthcheckButton: document.getElementById("healthcheckButton"),
@@ -44,6 +47,7 @@ const elements = {
   loginButton: document.getElementById("loginButton"),
   loadMeButton: document.getElementById("loadMeButton"),
   createMissionButton: document.getElementById("createMissionButton"),
+  cancelMissionEditButton: document.getElementById("cancelMissionEditButton"),
   listMissionsButton: document.getElementById("listMissionsButton"),
   clearMissionsButton: document.getElementById("clearMissionsButton"),
 };
@@ -89,6 +93,7 @@ function updateButtons() {
   elements.loginButton.disabled = state.loading.auth;
   elements.loadMeButton.disabled = !state.token || state.loading.auth;
   elements.createMissionButton.disabled = !isAuthenticated || state.loading.createMission;
+  elements.createMissionButton.innerText = state.editingMissionId ? "Salvar edição" : "Criar missão";
   elements.listMissionsButton.disabled = !state.token || state.loading.missions;
   elements.clearMissionsButton.disabled = state.loading.missions;
 }
@@ -156,6 +161,10 @@ function updateDeadlineInputVisibility() {
   }
 }
 
+function setInputValue(id, value) {
+  document.getElementById(id).value = value ?? "";
+}
+
 function createElement(tag, className, text) {
   const element = document.createElement(tag);
   if (className) {
@@ -207,9 +216,11 @@ function clearSession() {
   state.token = null;
   state.usuario = null;
   state.missoes = [];
+  state.editingMissionId = null;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   renderSession();
+  renderMissionFormMode();
   renderMissionList();
 }
 
@@ -350,6 +361,7 @@ function renderMissionItem(mission) {
     actions.appendChild(createMissionAction("Concluir", "concluir", mission.id, "button"));
   }
   actions.appendChild(createMissionAction("Histórico", "historico", mission.id));
+  actions.appendChild(createMissionAction("Editar", "editar", mission.id));
   actions.appendChild(createMissionAction("Apagar", "remover", mission.id, "button danger secondary"));
 
   appendChildren(card, [header, meta, description, actions, history]);
@@ -394,13 +406,18 @@ function renderMissionList() {
 }
 
 function getMissionPayload() {
-  return {
+  const payload = {
     titulo: getInputValue("titulo"),
     instrucao: getInputValue("instrucao"),
     prazo: getSelectedDeadline(),
     prioridade: Number(document.getElementById("prioridade").value),
-    responsavel_id: state.usuario.id,
   };
+
+  if (!state.editingMissionId) {
+    payload.responsavel_id = state.usuario.id;
+  }
+
+  return payload;
 }
 
 function validateMissionPayload(payload) {
@@ -425,14 +442,65 @@ function validateMissionPayload(payload) {
   return null;
 }
 
-function clearMissionForm() {
+function clearMissionForm(feedbackText = "Formulário limpo.", feedbackVariant = "muted") {
+  exitEditMode();
   clearInput("titulo");
   clearInput("instrucao");
   clearInput("prazo");
   elements.prazoTipo.value = "hoje";
   updateDeadlineInputVisibility();
   document.getElementById("prioridade").value = "1";
-  setFeedback(elements.missaoStatus, "Formulário limpo.", "muted");
+  setFeedback(elements.missaoStatus, feedbackText, feedbackVariant);
+}
+
+function renderMissionFormMode() {
+  const isEditing = Boolean(state.editingMissionId);
+
+  elements.missionFormTitle.innerText = isEditing ? "Editar missão" : "Criar missão";
+  elements.missionFormSubtitle.innerText = isEditing
+    ? `Editando missão ${state.editingMissionId}.`
+    : "Defina uma ação executável para o Soldier.";
+  elements.cancelMissionEditButton.classList.toggle("hidden", !isEditing);
+  elements.createMissionButton.innerText = isEditing ? "Salvar edição" : "Criar missão";
+  document.querySelector(".mission-form-panel").classList.toggle("editing", isEditing);
+}
+
+function setDeadlineFromMission(mission) {
+  if (mission.prazo) {
+    elements.prazoTipo.value = "data_especifica";
+    setInputValue("prazo", mission.prazo);
+  } else {
+    elements.prazoTipo.value = "hoje";
+    clearInput("prazo");
+  }
+
+  updateDeadlineInputVisibility();
+}
+
+function populateMissionForm(mission) {
+  setInputValue("titulo", mission.titulo);
+  setInputValue("instrucao", mission.instrucao);
+  document.getElementById("prioridade").value = String(mission.prioridade);
+  setDeadlineFromMission(mission);
+}
+
+function enterEditMode(missionId) {
+  const mission = state.missoes.find((item) => item.id === missionId);
+  if (!mission) {
+    setFeedback(elements.missaoStatus, "Missão não encontrada na lista atual.", "error");
+    return;
+  }
+
+  state.editingMissionId = missionId;
+  populateMissionForm(mission);
+  renderMissionFormMode();
+  setFeedback(elements.missaoStatus, `Editando missão ${missionId}.`, "warning");
+  document.getElementById("missionForm").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function exitEditMode() {
+  state.editingMissionId = null;
+  renderMissionFormMode();
 }
 
 async function testHealthcheck() {
@@ -552,9 +620,50 @@ async function createMission() {
     return;
   }
 
-  setFeedback(elements.missaoStatus, "Missão criada com sucesso.", "success");
-  clearMissionForm();
+  clearMissionForm("Missão criada com sucesso.", "success");
   await loadMissions("Missão criada e lista atualizada.");
+}
+
+async function updateMission() {
+  if (!state.token || !state.usuario) {
+    setFeedback(elements.missaoStatus, "Faça login primeiro.", "error");
+    return;
+  }
+
+  if (!state.editingMissionId) {
+    return;
+  }
+
+  const payload = getMissionPayload();
+  const validationError = validateMissionPayload(payload);
+  if (validationError) {
+    setFeedback(elements.missaoStatus, validationError, "error");
+    return;
+  }
+
+  const missionId = state.editingMissionId;
+  setLoading("createMission", true);
+  setFeedback(elements.missaoStatus, `Salvando edição da missão ${missionId}...`, "warning");
+  const result = await api.updateMission(missionId, payload);
+  setLoading("createMission", false);
+
+  if (!result.ok) {
+    setFeedback(elements.missaoStatus, `Erro ao editar missão (${result.status}): ${errorDetail(result)}`, "error");
+    return;
+  }
+
+  state.editingMissionId = null;
+  clearMissionForm(`Missão ${missionId} atualizada com sucesso.`, "success");
+  await loadMissions(`Missão ${missionId} atualizada.`);
+}
+
+function submitMissionForm() {
+  if (state.editingMissionId) {
+    updateMission();
+    return;
+  }
+
+  createMission();
 }
 
 async function loadMissions(successMessage = null) {
@@ -632,11 +741,16 @@ async function removeMission(missionId) {
     return;
   }
 
+  if (state.editingMissionId === missionId) {
+    clearMissionForm();
+  }
+
   await loadMissions(`Missão ${missionId} apagada.`);
 }
 
 function clearMissions() {
   state.missoes = [];
+  clearMissionForm();
   renderMissionList();
 }
 
@@ -664,6 +778,10 @@ function handleMissionAction(event) {
     loadMissionHistory(missionId);
   }
 
+  if (action === "editar") {
+    enterEditMode(missionId);
+  }
+
   if (action === "remover") {
     removeMission(missionId);
   }
@@ -684,13 +802,14 @@ function bindEvents() {
   });
   document.getElementById("missionForm").addEventListener("submit", (event) => {
     event.preventDefault();
-    createMission();
+    submitMissionForm();
   });
 
   elements.resetApiUrlButton.addEventListener("click", resetApiUrl);
   elements.healthcheckButton.addEventListener("click", testHealthcheck);
   elements.loadMeButton.addEventListener("click", loadCurrentUser);
-  document.getElementById("clearMissionFormButton").addEventListener("click", clearMissionForm);
+  document.getElementById("clearMissionFormButton").addEventListener("click", () => clearMissionForm());
+  elements.cancelMissionEditButton.addEventListener("click", () => clearMissionForm());
   elements.listMissionsButton.addEventListener("click", () => loadMissions());
   elements.clearMissionsButton.addEventListener("click", clearMissions);
   document.getElementById("restoreSessionButton").addEventListener("click", restoreSession);
@@ -707,6 +826,7 @@ function init() {
   bindEvents();
   hydrateApiUrl();
   updateDeadlineInputVisibility();
+  renderMissionFormMode();
   restoreSession();
   renderSession();
   renderMissionList();

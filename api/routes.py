@@ -3,7 +3,12 @@ import os
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.schemas import LoginPayload, MissaoCreatePayload, RegistroPayload
+from api.schemas import (
+    LoginPayload,
+    MissaoCreatePayload,
+    MissaoUpdatePayload,
+    RegistroPayload,
+)
 from core_exceptions import MissaoNaoEncontrada
 from db_config import get_connection_string
 from repositorio_postgres import RepositorioPostgres
@@ -131,6 +136,26 @@ def listar_missoes(
     return [missao.to_dict() for missao in missao_service.listar_missoes(usuario=usuario)]
 
 
+@router.patch("/missoes/{missao_id}")
+def editar_missao(
+    missao_id: int,
+    payload: MissaoUpdatePayload,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missao = missao_service.editar_missao(
+            missao_id,
+            payload.model_dump(exclude_unset=True),
+            usuario=usuario,
+        )
+    except MissaoNaoEncontrada as erro:
+        raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except ValueError as erro:
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    return missao.to_dict()
+
+
 @router.patch("/missoes/{missao_id}/concluir")
 def concluir_missao(
     missao_id: int,
@@ -161,11 +186,11 @@ def remover_missao(
 @router.get("/missoes/{missao_id}/historico")
 def listar_historico(
     missao_id: int,
-    _usuario=Depends(get_current_user),
+    usuario=Depends(get_current_user),
     missao_service: MissaoService = Depends(get_missao_service),
 ):
     try:
-        eventos = missao_service.listar_historico(missao_id)
+        eventos = missao_service.listar_historico(missao_id, usuario=usuario)
     except MissaoNaoEncontrada as erro:
         raise HTTPException(status_code=404, detail=str(erro)) from erro
 

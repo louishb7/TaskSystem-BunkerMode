@@ -139,11 +139,11 @@
         </details>
       </section>
 
-      <aside class="panel mission-form-panel" aria-labelledby="createMissionTitle">
+      <aside class="panel mission-form-panel" aria-labelledby="missionFormTitle">
         <div class="panel-heading">
           <div>
-            <h2 id="createMissionTitle">Criar missão</h2>
-            <p class="subtitle">Defina uma ação executável para o Soldier.</p>
+            <h2 id="missionFormTitle">Criar missão</h2>
+            <p id="missionFormSubtitle" class="subtitle">Defina uma ação executável para o Soldier.</p>
           </div>
         </div>
 
@@ -180,7 +180,8 @@
 
           <div class="actions-row">
             <button type="submit" id="createMissionButton" class="button">Criar missão</button>
-            <button type="button" id="clearMissionFormButton" class="button secondary">Limpar</button>
+            <button type="button" id="clearMissionFormButton" class="button secondary">Limpar campos</button>
+            <button type="button" id="cancelMissionEditButton" class="button secondary hidden">Cancelar edição</button>
           </div>
           <p id="missaoStatus" class="feedback"></p>
         </form>

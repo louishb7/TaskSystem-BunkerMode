@@ -1,5 +1,9 @@
 from types import SimpleNamespace
 
+import pytest
+
+from auditoria import EventoAuditoria
+from core_exceptions import MissaoNaoEncontrada
 from missao import Missao
 from services.missao_service import MissaoService
 
@@ -32,6 +36,52 @@ class RepositorioListagemFake:
         ]
 
 
+class RepositorioOwnershipFake:
+    def __init__(self):
+        self.missao = Missao(
+            missao_id=10,
+            titulo="Missão protegida",
+            prioridade=1,
+            prazo=None,
+            instrucao="Executar",
+        )
+        self.contexto = {"criada_por_id": 1, "responsavel_id": 1}
+        self.missao_atualizada = None
+        self.missao_removida_id = None
+        self.auditoria = [
+            EventoAuditoria(
+                evento_id=1,
+                missao_id=10,
+                usuario_id=1,
+                acao="missao_criada",
+                detalhes="Missão criada.",
+            )
+        ]
+        self.auditoria_registrada = []
+
+    def buscar_por_id(self, missao_id):
+        if missao_id == self.missao.missao_id:
+            return self.missao
+        return None
+
+    def buscar_contexto_missao(self, missao_id):
+        if missao_id == self.missao.missao_id:
+            return self.contexto
+        return None
+
+    def atualizar_missao(self, missao):
+        self.missao_atualizada = missao
+
+    def remover_missao(self, missao_id):
+        self.missao_removida_id = missao_id
+
+    def listar_auditoria_por_missao(self, missao_id):
+        return [evento for evento in self.auditoria if evento.missao_id == missao_id]
+
+    def registrar_auditoria(self, evento):
+        self.auditoria_registrada.append(evento)
+
+
 def test_listar_missoes_com_usuario_filtra_por_responsavel():
     repositorio = RepositorioListagemFake()
     service = MissaoService(repositorio)
@@ -51,3 +101,106 @@ def test_listar_missoes_sem_usuario_mantem_listagem_geral():
 
     assert repositorio.chamadas_por_responsavel == []
     assert [missao.titulo for missao in missoes] == ["Missão geral"]
+
+
+def test_usuario_pode_editar_missao_propria_e_registra_auditoria():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1)
+
+    missao = service.editar_missao(
+        10,
+        {
+            "titulo": "Missão atualizada",
+            "instrucao": "Executar com novo plano",
+            "prioridade": 3,
+            "prazo": "22-04-2026",
+        },
+        usuario=usuario,
+    )
+
+    assert missao.titulo == "Missão atualizada"
+    assert missao.instrucao == "Executar com novo plano"
+    assert missao.prioridade.value == 3
+    assert missao.prazo == "22-04-2026"
+    assert repositorio.missao_atualizada is missao
+    assert repositorio.auditoria_registrada[-1].acao == "missao_atualizada"
+    assert repositorio.auditoria_registrada[-1].usuario_id == 1
+
+
+def test_usuario_nao_pode_editar_missao_de_outro_usuario():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=2)
+
+    with pytest.raises(MissaoNaoEncontrada):
+        service.editar_missao(
+            10,
+            {"titulo": "Tentativa indevida"},
+            usuario=usuario,
+        )
+
+    assert repositorio.missao_atualizada is None
+    assert repositorio.auditoria_registrada == []
+
+
+def test_usuario_pode_concluir_apenas_missao_propria():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1)
+
+    missao = service.concluir_missao(10, usuario=usuario)
+
+    assert missao.status.value == "Concluída"
+    assert repositorio.missao_atualizada is missao
+
+
+def test_usuario_nao_pode_concluir_missao_de_outro_usuario():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=2)
+
+    with pytest.raises(MissaoNaoEncontrada):
+        service.concluir_missao(10, usuario=usuario)
+
+    assert repositorio.missao_atualizada is None
+
+
+def test_usuario_pode_remover_apenas_missao_propria():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1)
+
+    service.remover_missao(10, usuario=usuario)
+
+    assert repositorio.missao_removida_id == 10
+
+
+def test_usuario_nao_pode_remover_missao_de_outro_usuario():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=2)
+
+    with pytest.raises(MissaoNaoEncontrada):
+        service.remover_missao(10, usuario=usuario)
+
+    assert repositorio.missao_removida_id is None
+
+
+def test_usuario_pode_ver_historico_apenas_de_missao_propria():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1)
+
+    historico = service.listar_historico(10, usuario=usuario)
+
+    assert [evento.acao for evento in historico] == ["missao_criada"]
+
+
+def test_usuario_nao_pode_ver_historico_de_missao_de_outro_usuario():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=2)
+
+    with pytest.raises(MissaoNaoEncontrada):
+        service.listar_historico(10, usuario=usuario)
