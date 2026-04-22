@@ -3,147 +3,192 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BunkerMode Mission Console v4</title>
+  <title>BunkerMode Mission Console</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <main class="container">
-    <header class="hero card">
+  <main class="app-shell">
+    <header class="app-header">
       <div>
         <p class="eyebrow">BunkerMode</p>
-        <h1>Mission Console v4</h1>
-        <p class="subtitle">Interface mínima, mas já com fluxo de uso real: autenticação, criação, busca, filtros e ações por missão.</p>
+        <h1>Mission Console</h1>
+        <p class="subtitle">Planeje como General. Execute como Soldier.</p>
       </div>
-      <div class="hero-actions">
-        <button type="button" id="restoreSessionButton" class="ghost">Restaurar sessão</button>
-        <button type="button" id="logoutButton" class="danger ghost">Logout</button>
+      <div class="header-actions">
+        <button type="button" id="restoreSessionButton" class="button secondary">Restaurar sessão</button>
+        <button type="button" id="logoutButton" class="button danger secondary">Logout</button>
       </div>
     </header>
 
-    <section class="stats-grid">
-      <article class="card stat-card">
-        <p class="stat-label">Sessão</p>
-        <h2 id="sessionHeadline">Não autenticado</h2>
-        <p id="sessionStatus" class="status muted">Faça login para habilitar as ações protegidas da API.</p>
+    <section class="status-strip" aria-label="Resumo da sessão e missões">
+      <article class="summary-item summary-session">
+        <span class="summary-label">Sessão</span>
+        <strong id="sessionHeadline">Não autenticado</strong>
+        <p id="sessionStatus" class="feedback muted">Faça login para habilitar as ações protegidas da API.</p>
       </article>
-      <article class="card stat-card">
-        <p class="stat-label">Missões carregadas</p>
-        <h2 id="totalMissoes">0</h2>
-        <p class="subtitle">Total atualmente exibido na interface.</p>
+      <article class="summary-item">
+        <span class="summary-label">Exibidas</span>
+        <strong id="totalMissoes">0</strong>
       </article>
-      <article class="card stat-card">
-        <p class="stat-label">Pendentes</p>
-        <h2 id="totalPendentes">0</h2>
-        <p class="subtitle">Missões ainda não concluídas.</p>
+      <article class="summary-item">
+        <span class="summary-label">Pendentes</span>
+        <strong id="totalPendentes">0</strong>
       </article>
-      <article class="card stat-card">
-        <p class="stat-label">Concluídas</p>
-        <h2 id="totalConcluidas">0</h2>
-        <p class="subtitle">Missões concluídas pela API.</p>
+      <article class="summary-item">
+        <span class="summary-label">Concluídas</span>
+        <strong id="totalConcluidas">0</strong>
       </article>
     </section>
 
-    <section class="grid two-columns align-start">
-      <article class="card">
-        <h2>Configuração da API</h2>
-        <label>Base URL da API
-          <input id="apiUrlInput" placeholder="http://127.0.0.1:8000/api/v2" />
-        </label>
-        <div class="actions-row">
-          <button type="button" id="saveApiUrlButton">Salvar URL</button>
-          <button type="button" id="resetApiUrlButton" class="ghost">Voltar ao padrão</button>
-          <button type="button" id="healthcheckButton" class="ghost">Testar /health</button>
-        </div>
-        <p id="apiStatus" class="status muted">Usando URL padrão da API.</p>
-      </article>
-
-      <article class="card">
-        <h2>Autenticação</h2>
-        <div class="grid compact-grid">
-          <div>
-            <h3>Registro</h3>
-            <label>Usuário<input id="registroUsuario" placeholder="Seu usuário" /></label>
-            <label>Email<input id="registroEmail" placeholder="Seu email" /></label>
-            <label>Senha<input id="registroSenha" type="password" placeholder="Sua senha" /></label>
-            <button type="button" id="registerButton">Registrar</button>
-            <p id="registroStatus" class="status"></p>
-          </div>
-          <div>
-            <h3>Login</h3>
-            <label>Email<input id="loginEmail" placeholder="Seu email" /></label>
-            <label>Senha<input id="loginSenha" type="password" placeholder="Sua senha" /></label>
-            <button type="button" id="loginButton">Login</button>
-            <p id="loginStatus" class="status"></p>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <section class="grid two-columns align-start">
-      <article class="card">
-        <h2>Usuário atual</h2>
-        <div class="actions-row">
-          <button type="button" id="loadMeButton">Carregar usuário atual</button>
-        </div>
-        <pre id="meOutput">Nenhum dado carregado.</pre>
-      </article>
-
-      <article class="card">
-        <h2>Criar missão</h2>
-        <label>Título<input id="titulo" placeholder="Título da missão" /></label>
-        <label>Instrução<input id="instrucao" placeholder="Instrução da missão" /></label>
-        <label>Prazo<input id="prazo" placeholder="DD-MM-YYYY" /></label>
-        <label>Prioridade<input id="prioridade" type="number" min="1" max="3" value="1" /></label>
-        <div class="actions-row">
-          <button type="button" id="createMissionButton">Criar missão</button>
-          <button type="button" id="clearMissionFormButton" class="ghost">Limpar formulário</button>
-        </div>
-        <p id="missaoStatus" class="status"></p>
-      </article>
-    </section>
-
-    <section class="card">
-      <div class="section-header">
+    <section class="panel compact-panel">
+      <div class="panel-heading">
         <div>
-          <h2>Missões</h2>
-          <p class="subtitle">Agora com busca, filtros e ações diretamente nos cards.</p>
-        </div>
-        <div class="actions-row">
-          <button type="button" id="listMissionsButton">Atualizar lista</button>
-          <button type="button" id="clearMissionsButton" class="ghost">Limpar lista</button>
+          <h2>Configuração e Acesso</h2>
+          <p class="subtitle">Sessão, API e autenticação em um só lugar.</p>
         </div>
       </div>
 
-      <div class="toolbar">
-        <label>Buscar por título ou instrução
-          <input id="searchInput" placeholder="Ex.: crítica, operação, reunião..." />
-        </label>
-        <label>Status
-          <select id="statusFilter">
-            <option value="todas">Todas</option>
-            <option value="pendente">Pendentes</option>
-            <option value="concluida">Concluídas</option>
-          </select>
-        </label>
-        <label>Ordenação
-          <select id="sortFilter">
-            <option value="prioridade">Prioridade</option>
-            <option value="titulo">Título</option>
-            <option value="prazo">Prazo</option>
-          </select>
-        </label>
-      </div>
+      <div class="settings-grid">
+        <form id="apiForm" class="form-stack">
+          <label for="apiUrlInput">Base URL da API</label>
+          <div class="inline-control">
+            <input id="apiUrlInput" placeholder="http://127.0.0.1:8000/api/v2" />
+            <button type="submit" id="saveApiUrlButton" class="button">Salvar</button>
+          </div>
+          <div class="actions-row">
+            <button type="button" id="resetApiUrlButton" class="button secondary">Voltar ao padrão</button>
+            <button type="button" id="healthcheckButton" class="button secondary">Testar /health</button>
+          </div>
+          <p id="apiStatus" class="feedback muted">Usando URL padrão da API.</p>
+        </form>
 
-      <p id="missoesStatus" class="status muted">Nenhuma missão carregada.</p>
-      <div id="missionList" class="mission-list empty-state">Nenhuma missão carregada.</div>
+        <form id="registerForm" class="form-stack">
+          <h3>Registro</h3>
+          <label for="registroUsuario">Usuário</label>
+          <input id="registroUsuario" placeholder="Seu usuário" autocomplete="username" />
+          <label for="registroEmail">Email</label>
+          <input id="registroEmail" placeholder="Seu email" autocomplete="email" />
+          <label for="registroSenha">Senha</label>
+          <input id="registroSenha" type="password" placeholder="Sua senha" autocomplete="new-password" />
+          <button type="submit" id="registerButton" class="button">Registrar</button>
+          <p id="registroStatus" class="feedback"></p>
+        </form>
+
+        <form id="loginForm" class="form-stack">
+          <h3>Login</h3>
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" placeholder="Seu email" autocomplete="email" />
+          <label for="loginSenha">Senha</label>
+          <input id="loginSenha" type="password" placeholder="Sua senha" autocomplete="current-password" />
+          <div class="actions-row">
+            <button type="submit" id="loginButton" class="button">Login</button>
+            <button type="button" id="loadMeButton" class="button secondary">Carregar usuário</button>
+          </div>
+          <p id="loginStatus" class="feedback"></p>
+        </form>
+      </div>
 
       <details class="debug-panel">
-        <summary>Ver JSON bruto</summary>
-        <pre id="missoesOutput">Nenhuma missão carregada.</pre>
+        <summary>Usuário atual / resposta bruta</summary>
+        <pre id="meOutput">Nenhum dado carregado.</pre>
       </details>
+    </section>
+
+    <section class="mission-workspace">
+      <section class="panel mission-list-panel" aria-labelledby="missionsTitle">
+        <div class="panel-heading">
+          <div>
+            <h2 id="missionsTitle">Missões</h2>
+            <p class="subtitle">Lista operacional do usuário autenticado.</p>
+          </div>
+          <div class="actions-row">
+            <button type="button" id="listMissionsButton" class="button">Atualizar</button>
+            <button type="button" id="clearMissionsButton" class="button secondary">Limpar</button>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="field">
+            <label for="searchInput">Buscar</label>
+            <input id="searchInput" placeholder="Título ou instrução" />
+          </div>
+          <div class="field">
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter">
+              <option value="todas">Todas</option>
+              <option value="pendente">Pendentes</option>
+              <option value="concluida">Concluídas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sortFilter">Ordenação</label>
+            <select id="sortFilter">
+              <option value="prioridade">Prioridade</option>
+              <option value="titulo">Título</option>
+              <option value="prazo">Prazo</option>
+            </select>
+          </div>
+        </div>
+
+        <p id="missoesStatus" class="feedback muted">Nenhuma missão carregada.</p>
+        <div id="missionList" class="mission-list empty-state">Nenhuma missão carregada.</div>
+
+        <details class="debug-panel">
+          <summary>Ver JSON bruto</summary>
+          <pre id="missoesOutput">Nenhuma missão carregada.</pre>
+        </details>
+      </section>
+
+      <aside class="panel mission-form-panel" aria-labelledby="createMissionTitle">
+        <div class="panel-heading">
+          <div>
+            <h2 id="createMissionTitle">Criar missão</h2>
+            <p class="subtitle">Defina uma ação executável para o Soldier.</p>
+          </div>
+        </div>
+
+        <form id="missionForm" class="form-stack">
+          <label for="titulo">Título</label>
+          <input id="titulo" placeholder="Ex.: Revisar plano semanal" />
+
+          <label for="instrucao">Instrução</label>
+          <textarea id="instrucao" rows="4" placeholder="Descreva exatamente o que deve ser feito"></textarea>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="prazoTipo">Prazo</label>
+              <select id="prazoTipo">
+                <option value="hoje">Hoje</option>
+                <option value="amanha">Amanhã</option>
+                <option value="todo_dia">Todo dia</option>
+                <option value="data_especifica">Data específica</option>
+              </select>
+            </div>
+            <div id="prazoDataField" class="field hidden">
+              <label for="prazo">Data específica</label>
+              <input id="prazo" placeholder="DD-MM-YYYY" />
+            </div>
+            <div class="field">
+              <label for="prioridade">Prioridade</label>
+              <select id="prioridade">
+                <option value="1">Alta</option>
+                <option value="2">Média</option>
+                <option value="3">Baixa</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="actions-row">
+            <button type="submit" id="createMissionButton" class="button">Criar missão</button>
+            <button type="button" id="clearMissionFormButton" class="button secondary">Limpar</button>
+          </div>
+          <p id="missaoStatus" class="feedback"></p>
+        </form>
+      </aside>
     </section>
   </main>
 
+  <script src="./api.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

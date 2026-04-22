@@ -8,6 +8,13 @@ const state = {
   usuario: null,
   missoes: [],
   apiUrl: localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL,
+  loading: {
+    api: false,
+    auth: false,
+    missions: false,
+    createMission: false,
+    activeMissionId: null,
+  },
 };
 
 const elements = {
@@ -28,10 +35,27 @@ const elements = {
   searchInput: document.getElementById("searchInput"),
   statusFilter: document.getElementById("statusFilter"),
   sortFilter: document.getElementById("sortFilter"),
+  prazoTipo: document.getElementById("prazoTipo"),
+  prazoDataField: document.getElementById("prazoDataField"),
+  saveApiUrlButton: document.getElementById("saveApiUrlButton"),
+  resetApiUrlButton: document.getElementById("resetApiUrlButton"),
+  healthcheckButton: document.getElementById("healthcheckButton"),
+  registerButton: document.getElementById("registerButton"),
+  loginButton: document.getElementById("loginButton"),
+  loadMeButton: document.getElementById("loadMeButton"),
+  createMissionButton: document.getElementById("createMissionButton"),
+  listMissionsButton: document.getElementById("listMissionsButton"),
+  clearMissionsButton: document.getElementById("clearMissionsButton"),
 };
 
-function setStatus(element, text, variant = "muted") {
-  element.className = `status ${variant}`;
+const api = createApiClient({
+  getBaseUrl: () => state.apiUrl,
+  getToken: () => state.token,
+  onUnauthorized: handleUnauthorized,
+});
+
+function setFeedback(element, text, variant = "muted") {
+  element.className = `feedback ${variant}`;
   element.innerText = text;
 }
 
@@ -39,301 +63,222 @@ function setOutput(element, data) {
   element.innerText = typeof data === "string" ? data : JSON.stringify(data, null, 2);
 }
 
-function clearElementValue(id) {
+function getInputValue(id) {
+  return document.getElementById(id).value.trim();
+}
+
+function clearInput(id) {
   document.getElementById(id).value = "";
 }
 
-function getCurrentApiUrl() {
-  return state.apiUrl;
+function setLoading(key, value) {
+  state.loading[key] = value;
+  updateButtons();
+}
+
+function setActiveMissionLoading(missionId) {
+  state.loading.activeMissionId = missionId;
+  updateMissionActionButtons();
+}
+
+function updateButtons() {
+  const isAuthenticated = Boolean(state.token && state.usuario);
+
+  elements.healthcheckButton.disabled = state.loading.api;
+  elements.registerButton.disabled = state.loading.auth;
+  elements.loginButton.disabled = state.loading.auth;
+  elements.loadMeButton.disabled = !state.token || state.loading.auth;
+  elements.createMissionButton.disabled = !isAuthenticated || state.loading.createMission;
+  elements.listMissionsButton.disabled = !state.token || state.loading.missions;
+  elements.clearMissionsButton.disabled = state.loading.missions;
+}
+
+function updateMissionActionButtons() {
+  elements.missionList.querySelectorAll("button[data-id]").forEach((button) => {
+    button.disabled = Number(button.dataset.id) === state.loading.activeMissionId;
+  });
+}
+
+function errorDetail(result) {
+  return result.data?.detail || "erro desconhecido";
+}
+
+function normalizeStatus(status) {
+  return String(status || "").toLowerCase();
+}
+
+function isMissionDone(mission) {
+  return normalizeStatus(mission.status).includes("conclu");
+}
+
+function getPriorityLabel(priority) {
+  const labels = {
+    1: "Alta",
+    2: "Média",
+    3: "Baixa",
+  };
+  return labels[priority] || String(priority);
+}
+
+function formatDateForApi(date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+function addDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function getSelectedDeadline() {
+  const deadlineType = elements.prazoTipo.value;
+
+  if (deadlineType === "data_especifica") {
+    return getInputValue("prazo");
+  }
+
+  if (deadlineType === "amanha") {
+    return formatDateForApi(addDays(new Date(), 1));
+  }
+
+  return formatDateForApi(new Date());
+}
+
+function updateDeadlineInputVisibility() {
+  const isSpecificDate = elements.prazoTipo.value === "data_especifica";
+  elements.prazoDataField.classList.toggle("hidden", !isSpecificDate);
+
+  if (!isSpecificDate) {
+    clearInput("prazo");
+  }
+}
+
+function createElement(tag, className, text) {
+  const element = document.createElement(tag);
+  if (className) {
+    element.className = className;
+  }
+  if (text !== undefined) {
+    element.innerText = text;
+  }
+  return element;
+}
+
+function appendChildren(parent, children) {
+  children.forEach((child) => parent.appendChild(child));
 }
 
 function hydrateApiUrl() {
   elements.apiUrlInput.value = state.apiUrl;
-  setStatus(elements.apiStatus, `API configurada para ${state.apiUrl}`, "muted");
+  setFeedback(elements.apiStatus, `API configurada para ${state.apiUrl}`, "muted");
 }
 
 function saveApiUrl() {
   const value = elements.apiUrlInput.value.trim();
   if (!value) {
-    setStatus(elements.apiStatus, "Informe uma URL válida da API.", "error");
+    setFeedback(elements.apiStatus, "Informe uma URL válida da API.", "error");
     return;
   }
+
   state.apiUrl = value.replace(/\/$/, "");
   localStorage.setItem(API_URL_KEY, state.apiUrl);
-  setStatus(elements.apiStatus, `API atualizada para ${state.apiUrl}`, "success");
+  setFeedback(elements.apiStatus, `API atualizada para ${state.apiUrl}`, "success");
 }
 
 function resetApiUrl() {
   state.apiUrl = DEFAULT_API_URL;
   localStorage.setItem(API_URL_KEY, state.apiUrl);
   hydrateApiUrl();
-  setStatus(elements.apiStatus, "URL da API restaurada para o padrão.", "success");
+  setFeedback(elements.apiStatus, "URL da API restaurada para o padrão.", "success");
 }
 
-function salvarSessao(token, usuario) {
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USER_KEY, JSON.stringify(usuario));
+function saveSession(token, usuario) {
   state.token = token;
   state.usuario = usuario;
-  atualizarStatusSessao();
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(usuario));
+  renderSession();
 }
 
-function limparSessao() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+function clearSession() {
   state.token = null;
   state.usuario = null;
   state.missoes = [];
-  atualizarStatusSessao();
-  atualizarResumoMissoes([]);
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  renderSession();
+  renderMissionList();
 }
 
-function atualizarStatusSessao() {
-  if (state.token && state.usuario) {
-    elements.sessionHeadline.innerText = state.usuario.usuario;
-    setStatus(
-      elements.sessionStatus,
-      `Autenticado como ${state.usuario.usuario} (id=${state.usuario.id}).`,
-      "success"
-    );
-    return;
-  }
-  elements.sessionHeadline.innerText = "Não autenticado";
-  setStatus(elements.sessionStatus, "Faça login para habilitar as ações protegidas da API.", "muted");
+function handleUnauthorized() {
+  clearSession();
+  setFeedback(elements.loginStatus, "Sessão expirada. Faça login novamente.", "error");
 }
 
-function restaurarSessao() {
+function restoreSession() {
   const token = localStorage.getItem(TOKEN_KEY);
   const usuarioJson = localStorage.getItem(USER_KEY);
 
   if (!token || !usuarioJson) {
-    limparSessao();
-    setStatus(elements.loginStatus, "Nenhuma sessão salva encontrada.", "muted");
+    clearSession();
+    setFeedback(elements.loginStatus, "Nenhuma sessão salva encontrada.", "muted");
     return;
   }
 
   try {
-    const usuario = JSON.parse(usuarioJson);
     state.token = token;
-    state.usuario = usuario;
-    atualizarStatusSessao();
-    setStatus(elements.loginStatus, `Sessão restaurada para ${usuario.usuario}.`, "success");
+    state.usuario = JSON.parse(usuarioJson);
+    renderSession();
+    renderMissionList();
+    setFeedback(elements.loginStatus, `Sessão restaurada para ${state.usuario.usuario}.`, "success");
   } catch {
-    limparSessao();
-    setStatus(elements.loginStatus, "Sessão salva inválida. Faça login novamente.", "error");
+    clearSession();
+    setFeedback(elements.loginStatus, "Sessão salva inválida. Faça login novamente.", "error");
   }
 }
 
-function getAuthHeaders() {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${state.token}`,
-  };
-}
-
-async function parseResponse(response) {
-  if (response.status === 204) {
-    return { ok: true, status: 204, data: null };
-  }
-
-  try {
-    const data = await response.json();
-    return { ok: response.ok, status: response.status, data };
-  } catch {
-    return {
-      ok: response.ok,
-      status: response.status,
-      data: { detail: "Resposta inválida ou vazia do servidor." },
-    };
-  }
-}
-
-async function request(path, options = {}) {
-  const response = await fetch(`${getCurrentApiUrl()}${path}`, options);
-  const result = await parseResponse(response);
-
-  if (result.status === 401) {
-    limparSessao();
-    renderizarMissoes();
-  }
-
-  return result;
-}
-
-async function testarHealthcheck() {
-  setStatus(elements.apiStatus, "Testando healthcheck...", "warning");
-  const result = await request("/health");
-
-  if (!result.ok) {
-    setStatus(
-      elements.apiStatus,
-      `Healthcheck falhou (${result.status}): ${result.data.detail || "erro desconhecido"}`,
-      "error"
+function renderSession() {
+  if (state.token && state.usuario) {
+    elements.sessionHeadline.innerText = state.usuario.usuario;
+    setFeedback(
+      elements.sessionStatus,
+      `Autenticado como ${state.usuario.usuario} (id=${state.usuario.id}).`,
+      "success"
     );
-    return;
+  } else {
+    elements.sessionHeadline.innerText = "Não autenticado";
+    setFeedback(elements.sessionStatus, "Faça login para habilitar as ações protegidas da API.", "muted");
   }
 
-  setStatus(elements.apiStatus, `Healthcheck OK em ${getCurrentApiUrl()}`, "success");
+  updateButtons();
 }
 
-async function registrar() {
-  const usuario = document.getElementById("registroUsuario").value.trim();
-  const email = document.getElementById("registroEmail").value.trim();
-  const senha = document.getElementById("registroSenha").value;
-
-  if (!usuario || !email || !senha) {
-    setStatus(elements.registroStatus, "Preencha usuário, email e senha.", "error");
-    return;
-  }
-
-  const result = await request("/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ usuario, email, senha }),
-  });
-
-  if (!result.ok) {
-    setStatus(
-      elements.registroStatus,
-      `Erro no registro (${result.status}): ${result.data.detail || "erro desconhecido"}`,
-      "error"
-    );
-    return;
-  }
-
-  setStatus(elements.registroStatus, "Usuário registrado com sucesso.", "success");
-  setOutput(elements.meOutput, result.data);
-  clearElementValue("registroUsuario");
-  clearElementValue("registroEmail");
-  clearElementValue("registroSenha");
-}
-
-async function login() {
-  const email = document.getElementById("loginEmail").value.trim();
-  const senha = document.getElementById("loginSenha").value;
-
-  if (!email || !senha) {
-    setStatus(elements.loginStatus, "Preencha email e senha.", "error");
-    return;
-  }
-
-  const result = await request("/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, senha }),
-  });
-
-  if (!result.ok) {
-    setStatus(elements.loginStatus, `Erro no login (${result.status}): ${result.data.detail || "erro desconhecido"}`, "error");
-    return;
-  }
-
-  salvarSessao(result.data.access_token, result.data.usuario);
-  setStatus(elements.loginStatus, "Login realizado com sucesso.", "success");
-  setOutput(elements.meOutput, result.data.usuario);
-  clearElementValue("loginSenha");
-}
-
-async function carregarUsuarioAtual() {
-  if (!state.token) {
-    setOutput(elements.meOutput, "Faça login primeiro.");
-    return;
-  }
-
-  const result = await request("/usuarios/me", {
-    headers: { Authorization: `Bearer ${state.token}` },
-  });
-
-  if (!result.ok) {
-    setOutput(elements.meOutput, `Erro (${result.status}): ${result.data.detail || "erro desconhecido"}`);
-    return;
-  }
-
-  state.usuario = result.data;
-  localStorage.setItem(USER_KEY, JSON.stringify(result.data));
-  atualizarStatusSessao();
-  setOutput(elements.meOutput, result.data);
-}
-
-function clearMissionForm() {
-  clearElementValue("titulo");
-  clearElementValue("instrucao");
-  clearElementValue("prazo");
-  document.getElementById("prioridade").value = "1";
-  setStatus(elements.missaoStatus, "Formulário limpo.", "muted");
-}
-
-async function criarMissao() {
-  if (!state.token || !state.usuario) {
-    setStatus(elements.missaoStatus, "Faça login primeiro.", "error");
-    return;
-  }
-
-  const titulo = document.getElementById("titulo").value.trim();
-  const instrucao = document.getElementById("instrucao").value.trim();
-  const prazo = document.getElementById("prazo").value.trim();
-  const prioridade = Number(document.getElementById("prioridade").value);
-
-  if (!titulo || !instrucao || !prazo) {
-    setStatus(elements.missaoStatus, "Preencha título, instrução e prazo.", "error");
-    return;
-  }
-
-  const payload = {
-    titulo,
-    instrucao,
-    prazo,
-    prioridade,
-    responsavel_id: state.usuario.id,
-  };
-
-  const result = await request("/missoes", {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(payload),
-  });
-
-  if (!result.ok) {
-    setStatus(
-      elements.missaoStatus,
-      `Erro ao criar missão (${result.status}): ${result.data.detail || "erro desconhecido"}`,
-      "error"
-    );
-    return;
-  }
-
-  setStatus(elements.missaoStatus, "Missão criada com sucesso.", "success");
-  clearMissionForm();
-  await listarMissoes();
-}
-
-function normalizarStatus(status) {
-  return String(status || "").toLowerCase();
-}
-
-function filtrarMissoes() {
+function getFilteredMissions() {
   const search = elements.searchInput.value.trim().toLowerCase();
   const statusFilter = elements.statusFilter.value;
   const sortFilter = elements.sortFilter.value;
 
-  let missoes = [...state.missoes];
+  let missions = [...state.missoes];
 
   if (search) {
-    missoes = missoes.filter((missao) => {
-      const haystack = `${missao.titulo} ${missao.instrucao}`.toLowerCase();
+    missions = missions.filter((mission) => {
+      const haystack = `${mission.titulo} ${mission.instrucao}`.toLowerCase();
       return haystack.includes(search);
     });
   }
 
   if (statusFilter === "pendente") {
-    missoes = missoes.filter((missao) => !normalizarStatus(missao.status).includes("conclu"));
+    missions = missions.filter((mission) => !isMissionDone(mission));
   }
 
   if (statusFilter === "concluida") {
-    missoes = missoes.filter((missao) => normalizarStatus(missao.status).includes("conclu"));
+    missions = missions.filter(isMissionDone);
   }
 
-  missoes.sort((a, b) => {
+  missions.sort((a, b) => {
     if (sortFilter === "titulo") {
       return a.titulo.localeCompare(b.titulo, "pt-BR");
     }
@@ -345,208 +290,426 @@ function filtrarMissoes() {
     return Number(a.prioridade) - Number(b.prioridade);
   });
 
-  return missoes;
+  return missions;
 }
 
-function atualizarResumoMissoes(missoes) {
-  const concluidas = missoes.filter((missao) => normalizarStatus(missao.status).includes("conclu")).length;
-  const pendentes = missoes.length - concluidas;
-  elements.totalMissoes.innerText = String(missoes.length);
-  elements.totalPendentes.innerText = String(pendentes);
-  elements.totalConcluidas.innerText = String(concluidas);
+function renderMissionSummary(missions) {
+  const done = missions.filter(isMissionDone).length;
+  elements.totalMissoes.innerText = String(missions.length);
+  elements.totalPendentes.innerText = String(missions.length - done);
+  elements.totalConcluidas.innerText = String(done);
 }
 
-function criarBadgeStatus(status) {
-  const normalized = normalizarStatus(status);
-  const badgeClass = normalized.includes("conclu") ? "done" : "pending";
-  return `<span class="badge ${badgeClass}">${status}</span>`;
+function renderEmptyMissionList(message, statusText = "Nenhuma missão carregada.", variant = "muted") {
+  elements.missionList.className = "mission-list empty-state";
+  elements.missionList.innerText = message;
+  setFeedback(elements.missoesStatus, statusText, variant);
 }
 
-function renderizarMissoes() {
-  const missoesFiltradas = filtrarMissoes();
-  atualizarResumoMissoes(missoesFiltradas);
+function renderStatusBadge(mission) {
+  const badge = createElement("span", `badge ${isMissionDone(mission) ? "done" : "pending"}`);
+  badge.innerText = mission.status;
+  return badge;
+}
+
+function createMissionAction(label, action, missionId, className = "button secondary") {
+  const button = createElement("button", className, label);
+  button.type = "button";
+  button.dataset.action = action;
+  button.dataset.id = String(missionId);
+
+  if (state.loading.activeMissionId === missionId) {
+    button.disabled = true;
+  }
+
+  return button;
+}
+
+function renderMissionItem(mission) {
+  const card = createElement("article", `mission-card ${isMissionDone(mission) ? "done" : ""}`);
+  const header = createElement("div", "mission-header");
+  const titleGroup = createElement("div");
+  const title = createElement("h3", "mission-title", mission.titulo);
+  const id = createElement("span", "mission-id", `ID ${mission.id}`);
+  const meta = createElement("div", "mission-meta");
+  const description = createElement("p", "mission-description", mission.instrucao);
+  const actions = createElement("div", "mission-actions");
+  const history = createElement("pre", "history-output");
+
+  history.id = `history-${mission.id}`;
+  history.innerText = "Histórico ainda não carregado.";
+
+  appendChildren(titleGroup, [title, id]);
+  appendChildren(header, [titleGroup, renderStatusBadge(mission)]);
+  appendChildren(meta, [
+    createElement("span", "pill", `Prioridade ${getPriorityLabel(mission.prioridade)}`),
+    createElement("span", "pill", `Prazo ${mission.prazo || "sem prazo"}`),
+  ]);
+
+  if (!isMissionDone(mission)) {
+    actions.appendChild(createMissionAction("Concluir", "concluir", mission.id, "button"));
+  }
+  actions.appendChild(createMissionAction("Histórico", "historico", mission.id));
+  actions.appendChild(createMissionAction("Apagar", "remover", mission.id, "button danger secondary"));
+
+  appendChildren(card, [header, meta, description, actions, history]);
+  return card;
+}
+
+function renderMissionList() {
+  const filteredMissions = getFilteredMissions();
+  renderMissionSummary(filteredMissions);
+  setOutput(elements.missoesOutput, state.missoes.length ? state.missoes : "Nenhuma missão carregada.");
 
   if (!state.token) {
-    elements.missionList.className = "mission-list empty-state";
-    elements.missionList.innerText = "Faça login para carregar missões.";
-    setStatus(elements.missoesStatus, "Nenhuma missão carregada.", "muted");
-    setOutput(elements.missoesOutput, "Nenhuma missão carregada.");
+    renderEmptyMissionList("Faça login para carregar missões.");
+    return;
+  }
+
+  if (state.loading.missions) {
+    renderEmptyMissionList("Carregando missões...", "Carregando missões...", "warning");
     return;
   }
 
   if (!state.missoes.length) {
-    elements.missionList.className = "mission-list empty-state";
-    elements.missionList.innerText = "Nenhuma missão carregada.";
-    setStatus(elements.missoesStatus, "Nenhuma missão carregada.", "muted");
-    setOutput(elements.missoesOutput, "Nenhuma missão carregada.");
+    renderEmptyMissionList("Nenhuma missão carregada.");
     return;
   }
 
-  if (!missoesFiltradas.length) {
-    elements.missionList.className = "mission-list empty-state";
-    elements.missionList.innerText = "Nenhuma missão corresponde aos filtros atuais.";
-    setStatus(elements.missoesStatus, "0 missões após aplicar filtros.", "warning");
-    setOutput(elements.missoesOutput, state.missoes);
+  if (!filteredMissions.length) {
+    renderEmptyMissionList(
+      "Nenhuma missão corresponde aos filtros atuais.",
+      "0 missões após aplicar filtros.",
+      "warning"
+    );
     return;
   }
 
   elements.missionList.className = "mission-list";
   elements.missionList.innerHTML = "";
-  setStatus(elements.missoesStatus, `${missoesFiltradas.length} missão(ões) exibida(s).`, "success");
-  setOutput(elements.missoesOutput, state.missoes);
-
-  missoesFiltradas.forEach((missao) => {
-    const card = document.createElement("article");
-    card.className = "mission-card";
-    card.innerHTML = `
-      <div class="mission-header">
-        <div>
-          <h3>${missao.titulo}</h3>
-          <p class="subtitle">ID ${missao.id}</p>
-        </div>
-        ${criarBadgeStatus(missao.status)}
-      </div>
-      <div class="mission-meta">
-        <span>Prioridade: ${missao.prioridade}</span>
-        <span>Prazo: ${missao.prazo ?? "sem prazo"}</span>
-      </div>
-      <p class="mission-description">${missao.instrucao}</p>
-      <div class="mission-actions">
-        <button type="button" data-action="concluir" data-id="${missao.id}">Concluir</button>
-        <button type="button" class="ghost" data-action="historico" data-id="${missao.id}">Histórico</button>
-        <button type="button" class="danger" data-action="remover" data-id="${missao.id}">Apagar</button>
-      </div>
-      <pre class="history-output" id="history-${missao.id}">Histórico ainda não carregado.</pre>
-    `;
-    elements.missionList.appendChild(card);
+  filteredMissions.forEach((mission) => {
+    elements.missionList.appendChild(renderMissionItem(mission));
   });
+  setFeedback(elements.missoesStatus, `${filteredMissions.length} missão(ões) exibida(s).`, "success");
 }
 
-async function listarMissoes() {
-  if (!state.token) {
-    renderizarMissoes();
+function getMissionPayload() {
+  return {
+    titulo: getInputValue("titulo"),
+    instrucao: getInputValue("instrucao"),
+    prazo: getSelectedDeadline(),
+    prioridade: Number(document.getElementById("prioridade").value),
+    responsavel_id: state.usuario.id,
+  };
+}
+
+function validateMissionPayload(payload) {
+  if (!payload.titulo || !payload.instrucao) {
+    return "Preencha título e instrução.";
+  }
+
+  if (elements.prazoTipo.value === "data_especifica") {
+    if (!payload.prazo) {
+      return "Informe a data específica no formato DD-MM-YYYY.";
+    }
+
+    if (!/^\d{2}-\d{2}-\d{4}$/.test(payload.prazo)) {
+      return "Use o formato DD-MM-YYYY para a data específica.";
+    }
+  }
+
+  if (![1, 2, 3].includes(payload.prioridade)) {
+    return "Escolha uma prioridade válida.";
+  }
+
+  return null;
+}
+
+function clearMissionForm() {
+  clearInput("titulo");
+  clearInput("instrucao");
+  clearInput("prazo");
+  elements.prazoTipo.value = "hoje";
+  updateDeadlineInputVisibility();
+  document.getElementById("prioridade").value = "1";
+  setFeedback(elements.missaoStatus, "Formulário limpo.", "muted");
+}
+
+async function testHealthcheck() {
+  setLoading("api", true);
+  setFeedback(elements.apiStatus, "Testando healthcheck...", "warning");
+
+  const result = await api.healthcheck();
+  setLoading("api", false);
+
+  if (!result.ok) {
+    setFeedback(elements.apiStatus, `Healthcheck falhou (${result.status}): ${errorDetail(result)}`, "error");
     return;
   }
 
-  setStatus(elements.missoesStatus, "Carregando missões...", "warning");
-  const result = await request("/missoes", {
-    headers: { Authorization: `Bearer ${state.token}` },
-  });
+  setFeedback(elements.apiStatus, `Healthcheck OK em ${state.apiUrl}`, "success");
+}
+
+async function registerUser() {
+  const payload = {
+    usuario: getInputValue("registroUsuario"),
+    email: getInputValue("registroEmail"),
+    senha: document.getElementById("registroSenha").value,
+  };
+
+  if (!payload.usuario || !payload.email || !payload.senha) {
+    setFeedback(elements.registroStatus, "Preencha usuário, email e senha.", "error");
+    return;
+  }
+
+  setLoading("auth", true);
+  setFeedback(elements.registroStatus, "Registrando usuário...", "warning");
+  const result = await api.register(payload);
+  setLoading("auth", false);
 
   if (!result.ok) {
-    setOutput(elements.missoesOutput, `Erro (${result.status}): ${result.data.detail || "erro desconhecido"}`);
-    setStatus(elements.missoesStatus, `Erro ao listar missões (${result.status}).`, "error");
+    setFeedback(elements.registroStatus, `Erro no registro (${result.status}): ${errorDetail(result)}`, "error");
+    return;
+  }
+
+  setFeedback(elements.registroStatus, "Usuário registrado com sucesso.", "success");
+  setOutput(elements.meOutput, result.data);
+  clearInput("registroUsuario");
+  clearInput("registroEmail");
+  clearInput("registroSenha");
+}
+
+async function login() {
+  const payload = {
+    email: getInputValue("loginEmail"),
+    senha: document.getElementById("loginSenha").value,
+  };
+
+  if (!payload.email || !payload.senha) {
+    setFeedback(elements.loginStatus, "Preencha email e senha.", "error");
+    return;
+  }
+
+  setLoading("auth", true);
+  setFeedback(elements.loginStatus, "Autenticando...", "warning");
+  const result = await api.login(payload);
+  setLoading("auth", false);
+
+  if (!result.ok) {
+    setFeedback(elements.loginStatus, `Erro no login (${result.status}): ${errorDetail(result)}`, "error");
+    return;
+  }
+
+  saveSession(result.data.access_token, result.data.usuario);
+  setFeedback(elements.loginStatus, "Login realizado com sucesso.", "success");
+  setOutput(elements.meOutput, result.data.usuario);
+  clearInput("loginSenha");
+  await loadMissions();
+}
+
+async function loadCurrentUser() {
+  if (!state.token) {
+    setOutput(elements.meOutput, "Faça login primeiro.");
+    return;
+  }
+
+  setLoading("auth", true);
+  setOutput(elements.meOutput, "Carregando usuário...");
+  const result = await api.getCurrentUser();
+  setLoading("auth", false);
+
+  if (!result.ok) {
+    setOutput(elements.meOutput, `Erro (${result.status}): ${errorDetail(result)}`);
+    return;
+  }
+
+  state.usuario = result.data;
+  localStorage.setItem(USER_KEY, JSON.stringify(result.data));
+  renderSession();
+  setOutput(elements.meOutput, result.data);
+}
+
+async function createMission() {
+  if (!state.token || !state.usuario) {
+    setFeedback(elements.missaoStatus, "Faça login primeiro.", "error");
+    return;
+  }
+
+  const payload = getMissionPayload();
+  const validationError = validateMissionPayload(payload);
+  if (validationError) {
+    setFeedback(elements.missaoStatus, validationError, "error");
+    return;
+  }
+
+  setLoading("createMission", true);
+  setFeedback(elements.missaoStatus, "Criando missão...", "warning");
+  const result = await api.createMission(payload);
+  setLoading("createMission", false);
+
+  if (!result.ok) {
+    setFeedback(elements.missaoStatus, `Erro ao criar missão (${result.status}): ${errorDetail(result)}`, "error");
+    return;
+  }
+
+  setFeedback(elements.missaoStatus, "Missão criada com sucesso.", "success");
+  clearMissionForm();
+  await loadMissions("Missão criada e lista atualizada.");
+}
+
+async function loadMissions(successMessage = null) {
+  if (!state.token) {
+    renderMissionList();
+    return;
+  }
+
+  setLoading("missions", true);
+  renderMissionList();
+  const result = await api.listMissions();
+  setLoading("missions", false);
+
+  if (!result.ok) {
+    setOutput(elements.missoesOutput, `Erro (${result.status}): ${errorDetail(result)}`);
+    setFeedback(elements.missoesStatus, `Erro ao listar missões (${result.status}): ${errorDetail(result)}`, "error");
     return;
   }
 
   state.missoes = result.data;
-  renderizarMissoes();
+  renderMissionList();
+
+  if (successMessage) {
+    setFeedback(elements.missoesStatus, successMessage, "success");
+  }
 }
 
-async function concluirMissao(missaoId) {
-  const result = await request(`/missoes/${missaoId}/concluir`, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${state.token}` },
-  });
+async function completeMission(missionId) {
+  setActiveMissionLoading(missionId);
+  setFeedback(elements.missoesStatus, `Concluindo missão ${missionId}...`, "warning");
+  const result = await api.completeMission(missionId);
+  setActiveMissionLoading(null);
 
   if (!result.ok) {
-    setStatus(elements.missoesStatus, `Erro ao concluir missão (${result.status}): ${result.data.detail || "erro desconhecido"}`, "error");
+    setFeedback(elements.missoesStatus, `Erro ao concluir missão (${result.status}): ${errorDetail(result)}`, "error");
     return;
   }
 
-  setStatus(elements.missoesStatus, `Missão ${missaoId} concluída.`, "success");
-  await listarMissoes();
+  await loadMissions(`Missão ${missionId} concluída.`);
 }
 
-async function carregarHistorico(missaoId) {
-  const output = document.getElementById(`history-${missaoId}`);
-  output.innerText = "Carregando histórico...";
+async function loadMissionHistory(missionId) {
+  const output = document.getElementById(`history-${missionId}`);
+  if (!output) {
+    return;
+  }
 
-  const result = await request(`/missoes/${missaoId}/historico`, {
-    headers: { Authorization: `Bearer ${state.token}` },
-  });
+  output.classList.add("visible");
+  output.innerText = "Carregando histórico...";
+  setActiveMissionLoading(missionId);
+  const result = await api.getMissionHistory(missionId);
+  setActiveMissionLoading(null);
 
   if (!result.ok) {
-    output.innerText = `Erro (${result.status}): ${result.data.detail || "erro desconhecido"}`;
+    output.innerText = `Erro (${result.status}): ${errorDetail(result)}`;
     return;
   }
 
   output.innerText = JSON.stringify(result.data, null, 2);
 }
 
-async function removerMissao(missaoId) {
-  const confirmou = window.confirm(`Deseja realmente apagar a missão ${missaoId}?`);
-  if (!confirmou) {
+async function removeMission(missionId) {
+  const confirmed = window.confirm(`Deseja realmente apagar a missão ${missionId}?`);
+  if (!confirmed) {
     return;
   }
 
-  const result = await request(`/missoes/${missaoId}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${state.token}` },
-  });
+  setActiveMissionLoading(missionId);
+  setFeedback(elements.missoesStatus, `Apagando missão ${missionId}...`, "warning");
+  const result = await api.removeMission(missionId);
+  setActiveMissionLoading(null);
 
   if (!result.ok) {
-    setStatus(elements.missoesStatus, `Erro ao apagar missão (${result.status}): ${result.data.detail || "erro desconhecido"}`, "error");
+    setFeedback(elements.missoesStatus, `Erro ao apagar missão (${result.status}): ${errorDetail(result)}`, "error");
     return;
   }
 
-  setStatus(elements.missoesStatus, `Missão ${missaoId} apagada.`, "success");
-  await listarMissoes();
+  await loadMissions(`Missão ${missionId} apagada.`);
 }
 
-function limparMissoes() {
+function clearMissions() {
   state.missoes = [];
-  renderizarMissoes();
+  renderMissionList();
 }
 
 function logout() {
-  limparSessao();
-  setStatus(elements.loginStatus, "Logout realizado.", "success");
+  clearSession();
+  setFeedback(elements.loginStatus, "Logout realizado.", "success");
   setOutput(elements.meOutput, "Nenhum dado carregado.");
-  limparMissoes();
-  setStatus(elements.missaoStatus, "", "muted");
+  setFeedback(elements.missaoStatus, "", "muted");
 }
 
-document.getElementById("saveApiUrlButton").addEventListener("click", saveApiUrl);
-document.getElementById("resetApiUrlButton").addEventListener("click", resetApiUrl);
-document.getElementById("healthcheckButton").addEventListener("click", testarHealthcheck);
-document.getElementById("registerButton").addEventListener("click", registrar);
-document.getElementById("loginButton").addEventListener("click", login);
-document.getElementById("loadMeButton").addEventListener("click", carregarUsuarioAtual);
-document.getElementById("createMissionButton").addEventListener("click", criarMissao);
-document.getElementById("clearMissionFormButton").addEventListener("click", clearMissionForm);
-document.getElementById("listMissionsButton").addEventListener("click", listarMissoes);
-document.getElementById("clearMissionsButton").addEventListener("click", limparMissoes);
-document.getElementById("restoreSessionButton").addEventListener("click", restaurarSessao);
-document.getElementById("logoutButton").addEventListener("click", logout);
-elements.searchInput.addEventListener("input", renderizarMissoes);
-elements.statusFilter.addEventListener("change", renderizarMissoes);
-elements.sortFilter.addEventListener("change", renderizarMissoes);
-
-elements.missionList.addEventListener("click", async (event) => {
+function handleMissionAction(event) {
   const button = event.target.closest("button[data-action]");
   if (!button) {
     return;
   }
 
-  const missaoId = Number(button.dataset.id);
+  const missionId = Number(button.dataset.id);
   const action = button.dataset.action;
 
   if (action === "concluir") {
-    await concluirMissao(missaoId);
-    return;
+    completeMission(missionId);
   }
 
   if (action === "historico") {
-    await carregarHistorico(missaoId);
-    return;
+    loadMissionHistory(missionId);
   }
 
   if (action === "remover") {
-    await removerMissao(missaoId);
+    removeMission(missionId);
   }
-});
+}
 
-hydrateApiUrl();
-restaurarSessao();
-renderizarMissoes();
+function bindEvents() {
+  document.getElementById("apiForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveApiUrl();
+  });
+  document.getElementById("registerForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    registerUser();
+  });
+  document.getElementById("loginForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    login();
+  });
+  document.getElementById("missionForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    createMission();
+  });
+
+  elements.resetApiUrlButton.addEventListener("click", resetApiUrl);
+  elements.healthcheckButton.addEventListener("click", testHealthcheck);
+  elements.loadMeButton.addEventListener("click", loadCurrentUser);
+  document.getElementById("clearMissionFormButton").addEventListener("click", clearMissionForm);
+  elements.listMissionsButton.addEventListener("click", () => loadMissions());
+  elements.clearMissionsButton.addEventListener("click", clearMissions);
+  document.getElementById("restoreSessionButton").addEventListener("click", restoreSession);
+  document.getElementById("logoutButton").addEventListener("click", logout);
+
+  elements.searchInput.addEventListener("input", renderMissionList);
+  elements.statusFilter.addEventListener("change", renderMissionList);
+  elements.sortFilter.addEventListener("change", renderMissionList);
+  elements.prazoTipo.addEventListener("change", updateDeadlineInputVisibility);
+  elements.missionList.addEventListener("click", handleMissionAction);
+}
+
+function init() {
+  bindEvents();
+  hydrateApiUrl();
+  updateDeadlineInputVisibility();
+  restoreSession();
+  renderSession();
+  renderMissionList();
+}
+
+init();

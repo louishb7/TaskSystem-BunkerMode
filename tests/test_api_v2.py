@@ -163,6 +163,60 @@ def test_usuario_autenticado_cria_e_lista_missao():
         env.cleanup()
 
 
+def test_listagem_de_missoes_retorna_apenas_missoes_do_usuario_autenticado():
+    env = AmbienteV2()
+    try:
+        usuario_a = env.registrar("Henrique", "henrique@email.com").json()
+        usuario_b = env.registrar("Soldado", "soldado@email.com").json()
+        token_a = env.login("henrique@email.com").json()["access_token"]
+        token_b = env.login("soldado@email.com").json()["access_token"]
+
+        resposta_a = env.client.post(
+            "/api/v2/missoes",
+            headers={"Authorization": f"Bearer {token_a}"},
+            json={
+                "titulo": "Missão do Henrique",
+                "prioridade": 1,
+                "prazo": "20-04-2026",
+                "instrucao": "Executar operação A",
+                "responsavel_id": usuario_a["id"],
+            },
+        )
+        resposta_b = env.client.post(
+            "/api/v2/missoes",
+            headers={"Authorization": f"Bearer {token_b}"},
+            json={
+                "titulo": "Missão do Soldado",
+                "prioridade": 1,
+                "prazo": "21-04-2026",
+                "instrucao": "Executar operação B",
+                "responsavel_id": usuario_b["id"],
+            },
+        )
+        assert resposta_a.status_code == 201
+        assert resposta_b.status_code == 201
+
+        lista_a = env.client.get(
+            "/api/v2/missoes",
+            headers={"Authorization": f"Bearer {token_a}"},
+        )
+        lista_b = env.client.get(
+            "/api/v2/missoes",
+            headers={"Authorization": f"Bearer {token_b}"},
+        )
+
+        assert lista_a.status_code == 200
+        assert [missao["titulo"] for missao in lista_a.json()] == [
+            "Missão do Henrique"
+        ]
+        assert lista_b.status_code == 200
+        assert [missao["titulo"] for missao in lista_b.json()] == [
+            "Missão do Soldado"
+        ]
+    finally:
+        env.cleanup()
+
+
 def test_login_retorna_401_com_email_invalido():
     env = AmbienteV2()
     try:

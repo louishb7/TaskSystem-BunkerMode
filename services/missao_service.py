@@ -39,6 +39,10 @@ class MissaoService:
         return missao
 
     def listar_missoes(self, usuario=None) -> list[Missao]:
+        if usuario is not None:
+            return list(
+                self.repositorio.carregar_dados_por_responsavel(usuario.usuario_id)
+            )
         return list(self.repositorio.carregar_dados())
 
     def concluir_missao(self, missao_id: int, usuario=None) -> Missao:

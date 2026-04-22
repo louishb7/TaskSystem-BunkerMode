@@ -1,12 +1,30 @@
 import os
+from pathlib import Path
 
 
 class ConfiguracaoBancoError(ValueError):
     """Erro levantado quando a configuração do banco está incompleta."""
 
 
+def carregar_env_local(caminho: str = ".env") -> None:
+    """Carrega variáveis simples de .env sem sobrescrever o ambiente."""
+    arquivo_env = Path(caminho)
+    if not arquivo_env.exists():
+        return
+
+    for linha in arquivo_env.read_text().splitlines():
+        linha = linha.strip()
+        if not linha or linha.startswith("#") or "=" not in linha:
+            continue
+
+        chave, valor = linha.split("=", maxsplit=1)
+        os.environ.setdefault(chave.strip(), valor.strip().strip("\"'"))
+
+
 def get_connection_string():
     """Monta a string de conexão do PostgreSQL a partir de variáveis de ambiente."""
+    carregar_env_local()
+
     database_url = os.getenv("BUNKERMODE_DB_URL")
     if database_url:
         return database_url
