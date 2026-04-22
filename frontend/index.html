@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BunkerMode Test UI v3</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">BunkerMode</p>
+        <h1>Test UI v3</h1>
+        <p class="subtitle">Integração real com a API, sessão persistida e gerenciamento básico de missões.</p>
+      </div>
+      <section class="card compact">
+        <h2>Estado da sessão</h2>
+        <p id="sessionStatus" class="status muted">Não autenticado.</p>
+        <div class="actions-row">
+          <button type="button" id="restoreSessionButton">Restaurar sessão</button>
+          <button type="button" id="logoutButton" class="danger ghost">Logout</button>
+        </div>
+      </section>
+    </header>
+
+    <section class="grid two-columns">
+      <article class="card">
+        <h2>Registro</h2>
+        <label>Usuário<input id="registroUsuario" placeholder="Seu usuário" /></label>
+        <label>Email<input id="registroEmail" placeholder="Seu email" /></label>
+        <label>Senha<input id="registroSenha" type="password" placeholder="Sua senha" /></label>
+        <button type="button" id="registerButton">Registrar</button>
+        <p id="registroStatus" class="status"></p>
+      </article>
+
+      <article class="card">
+        <h2>Login</h2>
+        <label>Email<input id="loginEmail" placeholder="Seu email" /></label>
+        <label>Senha<input id="loginSenha" type="password" placeholder="Sua senha" /></label>
+        <button type="button" id="loginButton">Login</button>
+        <p id="loginStatus" class="status"></p>
+      </article>
+    </section>
+
+    <section class="grid two-columns align-start">
+      <article class="card">
+        <h2>Usuário atual</h2>
+        <div class="actions-row">
+          <button type="button" id="loadMeButton">Carregar usuário atual</button>
+        </div>
+        <pre id="meOutput">Nenhum dado carregado.</pre>
+      </article>
+
+      <article class="card">
+        <h2>Criar missão</h2>
+        <label>Título<input id="titulo" placeholder="Título da missão" /></label>
+        <label>Instrução<input id="instrucao" placeholder="Instrução da missão" /></label>
+        <label>Prazo<input id="prazo" placeholder="DD-MM-YYYY" /></label>
+        <label>Prioridade<input id="prioridade" type="number" min="1" max="3" value="1" /></label>
+        <button type="button" id="createMissionButton">Criar missão</button>
+        <p id="missaoStatus" class="status"></p>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>Missões</h2>
+          <p class="subtitle">Liste, conclua, veja histórico e apague missões pela interface.</p>
+        </div>
+        <div class="actions-row">
+          <button type="button" id="listMissionsButton">Atualizar lista</button>
+          <button type="button" id="clearMissionsButton" class="ghost">Limpar saída</button>
+        </div>
+      </div>
+
+      <p id="missoesStatus" class="status muted">Nenhuma missão carregada.</p>
+      <div id="missionList" class="mission-list empty-state">Nenhuma missão carregada.</div>
+      <h3>JSON bruto</h3>
+      <pre id="missoesOutput">Nenhuma missão carregada.</pre>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

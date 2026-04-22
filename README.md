@@ -54,3 +54,36 @@ python -m api
 ```bash
 pytest
 ```
+
+## Interface mínima de teste (v3)
+
+A pasta `frontend/` contém uma interface simples em HTML, CSS e JavaScript puro para testar a API manualmente.
+
+Arquivos:
+- `frontend/index.html`
+- `frontend/style.css`
+- `frontend/app.js`
+
+Fluxos disponíveis:
+- registrar usuário
+- login
+- restaurar sessão com `localStorage`
+- consultar `/usuarios/me`
+- criar missão
+- listar missões
+- concluir missão
+- ver histórico de uma missão
+- apagar missão
+
+Abra o arquivo `frontend/index.html` no navegador e mantenha a API rodando localmente em `http://127.0.0.1:8000`.
+
+## Exclusão de missão
+
+Novo endpoint disponível:
+
+- `DELETE /api/v2/missoes/{missao_id}`
+
+Comportamento:
+- retorna `204 No Content` ao apagar com sucesso
+- retorna `404` se a missão não existir
+- exige autenticação por Bearer token

@@ -146,6 +146,18 @@ def concluir_missao(
     return missao.to_dict()
 
 
+@router.delete("/missoes/{missao_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remover_missao(
+    missao_id: int,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missao_service.remover_missao(missao_id, usuario=usuario)
+    except MissaoNaoEncontrada as erro:
+        raise HTTPException(status_code=404, detail=str(erro)) from erro
+
+
 @router.get("/missoes/{missao_id}/historico")
 def listar_historico(
     missao_id: int,

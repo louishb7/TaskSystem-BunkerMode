@@ -250,6 +250,42 @@ def test_healthcheck_retorna_status_ok():
         env.cleanup()
 
 
+
+def test_usuario_autenticado_remove_missao():
+    env = AmbienteV2()
+    try:
+        usuario = env.registrar("Henrique", "henrique@email.com")
+        token = env.login("henrique@email.com").json()["access_token"]
+
+        resposta_criacao = env.client.post(
+            "/api/v2/missoes",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "titulo": "Missão removível",
+                "prioridade": 1,
+                "prazo": "20-04-2026",
+                "instrucao": "Remover depois",
+                "responsavel_id": usuario.json()["id"],
+            },
+        )
+        assert resposta_criacao.status_code == 201
+        missao_id = resposta_criacao.json()["id"]
+
+        resposta_delete = env.client.delete(
+            f"/api/v2/missoes/{missao_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resposta_delete.status_code == 204
+
+        resposta_lista = env.client.get(
+            "/api/v2/missoes",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resposta_lista.status_code == 200
+        assert resposta_lista.json() == []
+    finally:
+        env.cleanup()
+
 def test_preflight_cors_retorna_headers_permitidos():
     env = AmbienteV2()
     try:

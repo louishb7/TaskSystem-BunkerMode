@@ -60,6 +60,18 @@ class MissaoService:
         self.buscar_por_id(missao_id)
         return self.repositorio.listar_auditoria_por_missao(missao_id)
 
+    def remover_missao(self, missao_id: int, usuario=None) -> None:
+        missao = self.buscar_por_id(missao_id)
+        self.repositorio.remover_missao(missao_id)
+
+        if usuario is not None:
+            self._registrar_auditoria(
+                missao_id=missao_id,
+                usuario_id=usuario.usuario_id,
+                acao="missao_removida",
+                detalhes=f"Missão '{missao.titulo}' removida.",
+            )
+
     def buscar_por_id(self, missao_id: int) -> Missao:
         missao = self.repositorio.buscar_por_id(missao_id)
         if missao is None:
