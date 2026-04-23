@@ -4,9 +4,9 @@ from fastapi.testclient import TestClient
 
 from api.routes import app, get_auth_service, get_missao_service
 from auditoria import EventoAuditoria
+from missao import Missao, StatusMissao
 from services.auth_service import AuthService
 from services.missao_service import MissaoService
-from missao import Missao, StatusMissao
 
 
 class RepositorioV2Fake:
@@ -159,6 +159,36 @@ def test_usuario_autenticado_cria_e_lista_missao():
         assert resposta_lista.status_code == 200
         assert len(resposta_lista.json()) == 1
         assert resposta_lista.json()[0]["titulo"] == "Missão crítica"
+    finally:
+        env.cleanup()
+
+
+def test_usuario_autenticado_cria_missao_sem_responsavel_explicitamente():
+    env = AmbienteV2()
+    try:
+        env.registrar("Henrique", "henrique@email.com")
+        token = env.login("henrique@email.com").json()["access_token"]
+
+        resposta_criacao = env.client.post(
+            "/api/v2/missoes",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "titulo": "Missão sem responsável no payload",
+                "prioridade": 1,
+                "prazo": "20-04-2026",
+                "instrucao": "Executar operação",
+            },
+        )
+        assert resposta_criacao.status_code == 201
+
+        resposta_lista = env.client.get(
+            "/api/v2/missoes",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resposta_lista.status_code == 200
+        assert [missao["titulo"] for missao in resposta_lista.json()] == [
+            "Missão sem responsável no payload"
+        ]
     finally:
         env.cleanup()
 
@@ -459,7 +489,6 @@ def test_healthcheck_retorna_status_ok():
         assert resposta.json() == {"status": "ok"}
     finally:
         env.cleanup()
-
 
 
 def test_usuario_autenticado_remove_missao():

@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import time
+from binascii import Error as BinasciiError
 from typing import Any
 
 
@@ -57,7 +58,13 @@ def decode_token(token: str) -> dict[str, Any]:
     if not hmac.compare_digest(signature, expected_signature):
         raise ValueError("Token inválido.")
 
-    payload = json.loads(base64.urlsafe_b64decode(encoded.encode("utf-8")).decode("utf-8"))
+    try:
+        payload = json.loads(
+            base64.urlsafe_b64decode(encoded.encode("utf-8")).decode("utf-8")
+        )
+    except (BinasciiError, UnicodeDecodeError, json.JSONDecodeError) as erro:
+        raise ValueError("Token inválido.") from erro
+
     if payload.get("exp", 0) < int(time.time()):
         raise ValueError("Token expirado.")
     return payload

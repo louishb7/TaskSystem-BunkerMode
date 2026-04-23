@@ -58,8 +58,6 @@ def get_current_user(
         raise HTTPException(status_code=401, detail=str(erro)) from erro
 
 
-
-
 @router.get("/health")
 def healthcheck():
     return {"status": "ok"}

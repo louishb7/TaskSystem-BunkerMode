@@ -23,7 +23,7 @@ class MissaoService:
         self.repositorio.adicionar_missao(missao)
 
         if usuario is not None:
-            responsavel_id = dados.get("responsavel_id")
+            responsavel_id = dados.get("responsavel_id") or usuario.usuario_id
             self.repositorio.salvar_contexto_missao(
                 missao.missao_id,
                 usuario.usuario_id,
