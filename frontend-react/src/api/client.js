@@ -51,6 +51,16 @@ export const api = {
   login(payload) {
     return request("/auth/login", { method: "POST", body: payload });
   },
+  getCurrentUser(token) {
+    return request("/usuarios/me", { token });
+  },
+  saveGeneralName(token, payload) {
+    return request("/usuarios/me/nome-general", {
+      token,
+      method: "PATCH",
+      body: payload,
+    });
+  },
   listMissions(token) {
     return request("/missoes", { token });
   },
@@ -62,6 +72,12 @@ export const api = {
   },
   completeMission(token, missionId) {
     return request(`/missoes/${missionId}/concluir`, { token, method: "PATCH" });
+  },
+  toggleMissionDecision(token, missionId) {
+    return request(`/missoes/${missionId}/toggle-decided`, {
+      token,
+      method: "PATCH",
+    });
   },
   deleteMission(token, missionId) {
     return request(`/missoes/${missionId}`, { token, method: "DELETE" });

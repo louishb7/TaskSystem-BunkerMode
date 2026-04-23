@@ -38,3 +38,12 @@ class AuthService:
         if usuario is None:
             raise UsuarioNaoEncontrado("Usuário autenticado não encontrado.")
         return usuario
+
+    def definir_nome_general(self, usuario_id: int, nome_general: str) -> Usuario:
+        usuario = self.repositorio.buscar_usuario_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNaoEncontrado("Usuário autenticado não encontrado.")
+
+        usuario.definir_nome_general(nome_general)
+        self.repositorio.atualizar_nome_general(usuario.usuario_id, usuario.nome_general)
+        return usuario

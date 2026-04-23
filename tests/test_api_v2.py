@@ -69,6 +69,11 @@ class RepositorioV2Fake:
                 return usuario
         return None
 
+    def atualizar_nome_general(self, usuario_id, nome_general):
+        usuario = self.buscar_usuario_por_id(usuario_id)
+        if usuario is not None:
+            usuario.definir_nome_general(nome_general)
+
     def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id):
         self.contextos[missao_id] = {
             "criada_por_id": criada_por_id,
@@ -129,6 +134,31 @@ def test_auth_register_login_e_me_v2():
         )
         assert resposta_me.status_code == 200
         assert resposta_me.json()["usuario"] == "Henrique"
+        assert resposta_me.json()["nome_general"] is None
+    finally:
+        env.cleanup()
+
+
+def test_usuario_define_nome_do_general_e_recebe_persistencia_no_me():
+    env = AmbienteV2()
+    try:
+        env.registrar("Henrique", "henrique@email.com")
+        token = env.login("henrique@email.com").json()["access_token"]
+
+        resposta_patch = env.client.patch(
+            "/api/v2/usuarios/me/nome-general",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"nome_general": "General Atlas"},
+        )
+        assert resposta_patch.status_code == 200
+        assert resposta_patch.json()["nome_general"] == "General Atlas"
+
+        resposta_me = env.client.get(
+            "/api/v2/usuarios/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resposta_me.status_code == 200
+        assert resposta_me.json()["nome_general"] == "General Atlas"
     finally:
         env.cleanup()
 
@@ -159,6 +189,7 @@ def test_usuario_autenticado_cria_e_lista_missao():
         assert resposta_lista.status_code == 200
         assert len(resposta_lista.json()) == 1
         assert resposta_lista.json()[0]["titulo"] == "Missão crítica"
+        assert resposta_lista.json()[0]["is_decided"] is False
     finally:
         env.cleanup()
 
@@ -364,6 +395,86 @@ def test_usuario_autenticado_conclui_missao():
         )
         assert resposta.status_code == 200
         assert resposta.json()["status"] == "Concluída"
+    finally:
+        env.cleanup()
+
+
+def test_usuario_autenticado_alterna_decisao_da_missao():
+    env = AmbienteV2()
+    try:
+        usuario = env.auth.registrar_usuario(
+            {"usuario": "Henrique", "email": "henrique@email.com", "senha": "segredo123"}
+        )
+        token = env.auth.autenticar("henrique@email.com", "segredo123")["access_token"]
+        missao = Missao(
+            titulo="Executar",
+            prioridade=2,
+            prazo="20-04-2026",
+            instrucao="Concluir missão",
+            status=StatusMissao.PENDENTE,
+        )
+        env.repo.adicionar_missao(missao)
+        env.repo.salvar_contexto_missao(
+            missao.missao_id,
+            criada_por_id=usuario.usuario_id,
+            responsavel_id=usuario.usuario_id,
+        )
+
+        resposta_ida = env.client.patch(
+            f"/api/v2/missoes/{missao.missao_id}/toggle-decided",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        resposta_volta = env.client.patch(
+            f"/api/v2/missoes/{missao.missao_id}/toggle-decided",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert resposta_ida.status_code == 200
+        assert resposta_ida.json()["is_decided"] is True
+        assert resposta_ida.json()["titulo"] == "Executar"
+        assert resposta_ida.json()["status"] == "Aguardando Recruta!"
+
+        assert resposta_volta.status_code == 200
+        assert resposta_volta.json()["is_decided"] is False
+        assert resposta_volta.json()["titulo"] == "Executar"
+        assert resposta_volta.json()["status"] == "Aguardando Recruta!"
+    finally:
+        env.cleanup()
+
+
+def test_usuario_nao_alterna_decisao_de_missao_de_outro_usuario():
+    env = AmbienteV2()
+    try:
+        dono = env.auth.registrar_usuario(
+            {"usuario": "Dono", "email": "dono@email.com", "senha": "segredo123"}
+        )
+        env.auth.registrar_usuario(
+            {"usuario": "Outro", "email": "outro@email.com", "senha": "segredo123"}
+        )
+        token_outro = env.auth.autenticar("outro@email.com", "segredo123")[
+            "access_token"
+        ]
+        missao = Missao(
+            titulo="Protegida",
+            prioridade=2,
+            prazo="20-04-2026",
+            instrucao="Somente o dono decide",
+            status=StatusMissao.PENDENTE,
+        )
+        env.repo.adicionar_missao(missao)
+        env.repo.salvar_contexto_missao(
+            missao.missao_id,
+            criada_por_id=dono.usuario_id,
+            responsavel_id=dono.usuario_id,
+        )
+
+        resposta = env.client.patch(
+            f"/api/v2/missoes/{missao.missao_id}/toggle-decided",
+            headers={"Authorization": f"Bearer {token_outro}"},
+        )
+
+        assert resposta.status_code == 404
+        assert env.repo.buscar_por_id(missao.missao_id).is_decided is False
     finally:
         env.cleanup()
 

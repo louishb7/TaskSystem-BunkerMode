@@ -84,6 +84,12 @@ class MissaoService:
 
         return missao
 
+    def alternar_decisao(self, missao_id: int, usuario=None) -> Missao:
+        missao = self._buscar_por_id_do_usuario(missao_id, usuario)
+        missao.alternar_decisao()
+        self.repositorio.atualizar_missao(missao)
+        return missao
+
     def listar_historico(self, missao_id: int, usuario=None) -> list[EventoAuditoria]:
         self._buscar_por_id_do_usuario(missao_id, usuario)
         return self.repositorio.listar_auditoria_por_missao(missao_id)

@@ -5,7 +5,9 @@ import pytest
 from auditoria import EventoAuditoria
 from core_exceptions import MissaoNaoEncontrada
 from missao import Missao
+from services.auth_service import AuthService
 from services.missao_service import MissaoService
+from usuario import Usuario
 
 
 class RepositorioListagemFake:
@@ -204,3 +206,47 @@ def test_usuario_nao_pode_ver_historico_de_missao_de_outro_usuario():
 
     with pytest.raises(MissaoNaoEncontrada):
         service.listar_historico(10, usuario=usuario)
+
+
+def test_usuario_pode_alternar_decisao_sem_afetar_outros_campos():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1)
+
+    missao = service.alternar_decisao(10, usuario=usuario)
+
+    assert missao.is_decided is True
+    assert missao.titulo == "Missão protegida"
+    assert missao.instrucao == "Executar"
+    assert missao.prioridade.value == 1
+    assert repositorio.missao_atualizada is missao
+
+
+class RepositorioUsuarioFake:
+    def __init__(self):
+        self.usuario = Usuario(
+            usuario_id=1,
+            usuario="Henrique",
+            email="henrique@email.com",
+            senha_hash="hash",
+        )
+        self.nome_atualizado = None
+
+    def buscar_usuario_por_id(self, usuario_id):
+        if usuario_id == self.usuario.usuario_id:
+            return self.usuario
+        return None
+
+    def atualizar_nome_general(self, usuario_id, nome_general):
+        self.nome_atualizado = (usuario_id, nome_general)
+        self.usuario.definir_nome_general(nome_general)
+
+
+def test_auth_service_define_nome_do_general_com_trim_e_persistencia():
+    repositorio = RepositorioUsuarioFake()
+    service = AuthService(repositorio)
+
+    usuario = service.definir_nome_general(1, "  General Atlas  ")
+
+    assert usuario.nome_general == "General Atlas"
+    assert repositorio.nome_atualizado == (1, "General Atlas")

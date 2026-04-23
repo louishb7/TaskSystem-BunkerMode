@@ -12,6 +12,10 @@ class LoginPayload(BaseModel):
     senha: str = Field(min_length=6)
 
 
+class NomeGeneralPayload(BaseModel):
+    nome_general: str = Field(min_length=1)
+
+
 class MissaoCreatePayload(BaseModel):
     titulo: str = Field(min_length=1)
     prioridade: int

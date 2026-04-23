@@ -1,3 +1,5 @@
+import React from "react";
+
 import MissionCard from "./MissionCard.jsx";
 
 export default function MissionList({
@@ -7,16 +9,26 @@ export default function MissionList({
   onComplete,
   onDelete,
   onHistory,
+  onToggleDecision,
+  togglingDecisionId,
 }) {
   if (loading) {
-    return <div className="empty-state">Carregando missões...</div>;
+    return (
+      <div className="empty-state loading-state">
+        <h3>Sincronizando o plano operacional</h3>
+        <p>Carregando missões, prioridades e sinais de decisão.</p>
+      </div>
+    );
   }
 
   if (!missions.length) {
     return (
       <div className="empty-state">
-        <h3>Nenhuma missão encontrada</h3>
-        <p>Crie uma missão ou ajuste os filtros para voltar ao plano de execução.</p>
+        <h3>Nenhuma missão em curso</h3>
+        <p>
+          O quadro operacional está vazio. Defina a próxima ordem no posto do General
+          para iniciar o ciclo de execução.
+        </p>
       </div>
     );
   }
@@ -31,6 +43,8 @@ export default function MissionList({
           onComplete={onComplete}
           onDelete={onDelete}
           onHistory={onHistory}
+          onToggleDecision={onToggleDecision}
+          togglingDecision={togglingDecisionId === mission.id}
         />
       ))}
     </div>

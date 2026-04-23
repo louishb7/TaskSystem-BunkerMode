@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 export default function AuthScreen({ onLogin, onRegister, status, loading }) {
   const [mode, setMode] = useState("login");
@@ -34,12 +34,29 @@ export default function AuthScreen({ onLogin, onRegister, status, loading }) {
   return (
     <main className="auth-page">
       <section className="auth-brand">
-        <p className="eyebrow">BunkerMode</p>
-        <h1>Missões para execução disciplinada.</h1>
+        <div className="auth-brand-mark">
+          <p className="eyebrow">BunkerMode</p>
+          <span className="auth-status-dot" />
+        </div>
+        <h1>Disciplina operacional para o que já precisa acontecer.</h1>
         <p>
-          Entre para organizar suas missões, manter foco diário e executar o que foi
-          decidido.
+          Entre no bunker para definir ordens claras, sustentar compromissos e operar
+          um plano de execução com prioridade visível.
         </p>
+        <div className="auth-principles" aria-label="Princípios do produto">
+          <div>
+            <span>Clareza</span>
+            <strong>ordens objetivas</strong>
+          </div>
+          <div>
+            <span>Foco</span>
+            <strong>menos ruído, mais execução</strong>
+          </div>
+          <div>
+            <span>Peso</span>
+            <strong>decisões ganham presença</strong>
+          </div>
+        </div>
       </section>
 
       <section className="auth-card" aria-label="Autenticação">
@@ -61,12 +78,12 @@ export default function AuthScreen({ onLogin, onRegister, status, loading }) {
         </div>
 
         <form className="form-stack" onSubmit={submit}>
-          <div>
+          <div className="auth-form-heading">
             <h2>{isLogin ? "Entrar" : "Criar conta"}</h2>
             <p className="muted">
               {isLogin
-                ? "Use suas credenciais para acessar suas missões."
-                : "Crie sua conta para operar suas missões."}
+                ? "Acesse o plano atual e retome a execução."
+                : "Abra seu acesso para começar a operar as próximas missões."}
             </p>
           </div>
 

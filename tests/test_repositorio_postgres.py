@@ -115,6 +115,7 @@ def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
                 date(2026, 4, 20),
                 "Revisar consultas",
                 "Aguardando Recruta!",
+                False,
             ),
             (
                 2,
@@ -123,6 +124,7 @@ def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
                 None,
                 "Ler rotas",
                 "Concluída",
+                True,
             ),
         ]
     )
@@ -134,8 +136,10 @@ def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
     assert [missao.missao_id for missao in missoes] == [1, 2]
     assert missoes[0].prioridade == PrioridadeMissao.ALTA
     assert missoes[0].prazo == "20-04-2026"
+    assert missoes[0].is_decided is False
     assert missoes[1].status == StatusMissao.CONCLUIDA
-    assert "ORDER BY prioridade, missao_id" in cursor.executions[0][0]
+    assert missoes[1].is_decided is True
+    assert "ORDER BY prioridade, missao_id" in cursor.executions[-1][0]
 
 
 def test_buscar_por_id_retorna_none_quando_nao_encontra(monkeypatch, repositorio):
@@ -146,7 +150,7 @@ def test_buscar_por_id_retorna_none_quando_nao_encontra(monkeypatch, repositorio
     resultado = repositorio.buscar_por_id(99)
 
     assert resultado is None
-    assert cursor.executions[0][1] == (99,)
+    assert cursor.executions[-1][1] == (99,)
 
 
 def test_adicionar_missao_atualiza_id_e_confirma_transacao(
@@ -160,12 +164,13 @@ def test_adicionar_missao_atualiza_id_e_confirma_transacao(
 
     assert missao_exemplo.missao_id == 7
     assert connection.commit_called is True
-    assert cursor.executions[0][1] == (
+    assert cursor.executions[-1][1] == (
         "Estudar persistência",
         1,
         date(2026, 4, 20),
         "Validar escrita no PostgreSQL",
         "Aguardando Recruta!",
+        False,
     )
 
 
@@ -188,6 +193,29 @@ def test_remover_missao_traduz_erro_de_escrita(monkeypatch, repositorio):
 
     with pytest.raises(rp.EscritaRepositorioError, match="Erro ao remover missão"):
         repositorio.remover_missao(4)
+
+
+def test_busca_usuario_reconstroi_nome_do_general(monkeypatch, repositorio):
+    cursor = FakeCursor(
+        fetchone_result=(1, "Henrique", "henrique@email.com", "hash", True, "General Atlas")
+    )
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
+
+    usuario = repositorio.buscar_usuario_por_id(1)
+
+    assert usuario.nome_general == "General Atlas"
+
+
+def test_atualizar_nome_general_confirma_transacao(monkeypatch, repositorio):
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
+
+    repositorio.atualizar_nome_general(3, "General Atlas")
+
+    assert connection.commit_called is True
+    assert cursor.executions[-1][1] == ("General Atlas", 3)
 
 
 @pytest.fixture
@@ -250,7 +278,9 @@ def test_repositorio_postgres_persiste_fluxo_basico_real(
     assert buscada is not None
     assert buscada.titulo == "Persistir missão real"
     assert buscada.prazo == "22-04-2026"
+    assert buscada.is_decided is False
 
+    missao.alternar_decisao()
     missao.atualizar_titulo("Persistir missão real atualizada")
     missao.concluir()
     repositorio.atualizar_missao(missao)
@@ -258,6 +288,7 @@ def test_repositorio_postgres_persiste_fluxo_basico_real(
     atualizada = repositorio.buscar_por_id(1)
     assert atualizada is not None
     assert atualizada.titulo == "Persistir missão real atualizada"
+    assert atualizada.is_decided is True
     assert atualizada.status == StatusMissao.CONCLUIDA
 
     listadas = repositorio.carregar_dados()

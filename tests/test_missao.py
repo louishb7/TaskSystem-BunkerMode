@@ -29,6 +29,7 @@ def test_criar_missao_valida():
     assert missao.prazo == "10-04-2026"
     assert missao.instrucao == "Treinar pesado"
     assert missao.status == StatusMissao.PENDENTE
+    assert missao.is_decided is False
 
 
 @pytest.mark.parametrize("id_invalido", [0, -1, "1", 1.5])
@@ -253,3 +254,19 @@ def test_nao_permitir_concluir_missao_ja_concluida(missao_base):
 
     with pytest.raises(ValueError):
         missao_base.concluir()
+
+
+def test_alternar_decisao():
+    missao = Missao(
+        missao_id=1,
+        titulo="Treinar",
+        prioridade=1,
+        prazo="10-04-2026",
+        instrucao="Treinar pesado",
+    )
+
+    missao.alternar_decisao()
+    assert missao.is_decided is True
+
+    missao.alternar_decisao()
+    assert missao.is_decided is False

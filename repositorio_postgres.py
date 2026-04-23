@@ -62,8 +62,17 @@ class RepositorioPostgres:
                 usuario TEXT NOT NULL,
                 email TEXT NOT NULL UNIQUE,
                 senha_hash TEXT NOT NULL,
-                ativo BOOLEAN NOT NULL DEFAULT TRUE
+                ativo BOOLEAN NOT NULL DEFAULT TRUE,
+                nome_general TEXT NULL
             );
+            """,
+            """
+            ALTER TABLE IF EXISTS usuarios
+            ADD COLUMN IF NOT EXISTS nome_general TEXT NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS is_decided BOOLEAN NOT NULL DEFAULT FALSE;
             """,
             """
             CREATE TABLE IF NOT EXISTS missao_contextos (
@@ -97,7 +106,7 @@ class RepositorioPostgres:
             ) from erro
 
     def _reconstruir_missao(self, linha: tuple) -> Missao:
-        missao_id, titulo, prioridade, prazo, instrucao, status = linha
+        missao_id, titulo, prioridade, prazo, instrucao, status, is_decided = linha
         return Missao(
             missao_id=missao_id,
             titulo=titulo,
@@ -105,16 +114,18 @@ class RepositorioPostgres:
             prazo=prazo,
             instrucao=instrucao,
             status=status,
+            is_decided=is_decided,
         )
 
     def _reconstruir_usuario(self, linha: tuple) -> Usuario:
-        usuario_id, usuario, email, senha_hash, ativo = linha
+        usuario_id, usuario, email, senha_hash, ativo, nome_general = linha
         return Usuario(
             usuario_id=usuario_id,
             usuario=usuario,
             email=email,
             senha_hash=senha_hash,
             ativo=ativo,
+            nome_general=nome_general,
         )
 
     def _reconstruir_evento(self, linha: tuple) -> EventoAuditoria:
@@ -129,12 +140,13 @@ class RepositorioPostgres:
         )
 
     def carregar_dados(self) -> list[Missao]:
+        self.inicializar_schema()
         try:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status
+                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided
                         FROM missoes
                         ORDER BY prioridade, missao_id;
                         """
@@ -155,7 +167,7 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
                         WHERE mc.responsavel_id = %s
@@ -173,12 +185,13 @@ class RepositorioPostgres:
         return [self._reconstruir_missao(linha) for linha in linhas]
 
     def buscar_por_id(self, missao_id: int) -> Missao | None:
+        self.inicializar_schema()
         try:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status
+                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided
                         FROM missoes
                         WHERE missao_id = %s;
                         """,
@@ -194,13 +207,14 @@ class RepositorioPostgres:
         return None if linha is None else self._reconstruir_missao(linha)
 
     def adicionar_missao(self, missao: Missao) -> None:
+        self.inicializar_schema()
         try:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO missoes (titulo, prioridade, prazo, instrucao, status)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO missoes (titulo, prioridade, prazo, instrucao, status, is_decided)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
                         (
@@ -209,6 +223,7 @@ class RepositorioPostgres:
                             missao.prazo_date,
                             missao.instrucao,
                             missao.status.value,
+                            missao.is_decided,
                         ),
                     )
                     missao_id = cursor.fetchone()[0]
@@ -222,6 +237,7 @@ class RepositorioPostgres:
         missao.atualizar_missao_id(missao_id)
 
     def atualizar_missao(self, missao: Missao) -> None:
+        self.inicializar_schema()
         try:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
@@ -232,7 +248,8 @@ class RepositorioPostgres:
                             prioridade = %s,
                             prazo = %s,
                             instrucao = %s,
-                            status = %s
+                            status = %s,
+                            is_decided = %s
                         WHERE missao_id = %s;
                         """,
                         (
@@ -241,6 +258,7 @@ class RepositorioPostgres:
                             missao.prazo_date,
                             missao.instrucao,
                             missao.status.value,
+                            missao.is_decided,
                             missao.missao_id,
                         ),
                     )
@@ -318,7 +336,11 @@ class RepositorioPostgres:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
                     cursor.execute(
-                        "SELECT usuario_id, usuario, email, senha_hash, ativo FROM usuarios WHERE email = %s;",
+                        """
+                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general
+                        FROM usuarios
+                        WHERE email = %s;
+                        """,
                         (email.strip().lower(),),
                     )
                     linha = cursor.fetchone()
@@ -336,7 +358,11 @@ class RepositorioPostgres:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
                     cursor.execute(
-                        "SELECT usuario_id, usuario, email, senha_hash, ativo FROM usuarios WHERE usuario_id = %s;",
+                        """
+                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general
+                        FROM usuarios
+                        WHERE usuario_id = %s;
+                        """,
                         (usuario_id,),
                     )
                     linha = cursor.fetchone()
@@ -347,6 +373,31 @@ class RepositorioPostgres:
                 "Erro ao buscar usuário pelo ID no banco de dados."
             ) from erro
         return None if linha is None else self._reconstruir_usuario(linha)
+
+    def atualizar_nome_general(self, usuario_id: int, nome_general: str) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        UPDATE usuarios
+                        SET nome_general = %s
+                        WHERE usuario_id = %s;
+                        """,
+                        (nome_general.strip(), usuario_id),
+                    )
+                    if cursor.rowcount == 0:
+                        raise UsuarioNaoPersistidoError(
+                            f"Usuário {usuario_id} não encontrado para atualizar o nome do General."
+                        )
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao atualizar o nome do General no banco de dados."
+            ) from erro
 
     def salvar_contexto_missao(
         self,

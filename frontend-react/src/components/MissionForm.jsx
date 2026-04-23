@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { formatDateForApi, getTomorrow } from "../utils/date.js";
 
 const emptyForm = {
@@ -87,13 +87,14 @@ export default function MissionForm({
 
   return (
     <section className={`panel mission-form ${isEditing ? "editing" : ""}`}>
-      <div className="section-heading">
+      <div className="section-heading general-heading">
         <div>
-          <h2>{isEditing ? "Editar missão" : "Criar missão"}</h2>
-          <p className="muted">
+          <p className="section-kicker">Posto do General</p>
+          <h2>{isEditing ? "Ajustar ordem ativa" : "Definir nova ordem"}</h2>
+          <p className="muted form-lead">
             {isEditing
-              ? `Atualizando missão ${editingMission.id}.`
-              : "Defina uma missão clara para execução."}
+              ? `Missão ${editingMission.id} em revisão. Mantenha a instrução precisa e executável.`
+              : "Escreva uma ordem clara, com prazo e prioridade suficientes para guiar a execução sem renegociação."}
           </p>
         </div>
       </div>
@@ -160,7 +161,7 @@ export default function MissionForm({
           <button className="button primary" type="submit" disabled={loading}>
             {loading ? "Salvando..." : isEditing ? "Salvar edição" : "Criar missão"}
           </button>
-          <button className="button secondary" type="button" onClick={clearForm}>
+          <button className="button secondary ghost-button" type="button" onClick={clearForm}>
             {isEditing ? "Cancelar edição" : "Limpar"}
           </button>
         </div>

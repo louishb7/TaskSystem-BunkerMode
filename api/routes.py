@@ -7,6 +7,7 @@ from api.schemas import (
     LoginPayload,
     MissaoCreatePayload,
     MissaoUpdatePayload,
+    NomeGeneralPayload,
     RegistroPayload,
 )
 from core_exceptions import MissaoNaoEncontrada
@@ -99,6 +100,7 @@ def login(
             "id": usuario.usuario_id,
             "usuario": usuario.usuario,
             "email": usuario.email,
+            "nome_general": usuario.nome_general,
         },
     }
 
@@ -110,6 +112,30 @@ def obter_usuario_atual(usuario=Depends(get_current_user)):
         "usuario": usuario.usuario,
         "email": usuario.email,
         "ativo": usuario.ativo,
+        "nome_general": usuario.nome_general,
+    }
+
+
+@router.patch("/usuarios/me/nome-general")
+def definir_nome_general(
+    payload: NomeGeneralPayload,
+    usuario=Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        usuario_atualizado = auth_service.definir_nome_general(
+            usuario.usuario_id,
+            payload.nome_general,
+        )
+    except (UsuarioNaoEncontrado, ValueError) as erro:
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
+
+    return {
+        "id": usuario_atualizado.usuario_id,
+        "usuario": usuario_atualizado.usuario,
+        "email": usuario_atualizado.email,
+        "ativo": usuario_atualizado.ativo,
+        "nome_general": usuario_atualizado.nome_general,
     }
 
 
@@ -166,6 +192,19 @@ def concluir_missao(
         raise HTTPException(status_code=404, detail=str(erro)) from erro
     except ValueError as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
+    return missao.to_dict()
+
+
+@router.patch("/missoes/{missao_id}/toggle-decided")
+def alternar_decisao_missao(
+    missao_id: int,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missao = missao_service.alternar_decisao(missao_id, usuario=usuario)
+    except MissaoNaoEncontrada as erro:
+        raise HTTPException(status_code=404, detail=str(erro)) from erro
     return missao.to_dict()
 
 

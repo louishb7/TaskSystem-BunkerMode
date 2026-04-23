@@ -8,12 +8,14 @@ class Usuario:
         email=None,
         senha_hash=None,
         ativo=True,
+        nome_general=None,
     ):
         self.usuario_id = self._validar_usuario_id(usuario_id)
         self.usuario = self._validar_usuario(usuario)
         self.email = self._validar_email(email)
         self.senha_hash = self._validar_senha_hash(senha_hash)
         self.ativo = self._validar_ativo(ativo)
+        self.nome_general = self._validar_nome_general(nome_general)
 
     def _validar_usuario_id(self, usuario_id):
         if usuario_id is None:
@@ -49,3 +51,16 @@ class Usuario:
         if not isinstance(ativo, bool):
             raise ValueError("Status ativo deve ser booleano.")
         return ativo
+
+    def _validar_nome_general(self, nome_general):
+        if nome_general is None:
+            return None
+        if not isinstance(nome_general, str):
+            raise ValueError("Nome do General deve ser um texto.")
+        nome_general = nome_general.strip()
+        if not nome_general:
+            raise ValueError("Nome do General é obrigatório.")
+        return nome_general
+
+    def definir_nome_general(self, nome_general):
+        self.nome_general = self._validar_nome_general(nome_general)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { api } from "./api/client.js";
 import AuthScreen from "./components/AuthScreen.jsx";
 import MissionForm from "./components/MissionForm.jsx";
@@ -48,6 +48,14 @@ function filterMissions(missions, filters) {
     filtered = filtered.filter(isDone);
   }
 
+  if (filters.decided === "decididas") {
+    filtered = filtered.filter((mission) => mission.is_decided);
+  }
+
+  if (filters.decided === "nao_decididas") {
+    filtered = filtered.filter((mission) => !mission.is_decided);
+  }
+
   filtered.sort((a, b) => {
     if (filters.sort === "titulo") {
       return a.titulo.localeCompare(b.titulo, "pt-BR");
@@ -71,16 +79,25 @@ export default function App() {
   const [filters, setFilters] = useState({
     search: "",
     status: "todas",
+    decided: "todas",
     sort: "prioridade",
   });
   const [authModeLoading, setAuthModeLoading] = useState(false);
   const [missionLoading, setMissionLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [decisionLoadingId, setDecisionLoadingId] = useState(null);
+  const [generalNameLoading, setGeneralNameLoading] = useState(false);
+  const [generalNameDraft, setGeneralNameDraft] = useState("");
+  const [profileReady, setProfileReady] = useState(() => !Boolean(localStorage.getItem(TOKEN_KEY)));
+  const [generalModalDismissed, setGeneralModalDismissed] = useState(false);
   const [authStatus, setAuthStatus] = useState(emptyStatus);
   const [missionStatus, setMissionStatus] = useState(emptyStatus);
   const [formStatus, setFormStatus] = useState(emptyStatus);
+  const [generalStatus, setGeneralStatus] = useState(emptyStatus);
 
   const authenticated = Boolean(token && user);
+  const generalNameRequired =
+    authenticated && profileReady && !user?.nome_general && !generalModalDismissed;
 
   const visibleMissions = useMemo(
     () => filterMissions(missions, filters),
@@ -98,9 +115,26 @@ export default function App() {
 
   useEffect(() => {
     if (authenticated) {
+      setProfileReady(false);
+      loadCurrentUser();
       loadMissions();
     }
   }, [authenticated]);
+
+  useEffect(() => {
+    setGeneralNameDraft(user?.nome_general || "");
+  }, [user?.nome_general]);
+
+  useEffect(() => {
+    if (user?.nome_general) {
+      setGeneralModalDismissed(false);
+    }
+  }, [user?.nome_general]);
+
+  function persistUser(nextUser) {
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+    setUser(nextUser);
+  }
 
   function clearSession() {
     localStorage.removeItem(TOKEN_KEY);
@@ -111,6 +145,9 @@ export default function App() {
     setEditingMission(null);
     setMissionStatus(emptyStatus);
     setFormStatus(emptyStatus);
+    setGeneralStatus(emptyStatus);
+    setProfileReady(true);
+    setGeneralModalDismissed(false);
   }
 
   function handleUnauthorized(result) {
@@ -139,9 +176,10 @@ export default function App() {
     }
 
     localStorage.setItem(TOKEN_KEY, result.data.access_token);
-    localStorage.setItem(USER_KEY, JSON.stringify(result.data.usuario));
     setToken(result.data.access_token);
-    setUser(result.data.usuario);
+    persistUser(result.data.usuario);
+    setProfileReady(true);
+    setGeneralModalDismissed(false);
     setAuthStatus(emptyStatus);
   }
 
@@ -186,6 +224,59 @@ export default function App() {
     setMissionStatus({
       type: successMessage ? "success" : "muted",
       message: successMessage || `${result.data.length} missão(ões) carregada(s).`,
+    });
+  }
+
+  async function loadCurrentUser() {
+    const result = await api.getCurrentUser(token);
+
+    if (handleUnauthorized(result)) {
+      return;
+    }
+
+    if (!result.ok) {
+      setProfileReady(true);
+      return;
+    }
+
+    persistUser(result.data);
+    setProfileReady(true);
+  }
+
+  async function saveGeneralName(event) {
+    event.preventDefault();
+    const trimmedName = generalNameDraft.trim();
+
+    if (!trimmedName) {
+      setGeneralStatus({ type: "error", message: "Informe o nome do General." });
+      return;
+    }
+
+    setGeneralNameLoading(true);
+    setGeneralStatus({ type: "warning", message: "Registrando o nome do General..." });
+    const result = await api.saveGeneralName(token, { nome_general: trimmedName });
+    setGeneralNameLoading(false);
+
+    if (handleUnauthorized(result)) {
+      return;
+    }
+
+    if (!result.ok) {
+      setGeneralStatus({
+        type: "error",
+        message:
+          result.status === 404
+            ? "A rota para salvar o nome de guerra não está disponível nesta API ativa. Atualize ou reinicie o backend."
+            : `Erro ao salvar o nome do General: ${result.data.detail}`,
+      });
+      return;
+    }
+
+    persistUser(result.data);
+    setGeneralStatus(emptyStatus);
+    setMissionStatus({
+      type: "success",
+      message: `General ${result.data.nome_general} pronto para operar.`,
     });
   }
 
@@ -253,6 +344,47 @@ export default function App() {
     await loadMissions("Missão concluída.");
   }
 
+  async function toggleMissionDecision(missionId) {
+    const previousMissions = missions;
+
+    setDecisionLoadingId(missionId);
+    setMissions((current) =>
+      current.map((mission) =>
+        mission.id === missionId
+          ? { ...mission, is_decided: !mission.is_decided }
+          : mission
+      )
+    );
+
+    const result = await api.toggleMissionDecision(token, missionId);
+    setDecisionLoadingId(null);
+
+    if (handleUnauthorized(result)) {
+      return;
+    }
+
+    if (!result.ok) {
+      setMissions(previousMissions);
+      setMissionStatus({
+        type: "error",
+        message: `Erro ao atualizar decisão: ${result.data.detail}`,
+      });
+      return;
+    }
+
+    setMissions((current) =>
+      current.map((mission) =>
+        mission.id === missionId ? { ...mission, ...result.data } : mission
+      )
+    );
+    setMissionStatus({
+      type: "success",
+      message: result.data.is_decided
+        ? "Missão marcada como decidida."
+        : "Missão voltou ao estado normal.",
+    });
+  }
+
   async function deleteMission(missionId) {
     const confirmed = window.confirm(`Deseja apagar a missão ${missionId}?`);
     if (!confirmed) {
@@ -278,6 +410,46 @@ export default function App() {
   }
 
   async function loadHistory(missionId) {
+    const targetMission = missions.find((mission) => mission.id === missionId);
+    if (!targetMission) {
+      return;
+    }
+
+    if (targetMission.historyOpen && !targetMission.historyLoading) {
+      setMissions((current) =>
+        current.map((mission) =>
+          mission.id === missionId
+            ? { ...mission, historyOpen: false, historyError: "" }
+            : mission
+        )
+      );
+      return;
+    }
+
+    if (targetMission.history && targetMission.history.length) {
+      setMissions((current) =>
+        current.map((mission) =>
+          mission.id === missionId
+            ? { ...mission, historyOpen: true, historyError: "" }
+            : mission
+        )
+      );
+      return;
+    }
+
+    setMissions((current) =>
+      current.map((mission) =>
+        mission.id === missionId
+          ? {
+              ...mission,
+              historyOpen: true,
+              historyLoading: true,
+              historyError: "",
+            }
+          : mission
+      )
+    );
+
     const result = await api.getMissionHistory(token, missionId);
 
     if (handleUnauthorized(result)) {
@@ -285,13 +457,32 @@ export default function App() {
     }
 
     if (!result.ok) {
-      setMissionStatus({ type: "error", message: `Erro ao carregar histórico: ${result.data.detail}` });
+      setMissions((current) =>
+        current.map((mission) =>
+          mission.id === missionId
+            ? {
+                ...mission,
+                historyOpen: true,
+                historyLoading: false,
+                historyError: `Não foi possível carregar o histórico: ${result.data.detail}`,
+              }
+            : mission
+        )
+      );
       return;
     }
 
     setMissions((current) =>
       current.map((mission) =>
-        mission.id === missionId ? { ...mission, history: result.data } : mission
+        mission.id === missionId
+          ? {
+              ...mission,
+              history: result.data,
+              historyOpen: true,
+              historyLoading: false,
+              historyError: "",
+            }
+          : mission
       )
     );
   }
@@ -310,71 +501,133 @@ export default function App() {
   return (
     <main className="app-shell">
       <header className="app-header">
-        <div>
-          <p className="eyebrow">BunkerMode</p>
-          <h1>Missões</h1>
-          <p className="muted">Autenticado como {user.usuario}.</p>
+        <div className="app-header-main">
+          <div className="app-brand-block">
+            <p className="eyebrow">BunkerMode</p>
+            <h1>General {user.nome_general || "em definição"}</h1>
+            <p className="app-header-copy">
+              Defina ordens, acompanhe pendências e mantenha a execução sob controle.
+            </p>
+          </div>
         </div>
-        <button className="button secondary" type="button" onClick={clearSession}>
-          Sair
-        </button>
+
+        <div className="app-header-side">
+          <p className="operator-line">
+            Conta ativa: <strong>{user.usuario}</strong>
+          </p>
+          <button className="button secondary subtle-button" type="button" onClick={clearSession}>
+            Encerrar sessão
+          </button>
+        </div>
       </header>
 
-      <section className="summary-grid" aria-label="Resumo de missões">
-        <article>
-          <span>Total</span>
-          <strong>{totals.all}</strong>
-        </article>
-        <article>
-          <span>Pendentes</span>
-          <strong>{totals.pending}</strong>
-        </article>
-        <article>
-          <span>Concluídas</span>
-          <strong>{totals.completed}</strong>
-        </article>
-      </section>
-
       <section className="workspace">
-        <section className="panel mission-area">
-          <div className="section-heading">
-            <div>
-              <h2>Plano de execução</h2>
-              <p className="muted">Filtre, conclua, edite ou remova missões.</p>
+        <section className="mission-column">
+          <section className="panel mission-area">
+            <div className="section-heading mission-heading">
+              <div>
+                <p className="section-kicker">Quadro operacional</p>
+                <h2>Ordens em curso</h2>
+              </div>
+              <div className="inline-summary" aria-label="Resumo operacional">
+                <div className="inline-summary-item">
+                  <span>Total</span>
+                  <strong>{totals.all}</strong>
+                </div>
+                <div className="inline-summary-item pending">
+                  <span>Pendentes</span>
+                  <strong>{totals.pending}</strong>
+                </div>
+                <div className="inline-summary-item success">
+                  <span>Concluídas</span>
+                  <strong>{totals.completed}</strong>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <MissionToolbar
-            filters={filters}
-            onChange={setFilters}
-            onRefresh={() => loadMissions()}
-            loading={missionLoading}
-          />
+            <MissionToolbar
+              filters={filters}
+              onChange={setFilters}
+              onRefresh={() => loadMissions()}
+              loading={missionLoading}
+            />
 
-          {missionStatus.message && (
-            <p className={`feedback ${missionStatus.type}`}>{missionStatus.message}</p>
-          )}
+            {missionStatus.message && (
+              <p className={`feedback ${missionStatus.type}`}>{missionStatus.message}</p>
+            )}
 
-          <MissionList
-            missions={visibleMissions}
-            loading={missionLoading}
-            onEdit={setEditingMission}
-            onComplete={completeMission}
-            onDelete={deleteMission}
-            onHistory={loadHistory}
-          />
+            <MissionList
+              missions={visibleMissions}
+              loading={missionLoading}
+              onEdit={setEditingMission}
+              onComplete={completeMission}
+              onDelete={deleteMission}
+              onHistory={loadHistory}
+              onToggleDecision={toggleMissionDecision}
+              togglingDecisionId={decisionLoadingId}
+            />
+          </section>
         </section>
 
-        <MissionForm
-          editingMission={editingMission}
-          currentUser={user}
-          loading={formLoading}
-          status={formStatus}
-          onCreate={createMission}
-          onUpdate={updateMission}
-          onCancelEdit={() => setEditingMission(null)}
-        />
+        <aside className="general-column">
+          <MissionForm
+            editingMission={editingMission}
+            currentUser={user}
+            loading={formLoading}
+            status={formStatus}
+            onCreate={createMission}
+            onUpdate={updateMission}
+            onCancelEdit={() => setEditingMission(null)}
+          />
+        </aside>
       </section>
+
+      {generalNameRequired && (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            className="modal-card general-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="general-modal-title"
+          >
+            <button
+              className="modal-close"
+              type="button"
+              aria-label="Fechar configuração do General"
+              onClick={() => setGeneralModalDismissed(true)}
+            >
+              ×
+            </button>
+            <p className="section-kicker">Identidade do General</p>
+            <h2 id="general-modal-title">Defina o nome do seu General</h2>
+            <p className="muted">
+              Antes de continuar, nomeie a sua camada de comando. Esse nome é obrigatório
+              e fica separado da conta autenticada.
+            </p>
+
+            <form className="form-stack" onSubmit={saveGeneralName}>
+              <label>
+                Nome de guerra
+                <input
+                  name="nome_general"
+                  value={generalNameDraft}
+                  onChange={(event) => setGeneralNameDraft(event.target.value)}
+                  placeholder="Digite o nome de guerra"
+                  autoFocus
+                />
+              </label>
+
+              {generalStatus.message && (
+                <p className={`feedback ${generalStatus.type}`}>{generalStatus.message}</p>
+              )}
+
+              <button className="button primary" type="submit" disabled={generalNameLoading}>
+                {generalNameLoading ? "Salvando..." : "Confirmar General"}
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

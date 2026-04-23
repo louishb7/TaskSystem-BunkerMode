@@ -31,6 +31,7 @@ class Missao:
         prazo=None,
         instrucao=None,
         status=StatusMissao.PENDENTE,
+        is_decided=False,
     ):
         self.missao_id = self._validar_missao_id(missao_id)
         self.titulo = self._validar_titulo(titulo)
@@ -38,6 +39,7 @@ class Missao:
         self._prazo = self._validar_prazo(prazo)
         self.instrucao = self._validar_instrucao(instrucao)
         self.status = self._validar_status(status)
+        self.is_decided = self._validar_is_decided(is_decided)
 
     def to_dict(self):
         return {
@@ -47,6 +49,7 @@ class Missao:
             "prazo": self.prazo,
             "instrucao": self.instrucao,
             "status": self.status.value,
+            "is_decided": self.is_decided,
         }
 
     @property
@@ -95,6 +98,10 @@ class Missao:
         if self.status == StatusMissao.CONCLUIDA:
             raise ValueError("Esta missão já está concluída.")
         self.status = StatusMissao.CONCLUIDA
+
+    def alternar_decisao(self):
+        """Alterna o marcador de compromisso psicológico."""
+        self.is_decided = not self.is_decided
 
     def _validar_missao_id(self, missao_id):
         """Garante que o ID da missão seja um inteiro positivo ou ausente."""
@@ -153,6 +160,12 @@ class Missao:
             return StatusMissao(status)
         except ValueError as erro:
             raise ValueError("Status de missão inválido.") from erro
+
+    def _validar_is_decided(self, is_decided):
+        """Garante que o marcador psicológico seja booleano."""
+        if not isinstance(is_decided, bool):
+            raise ValueError("Marcador de decisão deve ser booleano.")
+        return is_decided
 
     def _validar_titulo(self, titulo):
         """Valida e normaliza o título da missão."""
