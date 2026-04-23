@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function MissionToolbar({ filters, onChange, onRefresh, loading }) {
   function updateFilter(event) {
     onChange({

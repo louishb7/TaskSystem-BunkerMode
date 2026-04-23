@@ -1,5 +1,3 @@
-import React from "react";
-
 function isDone(mission) {
   return String(mission.status || "").toLowerCase().includes("conclu");
 }

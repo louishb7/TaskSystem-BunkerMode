@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { formatDateForApi, getTomorrow } from "../utils/date.js";
 
 const emptyForm = {
@@ -126,7 +126,6 @@ export default function MissionForm({
             <select name="prazoTipo" value={form.prazoTipo} onChange={updateField}>
               <option value="hoje">Hoje</option>
               <option value="amanha">Amanhã</option>
-              <option value="todo_dia">Todo dia</option>
               <option value="data_especifica">Data específica</option>
             </select>
           </label>

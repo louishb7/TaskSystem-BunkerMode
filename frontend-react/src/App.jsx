@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "./api/client.js";
 import AuthScreen from "./components/AuthScreen.jsx";
 import MissionForm from "./components/MissionForm.jsx";
@@ -134,7 +134,7 @@ export default function App() {
     setAuthModeLoading(false);
 
     if (!result.ok) {
-      setAuthStatus({ type: "error", message: `Erro no login: ${result.data.detail}` });
+      setAuthStatus({ type: "error", message: `Erro ao entrar: ${result.data.detail}` });
       return;
     }
 
@@ -157,7 +157,7 @@ export default function App() {
     setAuthModeLoading(false);
 
     if (!result.ok) {
-      setAuthStatus({ type: "error", message: `Erro no cadastro: ${result.data.detail}` });
+      setAuthStatus({ type: "error", message: `Erro ao criar conta: ${result.data.detail}` });
       return;
     }
 
@@ -316,7 +316,7 @@ export default function App() {
           <p className="muted">Autenticado como {user.usuario}.</p>
         </div>
         <button className="button secondary" type="button" onClick={clearSession}>
-          Logout
+          Sair
         </button>
       </header>
 

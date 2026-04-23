@@ -6,6 +6,7 @@ Backend em FastAPI para autenticação, criação de missões, listagem de miss�
 - FastAPI
 - PostgreSQL com psycopg 3
 - Pytest
+- React com Vite
 
 ## Variáveis de ambiente
 - `BUNKERMODE_DB_URL` ou
@@ -55,7 +56,7 @@ python -m api
 pytest
 ```
 
-## Frontend React
+## Frontend
 
 A interface principal fica em `frontend-react/`.
 
@@ -82,8 +83,6 @@ Fluxos disponíveis:
 - histórico de missão
 - exclusão de missão
 
-A pasta `frontend/` foi mantida temporariamente como referência legada da versão HTML/CSS/JS puro.
-
 ## Exclusão de missão
 
 Novo endpoint disponível:
@@ -94,4 +93,3 @@ Comportamento:
 - retorna `204 No Content` ao apagar com sucesso
 - retorna `404` se a missão não existir
 - exige autenticação por Bearer token
-

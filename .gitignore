@@ -16,6 +16,7 @@ venv/
 # Pytest / coverage
 .pytest_cache/
 .coverage
+coverage/
 htmlcov/
 
 # IDE
@@ -24,6 +25,9 @@ htmlcov/
 
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Node / frontend
 node_modules/
@@ -33,7 +37,9 @@ frontend-react/dist/
 # Temp
 *.tmp
 *.swp
+.DS_Store
 
 # Build
 dist/
 build/
+frontend-react/.vite/

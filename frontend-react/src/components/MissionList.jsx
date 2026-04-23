@@ -1,4 +1,3 @@
-import React from "react";
 import MissionCard from "./MissionCard.jsx";
 
 export default function MissionList({

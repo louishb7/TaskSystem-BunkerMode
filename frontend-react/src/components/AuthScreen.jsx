@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 export default function AuthScreen({ onLogin, onRegister, status, loading }) {
   const [mode, setMode] = useState("login");
@@ -49,14 +49,14 @@ export default function AuthScreen({ onLogin, onRegister, status, loading }) {
             className={isLogin ? "active" : ""}
             onClick={() => setMode("login")}
           >
-            Login
+            Entrar
           </button>
           <button
             type="button"
             className={!isLogin ? "active" : ""}
             onClick={() => setMode("register")}
           >
-            Cadastro
+            Criar conta
           </button>
         </div>
 
@@ -66,7 +66,7 @@ export default function AuthScreen({ onLogin, onRegister, status, loading }) {
             <p className="muted">
               {isLogin
                 ? "Use suas credenciais para acessar suas missões."
-                : "Crie um usuário para começar a operar o sistema."}
+                : "Crie sua conta para operar suas missões."}
             </p>
           </div>
 
@@ -111,7 +111,7 @@ export default function AuthScreen({ onLogin, onRegister, status, loading }) {
           )}
 
           <button className="button primary" type="submit" disabled={loading}>
-            {loading ? "Processando..." : isLogin ? "Entrar" : "Cadastrar"}
+            {loading ? "Processando..." : isLogin ? "Entrar" : "Criar conta"}
           </button>
         </form>
       </section>
