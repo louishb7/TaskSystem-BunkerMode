@@ -16,6 +16,7 @@
   --primary-strong: #9de0ff;
   --success: #34e27a;
   --warning: #f0c267;
+  --soldier-accent: #d9a441;
   --danger: #ff7b98;
   --danger-soft: #ff8b8b;
   --decided: #be62ff;
@@ -355,6 +356,15 @@ h3 {
   margin-bottom: 0;
 }
 
+.soldier-heading {
+  color: var(--soldier-accent);
+  font-size: clamp(2.4rem, 4.6vw, 3.6rem);
+}
+
+.soldier-copy {
+  color: var(--muted);
+}
+
 .app-header-side {
   display: grid;
   align-content: center;
@@ -367,6 +377,28 @@ h3 {
   margin: 0;
   color: var(--muted);
   text-align: right;
+}
+
+.mode-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border: 1px solid rgba(116, 209, 255, 0.2);
+  border-radius: 999px;
+  padding: 6px 12px;
+  color: var(--primary-strong);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.mode-pill.soldier {
+  border-color: rgba(217, 164, 65, 0.32);
+  color: var(--soldier-accent);
+}
+
+.mode-pill.general {
+  border-color: rgba(116, 209, 255, 0.2);
 }
 
 .subtle-button {
@@ -383,6 +415,15 @@ h3 {
 .mission-column,
 .general-column {
   min-width: 0;
+}
+
+.general-column {
+  display: grid;
+  gap: 16px;
+}
+
+.report-access-panel {
+  box-shadow: var(--shadow-md);
 }
 
 .panel {
@@ -458,6 +499,10 @@ h3 {
   max-width: 52ch;
 }
 
+.section-mode-copy {
+  margin-bottom: 0;
+}
+
 .toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) repeat(3, minmax(140px, 0.7fr)) minmax(150px, 0.7fr);
@@ -487,19 +532,19 @@ h3 {
 
 .mission-list {
   display: grid;
-  gap: 18px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 10px;
 }
 
 .mission-card {
   display: grid;
-  gap: 16px;
+  gap: 10px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-left: 4px solid rgba(255, 139, 139, 0.62);
   border-radius: 16px;
   background:
     linear-gradient(180deg, rgba(34, 43, 54, 0.96) 0%, rgba(23, 30, 39, 0.98) 100%);
-  padding: 20px;
+  padding: 14px 16px;
   box-shadow: var(--shadow-md);
 }
 
@@ -518,9 +563,9 @@ h3 {
 .mission-card-header {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 14px;
+  padding-bottom: 10px;
 }
 
 .mission-title-block {
@@ -534,14 +579,8 @@ h3 {
 }
 
 .mission-title-block h3 {
-  margin-bottom: 8px;
-  font-size: 1.2rem;
-}
-
-.mission-readiness {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.92rem;
+  margin-bottom: 0;
+  font-size: 1.06rem;
 }
 
 .status-badge {
@@ -580,23 +619,23 @@ h3 {
 .mission-instruction {
   margin-bottom: 0;
   color: #dbe2ea;
-  font-size: 0.98rem;
+  font-size: 0.93rem;
   max-width: 72ch;
 }
 
 .mission-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   color: #c4d0db;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 800;
 }
 
 .mission-meta span {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 5px 9px;
 }
 
 .mission-card.done .mission-meta span {
@@ -612,10 +651,10 @@ h3 {
 .mission-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   border-top: 1px solid var(--border-soft);
-  padding-top: 14px;
+  padding-top: 10px;
 }
 
 .mission-actions .button {
@@ -708,6 +747,134 @@ h3 {
   color: #dbe2ea;
 }
 
+.review-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 123, 152, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px;
+}
+
+.soldier-pending-panel {
+  border-color: rgba(217, 164, 65, 0.22);
+}
+
+.review-panel-header h3,
+.review-card h4 {
+  margin-bottom: 4px;
+}
+
+.review-copy {
+  margin: 0;
+}
+
+.review-list {
+  display: grid;
+  gap: 10px;
+}
+
+.review-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  background: rgba(17, 24, 32, 0.58);
+  padding: 14px;
+}
+
+.review-reason {
+  display: grid;
+  gap: 6px;
+}
+
+.review-reason span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.review-reason p {
+  margin: 0;
+  color: #dbe2ea;
+}
+
+.soldier-pending-card {
+  border-color: rgba(217, 164, 65, 0.2);
+}
+
+.soldier-excuse-form {
+  display: grid;
+  gap: 10px;
+}
+
+.soldier-excuse-form .button {
+  justify-self: start;
+}
+
+.weekly-report-panel {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.report-section {
+  width: min(1180px, calc(100% - 64px));
+  margin: 0 auto 32px;
+}
+
+.report-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.report-metric {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px;
+}
+
+.report-metric span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.report-metric strong {
+  font-size: 1.2rem;
+}
+
+.report-reasons {
+  display: grid;
+  gap: 10px;
+}
+
+.report-reasons span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.report-reasons ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: #dbe2ea;
+}
+
+.overdue-reason {
+  margin-bottom: 14px;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -731,6 +898,10 @@ h3 {
 
 .general-modal h2 {
   margin-bottom: 10px;
+}
+
+.soldier-lock-panel {
+  border-color: rgba(255, 139, 139, 0.16);
 }
 
 .modal-close {

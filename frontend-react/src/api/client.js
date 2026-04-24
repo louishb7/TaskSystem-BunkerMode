@@ -61,8 +61,25 @@ export const api = {
       body: payload,
     });
   },
+  setSessionMode(token, payload) {
+    return request("/session/mode", {
+      token,
+      method: "PATCH",
+      body: payload,
+    });
+  },
+  unlockGeneral(token, payload) {
+    return request("/session/unlock-general", {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
   listMissions(token) {
     return request("/missoes", { token });
+  },
+  listReviewMissions(token) {
+    return request("/missoes/revisao", { token });
   },
   createMission(token, payload) {
     return request("/missoes", { token, method: "POST", body: payload });
@@ -78,6 +95,38 @@ export const api = {
       token,
       method: "PATCH",
     });
+  },
+  submitSoldierExcuse(token, missionId, payload) {
+    return request(`/missoes/${missionId}/justificar`, {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  submitGeneralReview(token, missionId, payload) {
+    return request(`/missoes/${missionId}/revisar`, {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  submitGeneralVerdict(token, missionId, payload) {
+    return request(`/missoes/${missionId}/general-verdict`, {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  getWeeklyReport(token, params = {}) {
+    const search = new URLSearchParams();
+    if (params.start_date) {
+      search.set("start_date", params.start_date);
+    }
+    if (params.end_date) {
+      search.set("end_date", params.end_date);
+    }
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return request(`/relatorios/semanal${suffix}`, { token });
   },
   deleteMission(token, missionId) {
     return request(`/missoes/${missionId}`, { token, method: "DELETE" });

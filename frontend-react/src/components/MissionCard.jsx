@@ -1,8 +1,12 @@
 import React from "react";
-import { formatDateTime } from "../utils/date.js";
+import { formatDateTime, isMissionOverdue } from "../utils/date.js";
 
 function isDone(mission) {
-  return String(mission.status || "").toLowerCase().includes("conclu");
+  return mission.status === "Concluída";
+}
+
+function isReviewedFailure(mission) {
+  return mission.status === "Falha revisada";
 }
 
 function priorityLabel(priority) {
@@ -17,10 +21,14 @@ function describeHistoryAction(action) {
   return {
     missao_criada: "Missão criada",
     missao_concluida: "Missão concluída",
+    missao_falhou: "Missão falhou no prazo",
     missao_atualizada: "Missão atualizada",
     missao_removida: "Missão removida",
     missao_decidida: "Missão marcada como decidida",
     missao_decisao_removida: "Marca de decisão removida",
+    justificativa_registrada: "Justificativa registrada",
+    justificativa_aceita: "Justificativa aceita",
+    justificativa_recusada: "Justificativa recusada",
   }[action] || "Atualização registrada";
 }
 
@@ -32,23 +40,24 @@ export default function MissionCard({
   onHistory,
   onToggleDecision,
   togglingDecision,
+  planningLocked = false,
+  canExecute = false,
 }) {
   const done = isDone(mission);
+  const reviewedFailure = isReviewedFailure(mission);
   const decided = Boolean(mission.is_decided) && !done;
+  const failedAwaitingExcuse =
+    mission.status === "Falha aguardando justificativa" ||
+    ((Boolean(mission.failed_at) || isMissionOverdue(mission.prazo)) &&
+      !mission.failure_reason &&
+      !done);
 
   return (
     <article className={`mission-card ${done ? "done" : ""} ${decided ? "decided" : ""}`}>
       <header className="mission-card-header">
         <div className="mission-title-block">
-          <span className="mission-id">Missão #{mission.id}</span>
+          {mission.displayId ? <span className="mission-id">Ordem {mission.displayId}</span> : null}
           <h3>{mission.titulo}</h3>
-          <p className="mission-readiness">
-            {done
-              ? "Ordem encerrada."
-              : decided
-                ? "Compromisso assumido com peso reforçado."
-                : "Ordem ativa pronta para execução."}
-          </p>
         </div>
         <div className="mission-badges">
           {decided && <span className="status-badge decided">Decidido</span>}
@@ -66,12 +75,12 @@ export default function MissionCard({
       </div>
 
       <div className="mission-actions">
-        {!done && (
+        {!done && canExecute && !failedAwaitingExcuse && (
           <button className="button compact primary" type="button" onClick={() => onComplete(mission.id)}>
             Concluir
           </button>
         )}
-        {!done && (
+        {!done && !planningLocked && !reviewedFailure && (
           <button
             className={`button compact ${decided ? "secondary" : "primary"}`}
             type="button"
@@ -85,15 +94,21 @@ export default function MissionCard({
                 : "Marcar como decidido"}
           </button>
         )}
-        <button className="button compact secondary" type="button" onClick={() => onEdit(mission)}>
-          Editar
-        </button>
-        <button className="button compact secondary" type="button" onClick={() => onHistory(mission.id)}>
-          {mission.historyOpen ? "Ocultar histórico" : "Histórico"}
-        </button>
-        <button className="button compact danger" type="button" onClick={() => onDelete(mission.id)}>
-          Apagar
-        </button>
+        {!planningLocked && !reviewedFailure && (
+          <button className="button compact secondary" type="button" onClick={() => onEdit(mission)}>
+            Editar
+          </button>
+        )}
+        {!reviewedFailure && (
+          <button className="button compact secondary" type="button" onClick={() => onHistory(mission.id)}>
+            {mission.historyOpen ? "Ocultar histórico" : "Histórico"}
+          </button>
+        )}
+        {!planningLocked && (
+          <button className="button compact danger" type="button" onClick={() => onDelete(mission.id)}>
+            Apagar
+          </button>
+        )}
       </div>
 
       {(mission.historyOpen || mission.historyLoading || mission.historyError) && (

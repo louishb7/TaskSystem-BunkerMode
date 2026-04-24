@@ -1,21 +1,33 @@
 import os
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.schemas import (
+    GeneralVerdictPayload,
     LoginPayload,
     MissaoCreatePayload,
     MissaoUpdatePayload,
     NomeGeneralPayload,
+    RevisaoJustificativaPayload,
     RegistroPayload,
+    SessionModePayload,
+    SoldierExcusePayload,
+    UnlockGeneralPayload,
 )
 from core_exceptions import MissaoNaoEncontrada
 from db_config import get_connection_string
 from repositorio_postgres import RepositorioPostgres
 from services.auth_service import AuthService
-from services.exceptions import AutenticacaoError, UsuarioJaExisteError, UsuarioNaoEncontrado
+from services.exceptions import (
+    AutenticacaoError,
+    PermissaoNegadaError,
+    UsuarioJaExisteError,
+    UsuarioNaoEncontrado,
+)
 from services.missao_service import MissaoService
+from services.relatorio_service import RelatorioService
 
 app = FastAPI(title="BunkerMode API")
 router = APIRouter(prefix="/api/v2", tags=["v2"])
@@ -42,6 +54,10 @@ def get_auth_service() -> AuthService:
 
 def get_missao_service() -> MissaoService:
     return MissaoService(RepositorioPostgres(get_connection_string()))
+
+
+def get_relatorio_service() -> RelatorioService:
+    return RelatorioService(RepositorioPostgres(get_connection_string()))
 
 
 def get_current_user(
@@ -101,6 +117,7 @@ def login(
             "usuario": usuario.usuario,
             "email": usuario.email,
             "nome_general": usuario.nome_general,
+            "active_mode": usuario.active_mode,
         },
     }
 
@@ -113,6 +130,7 @@ def obter_usuario_atual(usuario=Depends(get_current_user)):
         "email": usuario.email,
         "ativo": usuario.ativo,
         "nome_general": usuario.nome_general,
+        "active_mode": usuario.active_mode,
     }
 
 
@@ -136,6 +154,51 @@ def definir_nome_general(
         "email": usuario_atualizado.email,
         "ativo": usuario_atualizado.ativo,
         "nome_general": usuario_atualizado.nome_general,
+        "active_mode": usuario_atualizado.active_mode,
+    }
+
+
+@router.patch("/session/mode")
+def atualizar_modo_sessao(
+    payload: SessionModePayload,
+    usuario=Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        usuario_atualizado = auth_service.alterar_modo(usuario.usuario_id, payload.mode)
+    except (UsuarioNaoEncontrado, ValueError) as erro:
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
+
+    return {
+        "id": usuario_atualizado.usuario_id,
+        "usuario": usuario_atualizado.usuario,
+        "email": usuario_atualizado.email,
+        "ativo": usuario_atualizado.ativo,
+        "nome_general": usuario_atualizado.nome_general,
+        "active_mode": usuario_atualizado.active_mode,
+    }
+
+
+@router.post("/session/unlock-general")
+def liberar_general(
+    payload: UnlockGeneralPayload,
+    usuario=Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        usuario_atualizado = auth_service.liberar_general(usuario.usuario_id, payload.senha)
+    except AutenticacaoError as erro:
+        raise HTTPException(status_code=401, detail=str(erro)) from erro
+    except UsuarioNaoEncontrado as erro:
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
+
+    return {
+        "id": usuario_atualizado.usuario_id,
+        "usuario": usuario_atualizado.usuario,
+        "email": usuario_atualizado.email,
+        "ativo": usuario_atualizado.ativo,
+        "nome_general": usuario_atualizado.nome_general,
+        "active_mode": usuario_atualizado.active_mode,
     }
 
 
@@ -147,6 +210,8 @@ def criar_missao(
 ):
     try:
         missao = missao_service.criar_missao(payload.model_dump(), usuario=usuario)
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
     except ValueError as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
     return missao.to_dict()
@@ -158,6 +223,18 @@ def listar_missoes(
     missao_service: MissaoService = Depends(get_missao_service),
 ):
     return [missao.to_dict() for missao in missao_service.listar_missoes(usuario=usuario)]
+
+
+@router.get("/missoes/revisao")
+def listar_missoes_em_revisao(
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missoes = missao_service.listar_missoes_para_revisao(usuario=usuario)
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
+    return [missao.to_dict() for missao in missoes]
 
 
 @router.patch("/missoes/{missao_id}")
@@ -175,6 +252,8 @@ def editar_missao(
         )
     except MissaoNaoEncontrada as erro:
         raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
     except ValueError as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
     return missao.to_dict()
@@ -190,6 +269,8 @@ def concluir_missao(
         missao = missao_service.concluir_missao(missao_id, usuario=usuario)
     except MissaoNaoEncontrada as erro:
         raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
     except ValueError as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
     return missao.to_dict()
@@ -205,6 +286,89 @@ def alternar_decisao_missao(
         missao = missao_service.alternar_decisao(missao_id, usuario=usuario)
     except MissaoNaoEncontrada as erro:
         raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
+    return missao.to_dict()
+
+
+@router.post("/missoes/{missao_id}/soldier-excuse")
+def registrar_justificativa_soldado(
+    missao_id: int,
+    payload: SoldierExcusePayload,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missao = missao_service.registrar_justificativa_soldado(
+            missao_id,
+            payload.reason,
+            usuario=usuario,
+        )
+    except MissaoNaoEncontrada as erro:
+        raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
+    except ValueError as erro:
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    return missao.to_dict()
+
+
+@router.post("/missoes/{missao_id}/justificar")
+def justificar_missao(
+    missao_id: int,
+    payload: SoldierExcusePayload,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    return registrar_justificativa_soldado(
+        missao_id=missao_id,
+        payload=payload,
+        usuario=usuario,
+        missao_service=missao_service,
+    )
+
+
+@router.post("/missoes/{missao_id}/general-verdict")
+def registrar_veredito_general(
+    missao_id: int,
+    payload: GeneralVerdictPayload,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missao = missao_service.registrar_veredito_general(
+            missao_id,
+            payload.verdict,
+            usuario=usuario,
+        )
+    except MissaoNaoEncontrada as erro:
+        raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
+    except ValueError as erro:
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    return missao.to_dict()
+
+
+@router.post("/missoes/{missao_id}/revisar")
+def revisar_justificativa(
+    missao_id: int,
+    payload: RevisaoJustificativaPayload,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missao = missao_service.revisar_justificativa(
+            missao_id,
+            payload.accepted,
+            usuario=usuario,
+        )
+    except MissaoNaoEncontrada as erro:
+        raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
+    except ValueError as erro:
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
     return missao.to_dict()
 
 
@@ -218,6 +382,8 @@ def remover_missao(
         missao_service.remover_missao(missao_id, usuario=usuario)
     except MissaoNaoEncontrada as erro:
         raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
 
 
 @router.get("/missoes/{missao_id}/historico")
@@ -242,6 +408,30 @@ def listar_historico(
         }
         for evento in eventos
     ]
+
+
+@router.get("/relatorios/semanal")
+def obter_relatorio_semanal(
+    start_date: str | None = None,
+    end_date: str | None = None,
+    usuario=Depends(get_current_user),
+    relatorio_service: RelatorioService = Depends(get_relatorio_service),
+):
+    try:
+        inicio = _parse_query_date(start_date)
+        fim = _parse_query_date(end_date)
+        return relatorio_service.get_weekly_report(usuario.usuario_id, inicio, fim)
+    except ValueError as erro:
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
+
+
+def _parse_query_date(raw_value: str | None):
+    if raw_value is None:
+        return None
+    try:
+        return datetime.strptime(raw_value, "%Y-%m-%d").date()
+    except ValueError as erro:
+        raise ValueError("Datas do relatório devem usar o formato YYYY-MM-DD.") from erro
 
 
 app.include_router(router)

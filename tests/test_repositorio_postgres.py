@@ -114,7 +114,7 @@ def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
                 1,
                 date(2026, 4, 20),
                 "Revisar consultas",
-                "Aguardando Recruta!",
+                "Pendente",
                 False,
             ),
             (
@@ -164,14 +164,16 @@ def test_adicionar_missao_atualiza_id_e_confirma_transacao(
 
     assert missao_exemplo.missao_id == 7
     assert connection.commit_called is True
-    assert cursor.executions[-1][1] == (
+    params = cursor.executions[-1][1]
+    assert params[0:6] == (
         "Estudar persistência",
         1,
         date(2026, 4, 20),
         "Validar escrita no PostgreSQL",
-        "Aguardando Recruta!",
+        "Pendente",
         False,
     )
+    assert params[7:] == (None, None, None, None, None)
 
 
 def test_atualizar_missao_lanca_erro_quando_linha_nao_existe(
@@ -197,7 +199,15 @@ def test_remover_missao_traduz_erro_de_escrita(monkeypatch, repositorio):
 
 def test_busca_usuario_reconstroi_nome_do_general(monkeypatch, repositorio):
     cursor = FakeCursor(
-        fetchone_result=(1, "Henrique", "henrique@email.com", "hash", True, "General Atlas")
+        fetchone_result=(
+            1,
+            "Henrique",
+            "henrique@email.com",
+            "hash",
+            True,
+            "General Atlas",
+            "soldier",
+        )
     )
     connection = FakeConnection(cursor)
     monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
@@ -205,6 +215,7 @@ def test_busca_usuario_reconstroi_nome_do_general(monkeypatch, repositorio):
     usuario = repositorio.buscar_usuario_por_id(1)
 
     assert usuario.nome_general == "General Atlas"
+    assert usuario.active_mode == "soldier"
 
 
 def test_atualizar_nome_general_confirma_transacao(monkeypatch, repositorio):
@@ -216,6 +227,17 @@ def test_atualizar_nome_general_confirma_transacao(monkeypatch, repositorio):
 
     assert connection.commit_called is True
     assert cursor.executions[-1][1] == ("General Atlas", 3)
+
+
+def test_atualizar_modo_ativo_confirma_transacao(monkeypatch, repositorio):
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
+
+    repositorio.atualizar_modo_ativo(3, "soldier")
+
+    assert connection.commit_called is True
+    assert cursor.executions[-1][1] == ("soldier", 3)
 
 
 @pytest.fixture
@@ -243,7 +265,8 @@ def preparar_banco_teste(connection_string_teste):
                     prioridade INTEGER NOT NULL,
                     prazo DATE NULL,
                     instrucao TEXT NOT NULL,
-                    status TEXT NOT NULL
+                    status TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
                 """
             )

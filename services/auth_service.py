@@ -47,3 +47,25 @@ class AuthService:
         usuario.definir_nome_general(nome_general)
         self.repositorio.atualizar_nome_general(usuario.usuario_id, usuario.nome_general)
         return usuario
+
+    def alterar_modo(self, usuario_id: int, modo: str) -> Usuario:
+        if str(modo).strip().lower() != "soldier":
+            raise ValueError("Este endpoint aceita apenas a ativação do modo Soldado.")
+        usuario = self.repositorio.buscar_usuario_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNaoEncontrado("Usuário autenticado não encontrado.")
+
+        usuario.definir_modo(modo)
+        self.repositorio.atualizar_modo_ativo(usuario.usuario_id, usuario.active_mode)
+        return usuario
+
+    def liberar_general(self, usuario_id: int, senha: str) -> Usuario:
+        usuario = self.repositorio.buscar_usuario_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNaoEncontrado("Usuário autenticado não encontrado.")
+        if not verify_password(senha, usuario.senha_hash):
+            raise AutenticacaoError("Senha incorreta.")
+
+        usuario.definir_modo("general")
+        self.repositorio.atualizar_modo_ativo(usuario.usuario_id, usuario.active_mode)
+        return usuario

@@ -11,6 +11,8 @@ export default function MissionList({
   onHistory,
   onToggleDecision,
   togglingDecisionId,
+  planningLocked,
+  canExecute,
 }) {
   if (loading) {
     return (
@@ -45,6 +47,8 @@ export default function MissionList({
           onHistory={onHistory}
           onToggleDecision={onToggleDecision}
           togglingDecision={togglingDecisionId === mission.id}
+          planningLocked={planningLocked}
+          canExecute={canExecute}
         />
       ))}
     </div>

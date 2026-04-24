@@ -63,7 +63,8 @@ class RepositorioPostgres:
                 email TEXT NOT NULL UNIQUE,
                 senha_hash TEXT NOT NULL,
                 ativo BOOLEAN NOT NULL DEFAULT TRUE,
-                nome_general TEXT NULL
+                nome_general TEXT NULL,
+                active_mode TEXT NOT NULL DEFAULT 'general'
             );
             """,
             """
@@ -71,8 +72,41 @@ class RepositorioPostgres:
             ADD COLUMN IF NOT EXISTS nome_general TEXT NULL;
             """,
             """
+            ALTER TABLE IF EXISTS usuarios
+            ADD COLUMN IF NOT EXISTS active_mode TEXT NOT NULL DEFAULT 'general';
+            """,
+            """
             ALTER TABLE IF EXISTS missoes
             ADD COLUMN IF NOT EXISTS is_decided BOOLEAN NOT NULL DEFAULT FALSE;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS failed_at TIMESTAMP NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS failure_reason TEXT NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS soldier_excuse TEXT NULL;
+            """,
+            """
+            UPDATE missoes
+            SET failure_reason = soldier_excuse
+            WHERE failure_reason IS NULL AND soldier_excuse IS NOT NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS general_verdict TEXT NULL;
             """,
             """
             CREATE TABLE IF NOT EXISTS missao_contextos (
@@ -106,7 +140,54 @@ class RepositorioPostgres:
             ) from erro
 
     def _reconstruir_missao(self, linha: tuple) -> Missao:
-        missao_id, titulo, prioridade, prazo, instrucao, status, is_decided = linha
+        if len(linha) == 7:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
+                is_decided,
+            ) = linha
+            created_at = None
+            completed_at = None
+            failed_at = None
+            failure_reason = None
+            soldier_excuse = None
+            general_verdict = None
+        elif len(linha) == 10:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
+                is_decided,
+                failed_at,
+                soldier_excuse,
+                general_verdict,
+            ) = linha
+            created_at = None
+            completed_at = None
+            failure_reason = soldier_excuse
+        else:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
+                is_decided,
+                created_at,
+                completed_at,
+                failed_at,
+                failure_reason,
+                soldier_excuse,
+                general_verdict,
+            ) = linha
         return Missao(
             missao_id=missao_id,
             titulo=titulo,
@@ -115,10 +196,16 @@ class RepositorioPostgres:
             instrucao=instrucao,
             status=status,
             is_decided=is_decided,
+            created_at=created_at,
+            completed_at=completed_at,
+            failed_at=failed_at,
+            failure_reason=failure_reason,
+            soldier_excuse=soldier_excuse,
+            general_verdict=general_verdict,
         )
 
     def _reconstruir_usuario(self, linha: tuple) -> Usuario:
-        usuario_id, usuario, email, senha_hash, ativo, nome_general = linha
+        usuario_id, usuario, email, senha_hash, ativo, nome_general, active_mode = linha
         return Usuario(
             usuario_id=usuario_id,
             usuario=usuario,
@@ -126,6 +213,7 @@ class RepositorioPostgres:
             senha_hash=senha_hash,
             ativo=ativo,
             nome_general=nome_general,
+            active_mode=active_mode,
         )
 
     def _reconstruir_evento(self, linha: tuple) -> EventoAuditoria:
@@ -146,7 +234,8 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided
+                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided,
+                               created_at, completed_at, failed_at, failure_reason, soldier_excuse, general_verdict
                         FROM missoes
                         ORDER BY prioridade, missao_id;
                         """
@@ -167,7 +256,8 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
+                               m.created_at, m.completed_at, m.failed_at, m.failure_reason, m.soldier_excuse, m.general_verdict
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
                         WHERE mc.responsavel_id = %s
@@ -191,7 +281,8 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided
+                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided,
+                               created_at, completed_at, failed_at, failure_reason, soldier_excuse, general_verdict
                         FROM missoes
                         WHERE missao_id = %s;
                         """,
@@ -213,8 +304,11 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO missoes (titulo, prioridade, prazo, instrucao, status, is_decided)
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        INSERT INTO missoes (
+                            titulo, prioridade, prazo, instrucao, status, is_decided,
+                            created_at, completed_at, failed_at, failure_reason, soldier_excuse, general_verdict
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
                         (
@@ -224,6 +318,12 @@ class RepositorioPostgres:
                             missao.instrucao,
                             missao.status.value,
                             missao.is_decided,
+                            missao.created_at,
+                            missao.completed_at,
+                            missao.failed_at,
+                            missao.failure_reason,
+                            missao.soldier_excuse,
+                            missao.general_verdict,
                         ),
                     )
                     missao_id = cursor.fetchone()[0]
@@ -249,7 +349,13 @@ class RepositorioPostgres:
                             prazo = %s,
                             instrucao = %s,
                             status = %s,
-                            is_decided = %s
+                            is_decided = %s,
+                            created_at = %s,
+                            completed_at = %s,
+                            failed_at = %s,
+                            failure_reason = %s,
+                            soldier_excuse = %s,
+                            general_verdict = %s
                         WHERE missao_id = %s;
                         """,
                         (
@@ -259,6 +365,12 @@ class RepositorioPostgres:
                             missao.instrucao,
                             missao.status.value,
                             missao.is_decided,
+                            missao.created_at,
+                            missao.completed_at,
+                            missao.failed_at,
+                            missao.failure_reason,
+                            missao.soldier_excuse,
+                            missao.general_verdict,
                             missao.missao_id,
                         ),
                     )
@@ -337,7 +449,7 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general
+                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general, active_mode
                         FROM usuarios
                         WHERE email = %s;
                         """,
@@ -359,7 +471,7 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general
+                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general, active_mode
                         FROM usuarios
                         WHERE usuario_id = %s;
                         """,
@@ -397,6 +509,31 @@ class RepositorioPostgres:
         except psycopg.Error as erro:
             raise EscritaRepositorioError(
                 "Erro ao atualizar o nome do General no banco de dados."
+            ) from erro
+
+    def atualizar_modo_ativo(self, usuario_id: int, active_mode: str) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        UPDATE usuarios
+                        SET active_mode = %s
+                        WHERE usuario_id = %s;
+                        """,
+                        (active_mode.strip().lower(), usuario_id),
+                    )
+                    if cursor.rowcount == 0:
+                        raise UsuarioNaoPersistidoError(
+                            f"Usuário {usuario_id} não encontrado para atualizar o modo ativo."
+                        )
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao atualizar o modo ativo no banco de dados."
             ) from erro
 
     def salvar_contexto_missao(

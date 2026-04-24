@@ -9,6 +9,7 @@ class Usuario:
         senha_hash=None,
         ativo=True,
         nome_general=None,
+        active_mode="general",
     ):
         self.usuario_id = self._validar_usuario_id(usuario_id)
         self.usuario = self._validar_usuario(usuario)
@@ -16,6 +17,7 @@ class Usuario:
         self.senha_hash = self._validar_senha_hash(senha_hash)
         self.ativo = self._validar_ativo(ativo)
         self.nome_general = self._validar_nome_general(nome_general)
+        self.active_mode = self._validar_active_mode(active_mode)
 
     def _validar_usuario_id(self, usuario_id):
         if usuario_id is None:
@@ -64,3 +66,14 @@ class Usuario:
 
     def definir_nome_general(self, nome_general):
         self.nome_general = self._validar_nome_general(nome_general)
+
+    def _validar_active_mode(self, active_mode):
+        if not isinstance(active_mode, str):
+            raise ValueError("Modo ativo deve ser um texto.")
+        active_mode = active_mode.strip().lower()
+        if active_mode not in {"general", "soldier"}:
+            raise ValueError("Modo ativo inválido.")
+        return active_mode
+
+    def definir_modo(self, active_mode):
+        self.active_mode = self._validar_active_mode(active_mode)

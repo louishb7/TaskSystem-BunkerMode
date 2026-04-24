@@ -31,3 +31,33 @@ export function formatDateTime(dateTime) {
     .format(date)
     .replace(",", " às");
 }
+
+export function parseApiDate(dateString) {
+  if (!dateString || typeof dateString !== "string") {
+    return null;
+  }
+
+  const [day, month, year] = dateString.split("-").map(Number);
+  if (!day || !month || !year) {
+    return null;
+  }
+
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+export function isMissionOverdue(dateString) {
+  const date = parseApiDate(dateString);
+  if (!date) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return date < today;
+}

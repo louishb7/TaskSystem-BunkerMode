@@ -9,6 +9,10 @@ const emptyForm = {
   prazo: "",
 };
 
+function isDone(mission) {
+  return mission?.status === "Concluída";
+}
+
 function getUserId(user) {
   return user?.usuario_id ?? user?.id;
 }
@@ -46,6 +50,15 @@ export default function MissionForm({
     }));
   }
 
+  function buildPayload() {
+    return {
+      titulo: form.titulo.trim(),
+      instrucao: form.instrucao.trim(),
+      prioridade: Number(form.prioridade),
+      prazo: buildDeadline(),
+    };
+  }
+
   function buildDeadline() {
     if (form.prazoTipo === "data_especifica") {
       return form.prazo.trim();
@@ -60,12 +73,7 @@ export default function MissionForm({
 
   function submit(event) {
     event.preventDefault();
-    const payload = {
-      titulo: form.titulo.trim(),
-      instrucao: form.instrucao.trim(),
-      prioridade: Number(form.prioridade),
-      prazo: buildDeadline(),
-    };
+    const payload = buildPayload();
 
     if (!editingMission) {
       payload.responsavel_id = getUserId(currentUser);
@@ -74,6 +82,17 @@ export default function MissionForm({
     }
 
     onUpdate(editingMission.id, payload);
+  }
+
+  function reopenMission() {
+    if (!editingMission) {
+      return;
+    }
+
+    onUpdate(editingMission.id, {
+      ...buildPayload(),
+      status: "Pendente",
+    });
   }
 
   function clearForm() {
@@ -161,6 +180,11 @@ export default function MissionForm({
           <button className="button primary" type="submit" disabled={loading}>
             {loading ? "Salvando..." : isEditing ? "Salvar edição" : "Criar missão"}
           </button>
+          {isEditing && isDone(editingMission) && (
+            <button className="button secondary" type="button" onClick={reopenMission} disabled={loading}>
+              Reabrir missão
+            </button>
+          )}
           <button className="button secondary ghost-button" type="button" onClick={clearForm}>
             {isEditing ? "Cancelar edição" : "Limpar"}
           </button>

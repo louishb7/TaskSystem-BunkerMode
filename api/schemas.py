@@ -16,6 +16,26 @@ class NomeGeneralPayload(BaseModel):
     nome_general: str = Field(min_length=1)
 
 
+class SessionModePayload(BaseModel):
+    mode: str = Field(min_length=1)
+
+
+class UnlockGeneralPayload(BaseModel):
+    senha: str = Field(min_length=1)
+
+
+class SoldierExcusePayload(BaseModel):
+    reason: str = Field(min_length=1)
+
+
+class GeneralVerdictPayload(BaseModel):
+    verdict: str = Field(min_length=1)
+
+
+class RevisaoJustificativaPayload(BaseModel):
+    accepted: bool
+
+
 class MissaoCreatePayload(BaseModel):
     titulo: str = Field(min_length=1)
     prioridade: int
@@ -29,3 +49,9 @@ class MissaoUpdatePayload(BaseModel):
     prioridade: int | None = None
     prazo: str | None = None
     instrucao: str | None = Field(default=None, min_length=1)
+    status: str | None = None
+
+
+class RelatorioSemanalQuery(BaseModel):
+    start_date: str | None = None
+    end_date: str | None = None
