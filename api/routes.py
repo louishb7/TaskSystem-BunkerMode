@@ -222,7 +222,17 @@ def criar_missao(
         missao = missao_service.criar_missao(payload.model_dump(), usuario=usuario)
     except (PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
-    return missao.to_dict()
+    return missao_service.to_response(missao, usuario=usuario)
+
+
+def _listar_missoes_operacionais(
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    return missao_service.to_response_list(
+        missao_service.listar_missoes(usuario=usuario),
+        usuario=usuario,
+    )
 
 
 @router.get("/missoes")
@@ -230,7 +240,15 @@ def listar_missoes(
     usuario=Depends(get_current_user),
     missao_service: MissaoService = Depends(get_missao_service),
 ):
-    return [missao.to_dict() for missao in missao_service.listar_missoes(usuario=usuario)]
+    return _listar_missoes_operacionais(usuario=usuario, missao_service=missao_service)
+
+
+@router.get("/missoes/operacionais")
+def listar_missoes_operacionais(
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    return _listar_missoes_operacionais(usuario=usuario, missao_service=missao_service)
 
 
 @router.get("/missoes/revisao")
@@ -242,7 +260,7 @@ def listar_missoes_em_revisao(
         missoes = missao_service.listar_missoes_para_revisao(usuario=usuario)
     except PermissaoNegadaError as erro:
         _raise_http_from_domain_error(erro)
-    return [missao.to_dict() for missao in missoes]
+    return missao_service.to_response_list(missoes, usuario=usuario)
 
 
 @router.get("/missoes/historico")
@@ -254,7 +272,7 @@ def listar_missoes_historicas(
         missoes = missao_service.listar_missoes_historicas(usuario=usuario)
     except (PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
-    return [missao.to_dict() for missao in missoes]
+    return missao_service.to_response_list(missoes, usuario=usuario)
 
 
 @router.patch("/missoes/{missao_id}")
@@ -272,7 +290,7 @@ def editar_missao(
         )
     except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
-    return missao.to_dict()
+    return missao_service.to_response(missao, usuario=usuario)
 
 
 @router.patch("/missoes/{missao_id}/concluir")
@@ -285,7 +303,7 @@ def concluir_missao(
         missao = missao_service.concluir_missao(missao_id, usuario=usuario)
     except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
-    return missao.to_dict()
+    return missao_service.to_response(missao, usuario=usuario)
 
 
 @router.patch("/missoes/{missao_id}/toggle-decided")
@@ -298,7 +316,7 @@ def alternar_decisao_missao(
         missao = missao_service.alternar_decisao(missao_id, usuario=usuario)
     except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
-    return missao.to_dict()
+    return missao_service.to_response(missao, usuario=usuario)
 
 
 @router.post("/missoes/{missao_id}/soldier-excuse")
@@ -316,7 +334,7 @@ def registrar_justificativa_soldado(
         )
     except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
-    return missao.to_dict()
+    return missao_service.to_response(missao, usuario=usuario)
 
 
 @router.post("/missoes/{missao_id}/justificar")
@@ -349,7 +367,7 @@ def registrar_veredito_general(
         )
     except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
-    return missao.to_dict()
+    return missao_service.to_response(missao, usuario=usuario)
 
 
 @router.post("/missoes/{missao_id}/revisar")
@@ -367,7 +385,7 @@ def revisar_justificativa(
         )
     except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
-    return missao.to_dict()
+    return missao_service.to_response(missao, usuario=usuario)
 
 
 @router.delete("/missoes/{missao_id}", status_code=status.HTTP_204_NO_CONTENT)

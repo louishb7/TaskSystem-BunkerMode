@@ -221,6 +221,23 @@ def test_helpers_de_estado_refletem_ciclo_da_missao():
     assert falha_revisada.can_be_edited_by_general() is False
 
 
+def test_to_dict_expoe_status_canonico_e_permissions_padrao(missao_base):
+    payload = missao_base.to_dict()
+
+    assert payload["status"] == "Pendente"
+    assert payload["status_code"] == "PENDENTE"
+    assert payload["status_label"] == "Pendente"
+    assert payload["permissions"] == {
+        "can_complete": False,
+        "can_edit": False,
+        "can_delete": False,
+        "can_toggle_decided": False,
+        "can_justify": False,
+        "can_review": False,
+        "can_view_history": False,
+    }
+
+
 def test_missao_concluida_e_finalizada():
     missao = Missao(
         missao_id=1,

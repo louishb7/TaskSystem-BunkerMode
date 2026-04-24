@@ -9,7 +9,6 @@ import WeeklyReportPanel from "./components/WeeklyReportPanel.jsx";
 import { formatDateTime } from "./utils/date.js";
 import {
   isCompleted,
-  isFinalizedMission,
   requiresSoldierJustification,
 } from "./utils/missionStatus.js";
 
@@ -44,7 +43,7 @@ function filterMissions(missions, filters) {
     });
   }
 
-  if (filters.status === "pendente") {
+    if (filters.status === "pendente") {
     filtered = filtered.filter((mission) => !isCompleted(mission));
   }
 
@@ -61,6 +60,12 @@ function filterMissions(missions, filters) {
   }
 
   filtered.sort((a, b) => {
+    const aNeedsJustification = Boolean(a.permissions?.can_justify);
+    const bNeedsJustification = Boolean(b.permissions?.can_justify);
+    if (aNeedsJustification !== bNeedsJustification) {
+      return aNeedsJustification ? -1 : 1;
+    }
+
     if (a.is_decided !== b.is_decided) {
       return a.is_decided ? -1 : 1;
     }
@@ -136,16 +141,14 @@ export default function App() {
   const pendingSoldierExcuses = useMemo(
     () =>
       soldierMode
-        ? missions.filter((mission) => requiresSoldierJustification(mission) && !isCompleted(mission))
+        ? missions.filter((mission) => mission.permissions?.can_justify || requiresSoldierJustification(mission))
         : [],
     [missions, soldierMode]
   );
   const boardMissions = useMemo(
     () => (
       soldierMode
-        ? visibleMissions.filter(
-            (mission) => !requiresSoldierJustification(mission) && !isFinalizedMission(mission)
-          )
+        ? visibleMissions.filter((mission) => !mission.permissions?.can_justify)
         : visibleMissions
     ),
     [soldierMode, visibleMissions]
@@ -282,7 +285,7 @@ export default function App() {
     }
 
     setMissionLoading(true);
-    const result = await api.listMissions(token);
+    const result = await api.listOperationalMissions(token);
     setMissionLoading(false);
 
     if (handleUnauthorized(result)) {

@@ -1,3 +1,5 @@
+import { assertMissionContract, assertMissionListContract } from "../utils/missionContract.js";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v2";
 
 async function parseResponse(response) {
@@ -44,6 +46,40 @@ async function request(path, { token, method = "GET", body } = {}) {
   }
 }
 
+async function requestMission(path, options = {}) {
+  const result = await request(path, options);
+  if (!result.ok) {
+    return result;
+  }
+
+  try {
+    return { ...result, data: assertMissionContract(result.data) };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      data: { detail: error.message },
+    };
+  }
+}
+
+async function requestMissionList(path, options = {}) {
+  const result = await request(path, options);
+  if (!result.ok) {
+    return result;
+  }
+
+  try {
+    return { ...result, data: assertMissionListContract(result.data) };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      data: { detail: error.message },
+    };
+  }
+}
+
 export const api = {
   register(payload) {
     return request("/auth/register", { method: "POST", body: payload });
@@ -76,42 +112,45 @@ export const api = {
     });
   },
   listMissions(token) {
-    return request("/missoes", { token });
+    return requestMissionList("/missoes", { token });
+  },
+  listOperationalMissions(token) {
+    return requestMissionList("/missoes/operacionais", { token });
   },
   listReviewMissions(token) {
-    return request("/missoes/revisao", { token });
+    return requestMissionList("/missoes/revisao", { token });
   },
   createMission(token, payload) {
-    return request("/missoes", { token, method: "POST", body: payload });
+    return requestMission("/missoes", { token, method: "POST", body: payload });
   },
   updateMission(token, missionId, payload) {
-    return request(`/missoes/${missionId}`, { token, method: "PATCH", body: payload });
+    return requestMission(`/missoes/${missionId}`, { token, method: "PATCH", body: payload });
   },
   completeMission(token, missionId) {
-    return request(`/missoes/${missionId}/concluir`, { token, method: "PATCH" });
+    return requestMission(`/missoes/${missionId}/concluir`, { token, method: "PATCH" });
   },
   toggleMissionDecision(token, missionId) {
-    return request(`/missoes/${missionId}/toggle-decided`, {
+    return requestMission(`/missoes/${missionId}/toggle-decided`, {
       token,
       method: "PATCH",
     });
   },
   submitSoldierExcuse(token, missionId, payload) {
-    return request(`/missoes/${missionId}/justificar`, {
+    return requestMission(`/missoes/${missionId}/justificar`, {
       token,
       method: "POST",
       body: payload,
     });
   },
   submitGeneralReview(token, missionId, payload) {
-    return request(`/missoes/${missionId}/revisar`, {
+    return requestMission(`/missoes/${missionId}/revisar`, {
       token,
       method: "POST",
       body: payload,
     });
   },
   submitGeneralVerdict(token, missionId, payload) {
-    return request(`/missoes/${missionId}/general-verdict`, {
+    return requestMission(`/missoes/${missionId}/general-verdict`, {
       token,
       method: "POST",
       body: payload,

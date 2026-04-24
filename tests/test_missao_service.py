@@ -8,6 +8,7 @@ from core_exceptions import MissaoNaoEncontrada
 from missao import Missao, StatusMissao
 from services.auth_service import AuthService
 from services.missao_service import MissaoService
+from services.mission_permissions import MissionPermissions
 from services.relatorio_service import RelatorioService
 from usuario import Usuario
 
@@ -100,6 +101,28 @@ class RepositorioOwnershipFake:
         self.auditoria_registrada.append(evento)
 
 
+def test_mission_permissions_to_dict_expoe_todas_as_chaves_booleanas():
+    permissions = MissionPermissions(
+        can_complete=True,
+        can_edit=False,
+        can_delete=False,
+        can_toggle_decided=True,
+        can_justify=False,
+        can_review=False,
+        can_view_history=True,
+    )
+
+    assert permissions.to_dict() == {
+        "can_complete": True,
+        "can_edit": False,
+        "can_delete": False,
+        "can_toggle_decided": True,
+        "can_justify": False,
+        "can_review": False,
+        "can_view_history": True,
+    }
+
+
 def test_listar_missoes_com_usuario_filtra_por_responsavel():
     repositorio = RepositorioListagemFake()
     service = MissaoService(repositorio)
@@ -158,6 +181,109 @@ def test_listar_missoes_prioriza_decididas_antes_da_prioridade_numerica():
         "Alta não decidida",
         "Média não decidida",
     ]
+
+
+def test_listar_missoes_prioriza_justificativa_antes_de_decididas():
+    repositorio = RepositorioListagemFake()
+    repositorio.carregar_dados = lambda: [
+        Missao(
+            missao_id=1,
+            titulo="Decidida",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.PENDENTE,
+            is_decided=True,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Aguardando justificativa",
+            prioridade=3,
+            prazo="01-01-2020",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
+            failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        ),
+    ]
+    service = MissaoService(repositorio)
+
+    missoes = service.listar_missoes()
+
+    assert [missao.titulo for missao in missoes] == [
+        "Aguardando justificativa",
+        "Decidida",
+    ]
+
+
+def test_to_response_soldier_define_permissions_corretas():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    payload = service.to_response(repositorio.missao, usuario=usuario)
+
+    assert payload["status_code"] == "PENDENTE"
+    assert payload["status_label"] == "Pendente"
+    assert payload["permissions"] == {
+        "can_complete": True,
+        "can_edit": False,
+        "can_delete": False,
+        "can_toggle_decided": False,
+        "can_justify": False,
+        "can_review": False,
+        "can_view_history": False,
+    }
+
+
+def test_to_response_general_define_permissions_para_revisao():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.atualizar_status(StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO)
+    repositorio.missao.failed_at = datetime(2026, 4, 24, 10, 0, 0)
+    repositorio.missao.failure_reason = "Bloqueio externo."
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    payload = service.to_response(repositorio.missao, usuario=usuario)
+
+    assert payload["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
+    assert payload["permissions"]["can_review"] is True
+    assert payload["permissions"]["can_edit"] is False
+    assert payload["permissions"]["can_delete"] is False
+    assert payload["permissions"]["can_toggle_decided"] is False
+
+
+def test_to_response_general_define_permissions_para_missao_concluida_historica():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.concluir(instante=datetime(2026, 4, 24, 10, 0, 0))
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    payload = service.to_response(repositorio.missao, usuario=usuario)
+
+    assert payload["status_code"] == "CONCLUIDA"
+    assert payload["permissions"]["can_complete"] is False
+    assert payload["permissions"]["can_edit"] is True
+    assert payload["permissions"]["can_delete"] is False
+    assert payload["permissions"]["can_toggle_decided"] is False
+    assert payload["permissions"]["can_view_history"] is True
+
+
+def test_to_response_general_define_permissions_para_falha_revisada():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.atualizar_status(StatusMissao.FALHA_REVISADA)
+    repositorio.missao.failed_at = datetime(2026, 4, 24, 10, 0, 0)
+    repositorio.missao.failure_reason = "Falhou."
+    repositorio.missao.general_verdict = "accepted"
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    payload = service.to_response(repositorio.missao, usuario=usuario)
+
+    assert payload["permissions"]["can_edit"] is False
+    assert payload["permissions"]["can_delete"] is False
+    assert payload["permissions"]["can_toggle_decided"] is False
+    assert payload["permissions"]["can_review"] is False
+    assert payload["permissions"]["can_view_history"] is True
 
 
 def test_usuario_pode_editar_missao_propria_e_registra_auditoria():

@@ -1,23 +1,25 @@
-import { isMissionOverdue } from "./date.js";
-
 export const STATUS_MISSAO = Object.freeze({
-  PENDENTE: "Pendente",
-  CONCLUIDA: "Concluída",
-  FALHADA: "Falha aguardando justificativa",
-  JUSTIFICADA: "Falha justificada aguardando revisão",
-  FALHA_REVISADA: "Falha revisada",
+  PENDENTE: "PENDENTE",
+  CONCLUIDA: "CONCLUIDA",
+  FALHA_PENDENTE_JUSTIFICATIVA: "FALHA_PENDENTE_JUSTIFICATIVA",
+  FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHA_JUSTIFICADA_PENDENTE_REVISAO",
+  FALHA_REVISADA: "FALHA_REVISADA",
 });
 
+const STATUS_LABELS = Object.freeze({
+  [STATUS_MISSAO.PENDENTE]: "Pendente",
+  [STATUS_MISSAO.CONCLUIDA]: "Concluída",
+  [STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA]: "Falha aguardando justificativa",
+  [STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO]: "Falha justificada aguardando revisão",
+  [STATUS_MISSAO.FALHA_REVISADA]: "Falha revisada",
+});
+
+function getMissionStatusCode(mission) {
+  return mission?.status_code || "";
+}
+
 export function getStatusLabel(status) {
-  return (
-    {
-      [STATUS_MISSAO.PENDENTE]: STATUS_MISSAO.PENDENTE,
-      [STATUS_MISSAO.CONCLUIDA]: STATUS_MISSAO.CONCLUIDA,
-      [STATUS_MISSAO.FALHADA]: STATUS_MISSAO.FALHADA,
-      [STATUS_MISSAO.JUSTIFICADA]: STATUS_MISSAO.JUSTIFICADA,
-      [STATUS_MISSAO.FALHA_REVISADA]: STATUS_MISSAO.FALHA_REVISADA,
-    }[status] || status
-  );
+  return STATUS_LABELS[status] || status;
 }
 
 export function isOperacional(mission) {
@@ -33,19 +35,19 @@ export function isRevisavel(mission) {
 }
 
 export function isCompleted(mission) {
-  return mission?.status === STATUS_MISSAO.CONCLUIDA;
+  return getMissionStatusCode(mission) === STATUS_MISSAO.CONCLUIDA;
 }
 
 export function isReviewedFailure(mission) {
-  return mission?.status === STATUS_MISSAO.FALHA_REVISADA;
+  return getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_REVISADA;
 }
 
 export function isFailedWaitingJustification(mission) {
-  return mission?.status === STATUS_MISSAO.FALHADA;
+  return getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA;
 }
 
 export function isFailedWaitingReview(mission) {
-  return mission?.status === STATUS_MISSAO.JUSTIFICADA;
+  return getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO;
 }
 
 export function isFinalizedMission(mission) {
@@ -53,12 +55,7 @@ export function isFinalizedMission(mission) {
 }
 
 export function requiresSoldierJustification(mission) {
-  return (
-    isFailedWaitingJustification(mission) ||
-    ((Boolean(mission?.failed_at) || isMissionOverdue(mission?.prazo)) &&
-      !mission?.failure_reason &&
-      !isCompleted(mission))
-  );
+  return isFailedWaitingJustification(mission);
 }
 
 export function requiresGeneralReview(mission) {
@@ -70,25 +67,25 @@ export function isOperationalMission(mission) {
 }
 
 export function canShowGeneralActions(mission) {
-  return (
-    mission?.status === STATUS_MISSAO.PENDENTE ||
-    mission?.status === STATUS_MISSAO.CONCLUIDA ||
-    mission?.status === STATUS_MISSAO.FALHADA
+  return Boolean(
+    mission.permissions.can_edit ||
+    mission.permissions.can_delete ||
+    mission.permissions.can_toggle_decided
   );
 }
 
 export function canShowSoldierActions(mission) {
-  return mission?.status === STATUS_MISSAO.PENDENTE;
+  return mission.permissions.can_complete;
 }
 
 export function canShowGeneralEdit(mission) {
-  return canShowGeneralActions(mission);
+  return mission.permissions.can_edit;
 }
 
 export function canShowGeneralDecisionToggle(mission) {
-  return mission?.status === STATUS_MISSAO.PENDENTE;
+  return mission.permissions.can_toggle_decided;
 }
 
 export function canShowGeneralDelete(mission) {
-  return isOperationalMission(mission);
+  return mission.permissions.can_delete;
 }

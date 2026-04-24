@@ -71,7 +71,15 @@ class Missao:
         self.user_id = self._validar_user_id(user_id)
         self._normalizar_consistencia_inicial()
 
-    def to_dict(self):
+    @property
+    def status_code(self):
+        return self.status.name
+
+    @property
+    def status_label(self):
+        return self.status.value
+
+    def to_dict(self, permissions=None):
         return {
             "id": self.missao_id,
             "titulo": self.titulo,
@@ -80,6 +88,8 @@ class Missao:
             "due_date": self.prazo,
             "instrucao": self.instrucao,
             "status": self.status.value,
+            "status_code": self.status_code,
+            "status_label": self.status_label,
             "is_decided": self.is_decided,
             "created_at": self.created_at.isoformat(),
             "completed_at": None if self.completed_at is None else self.completed_at.isoformat(),
@@ -88,6 +98,15 @@ class Missao:
             "soldier_excuse": self.failure_reason,
             "general_verdict": self.general_verdict,
             "user_id": self.user_id,
+            "permissions": permissions or {
+                "can_complete": False,
+                "can_edit": False,
+                "can_delete": False,
+                "can_toggle_decided": False,
+                "can_justify": False,
+                "can_review": False,
+                "can_view_history": False,
+            },
         }
 
     @property

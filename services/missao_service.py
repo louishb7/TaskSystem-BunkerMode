@@ -4,6 +4,7 @@ from auditoria import EventoAuditoria
 from core_exceptions import MissaoNaoEncontrada
 from missao import Missao, StatusMissao
 from services.exceptions import PermissaoNegadaError
+from services.mission_permissions import MissionPermissions
 
 
 class MissaoService:
@@ -46,7 +47,7 @@ class MissaoService:
     def listar_missoes(self, usuario=None) -> list[Missao]:
         missoes = self._carregar_missoes_do_usuario(usuario)
         self._reconciliar_falhas(usuario, missoes)
-        missoes = self._ordenar_missoes(missoes)
+        missoes = self.sort_missions_for_board(missoes)
 
         if usuario is not None and getattr(usuario, "active_mode", "general") == "soldier":
             return [missao for missao in missoes if missao.is_visible_to_soldier(self._today())]
@@ -57,7 +58,7 @@ class MissaoService:
         self._garantir_modo_general(usuario)
         missoes = self._carregar_missoes_do_usuario(usuario)
         self._reconciliar_falhas(usuario, missoes)
-        return self._ordenar_missoes(
+        return self.sort_missions_for_board(
             [missao for missao in missoes if missao.is_finalized()]
         )
 
@@ -65,7 +66,7 @@ class MissaoService:
         self._garantir_modo_general(usuario)
         return [
             missao
-            for missao in self._carregar_missoes_do_usuario(usuario)
+            for missao in self.sort_missions_for_board(self._carregar_missoes_do_usuario(usuario))
             if missao.requires_general_review()
         ]
 
@@ -221,6 +222,14 @@ class MissaoService:
 
         return missao
 
+    def to_response(self, missao: Missao, usuario=None) -> dict:
+        return missao.to_dict(
+            permissions=self._build_permissions(missao, usuario=usuario).to_dict()
+        )
+
+    def to_response_list(self, missoes: list[Missao], usuario=None) -> list[dict]:
+        return [self.to_response(missao, usuario=usuario) for missao in missoes]
+
     def _buscar_por_id_do_usuario(self, missao_id: int, usuario=None) -> Missao:
         missao = self.buscar_por_id(missao_id)
         if usuario is None:
@@ -296,15 +305,32 @@ class MissaoService:
         if missao.is_failed_waiting_review() and missao.general_verdict is not None:
             missao.atualizar_status(StatusMissao.FALHA_REVISADA)
 
-    def _ordenar_missoes(self, missoes: list[Missao]) -> list[Missao]:
+    def sort_missions_for_board(self, missoes: list[Missao]) -> list[Missao]:
         return sorted(
             missoes,
             key=lambda missao: (
+                0 if missao.requires_soldier_justification() else 1,
                 0 if missao.is_decided else 1,
                 missao.prioridade.value,
                 missao.due_date or date.max,
                 missao.missao_id or 0,
             ),
+        )
+
+    def _build_permissions(self, missao: Missao, usuario=None) -> MissionPermissions:
+        modo = getattr(usuario, "active_mode", "general") if usuario is not None else "general"
+        is_general = modo == "general"
+        is_soldier = modo == "soldier"
+        can_view_history = is_general and missao.is_finalized()
+
+        return MissionPermissions(
+            can_complete=is_soldier and missao.can_be_completed(reference_date=self._today()),
+            can_edit=is_general and missao.can_be_edited_by_general(),
+            can_delete=is_general and missao.can_be_deleted_by_general(),
+            can_toggle_decided=is_general and missao.can_be_marked_decided(),
+            can_justify=is_soldier and missao.requires_soldier_justification(),
+            can_review=is_general and missao.requires_general_review(),
+            can_view_history=can_view_history,
         )
 
     def _garantir_modo_general(self, usuario) -> None:

@@ -3,11 +3,13 @@ from datetime import datetime
 from fastapi import HTTPException
 
 from api.routes import (
+    concluir_missao,
     criar_missao,
     editar_missao,
     justificar_missao,
     listar_missoes_historicas,
     listar_missoes,
+    listar_missoes_operacionais,
     listar_missoes_em_revisao,
     login,
     obter_relatorio_semanal,
@@ -134,6 +136,22 @@ def preparar_ambiente():
     return repo, auth, missoes, relatorios, usuario, usuario_obj
 
 
+def assert_mission_contract(payload):
+    assert payload["status"]
+    assert payload["status_code"]
+    assert payload["status_label"]
+    assert payload["permissions"] == {
+        "can_complete": payload["permissions"]["can_complete"],
+        "can_edit": payload["permissions"]["can_edit"],
+        "can_delete": payload["permissions"]["can_delete"],
+        "can_toggle_decided": payload["permissions"]["can_toggle_decided"],
+        "can_justify": payload["permissions"]["can_justify"],
+        "can_review": payload["permissions"]["can_review"],
+        "can_view_history": payload["permissions"]["can_view_history"],
+    }
+    assert all(isinstance(value, bool) for value in payload["permissions"].values())
+
+
 def test_auth_register_login_e_me_v2():
     _, _, _, _, usuario, usuario_obj = preparar_ambiente()
 
@@ -168,6 +186,7 @@ def test_soldado_nao_pode_concluir_missao_vencida():
     resposta = listar_missoes(usuario=usuario, missao_service=missoes)
     assert resposta[0]["status"] == "Falha aguardando justificativa"
     assert resposta[0]["failure_reason"] is None
+    assert_mission_contract(resposta[0])
 
 
 def test_api_retorna_403_quando_soldado_tenta_criar_missao():
@@ -220,12 +239,19 @@ def test_soldado_pode_justificar_e_general_revisar():
         usuario=usuario,
         missao_service=missoes,
     )
+    assert_mission_contract(justificativa)
     assert justificativa["status"] == "Falha justificada aguardando revisão"
+    assert justificativa["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
+    assert justificativa["status_label"] == "Falha justificada aguardando revisão"
+    assert justificativa["permissions"]["can_justify"] is False
+    assert justificativa["permissions"]["can_review"] is False
 
     usuario.definir_modo("general")
     repo.atualizar_modo_ativo(usuario.usuario_id, "general")
     revisoes = listar_missoes_em_revisao(usuario=usuario, missao_service=missoes)
     assert [item["id"] for item in revisoes] == [1]
+    assert_mission_contract(revisoes[0])
+    assert revisoes[0]["permissions"]["can_review"] is True
 
     resposta = revisar_justificativa(
         1,
@@ -233,8 +259,13 @@ def test_soldado_pode_justificar_e_general_revisar():
         usuario=usuario,
         missao_service=missoes,
     )
+    assert_mission_contract(resposta)
     assert resposta["status"] == "Falha revisada"
+    assert resposta["status_code"] == "FALHA_REVISADA"
     assert resposta["general_verdict"] == "accepted"
+    assert resposta["permissions"]["can_edit"] is False
+    assert resposta["permissions"]["can_delete"] is False
+    assert resposta["permissions"]["can_toggle_decided"] is False
 
 
 def test_listagem_operacional_nao_retorna_concluidas_ou_falhas_revisadas():
@@ -281,6 +312,46 @@ def test_listagem_operacional_nao_retorna_concluidas_ou_falhas_revisadas():
     resposta = listar_missoes(usuario=usuario, missao_service=missoes)
 
     assert [missao["id"] for missao in resposta] == [1]
+    assert_mission_contract(resposta[0])
+    assert resposta[0]["permissions"]["can_edit"] is True
+    assert resposta[0]["permissions"]["can_complete"] is False
+
+
+def test_missoes_operacionais_repete_a_mesma_listagem_de_missoes():
+    repo, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    repo.missoes = [
+        Missao(
+            missao_id=1,
+            titulo="Pendente",
+            prioridade=1,
+            prazo="30-04-2099",
+            instrucao="Executar",
+            status=StatusMissao.PENDENTE,
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Falha revisada",
+            prioridade=1,
+            prazo="23-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_REVISADA,
+            failed_at=datetime(2026, 4, 23, 10, 0, 0),
+            failure_reason="Falhou.",
+            general_verdict="accepted",
+            user_id=usuario.usuario_id,
+        ),
+    ]
+    repo.contextos = {
+        1: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+        2: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+    }
+
+    resposta_legacy = listar_missoes(usuario=usuario, missao_service=missoes)
+    resposta_operacional = listar_missoes_operacionais(usuario=usuario, missao_service=missoes)
+
+    assert resposta_operacional == resposta_legacy
+    assert_mission_contract(resposta_operacional[0])
 
 
 def test_listagem_soldado_retorna_apenas_executaveis_ou_justificaveis():
@@ -338,6 +409,11 @@ def test_listagem_soldado_retorna_apenas_executaveis_ou_justificaveis():
     resposta = listar_missoes(usuario=usuario, missao_service=missoes)
 
     assert [missao["id"] for missao in resposta] == [4, 1]
+    assert all(assert_mission_contract(missao) is None for missao in resposta)
+    assert resposta[0]["permissions"]["can_justify"] is True
+    assert resposta[0]["permissions"]["can_complete"] is False
+    assert resposta[1]["permissions"]["can_complete"] is True
+    assert resposta[1]["permissions"]["can_edit"] is False
 
 
 def test_api_retorna_400_para_revisao_em_estado_invalido():
@@ -400,8 +476,10 @@ def test_general_pode_reabrir_missao_concluida():
         missao_service=missoes,
     )
 
+    assert_mission_contract(resposta)
     assert resposta["status"] == "Pendente"
     assert resposta["completed_at"] is None
+    assert resposta["permissions"]["can_edit"] is True
 
 
 def test_historico_de_missoes_retorna_apenas_finalizadas():
@@ -448,6 +526,9 @@ def test_historico_de_missoes_retorna_apenas_finalizadas():
     resposta = listar_missoes_historicas(usuario=usuario, missao_service=missoes)
 
     assert [missao["id"] for missao in resposta] == [1, 2]
+    assert all(assert_mission_contract(missao) is None for missao in resposta)
+    assert all(missao["permissions"]["can_view_history"] is True for missao in resposta)
+    assert all(missao["permissions"]["can_delete"] is False for missao in resposta)
 
 
 def test_historico_de_missoes_bloqueado_no_modo_soldado():
@@ -552,6 +633,50 @@ def test_relatorio_semanal_retorna_payload_esperado():
     assert payload["missions_waiting_justification"] == 0
     assert payload["missions_waiting_review"] == 1
     assert payload["failure_reasons"] == ["Perdi o prazo por bloqueio externo."]
+
+
+def test_criar_missao_retorna_contrato_completo():
+    _, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
+
+    resposta = criar_missao(
+        MissaoCreatePayload(
+            titulo="Criar contrato",
+            prioridade=1,
+            prazo="30-04-2099",
+            instrucao="Executar operação",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    assert_mission_contract(resposta)
+
+
+def test_concluir_missao_retorna_contrato_completo():
+    _, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Concluir contrato",
+            prioridade=1,
+            prazo="30-04-2099",
+            instrucao="Executar operação",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    resposta = concluir_missao(
+        1,
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    assert_mission_contract(resposta)
+    assert resposta["status_code"] == "CONCLUIDA"
 
 
 def test_relatorio_semanal_retorna_403_em_modo_soldado():

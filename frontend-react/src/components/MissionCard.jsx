@@ -1,14 +1,6 @@
 import React from "react";
 import { formatDateTime } from "../utils/date.js";
-import {
-  canShowGeneralDecisionToggle,
-  canShowGeneralDelete,
-  canShowGeneralEdit,
-  canShowSoldierActions,
-  isCompleted,
-  isReviewedFailure,
-  requiresSoldierJustification,
-} from "../utils/missionStatus.js";
+import { assertMissionContract } from "../utils/missionContract.js";
 
 function priorityLabel(priority) {
   return {
@@ -44,14 +36,16 @@ export default function MissionCard({
   planningLocked = false,
   canExecute = false,
 }) {
-  const done = isCompleted(mission);
-  const reviewedFailure = isReviewedFailure(mission);
+  assertMissionContract(mission);
+
+  const permissions = mission.permissions;
+  const done = mission.status_code === "CONCLUIDA";
   const decided = Boolean(mission.is_decided) && !done;
-  const failedAwaitingExcuse = requiresSoldierJustification(mission);
-  const allowGeneralEdit = canShowGeneralEdit(mission) && !planningLocked;
-  const allowGeneralDecisionToggle = canShowGeneralDecisionToggle(mission) && !planningLocked;
-  const allowGeneralDelete = canShowGeneralDelete(mission) && !planningLocked;
-  const allowSoldierActions = canShowSoldierActions(mission) && canExecute;
+  const allowGeneralEdit = Boolean(permissions.can_edit) && !planningLocked;
+  const allowGeneralDecisionToggle = Boolean(permissions.can_toggle_decided) && !planningLocked;
+  const allowGeneralDelete = Boolean(permissions.can_delete) && !planningLocked;
+  const allowSoldierActions = Boolean(permissions.can_complete) && canExecute;
+  const allowHistory = Boolean(permissions.can_view_history);
 
   return (
     <article className={`mission-card ${done ? "done" : ""} ${decided ? "decided" : ""}`}>
@@ -63,7 +57,7 @@ export default function MissionCard({
         <div className="mission-badges">
           {decided && <span className="status-badge decided">Decidido</span>}
           <span className={`status-badge ${done ? "done" : "pending"}`}>
-            {mission.status}
+            {mission.status_label}
           </span>
         </div>
       </header>
@@ -100,7 +94,7 @@ export default function MissionCard({
             Editar
           </button>
         )}
-        {!reviewedFailure && (
+        {allowHistory && (
           <button className="button compact secondary" type="button" onClick={() => onHistory(mission.id)}>
             {mission.historyOpen ? "Ocultar histórico" : "Histórico"}
           </button>
