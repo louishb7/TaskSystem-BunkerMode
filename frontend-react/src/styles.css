@@ -422,10 +422,6 @@ h3 {
   gap: 16px;
 }
 
-.report-access-panel {
-  box-shadow: var(--shadow-md);
-}
-
 .panel {
   padding: 24px;
 }
@@ -817,12 +813,6 @@ h3 {
 .weekly-report-panel {
   display: grid;
   gap: 18px;
-  margin-top: 24px;
-}
-
-.report-section {
-  width: min(1180px, calc(100% - 64px));
-  margin: 0 auto 32px;
 }
 
 .report-metrics {

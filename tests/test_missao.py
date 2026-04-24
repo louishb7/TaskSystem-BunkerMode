@@ -163,6 +163,127 @@ def test_revisao_do_general_encerra_falha(missao_base):
     assert missao_base.general_verdict == "accepted"
 
 
+def test_helpers_de_estado_refletem_ciclo_da_missao():
+    pendente = Missao(
+        missao_id=1,
+        titulo="Pendente",
+        prioridade=1,
+        prazo="30-04-2099",
+        instrucao="Executar",
+    )
+    aguardando_justificativa = Missao(
+        missao_id=2,
+        titulo="Falha",
+        prioridade=1,
+        prazo="01-01-2020",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+    )
+    aguardando_revisao = Missao(
+        missao_id=3,
+        titulo="Falha justificada",
+        prioridade=1,
+        prazo="01-01-2020",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        failure_reason="Perdi a janela.",
+    )
+    falha_revisada = Missao(
+        missao_id=4,
+        titulo="Falha revisada",
+        prioridade=1,
+        prazo="01-01-2020",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_REVISADA,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        failure_reason="Perdi a janela.",
+        general_verdict="accepted",
+    )
+
+    assert pendente.is_pending() is True
+    assert pendente.is_operational() is True
+    assert pendente.is_finalized() is False
+    assert pendente.can_be_marked_decided() is True
+
+    assert aguardando_justificativa.requires_soldier_justification() is True
+    assert aguardando_justificativa.is_operational() is True
+    assert aguardando_justificativa.can_be_marked_decided() is False
+
+    assert aguardando_revisao.requires_general_review() is True
+    assert aguardando_revisao.is_operational() is False
+    assert aguardando_revisao.is_finalized() is False
+
+    assert falha_revisada.is_failed_reviewed() is True
+    assert falha_revisada.is_finalized() is True
+    assert falha_revisada.is_operational() is False
+    assert falha_revisada.can_be_edited_by_general() is False
+
+
+def test_missao_concluida_e_finalizada():
+    missao = Missao(
+        missao_id=1,
+        titulo="Treinar",
+        prioridade=1,
+        prazo="30-04-2099",
+        instrucao="Treinar pesado",
+        status=StatusMissao.CONCLUIDA,
+        completed_at=datetime(2026, 4, 24, 10, 0, 0),
+    )
+
+    assert missao.is_completed() is True
+    assert missao.is_finalized() is True
+    assert missao.is_operational() is False
+
+
+def test_aliases_em_portugues_refletem_regras_de_dominio():
+    missao = Missao(
+        missao_id=1,
+        titulo="Treinar",
+        prioridade=1,
+        prazo="30-04-2099",
+        instrucao="Treinar pesado",
+    )
+
+    assert missao.is_pendente() is True
+    assert missao.is_operacional() is True
+    assert missao.is_finalizada() is False
+    assert missao.pode_ser_concluida() is True
+
+    missao.marcar_como_falha()
+
+    assert missao.is_falhada() is True
+    assert missao.pode_ser_justificada() is True
+
+
+def test_completed_e_failed_reviewed_nao_sao_operacionais():
+    concluida = Missao(
+        missao_id=1,
+        titulo="Concluída",
+        prioridade=1,
+        prazo="30-04-2099",
+        instrucao="Executar",
+        status=StatusMissao.CONCLUIDA,
+        completed_at=datetime(2026, 4, 24, 10, 0, 0),
+    )
+    revisada = Missao(
+        missao_id=2,
+        titulo="Falha revisada",
+        prioridade=1,
+        prazo="01-01-2020",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_REVISADA,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        failure_reason="Falhou.",
+        general_verdict="accepted",
+    )
+
+    assert concluida.is_operational() is False
+    assert revisada.is_operational() is False
+    assert revisada.can_be_deleted_by_general() is False
+
+
 def test_reabrir_missao_limpa_estado_de_conclusao():
     missao = Missao(
         missao_id=1,

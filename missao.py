@@ -108,6 +108,90 @@ class Missao:
     def soldier_excuse(self):
         return self.failure_reason
 
+    def is_pending(self):
+        return self.status == StatusMissao.PENDENTE
+
+    def is_pendente(self):
+        return self.is_pending()
+
+    def is_completed(self):
+        return self.status == StatusMissao.CONCLUIDA
+
+    def is_concluida(self):
+        return self.is_completed()
+
+    def is_failed_waiting_justification(self):
+        return self.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA
+
+    def is_falhada(self):
+        return self.is_failed_waiting_justification()
+
+    def is_failed_waiting_review(self):
+        return self.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+
+    def is_justificada(self):
+        return self.is_failed_waiting_review()
+
+    def is_failed_reviewed(self):
+        return self.status == StatusMissao.FALHA_REVISADA
+
+    def is_falha_revisada(self):
+        return self.is_failed_reviewed()
+
+    def is_finalized(self):
+        return self.is_completed() or self.is_failed_reviewed()
+
+    def is_operational(self):
+        return self.is_pending() or self.is_failed_waiting_justification()
+
+    def is_finalizada(self):
+        return self.is_finalized()
+
+    def is_operacional(self):
+        return self.is_operational()
+
+    def can_be_completed(self, reference_date=None):
+        return (
+            self.completed_at is None
+            and self.is_pending()
+            and not self.esta_vencida(referencia=reference_date)
+        )
+
+    def pode_ser_concluida(self, referencia=None):
+        return self.can_be_completed(reference_date=referencia)
+
+    def can_be_edited_by_general(self):
+        return (
+            self.is_pending()
+            or self.is_completed()
+            or self.is_failed_waiting_justification()
+        )
+
+    def can_be_marked_decided(self):
+        return self.is_pending()
+
+    def can_be_deleted_by_general(self):
+        return self.is_operational()
+
+    def requires_soldier_justification(self):
+        return self.is_failed_waiting_justification()
+
+    def pode_ser_justificada(self):
+        return self.requires_soldier_justification()
+
+    def requires_general_review(self):
+        return self.is_failed_waiting_review()
+
+    def is_visible_to_soldier(self, reference_date=None):
+        if self.is_finalized() or self.requires_general_review():
+            return False
+        if self.requires_soldier_justification():
+            return True
+        return self.due_date is None or self.due_date <= (reference_date or date.today())
+
+    def is_visible_to_general_board(self):
+        return self.is_operational()
+
     def descricao_prioridade(self):
         descricoes = {
             PrioridadeMissao.ALTA: "Faça! Prioridade máxima.",
@@ -135,9 +219,9 @@ class Missao:
         self._prazo = self._validar_prazo(prazo)
 
     def concluir(self, instante=None, referencia=None):
-        if self.status == StatusMissao.CONCLUIDA:
+        if self.is_completed():
             raise ValueError("Esta missão já está concluída.")
-        if not self.permite_conclusao(referencia=referencia):
+        if not self.can_be_completed(reference_date=referencia):
             raise ValueError("Missão vencida exige justificativa antes de seguir.")
         self.status = StatusMissao.CONCLUIDA
         self.completed_at = self._validar_datetime(instante, "Data de conclusão inválida.", default_now=True)
@@ -180,20 +264,16 @@ class Missao:
                 self.failed_at = datetime.now()
 
     def permite_conclusao(self, referencia=None):
-        return (
-            self.completed_at is None
-            and self.status == StatusMissao.PENDENTE
-            and not self.esta_vencida(referencia=referencia)
-        )
+        return self.can_be_completed(reference_date=referencia)
 
     def esta_vencida(self, referencia=None):
-        if self.status == StatusMissao.CONCLUIDA or self._prazo is None:
+        if self.is_completed() or self._prazo is None:
             return False
         referencia = referencia or date.today()
         return self._prazo < referencia
 
     def marcar_como_falha(self, instante=None):
-        if self.status == StatusMissao.CONCLUIDA:
+        if self.is_completed():
             raise ValueError("Missão concluída não entra em fluxo de falha.")
         self.status = StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA
         self.completed_at = None
@@ -203,7 +283,7 @@ class Missao:
         self.general_verdict = None
 
     def registrar_justificativa_soldado(self, motivo):
-        if self.status != StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA:
+        if not self.requires_soldier_justification():
             raise ValueError("A missão não está aguardando justificativa.")
         self.failure_reason = self._validar_texto_opcional(
             motivo,
@@ -213,7 +293,7 @@ class Missao:
         self.status = StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
 
     def registrar_veredito_general(self, veredito):
-        if self.status != StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO:
+        if not self.requires_general_review():
             raise ValueError("Não há justificativa pendente de revisão.")
         if not self.failure_reason:
             raise ValueError("Não é possível revisar sem justificativa prévia do Soldado.")
@@ -221,7 +301,7 @@ class Missao:
         self.status = StatusMissao.FALHA_REVISADA
 
     def _normalizar_consistencia_inicial(self):
-        if self.status == StatusMissao.CONCLUIDA:
+        if self.is_completed():
             if self.completed_at is None:
                 self.completed_at = self.created_at
             self.failed_at = None
@@ -231,7 +311,7 @@ class Missao:
 
         self.completed_at = None
 
-        if self.status == StatusMissao.PENDENTE:
+        if self.is_pending():
             self.failed_at = None
             self.failure_reason = None
             self.general_verdict = None
@@ -240,16 +320,16 @@ class Missao:
         if self.failed_at is None:
             self.failed_at = self.created_at
 
-        if self.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA:
+        if self.is_failed_waiting_justification():
             self.failure_reason = None
             self.general_verdict = None
             return
 
-        if self.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO:
+        if self.is_failed_waiting_review():
             self.general_verdict = None
             return
 
-        if self.status == StatusMissao.FALHA_REVISADA and self.general_verdict is None:
+        if self.is_failed_reviewed() and self.general_verdict is None:
             raise ValueError("Falha revisada precisa de resultado da revisão.")
 
     def _validar_missao_id(self, missao_id):

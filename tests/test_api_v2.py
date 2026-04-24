@@ -6,6 +6,7 @@ from api.routes import (
     criar_missao,
     editar_missao,
     justificar_missao,
+    listar_missoes_historicas,
     listar_missoes,
     listar_missoes_em_revisao,
     login,
@@ -169,6 +170,29 @@ def test_soldado_nao_pode_concluir_missao_vencida():
     assert resposta[0]["failure_reason"] is None
 
 
+def test_api_retorna_403_quando_soldado_tenta_criar_missao():
+    _, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    try:
+        criar_missao(
+            MissaoCreatePayload(
+                titulo="Missão bloqueada",
+                prioridade=1,
+                prazo="24-04-2026",
+                instrucao="Executar operação",
+                responsavel_id=usuario_dict["id"],
+            ),
+            usuario=usuario,
+            missao_service=missoes,
+        )
+    except HTTPException as erro:
+        assert erro.status_code == 403
+    else:
+        raise AssertionError("Criar missão em modo Soldier deveria retornar 403.")
+
+
 def test_soldado_pode_justificar_e_general_revisar():
     repo, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
     criar_missao(
@@ -213,6 +237,136 @@ def test_soldado_pode_justificar_e_general_revisar():
     assert resposta["general_verdict"] == "accepted"
 
 
+def test_listagem_operacional_nao_retorna_concluidas_ou_falhas_revisadas():
+    repo, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    repo.missoes = [
+        Missao(
+            missao_id=1,
+            titulo="Pendente",
+            prioridade=1,
+            prazo="30-04-2099",
+            instrucao="Executar",
+            status=StatusMissao.PENDENTE,
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Concluída",
+            prioridade=1,
+            prazo="22-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.CONCLUIDA,
+            completed_at=datetime(2026, 4, 22, 10, 0, 0),
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=3,
+            titulo="Falha revisada",
+            prioridade=1,
+            prazo="23-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_REVISADA,
+            failed_at=datetime(2026, 4, 23, 10, 0, 0),
+            failure_reason="Falhou.",
+            general_verdict="accepted",
+            user_id=usuario.usuario_id,
+        ),
+    ]
+    repo.contextos = {
+        1: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+        2: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+        3: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+    }
+
+    resposta = listar_missoes(usuario=usuario, missao_service=missoes)
+
+    assert [missao["id"] for missao in resposta] == [1]
+
+
+def test_listagem_soldado_retorna_apenas_executaveis_ou_justificaveis():
+    repo, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    repo.missoes = [
+        Missao(
+            missao_id=1,
+            titulo="Pendente de hoje",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.PENDENTE,
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Futura",
+            prioridade=1,
+            prazo="30-04-2099",
+            instrucao="Executar",
+            status=StatusMissao.PENDENTE,
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=3,
+            titulo="Aguardando revisão",
+            prioridade=1,
+            prazo="23-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+            failed_at=datetime(2026, 4, 23, 10, 0, 0),
+            failure_reason="Falhou.",
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=4,
+            titulo="Falha para justificar",
+            prioridade=1,
+            prazo="01-01-2020",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
+            failed_at=datetime(2026, 4, 23, 10, 0, 0),
+            user_id=usuario.usuario_id,
+        ),
+    ]
+    repo.contextos = {
+        1: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+        2: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+        3: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+        4: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+    }
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    resposta = listar_missoes(usuario=usuario, missao_service=missoes)
+
+    assert [missao["id"] for missao in resposta] == [4, 1]
+
+
+def test_api_retorna_400_para_revisao_em_estado_invalido():
+    _, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Missão ainda pendente",
+            prioridade=1,
+            prazo="30-04-2099",
+            instrucao="Executar operação",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    try:
+        revisar_justificativa(
+            1,
+            RevisaoJustificativaPayload(accepted=True),
+            usuario=usuario,
+            missao_service=missoes,
+        )
+    except HTTPException as erro:
+        assert erro.status_code == 400
+    else:
+        raise AssertionError("Revisão fora do estado correto deveria retornar 400.")
+
+
 def test_general_pode_reabrir_missao_concluida():
     _, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
     criar_missao(
@@ -248,6 +402,65 @@ def test_general_pode_reabrir_missao_concluida():
 
     assert resposta["status"] == "Pendente"
     assert resposta["completed_at"] is None
+
+
+def test_historico_de_missoes_retorna_apenas_finalizadas():
+    repo, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    repo.missoes = [
+        Missao(
+            missao_id=1,
+            titulo="Concluída",
+            prioridade=1,
+            prazo="22-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.CONCLUIDA,
+            completed_at=datetime(2026, 4, 22, 10, 0, 0),
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Falha revisada",
+            prioridade=1,
+            prazo="23-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_REVISADA,
+            failed_at=datetime(2026, 4, 23, 10, 0, 0),
+            failure_reason="Falhou.",
+            general_verdict="accepted",
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=3,
+            titulo="Pendente",
+            prioridade=1,
+            prazo="30-04-2099",
+            instrucao="Executar",
+            status=StatusMissao.PENDENTE,
+            user_id=usuario.usuario_id,
+        ),
+    ]
+    repo.contextos = {
+        1: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+        2: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+        3: {"criada_por_id": usuario_dict["id"], "responsavel_id": usuario_dict["id"]},
+    }
+
+    resposta = listar_missoes_historicas(usuario=usuario, missao_service=missoes)
+
+    assert [missao["id"] for missao in resposta] == [1, 2]
+
+
+def test_historico_de_missoes_bloqueado_no_modo_soldado():
+    _, auth, missoes, _, _, usuario = preparar_ambiente()
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    try:
+        listar_missoes_historicas(usuario=usuario, missao_service=missoes)
+    except HTTPException as erro:
+        assert erro.status_code == 403
+    else:
+        raise AssertionError("Histórico de missões em modo Soldier deveria retornar 403.")
 
 
 def test_usuario_nao_afeta_missao_de_outro_usuario():
@@ -339,6 +552,41 @@ def test_relatorio_semanal_retorna_payload_esperado():
     assert payload["missions_waiting_justification"] == 0
     assert payload["missions_waiting_review"] == 1
     assert payload["failure_reasons"] == ["Perdi o prazo por bloqueio externo."]
+
+
+def test_relatorio_semanal_retorna_403_em_modo_soldado():
+    _, auth, _, relatorios, _, usuario = preparar_ambiente()
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    try:
+        obter_relatorio_semanal(
+            start_date="2026-04-20",
+            end_date="2026-04-26",
+            usuario=usuario,
+            relatorio_service=relatorios,
+        )
+    except HTTPException as erro:
+        assert erro.status_code == 403
+    else:
+        raise AssertionError("Relatório semanal em modo Soldier deveria retornar 403.")
+
+
+def test_relatorio_semanal_retorna_400_para_intervalo_invertido():
+    _, _, _, relatorios, _, usuario = preparar_ambiente()
+
+    try:
+        obter_relatorio_semanal(
+            start_date="2026-04-26",
+            end_date="2026-04-20",
+            usuario=usuario,
+            relatorio_service=relatorios,
+        )
+    except HTTPException as erro:
+        assert erro.status_code == 400
+        assert "Intervalo semanal inválido" in erro.detail
+    else:
+        raise AssertionError("Intervalo invertido deveria retornar erro HTTP 400.")
 
 
 def test_relatorio_semanal_valida_formato_de_data():

@@ -75,6 +75,16 @@ def get_current_user(
         raise HTTPException(status_code=401, detail=str(erro)) from erro
 
 
+def _raise_http_from_domain_error(erro: Exception) -> None:
+    if isinstance(erro, MissaoNaoEncontrada):
+        raise HTTPException(status_code=404, detail=str(erro)) from erro
+    if isinstance(erro, PermissaoNegadaError):
+        raise HTTPException(status_code=403, detail=str(erro)) from erro
+    if isinstance(erro, ValueError):
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    raise erro
+
+
 @router.get("/health")
 def healthcheck():
     return {"status": "ok"}
@@ -210,10 +220,8 @@ def criar_missao(
 ):
     try:
         missao = missao_service.criar_missao(payload.model_dump(), usuario=usuario)
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
-    except ValueError as erro:
-        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
     return missao.to_dict()
 
 
@@ -233,7 +241,19 @@ def listar_missoes_em_revisao(
     try:
         missoes = missao_service.listar_missoes_para_revisao(usuario=usuario)
     except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
+        _raise_http_from_domain_error(erro)
+    return [missao.to_dict() for missao in missoes]
+
+
+@router.get("/missoes/historico")
+def listar_missoes_historicas(
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missoes = missao_service.listar_missoes_historicas(usuario=usuario)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
     return [missao.to_dict() for missao in missoes]
 
 
@@ -250,12 +270,8 @@ def editar_missao(
             payload.model_dump(exclude_unset=True),
             usuario=usuario,
         )
-    except MissaoNaoEncontrada as erro:
-        raise HTTPException(status_code=404, detail=str(erro)) from erro
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
-    except ValueError as erro:
-        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
     return missao.to_dict()
 
 
@@ -267,12 +283,8 @@ def concluir_missao(
 ):
     try:
         missao = missao_service.concluir_missao(missao_id, usuario=usuario)
-    except MissaoNaoEncontrada as erro:
-        raise HTTPException(status_code=404, detail=str(erro)) from erro
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
-    except ValueError as erro:
-        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
     return missao.to_dict()
 
 
@@ -284,10 +296,8 @@ def alternar_decisao_missao(
 ):
     try:
         missao = missao_service.alternar_decisao(missao_id, usuario=usuario)
-    except MissaoNaoEncontrada as erro:
-        raise HTTPException(status_code=404, detail=str(erro)) from erro
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
+    except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
     return missao.to_dict()
 
 
@@ -304,12 +314,8 @@ def registrar_justificativa_soldado(
             payload.reason,
             usuario=usuario,
         )
-    except MissaoNaoEncontrada as erro:
-        raise HTTPException(status_code=404, detail=str(erro)) from erro
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
-    except ValueError as erro:
-        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
     return missao.to_dict()
 
 
@@ -341,12 +347,8 @@ def registrar_veredito_general(
             payload.verdict,
             usuario=usuario,
         )
-    except MissaoNaoEncontrada as erro:
-        raise HTTPException(status_code=404, detail=str(erro)) from erro
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
-    except ValueError as erro:
-        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
     return missao.to_dict()
 
 
@@ -363,12 +365,8 @@ def revisar_justificativa(
             payload.accepted,
             usuario=usuario,
         )
-    except MissaoNaoEncontrada as erro:
-        raise HTTPException(status_code=404, detail=str(erro)) from erro
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
-    except ValueError as erro:
-        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
     return missao.to_dict()
 
 
@@ -380,10 +378,8 @@ def remover_missao(
 ):
     try:
         missao_service.remover_missao(missao_id, usuario=usuario)
-    except MissaoNaoEncontrada as erro:
-        raise HTTPException(status_code=404, detail=str(erro)) from erro
-    except PermissaoNegadaError as erro:
-        raise HTTPException(status_code=403, detail=str(erro)) from erro
+    except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
 
 
 @router.get("/missoes/{missao_id}/historico")
@@ -395,7 +391,7 @@ def listar_historico(
     try:
         eventos = missao_service.listar_historico(missao_id, usuario=usuario)
     except MissaoNaoEncontrada as erro:
-        raise HTTPException(status_code=404, detail=str(erro)) from erro
+        _raise_http_from_domain_error(erro)
 
     return [
         {
@@ -420,9 +416,9 @@ def obter_relatorio_semanal(
     try:
         inicio = _parse_query_date(start_date)
         fim = _parse_query_date(end_date)
-        return relatorio_service.get_weekly_report(usuario.usuario_id, inicio, fim)
-    except ValueError as erro:
-        raise HTTPException(status_code=400, detail=str(erro)) from erro
+        return relatorio_service.get_weekly_report_for_user(usuario, inicio, fim)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
 
 
 def _parse_query_date(raw_value: str | None):

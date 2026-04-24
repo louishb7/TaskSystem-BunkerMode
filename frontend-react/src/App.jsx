@@ -7,6 +7,11 @@ import MissionList from "./components/MissionList.jsx";
 import MissionToolbar from "./components/MissionToolbar.jsx";
 import WeeklyReportPanel from "./components/WeeklyReportPanel.jsx";
 import { formatDateTime } from "./utils/date.js";
+import {
+  isCompleted,
+  isFinalizedMission,
+  requiresSoldierJustification,
+} from "./utils/missionStatus.js";
 
 const TOKEN_KEY = "bunkermode_token";
 const USER_KEY = "bunkermode_usuario";
@@ -28,22 +33,6 @@ function readStoredUser() {
   }
 }
 
-function isDone(mission) {
-  return mission.status === "Concluída";
-}
-
-function isFailedAwaitingJustification(mission) {
-  return mission.status === "Falha aguardando justificativa";
-}
-
-function isReviewedFailure(mission) {
-  return mission.status === "Falha revisada";
-}
-
-function isFinalizedMission(mission) {
-  return isDone(mission) || isReviewedFailure(mission);
-}
-
 function filterMissions(missions, filters) {
   const search = filters.search.trim().toLowerCase();
   let filtered = [...missions];
@@ -56,11 +45,11 @@ function filterMissions(missions, filters) {
   }
 
   if (filters.status === "pendente") {
-    filtered = filtered.filter((mission) => !isDone(mission));
+    filtered = filtered.filter((mission) => !isCompleted(mission));
   }
 
   if (filters.status === "concluida") {
-    filtered = filtered.filter(isDone);
+    filtered = filtered.filter(isCompleted);
   }
 
   if (filters.decided === "decididas") {
@@ -147,7 +136,7 @@ export default function App() {
   const pendingSoldierExcuses = useMemo(
     () =>
       soldierMode
-        ? missions.filter((mission) => isFailedAwaitingJustification(mission) && !isDone(mission))
+        ? missions.filter((mission) => requiresSoldierJustification(mission) && !isCompleted(mission))
         : [],
     [missions, soldierMode]
   );
@@ -155,15 +144,15 @@ export default function App() {
     () => (
       soldierMode
         ? visibleMissions.filter(
-            (mission) => !isFailedAwaitingJustification(mission) && !isFinalizedMission(mission)
+            (mission) => !requiresSoldierJustification(mission) && !isFinalizedMission(mission)
           )
-        : visibleMissions.filter((mission) => !isFinalizedMission(mission))
+        : visibleMissions
     ),
     [soldierMode, visibleMissions]
   );
 
   const totals = useMemo(() => {
-    const completed = missions.filter(isDone).length;
+    const completed = missions.filter(isCompleted).length;
     return {
       all: missions.length,
       pending: missions.length - completed,
@@ -835,6 +824,21 @@ export default function App() {
               Ativar Soldado
             </button>
           )}
+          {!soldierMode && (
+            <button
+              className="button secondary subtle-button"
+              type="button"
+              onClick={async () => {
+                const nextValue = !showWeeklyReport;
+                setShowWeeklyReport(nextValue);
+                if (nextValue) {
+                  await loadWeeklyReport();
+                }
+              }}
+            >
+              {showWeeklyReport ? "Voltar ao quadro" : "Ver relatório semanal"}
+            </button>
+          )}
           <button className="button secondary subtle-button" type="button" onClick={clearSession}>
             Encerrar sessão
           </button>
@@ -844,120 +848,133 @@ export default function App() {
       <section className="workspace">
         <section className="mission-column">
           <section className="panel mission-area">
-            <div className="section-heading mission-heading">
-              <div>
-                <p className="section-kicker">Quadro operacional</p>
-                <h2>Ordens em curso</h2>
-                {soldierMode && (
-                  <p className="muted section-mode-copy">
-                    Planejamento indisponível. Nesta tela, o Soldado só executa.
-                  </p>
-                )}
-              </div>
-              <div className="inline-summary" aria-label="Resumo operacional">
-                <div className="inline-summary-item">
-                  <span>Total</span>
-                  <strong>{totals.all}</strong>
-                </div>
-                <div className="inline-summary-item pending">
-                  <span>Pendentes</span>
-                  <strong>{totals.pending}</strong>
-                </div>
-                <div className="inline-summary-item success">
-                  <span>Concluídas</span>
-                  <strong>{totals.completed}</strong>
-                </div>
-              </div>
-            </div>
-
-            <MissionToolbar
-              filters={filters}
-              onChange={setFilters}
-              onRefresh={() => loadMissions()}
-              loading={missionLoading}
-            />
-
-            {missionStatus.message && (
-              <p className={`feedback ${missionStatus.type}`}>{missionStatus.message}</p>
-            )}
-            {sessionStatus.message && (
-              <p className={`feedback ${sessionStatus.type}`}>{sessionStatus.message}</p>
-            )}
-
-            {soldierMode && pendingSoldierExcuses.length > 0 && (
-              <section className="review-panel soldier-pending-panel" aria-label="Pendências de justificativa">
-                <div className="review-panel-header">
+            {showWeeklyReport && !soldierMode ? (
+              <WeeklyReportPanel
+                report={weeklyReport}
+                loading={reportLoading || reviewLoading}
+                onRefresh={() => {
+                  loadReviewMissions();
+                  loadWeeklyReport();
+                }}
+              />
+            ) : (
+              <>
+                <div className="section-heading mission-heading">
                   <div>
-                    <p className="section-kicker">Pendências de justificativa</p>
-                    <h3>Missões vencidas aguardando resposta</h3>
-                    <p className="muted review-copy">
-                      Essas ordens saíram da execução. Registre o motivo antes de seguir.
-                    </p>
+                    <p className="section-kicker">Quadro operacional</p>
+                    <h2>Ordens em curso</h2>
+                    {soldierMode && (
+                      <p className="muted section-mode-copy">
+                        Planejamento indisponível. Nesta tela, o Soldado só executa.
+                      </p>
+                    )}
+                  </div>
+                  <div className="inline-summary" aria-label="Resumo operacional">
+                    <div className="inline-summary-item">
+                      <span>Total</span>
+                      <strong>{totals.all}</strong>
+                    </div>
+                    <div className="inline-summary-item pending">
+                      <span>Pendentes</span>
+                      <strong>{totals.pending}</strong>
+                    </div>
+                    <div className="inline-summary-item success">
+                      <span>Concluídas</span>
+                      <strong>{totals.completed}</strong>
+                    </div>
                   </div>
                 </div>
 
-                <div className="review-list">
-                  {pendingSoldierExcuses.map((mission) => (
-                    <article key={`excuse-${mission.id}`} className="review-card soldier-pending-card">
-                      <div className="review-card-header">
-                        <div>
-                          <h4>{mission.titulo}</h4>
-                          <p className="muted">
-                            Prazo vencido: {mission.prazo || "Sem prazo definido"} · Falhou em{" "}
-                            {formatDateTime(mission.failed_at)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="review-reason">
-                        <span>O que aconteceu</span>
-                        <p>{mission.instrucao}</p>
-                      </div>
-                      <div className="soldier-excuse-form">
-                        <label>
-                          Justificativa
-                          <textarea
-                            name={`soldier-excuse-${mission.id}`}
-                            rows="3"
-                            value={excuseDrafts[mission.id] || ""}
-                            onChange={(event) => updateExcuseDraft(mission.id, event.target.value)}
-                            placeholder="Explique o motivo"
-                          />
-                        </label>
-                        <button
-                          className="button primary"
-                          type="button"
-                          onClick={() => submitSoldierExcuse(mission.id)}
-                          disabled={excuseLoading}
-                        >
-                          {excuseLoading ? "Enviando..." : "Enviar justificativa"}
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            )}
+                <MissionToolbar
+                  filters={filters}
+                  onChange={setFilters}
+                  onRefresh={() => loadMissions()}
+                  loading={missionLoading}
+                />
 
-            {!soldierMode && (
-              <GeneralReviewPanel
-                missions={reviewMissions}
-                loadingMissionId={verdictLoadingId}
-                onReview={submitGeneralReview}
-              />
-            )}
+                {missionStatus.message && (
+                  <p className={`feedback ${missionStatus.type}`}>{missionStatus.message}</p>
+                )}
+                {sessionStatus.message && (
+                  <p className={`feedback ${sessionStatus.type}`}>{sessionStatus.message}</p>
+                )}
 
-            <MissionList
-              missions={boardMissions}
-              loading={missionLoading}
-              onEdit={setEditingMission}
-              onComplete={completeMission}
-              onDelete={deleteMission}
-              onHistory={loadHistory}
-              onToggleDecision={toggleMissionDecision}
-              togglingDecisionId={decisionLoadingId}
-              planningLocked={soldierMode}
-              canExecute={soldierMode}
-            />
+                {soldierMode && pendingSoldierExcuses.length > 0 && (
+                  <section className="review-panel soldier-pending-panel" aria-label="Pendências de justificativa">
+                    <div className="review-panel-header">
+                      <div>
+                        <p className="section-kicker">Pendências de justificativa</p>
+                        <h3>Missões vencidas aguardando resposta</h3>
+                        <p className="muted review-copy">
+                          Essas ordens saíram da execução. Registre o motivo antes de seguir.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="review-list">
+                      {pendingSoldierExcuses.map((mission) => (
+                        <article key={`excuse-${mission.id}`} className="review-card soldier-pending-card">
+                          <div className="review-card-header">
+                            <div>
+                              <h4>{mission.titulo}</h4>
+                              <p className="muted">
+                                Prazo vencido: {mission.prazo || "Sem prazo definido"} · Falhou em{" "}
+                                {formatDateTime(mission.failed_at)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="review-reason">
+                            <span>O que aconteceu</span>
+                            <p>{mission.instrucao}</p>
+                          </div>
+                          <div className="soldier-excuse-form">
+                            <label>
+                              Justificativa
+                              <textarea
+                                name={`soldier-excuse-${mission.id}`}
+                                rows="3"
+                                value={excuseDrafts[mission.id] || ""}
+                                onChange={(event) => updateExcuseDraft(mission.id, event.target.value)}
+                                placeholder="Explique o motivo"
+                              />
+                            </label>
+                            <button
+                              className="button primary"
+                              type="button"
+                              onClick={() => submitSoldierExcuse(mission.id)}
+                              disabled={excuseLoading}
+                            >
+                              {excuseLoading ? "Enviando..." : "Enviar justificativa"}
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {!soldierMode && (
+                  <GeneralReviewPanel
+                    missions={reviewMissions}
+                    loadingMissionId={verdictLoadingId}
+                    onReview={submitGeneralReview}
+                  />
+                )}
+
+                <MissionList
+                  missions={boardMissions}
+                  loading={missionLoading}
+                  onEdit={setEditingMission}
+                  onComplete={completeMission}
+                  onDelete={deleteMission}
+                  onHistory={loadHistory}
+                  onToggleDecision={toggleMissionDecision}
+                  togglingDecisionId={decisionLoadingId}
+                  planningLocked={soldierMode}
+                  canExecute={soldierMode}
+                />
+              </>
+            )}
           </section>
         </section>
 
@@ -986,47 +1003,10 @@ export default function App() {
                 onUpdate={updateMission}
                 onCancelEdit={() => setEditingMission(null)}
               />
-              <section className="panel report-access-panel">
-                <div className="section-heading general-heading">
-                  <div>
-                    <p className="section-kicker">Revisão semanal</p>
-                    <h2>Relatório fora do posto principal</h2>
-                    <p className="muted form-lead">
-                      Abra o relatório apenas quando quiser revisar o que realmente aconteceu na semana.
-                    </p>
-                  </div>
-                  <button
-                    className="button secondary"
-                    type="button"
-                    onClick={async () => {
-                      const nextValue = !showWeeklyReport;
-                      setShowWeeklyReport(nextValue);
-                      if (nextValue) {
-                        await loadWeeklyReport();
-                      }
-                    }}
-                  >
-                    {showWeeklyReport ? "Ocultar relatório semanal" : "Ver relatório semanal"}
-                  </button>
-                </div>
-              </section>
             </>
           )}
         </aside>
       </section>
-
-      {!soldierMode && showWeeklyReport && (
-        <section className="report-section">
-          <WeeklyReportPanel
-            report={weeklyReport}
-            loading={reportLoading || reviewLoading}
-            onRefresh={() => {
-              loadReviewMissions();
-              loadWeeklyReport();
-            }}
-          />
-        </section>
-      )}
 
       {generalNameRequired && (
         <div className="modal-backdrop" role="presentation">

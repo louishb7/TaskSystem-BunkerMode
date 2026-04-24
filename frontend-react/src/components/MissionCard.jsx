@@ -1,13 +1,14 @@
 import React from "react";
-import { formatDateTime, isMissionOverdue } from "../utils/date.js";
-
-function isDone(mission) {
-  return mission.status === "Concluída";
-}
-
-function isReviewedFailure(mission) {
-  return mission.status === "Falha revisada";
-}
+import { formatDateTime } from "../utils/date.js";
+import {
+  canShowGeneralDecisionToggle,
+  canShowGeneralDelete,
+  canShowGeneralEdit,
+  canShowSoldierActions,
+  isCompleted,
+  isReviewedFailure,
+  requiresSoldierJustification,
+} from "../utils/missionStatus.js";
 
 function priorityLabel(priority) {
   return {
@@ -43,14 +44,14 @@ export default function MissionCard({
   planningLocked = false,
   canExecute = false,
 }) {
-  const done = isDone(mission);
+  const done = isCompleted(mission);
   const reviewedFailure = isReviewedFailure(mission);
   const decided = Boolean(mission.is_decided) && !done;
-  const failedAwaitingExcuse =
-    mission.status === "Falha aguardando justificativa" ||
-    ((Boolean(mission.failed_at) || isMissionOverdue(mission.prazo)) &&
-      !mission.failure_reason &&
-      !done);
+  const failedAwaitingExcuse = requiresSoldierJustification(mission);
+  const allowGeneralEdit = canShowGeneralEdit(mission) && !planningLocked;
+  const allowGeneralDecisionToggle = canShowGeneralDecisionToggle(mission) && !planningLocked;
+  const allowGeneralDelete = canShowGeneralDelete(mission) && !planningLocked;
+  const allowSoldierActions = canShowSoldierActions(mission) && canExecute;
 
   return (
     <article className={`mission-card ${done ? "done" : ""} ${decided ? "decided" : ""}`}>
@@ -75,12 +76,12 @@ export default function MissionCard({
       </div>
 
       <div className="mission-actions">
-        {!done && canExecute && !failedAwaitingExcuse && (
+        {!done && allowSoldierActions && (
           <button className="button compact primary" type="button" onClick={() => onComplete(mission.id)}>
             Concluir
           </button>
         )}
-        {!done && !planningLocked && !reviewedFailure && (
+        {!done && allowGeneralDecisionToggle && (
           <button
             className={`button compact ${decided ? "secondary" : "primary"}`}
             type="button"
@@ -94,7 +95,7 @@ export default function MissionCard({
                 : "Marcar como decidido"}
           </button>
         )}
-        {!planningLocked && !reviewedFailure && (
+        {allowGeneralEdit && (
           <button className="button compact secondary" type="button" onClick={() => onEdit(mission)}>
             Editar
           </button>
@@ -104,7 +105,7 @@ export default function MissionCard({
             {mission.historyOpen ? "Ocultar histórico" : "Histórico"}
           </button>
         )}
-        {!planningLocked && (
+        {allowGeneralDelete && (
           <button className="button compact danger" type="button" onClick={() => onDelete(mission.id)}>
             Apagar
           </button>

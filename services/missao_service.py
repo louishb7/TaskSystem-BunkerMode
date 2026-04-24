@@ -49,21 +49,31 @@ class MissaoService:
         missoes = self._ordenar_missoes(missoes)
 
         if usuario is not None and getattr(usuario, "active_mode", "general") == "soldier":
-            return [missao for missao in missoes if self._visivel_no_soldado(missao)]
+            return [missao for missao in missoes if missao.is_visible_to_soldier(self._today())]
 
-        return missoes
+        return [missao for missao in missoes if missao.is_visible_to_general_board()]
+
+    def listar_missoes_historicas(self, usuario=None) -> list[Missao]:
+        self._garantir_modo_general(usuario)
+        missoes = self._carregar_missoes_do_usuario(usuario)
+        self._reconciliar_falhas(usuario, missoes)
+        return self._ordenar_missoes(
+            [missao for missao in missoes if missao.is_finalized()]
+        )
 
     def listar_missoes_para_revisao(self, usuario=None) -> list[Missao]:
         self._garantir_modo_general(usuario)
         return [
             missao
             for missao in self._carregar_missoes_do_usuario(usuario)
-            if missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+            if missao.requires_general_review()
         ]
 
     def editar_missao(self, missao_id: int, dados: dict, usuario=None) -> Missao:
         self._garantir_modo_general(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
+        if not missao.can_be_edited_by_general():
+            raise ValueError("Missão finalizada por revisão não pode ser editada pelo General.")
 
         if "titulo" in dados:
             missao.atualizar_titulo(dados["titulo"])
@@ -96,7 +106,7 @@ class MissaoService:
             raise MissaoNaoEncontrada(f"Missão {missao_id} não encontrada")
 
         self._marcar_falha_se_vencida(missao, usuario)
-        if not missao.permite_conclusao(referencia=self._today()):
+        if not missao.can_be_completed(reference_date=self._today()):
             raise ValueError(
                 "Missão fora do prazo. A conclusão foi bloqueada e a missão exige justificativa."
             )
@@ -117,6 +127,8 @@ class MissaoService:
     def alternar_decisao(self, missao_id: int, usuario=None) -> Missao:
         self._garantir_modo_general(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
+        if not missao.can_be_marked_decided():
+            raise ValueError("Apenas missões pendentes podem receber o marcador de decisão.")
         missao.alternar_decisao()
         self.repositorio.atualizar_missao(missao)
 
@@ -186,6 +198,8 @@ class MissaoService:
     def remover_missao(self, missao_id: int, usuario=None) -> None:
         self._garantir_modo_general(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
+        if not missao.can_be_deleted_by_general():
+            raise ValueError("Apenas missões operacionais podem ser removidas pelo General.")
         self.repositorio.remover_missao(missao_id)
 
         if usuario is not None:
@@ -258,7 +272,7 @@ class MissaoService:
             self._marcar_falha_se_vencida(missao, usuario)
 
     def _marcar_falha_se_vencida(self, missao: Missao, usuario=None) -> None:
-        if missao.status != StatusMissao.PENDENTE or not missao.esta_vencida(referencia=self._today()):
+        if not missao.is_pending() or not missao.esta_vencida(referencia=self._today()):
             return
 
         missao.marcar_como_falha(self._now())
@@ -273,28 +287,14 @@ class MissaoService:
             )
 
     def _reconciliar_estado_apos_edicao(self, missao: Missao) -> None:
-        if missao.status == StatusMissao.PENDENTE:
+        if missao.is_pending():
             return
-        if missao.status == StatusMissao.CONCLUIDA:
+        if missao.is_completed():
             return
-        if missao.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA and missao.failure_reason:
+        if missao.is_failed_waiting_justification() and missao.failure_reason:
             missao.atualizar_status(StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO)
-        if (
-            missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
-            and missao.general_verdict is not None
-        ):
+        if missao.is_failed_waiting_review() and missao.general_verdict is not None:
             missao.atualizar_status(StatusMissao.FALHA_REVISADA)
-
-    def _visivel_no_soldado(self, missao: Missao) -> bool:
-        if missao.status == StatusMissao.CONCLUIDA:
-            return False
-        if missao.status == StatusMissao.FALHA_REVISADA:
-            return False
-        if missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO:
-            return False
-        if missao.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA:
-            return True
-        return missao.due_date is None or missao.due_date <= self._today()
 
     def _ordenar_missoes(self, missoes: list[Missao]) -> list[Missao]:
         return sorted(

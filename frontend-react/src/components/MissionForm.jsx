@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { formatDateForApi, getTomorrow } from "../utils/date.js";
+import { isCompleted, STATUS_MISSAO } from "../utils/missionStatus.js";
 
 const emptyForm = {
   titulo: "",
@@ -8,10 +9,6 @@ const emptyForm = {
   prazoTipo: "hoje",
   prazo: "",
 };
-
-function isDone(mission) {
-  return mission?.status === "Concluída";
-}
 
 function getUserId(user) {
   return user?.usuario_id ?? user?.id;
@@ -91,7 +88,7 @@ export default function MissionForm({
 
     onUpdate(editingMission.id, {
       ...buildPayload(),
-      status: "Pendente",
+      status: STATUS_MISSAO.PENDENTE,
     });
   }
 
@@ -180,7 +177,7 @@ export default function MissionForm({
           <button className="button primary" type="submit" disabled={loading}>
             {loading ? "Salvando..." : isEditing ? "Salvar edição" : "Criar missão"}
           </button>
-          {isEditing && isDone(editingMission) && (
+          {isEditing && isCompleted(editingMission) && (
             <button className="button secondary" type="button" onClick={reopenMission} disabled={loading}>
               Reabrir missão
             </button>

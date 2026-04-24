@@ -251,6 +251,24 @@ def test_usuario_em_modo_general_nao_pode_concluir_missao():
         service.concluir_missao(10, usuario=usuario)
 
 
+def test_usuario_em_modo_soldado_nao_pode_criar_missao():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    with pytest.raises(PermissionError):
+        service.criar_missao(
+            {
+                "titulo": "Nova missão",
+                "prioridade": 1,
+                "prazo": "24-04-2026",
+                "instrucao": "Executar",
+                "responsavel_id": 1,
+            },
+            usuario=usuario,
+        )
+
+
 def test_usuario_pode_remover_apenas_missao_propria():
     repositorio = RepositorioOwnershipFake()
     service = MissaoService(repositorio)
@@ -259,6 +277,16 @@ def test_usuario_pode_remover_apenas_missao_propria():
     service.remover_missao(10, usuario=usuario)
 
     assert repositorio.missao_removida_id == 10
+
+
+def test_general_nao_remove_missao_finalizada():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.concluir(instante=datetime(2026, 4, 24, 10, 0, 0))
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    with pytest.raises(ValueError, match="operacionais"):
+        service.remover_missao(10, usuario=usuario)
 
 
 def test_usuario_nao_pode_ver_historico_de_missao_de_outro_usuario():
@@ -291,6 +319,34 @@ def test_usuario_em_modo_soldado_nao_pode_editar_missao():
         service.editar_missao(10, {"titulo": "Tentativa"}, usuario=usuario)
 
 
+def test_usuario_em_modo_soldado_nao_pode_remover_missao():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    with pytest.raises(PermissionError):
+        service.remover_missao(10, usuario=usuario)
+
+
+def test_usuario_em_modo_soldado_nao_pode_alternar_decisao():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    with pytest.raises(PermissionError):
+        service.alternar_decisao(10, usuario=usuario)
+
+
+def test_missao_finalizada_nao_pode_receber_decisao():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.concluir(instante=datetime(2026, 4, 24, 10, 0, 0))
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    with pytest.raises(ValueError, match="marcador de decisão"):
+        service.alternar_decisao(10, usuario=usuario)
+
+
 def test_missao_vencida_pode_receber_justificativa_do_soldado_e_aparece_em_revisao():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao.atualizar_prazo("01-01-2020")
@@ -310,6 +366,70 @@ def test_missao_vencida_pode_receber_justificativa_do_soldado_e_aparece_em_revis
 
     missoes_em_revisao = service.listar_missoes_para_revisao(usuario=general)
     assert [item.missao_id for item in missoes_em_revisao] == [10]
+
+
+def test_listar_missoes_general_retorna_apenas_quadro_operacional():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao = Missao(
+        missao_id=10,
+        titulo="Falha revisada",
+        prioridade=1,
+        prazo="01-01-2020",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_REVISADA,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        failure_reason="Falhou.",
+        general_verdict="accepted",
+        user_id=1,
+    )
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missoes = service.listar_missoes(usuario=usuario)
+
+    assert missoes == []
+
+
+def test_listar_missoes_historicas_retorna_apenas_finalizadas():
+    concluida = Missao(
+        missao_id=1,
+        titulo="Concluída",
+        prioridade=1,
+        prazo="22-04-2026",
+        instrucao="Executar",
+        status=StatusMissao.CONCLUIDA,
+        completed_at=datetime(2026, 4, 22, 10, 0, 0),
+        user_id=1,
+    )
+    revisada = Missao(
+        missao_id=2,
+        titulo="Falha revisada",
+        prioridade=2,
+        prazo="23-04-2026",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_REVISADA,
+        failed_at=datetime(2026, 4, 23, 10, 0, 0),
+        failure_reason="Falhou.",
+        general_verdict="accepted",
+        user_id=1,
+    )
+    pendente = Missao(
+        missao_id=3,
+        titulo="Pendente",
+        prioridade=3,
+        prazo="24-04-2099",
+        instrucao="Executar",
+        status=StatusMissao.PENDENTE,
+        user_id=1,
+    )
+    repositorio = RepositorioOwnershipFake()
+    repositorio.carregar_dados_por_responsavel = lambda responsavel_id: [concluida, revisada, pendente]
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missoes = service.listar_missoes_historicas(usuario=usuario)
+
+    assert [missao.missao_id for missao in missoes] == [1, 2]
 
 
 def test_general_pode_aceitar_ou_rejeitar_justificativa():
@@ -344,6 +464,33 @@ def test_usuario_de_outro_contexto_nao_pode_justificar_missao():
 
     with pytest.raises(MissaoNaoEncontrada):
         service.registrar_justificativa_soldado(10, "Tentativa indevida.", usuario=usuario)
+
+
+def test_soldado_so_pode_justificar_estado_correto():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    with pytest.raises(ValueError, match="aguardando justificativa"):
+        service.registrar_justificativa_soldado(10, "Tentativa inválida.", usuario=usuario)
+
+
+def test_general_so_pode_revisar_estado_correto():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    with pytest.raises(ValueError, match="pendente de revisão"):
+        service.revisar_justificativa(10, True, usuario=usuario)
+
+
+def test_soldado_nao_pode_acessar_revisao_do_general():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    with pytest.raises(PermissionError):
+        service.listar_missoes_para_revisao(usuario=usuario)
 
 
 class RepositorioUsuarioFake:
@@ -447,6 +594,63 @@ def test_relatorio_semanal_calcula_metricas():
         "Perdi o horário por atraso externo.",
         "Subestimei o tempo necessário.",
     ]
+
+
+def test_relatorio_semanal_ignora_outro_usuario_e_semana_vazia():
+    missoes = [
+        Missao(
+            missao_id=1,
+            titulo="Outra pessoa",
+            prioridade=1,
+            prazo="22-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.CONCLUIDA,
+            completed_at=datetime(2026, 4, 22, 10, 0, 0),
+            created_at=datetime(2026, 4, 21, 8, 0, 0),
+            user_id=2,
+        )
+    ]
+    service = RelatorioService(RepositorioRelatorioFake(missoes))
+
+    relatorio = service.get_weekly_report(
+        1,
+        start_date=date(2026, 4, 20),
+        end_date=date(2026, 4, 26),
+    )
+
+    assert relatorio["total_missions"] == 0
+    assert relatorio["completed_missions"] == 0
+    assert relatorio["completion_rate"] == 0
+    assert relatorio["failure_reasons"] == []
+
+
+def test_relatorio_semanal_valida_intervalo_invertido_e_parcial():
+    service = RelatorioService(RepositorioRelatorioFake([]))
+
+    with pytest.raises(ValueError, match="Intervalo semanal inválido"):
+        service.get_weekly_report(
+            1,
+            start_date=date(2026, 4, 26),
+            end_date=date(2026, 4, 20),
+        )
+
+    with pytest.raises(ValueError, match="start_date e end_date juntos"):
+        service.get_weekly_report(
+            1,
+            start_date=date(2026, 4, 20),
+        )
+
+
+def test_relatorio_semanal_exige_modo_general():
+    service = RelatorioService(RepositorioRelatorioFake([]))
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    with pytest.raises(PermissionError):
+        service.get_weekly_report_for_user(
+            usuario,
+            start_date=date(2026, 4, 20),
+            end_date=date(2026, 4, 26),
+        )
 
 
 def test_auth_service_define_nome_do_general_com_trim_e_persistencia():
