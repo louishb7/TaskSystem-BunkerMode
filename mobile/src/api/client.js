@@ -1,6 +1,10 @@
-import { assertMissionContract, assertMissionListContract } from "./missionContract";
+import {
+  assertMissionContract,
+  assertMissionListContract,
+} from "./missionContract";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v2";
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL || "http://192.168.18.71:8000/api/v2";
 
 async function parseResponse(response) {
   if (response.status === 204) {
@@ -98,7 +102,10 @@ export const api = {
     return requestMissionList("/missoes/operacionais", { token });
   },
   completeMission(token, missionId) {
-    return requestMission(`/missoes/${missionId}/concluir`, { token, method: "PATCH" });
+    return requestMission(`/missoes/${missionId}/concluir`, {
+      token,
+      method: "PATCH",
+    });
   },
   submitJustification(token, missionId, reason) {
     return requestMission(`/missoes/${missionId}/justificar`, {
