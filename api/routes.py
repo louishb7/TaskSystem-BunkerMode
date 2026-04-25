@@ -155,6 +155,8 @@ def definir_nome_general(
             usuario.usuario_id,
             payload.nome_general,
         )
+    except PermissaoNegadaError as erro:
+        _raise_http_from_domain_error(erro)
     except (UsuarioNaoEncontrado, ValueError) as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
 
@@ -408,7 +410,7 @@ def listar_historico(
 ):
     try:
         eventos = missao_service.listar_historico(missao_id, usuario=usuario)
-    except MissaoNaoEncontrada as erro:
+    except (MissaoNaoEncontrada, PermissaoNegadaError) as erro:
         _raise_http_from_domain_error(erro)
 
     return [

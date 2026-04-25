@@ -1,5 +1,10 @@
 from auth import decode_token, generate_token, hash_password, verify_password
-from services.exceptions import AutenticacaoError, UsuarioJaExisteError, UsuarioNaoEncontrado
+from services.exceptions import (
+    AutenticacaoError,
+    PermissaoNegadaError,
+    UsuarioJaExisteError,
+    UsuarioNaoEncontrado,
+)
 from usuario import Usuario
 
 
@@ -43,6 +48,10 @@ class AuthService:
         usuario = self.repositorio.buscar_usuario_por_id(usuario_id)
         if usuario is None:
             raise UsuarioNaoEncontrado("Usuário autenticado não encontrado.")
+        if usuario.active_mode != "general":
+            raise PermissaoNegadaError(
+                "Identidade do General só pode ser alterada no modo General."
+            )
 
         usuario.definir_nome_general(nome_general)
         self.repositorio.atualizar_nome_general(usuario.usuario_id, usuario.nome_general)

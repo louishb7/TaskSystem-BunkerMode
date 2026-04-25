@@ -521,6 +521,10 @@ h3 {
   min-width: 0;
 }
 
+.soldier-toolbar {
+  grid-template-columns: minmax(150px, 240px);
+}
+
 .toolbar-action .button {
   width: 100%;
   align-self: stretch;

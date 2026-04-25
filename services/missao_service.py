@@ -10,8 +10,10 @@ from services.mission_permissions import MissionPermissions
 class MissaoService:
     """Centraliza os casos de uso de missão da API."""
 
-    def __init__(self, repositorio):
+    def __init__(self, repositorio, today_provider=None, now_provider=None):
         self.repositorio = repositorio
+        self._today_provider = today_provider or date.today
+        self._now_provider = now_provider or datetime.now
 
     def criar_missao(self, dados: dict, usuario=None) -> Missao:
         self._garantir_modo_general(usuario)
@@ -85,7 +87,7 @@ class MissaoService:
         if "prazo" in dados:
             missao.atualizar_prazo(dados["prazo"])
         if "status" in dados:
-            missao.atualizar_status(dados["status"])
+            self._aplicar_status_editavel_pelo_general(missao, dados["status"])
 
         self._reconciliar_estado_apos_edicao(missao)
         self.repositorio.atualizar_missao(missao)
@@ -148,6 +150,7 @@ class MissaoService:
         return missao
 
     def listar_historico(self, missao_id: int, usuario=None) -> list[EventoAuditoria]:
+        self._garantir_modo_general(usuario)
         self._buscar_por_id_do_usuario(missao_id, usuario)
         return self.repositorio.listar_auditoria_por_missao(missao_id)
 
@@ -305,6 +308,14 @@ class MissaoService:
         if missao.is_failed_waiting_review() and missao.general_verdict is not None:
             missao.atualizar_status(StatusMissao.FALHA_REVISADA)
 
+    def _aplicar_status_editavel_pelo_general(self, missao: Missao, status) -> None:
+        novo_status = missao._validar_status(status)
+        if novo_status != StatusMissao.PENDENTE:
+            raise ValueError(
+                "Transições de execução devem usar concluir, justificar ou revisar."
+            )
+        missao.atualizar_status(novo_status)
+
     def sort_missions_for_board(self, missoes: list[Missao]) -> list[Missao]:
         return sorted(
             missoes,
@@ -346,7 +357,7 @@ class MissaoService:
             )
 
     def _today(self) -> date:
-        return date.today()
+        return self._today_provider()
 
     def _now(self) -> datetime:
-        return datetime.now()
+        return self._now_provider()

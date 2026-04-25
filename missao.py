@@ -266,18 +266,27 @@ class Missao:
         if novo_status == StatusMissao.CONCLUIDA:
             self.concluir()
             return
-        self.status = novo_status
         if novo_status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA:
+            self.status = novo_status
             self.completed_at = None
             if self.failed_at is None:
                 self.failed_at = datetime.now()
             self.failure_reason = None
             self.general_verdict = None
         elif novo_status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO:
+            if not self.failure_reason:
+                raise ValueError("Falha justificada precisa de justificativa do Soldado.")
+            self.status = novo_status
             self.completed_at = None
             if self.failed_at is None:
                 self.failed_at = datetime.now()
+            self.general_verdict = None
         elif novo_status == StatusMissao.FALHA_REVISADA:
+            if not self.failure_reason:
+                raise ValueError("Falha revisada precisa de justificativa do Soldado.")
+            if self.general_verdict is None:
+                raise ValueError("Falha revisada precisa de resultado da revisão.")
+            self.status = novo_status
             self.completed_at = None
             if self.failed_at is None:
                 self.failed_at = datetime.now()
@@ -345,11 +354,16 @@ class Missao:
             return
 
         if self.is_failed_waiting_review():
+            if not self.failure_reason:
+                raise ValueError("Falha justificada precisa de justificativa do Soldado.")
             self.general_verdict = None
             return
 
-        if self.is_failed_reviewed() and self.general_verdict is None:
-            raise ValueError("Falha revisada precisa de resultado da revisão.")
+        if self.is_failed_reviewed():
+            if not self.failure_reason:
+                raise ValueError("Falha revisada precisa de justificativa do Soldado.")
+            if self.general_verdict is None:
+                raise ValueError("Falha revisada precisa de resultado da revisão.")
 
     def _validar_missao_id(self, missao_id):
         if missao_id is None:

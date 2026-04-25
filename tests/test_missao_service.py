@@ -13,6 +13,18 @@ from services.relatorio_service import RelatorioService
 from usuario import Usuario
 
 
+DATA_TESTE = date(2026, 4, 24)
+INSTANTE_TESTE = datetime(2026, 4, 24, 10, 0, 0)
+
+
+def criar_missao_service(repositorio):
+    return MissaoService(
+        repositorio,
+        today_provider=lambda: DATA_TESTE,
+        now_provider=lambda: INSTANTE_TESTE,
+    )
+
+
 class RepositorioListagemFake:
     def __init__(self):
         self.chamadas_por_responsavel = []
@@ -125,7 +137,7 @@ def test_mission_permissions_to_dict_expoe_todas_as_chaves_booleanas():
 
 def test_listar_missoes_com_usuario_filtra_por_responsavel():
     repositorio = RepositorioListagemFake()
-    service = MissaoService(repositorio)
+    service = criar_missao_service(repositorio)
     usuario = SimpleNamespace(usuario_id=42)
 
     missoes = service.listar_missoes(usuario=usuario)
@@ -136,7 +148,7 @@ def test_listar_missoes_com_usuario_filtra_por_responsavel():
 
 def test_listar_missoes_sem_usuario_mantem_listagem_geral():
     repositorio = RepositorioListagemFake()
-    service = MissaoService(repositorio)
+    service = criar_missao_service(repositorio)
 
     missoes = service.listar_missoes()
 
@@ -172,7 +184,7 @@ def test_listar_missoes_prioriza_decididas_antes_da_prioridade_numerica():
             is_decided=False,
         ),
     ]
-    service = MissaoService(repositorio)
+    service = criar_missao_service(repositorio)
 
     missoes = service.listar_missoes()
 
@@ -205,7 +217,7 @@ def test_listar_missoes_prioriza_justificativa_antes_de_decididas():
             failed_at=datetime(2026, 4, 24, 10, 0, 0),
         ),
     ]
-    service = MissaoService(repositorio)
+    service = criar_missao_service(repositorio)
 
     missoes = service.listar_missoes()
 
@@ -237,9 +249,9 @@ def test_to_response_soldier_define_permissions_corretas():
 
 def test_to_response_general_define_permissions_para_revisao():
     repositorio = RepositorioOwnershipFake()
-    repositorio.missao.atualizar_status(StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO)
     repositorio.missao.failed_at = datetime(2026, 4, 24, 10, 0, 0)
     repositorio.missao.failure_reason = "Bloqueio externo."
+    repositorio.missao.atualizar_status(StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO)
     service = MissaoService(repositorio)
     usuario = SimpleNamespace(usuario_id=1, active_mode="general")
 
@@ -270,10 +282,10 @@ def test_to_response_general_define_permissions_para_missao_concluida_historica(
 
 def test_to_response_general_define_permissions_para_falha_revisada():
     repositorio = RepositorioOwnershipFake()
-    repositorio.missao.atualizar_status(StatusMissao.FALHA_REVISADA)
     repositorio.missao.failed_at = datetime(2026, 4, 24, 10, 0, 0)
     repositorio.missao.failure_reason = "Falhou."
     repositorio.missao.general_verdict = "accepted"
+    repositorio.missao.atualizar_status(StatusMissao.FALHA_REVISADA)
     service = MissaoService(repositorio)
     usuario = SimpleNamespace(usuario_id=1, active_mode="general")
 
@@ -321,6 +333,22 @@ def test_general_pode_retirar_concluido_por_edicao():
     assert missao.status == StatusMissao.PENDENTE
     assert missao.completed_at is None
     assert repositorio.missao_atualizada is missao
+
+
+def test_general_nao_pode_forcar_status_de_execucao_por_edicao():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    with pytest.raises(ValueError, match="Transições de execução"):
+        service.editar_missao(
+            10,
+            {"status": StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO.value},
+            usuario=usuario,
+        )
+
+    assert repositorio.missao.status == StatusMissao.PENDENTE
+    assert repositorio.missao_atualizada is None
 
 
 def test_usuario_nao_pode_editar_missao_de_outro_usuario():
@@ -421,6 +449,15 @@ def test_usuario_nao_pode_ver_historico_de_missao_de_outro_usuario():
     usuario = SimpleNamespace(usuario_id=2, active_mode="general")
 
     with pytest.raises(MissaoNaoEncontrada):
+        service.listar_historico(10, usuario=usuario)
+
+
+def test_soldado_nao_pode_ver_historico_da_missao():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    with pytest.raises(PermissionError):
         service.listar_historico(10, usuario=usuario)
 
 
@@ -787,3 +824,14 @@ def test_auth_service_define_nome_do_general_com_trim_e_persistencia():
 
     assert usuario.nome_general == "General Atlas"
     assert repositorio.nome_atualizado == (1, "General Atlas")
+
+
+def test_auth_service_bloqueia_nome_do_general_em_modo_soldado():
+    repositorio = RepositorioUsuarioFake()
+    repositorio.usuario.definir_modo("soldier")
+    service = AuthService(repositorio)
+
+    with pytest.raises(PermissionError, match="modo General"):
+        service.definir_nome_general(1, "General Atlas")
+
+    assert repositorio.nome_atualizado is None

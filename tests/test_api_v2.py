@@ -5,8 +5,10 @@ from fastapi import HTTPException
 from api.routes import (
     concluir_missao,
     criar_missao,
+    definir_nome_general,
     editar_missao,
     justificar_missao,
+    listar_historico,
     listar_missoes_historicas,
     listar_missoes,
     listar_missoes_operacionais,
@@ -20,6 +22,7 @@ from api.schemas import (
     LoginPayload,
     MissaoCreatePayload,
     MissaoUpdatePayload,
+    NomeGeneralPayload,
     RegistroPayload,
     RevisaoJustificativaPayload,
     SoldierExcusePayload,
@@ -28,6 +31,9 @@ from missao import Missao, StatusMissao
 from services.auth_service import AuthService
 from services.missao_service import MissaoService
 from services.relatorio_service import RelatorioService
+
+
+DATA_TESTE = datetime(2026, 4, 24, 10, 0, 0)
 
 
 class RepositorioV2Fake:
@@ -121,7 +127,11 @@ class RepositorioV2Fake:
 def preparar_ambiente():
     repo = RepositorioV2Fake()
     auth = AuthService(repo)
-    missoes = MissaoService(repo)
+    missoes = MissaoService(
+        repo,
+        today_provider=lambda: DATA_TESTE.date(),
+        now_provider=lambda: DATA_TESTE,
+    )
     relatorios = RelatorioService(repo)
 
     usuario = registrar_usuario(
@@ -266,6 +276,62 @@ def test_soldado_pode_justificar_e_general_revisar():
     assert resposta["permissions"]["can_edit"] is False
     assert resposta["permissions"]["can_delete"] is False
     assert resposta["permissions"]["can_toggle_decided"] is False
+
+
+def test_fluxo_lifecycle_expirada_justificada_revisada_reflete_no_relatorio():
+    _, auth, missoes, relatorios, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Fluxo completo",
+            prioridade=1,
+            prazo="01-01-2020",
+            instrucao="Executar operação",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+    try:
+        concluir_missao(1, usuario=usuario, missao_service=missoes)
+    except HTTPException as erro:
+        assert erro.status_code == 400
+        assert "fora do prazo" in erro.detail
+    else:
+        raise AssertionError("Missão expirada não deveria permitir conclusão.")
+
+    justificativa = justificar_missao(
+        1,
+        SoldierExcusePayload(reason="Perdi a janela por bloqueio externo."),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    assert justificativa["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
+    assert justificativa["failure_reason"] == "Perdi a janela por bloqueio externo."
+
+    usuario.definir_modo("general")
+    auth.liberar_general(usuario.usuario_id, "segredo123")
+    revisao = revisar_justificativa(
+        1,
+        RevisaoJustificativaPayload(accepted=False),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    assert revisao["status_code"] == "FALHA_REVISADA"
+    assert revisao["general_verdict"] == "rejected"
+
+    relatorio = obter_relatorio_semanal(
+        start_date="2020-01-01",
+        end_date="2020-01-07",
+        usuario=usuario,
+        relatorio_service=relatorios,
+    )
+    assert relatorio["total_missions"] == 1
+    assert relatorio["failed_missions"] == 1
+    assert relatorio["reviewed_failures"] == 1
+    assert relatorio["failure_reasons"] == ["Perdi a janela por bloqueio externo."]
 
 
 def test_listagem_operacional_nao_retorna_concluidas_ou_falhas_revisadas():
@@ -482,6 +548,34 @@ def test_general_pode_reabrir_missao_concluida():
     assert resposta["permissions"]["can_edit"] is True
 
 
+def test_api_bloqueia_status_de_execucao_por_edicao():
+    _, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Missão protegida",
+            prioridade=1,
+            prazo="30-04-2099",
+            instrucao="Executar operação",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    try:
+        editar_missao(
+            1,
+            MissaoUpdatePayload(status="Falha revisada"),
+            usuario=usuario,
+            missao_service=missoes,
+        )
+    except HTTPException as erro:
+        assert erro.status_code == 400
+        assert "Transições de execução" in erro.detail
+    else:
+        raise AssertionError("Edição direta de status de execução deveria retornar 400.")
+
+
 def test_historico_de_missoes_retorna_apenas_finalizadas():
     repo, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
     repo.missoes = [
@@ -542,6 +636,47 @@ def test_historico_de_missoes_bloqueado_no_modo_soldado():
         assert erro.status_code == 403
     else:
         raise AssertionError("Histórico de missões em modo Soldier deveria retornar 403.")
+
+
+def test_historico_unitario_bloqueado_no_modo_soldado():
+    _, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Missão com histórico",
+            prioridade=1,
+            prazo="30-04-2099",
+            instrucao="Executar operação",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    try:
+        listar_historico(1, usuario=usuario, missao_service=missoes)
+    except HTTPException as erro:
+        assert erro.status_code == 403
+    else:
+        raise AssertionError("Histórico unitário em modo Soldier deveria retornar 403.")
+
+
+def test_nome_do_general_bloqueado_no_modo_soldado():
+    _, auth, _, _, _, usuario = preparar_ambiente()
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    try:
+        definir_nome_general(
+            NomeGeneralPayload(nome_general="General Atlas"),
+            usuario=usuario,
+            auth_service=auth,
+        )
+    except HTTPException as erro:
+        assert erro.status_code == 403
+    else:
+        raise AssertionError("Nome do General em modo Soldier deveria retornar 403.")
 
 
 def test_usuario_nao_afeta_missao_de_outro_usuario():

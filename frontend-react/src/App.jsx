@@ -7,10 +7,7 @@ import MissionList from "./components/MissionList.jsx";
 import MissionToolbar from "./components/MissionToolbar.jsx";
 import WeeklyReportPanel from "./components/WeeklyReportPanel.jsx";
 import { formatDateTime } from "./utils/date.js";
-import {
-  isCompleted,
-  requiresSoldierJustification,
-} from "./utils/missionStatus.js";
+import { isCompleted } from "./utils/missionStatus.js";
 
 const TOKEN_KEY = "bunkermode_token";
 const USER_KEY = "bunkermode_usuario";
@@ -129,10 +126,10 @@ export default function App() {
   const [sessionStatus, setSessionStatus] = useState(emptyStatus);
 
   const authenticated = Boolean(token && user);
-  const generalNameRequired =
-    authenticated && profileReady && !user?.nome_general && !generalModalDismissed;
   const activeMode = user?.active_mode || "general";
   const soldierMode = activeMode === "soldier";
+  const generalNameRequired =
+    authenticated && profileReady && !soldierMode && !user?.nome_general && !generalModalDismissed;
 
   const visibleMissions = useMemo(
     () => filterMissions(missions, filters),
@@ -141,7 +138,7 @@ export default function App() {
   const pendingSoldierExcuses = useMemo(
     () =>
       soldierMode
-        ? missions.filter((mission) => mission.permissions?.can_justify || requiresSoldierJustification(mission))
+        ? missions.filter((mission) => mission.permissions?.can_justify)
         : [],
     [missions, soldierMode]
   );
@@ -893,6 +890,7 @@ export default function App() {
                   onChange={setFilters}
                   onRefresh={() => loadMissions()}
                   loading={missionLoading}
+                  planningLocked={soldierMode}
                 />
 
                 {missionStatus.message && (

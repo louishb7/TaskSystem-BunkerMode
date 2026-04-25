@@ -113,6 +113,52 @@ def test_status_legado_e_aceito_como_pendente():
     assert missao.status == StatusMissao.PENDENTE
 
 
+def test_estado_em_revisao_exige_justificativa():
+    with pytest.raises(ValueError, match="justificativa do Soldado"):
+        Missao(
+            missao_id=1,
+            titulo="Falha sem motivo",
+            prioridade=1,
+            prazo="01-01-2020",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+            failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        )
+
+
+def test_falha_revisada_exige_justificativa_e_veredito():
+    with pytest.raises(ValueError, match="justificativa do Soldado"):
+        Missao(
+            missao_id=1,
+            titulo="Revisada sem motivo",
+            prioridade=1,
+            prazo="01-01-2020",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_REVISADA,
+            failed_at=datetime(2026, 4, 24, 10, 0, 0),
+            general_verdict="accepted",
+        )
+
+    with pytest.raises(ValueError, match="resultado da revisão"):
+        Missao(
+            missao_id=1,
+            titulo="Revisada sem veredito",
+            prioridade=1,
+            prazo="01-01-2020",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_REVISADA,
+            failed_at=datetime(2026, 4, 24, 10, 0, 0),
+            failure_reason="Falhou.",
+        )
+
+
+def test_atualizar_status_nao_cria_estado_parcial_de_revisao(missao_base):
+    with pytest.raises(ValueError, match="justificativa do Soldado"):
+        missao_base.atualizar_status(StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO)
+
+    assert missao_base.status == StatusMissao.PENDENTE
+
+
 def test_concluir_missao_define_completed_at(missao_base):
     instante = datetime(2026, 4, 24, 8, 30, 0)
 
