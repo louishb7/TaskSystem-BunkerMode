@@ -12,7 +12,7 @@ export default function MissionCard({ mission, onComplete, onJustify }) {
   const instruction = mission?.instrucao || "";
   const isDecided = mission?.is_decided === true;
   const statusLabel = mission?.status_label || "";
-  const dueDate = mission?.due_date ?? mission?.prazo ?? null;
+  const dueDate = mission?.due_date ?? null;
 
   return (
     <View style={[styles.card, isDecided && styles.decidedCard]}>

@@ -4,41 +4,39 @@ import { StyleSheet, Text, View } from "react-native";
 import { colors, layout, radius, surfaces, typography } from "../styles/tokens";
 
 function getStatusStyle(label) {
-  const normalized = String(label || "").toLowerCase();
-
-  if (normalized.includes("conclu")) {
-    return {
-      backgroundColor: surfaces.blueBg,
-      borderColor: colors.blue,
-      color: colors.blue,
-      label: label || "",
-    };
-  }
-
-  if (normalized.includes("justific")) {
-    return {
-      backgroundColor: surfaces.amberBg,
-      borderColor: colors.amber,
-      color: colors.amber,
-      label: label || "",
-    };
-  }
-
-  if (normalized.includes("expir") || normalized.includes("falha")) {
-    return {
-      backgroundColor: surfaces.redBg,
-      borderColor: colors.red,
-      color: colors.red,
-      label: label || "",
-    };
-  }
-
-  if (normalized.includes("pendent") || normalized.includes("aguard")) {
-    return {
+  const statusStyles = {
+    Pendente: {
       backgroundColor: surfaces.greenBg,
       borderColor: colors.green,
       color: colors.green,
-      label: label || "",
+    },
+    "Falha aguardando justificativa": {
+      backgroundColor: surfaces.redBg,
+      borderColor: colors.red,
+      color: colors.red,
+    },
+    "Falha justificada aguardando revisão": {
+      backgroundColor: surfaces.amberBg,
+      borderColor: colors.amber,
+      color: colors.amber,
+    },
+    "Falha revisada": {
+      backgroundColor: surfaces.redBg,
+      borderColor: colors.red,
+      color: colors.red,
+    },
+    "Concluída": {
+      backgroundColor: surfaces.blueBg,
+      borderColor: colors.blue,
+      color: colors.blue,
+    },
+  };
+
+  const selected = statusStyles[label];
+  if (selected) {
+    return {
+      ...selected,
+      label,
     };
   }
 
