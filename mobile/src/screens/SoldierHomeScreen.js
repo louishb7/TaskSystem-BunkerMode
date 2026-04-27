@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -13,6 +14,7 @@ import EmptyState from "../components/EmptyState";
 import Header from "../components/Header";
 import MissionCard from "../components/MissionCard";
 import StatusNotice from "../components/StatusNotice";
+import UnlockGeneralModal from "../components/UnlockGeneralModal";
 import { saveUser } from "../storage/sessionStorage";
 import { colors, layout, spacing, typography } from "../styles/tokens";
 
@@ -20,11 +22,12 @@ function getErrorMessage(result, fallback) {
   return result?.data?.detail || fallback;
 }
 
-export default function SoldierHomeScreen({ token, user, onLogout, onUserChange }) {
+export default function SoldierHomeScreen({ token, user, onLogout, onUserChange, onSwitchToGeneral }) {
   const [missions, setMissions] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
 
   useEffect(() => {
     enterSoldierModeAndLoad();
@@ -145,6 +148,12 @@ export default function SoldierHomeScreen({ token, user, onLogout, onUserChange 
         onRefresh={() => loadMissions()}
       />
 
+      <View style={styles.unlockHeaderRow}>
+        <Pressable onPress={() => setShowUnlockModal(true)}>
+          <Text style={styles.unlockHeaderText}>Liberar General</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.listZone}>
         <Text style={styles.sectionLabel}>ORDENS DO DIA</Text>
         <StatusNotice type="error" message={error} />
@@ -169,6 +178,17 @@ export default function SoldierHomeScreen({ token, user, onLogout, onUserChange 
       <View style={styles.footer}>
         <Text style={styles.footerText}>O General ja decidiu. Execute.</Text>
       </View>
+
+      <UnlockGeneralModal
+        visible={showUnlockModal}
+        token={token}
+        onSuccess={(updatedUser) => {
+          onUserChange(updatedUser);
+          setShowUnlockModal(false);
+          onSwitchToGeneral();
+        }}
+        onCancel={() => setShowUnlockModal(false)}
+      />
     </View>
   );
 }
@@ -197,14 +217,24 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: spacing.lg,
   },
+  unlockHeaderRow: {
+    alignItems: "flex-end",
+    paddingHorizontal: spacing.screenH,
+    paddingTop: spacing.sm,
+  },
+  unlockHeaderText: {
+    color: colors.textMuted,
+    fontSize: 12,
+  },
   footer: {
     alignItems: "center",
     backgroundColor: colors.bg,
     borderTopColor: colors.bgElevated,
     borderTopWidth: 1,
-    height: layout.footerHeight,
     justifyContent: "center",
+    minHeight: layout.footerHeight,
     paddingHorizontal: spacing.screenH,
+    paddingVertical: spacing.sm,
   },
   footerText: {
     ...typography.caption,
