@@ -120,6 +120,9 @@ export const api = {
   listReviewMissions(token) {
     return requestMissionList("/missoes/revisao", { token });
   },
+  listHistoricalMissions(token) {
+    return requestMissionList("/missoes/historico", { token });
+  },
   createMission(token, payload) {
     return requestMission("/missoes", { token, method: "POST", body: payload });
   },

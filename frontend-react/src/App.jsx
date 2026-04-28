@@ -89,6 +89,16 @@ function withDisplayIds(missions) {
   }));
 }
 
+function mergeMissionsById(...missionLists) {
+  const missionsById = new Map();
+
+  missionLists.flat().forEach((mission) => {
+    missionsById.set(mission.id, mission);
+  });
+
+  return [...missionsById.values()];
+}
+
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [user, setUser] = useState(readStoredUser);
@@ -348,22 +358,40 @@ export default function App() {
     }
 
     setReportLoading(true);
-    const result = await api.getWeeklyReport(token);
+    const [operationalResult, reviewResult, historicalResult] = await Promise.all([
+      api.listOperationalMissions(token),
+      api.listReviewMissions(token),
+      api.listHistoricalMissions(token),
+    ]);
     setReportLoading(false);
 
-    if (handleUnauthorized(result)) {
+    if (
+      handleUnauthorized(operationalResult) ||
+      handleUnauthorized(reviewResult) ||
+      handleUnauthorized(historicalResult)
+    ) {
       return;
     }
 
-    if (!result.ok) {
+    const failedResult = [operationalResult, reviewResult, historicalResult].find(
+      (result) => !result.ok
+    );
+    if (failedResult) {
       setMissionStatus({
         type: "error",
-        message: `Erro ao carregar relatório semanal: ${result.data.detail}`,
+        message: `Erro ao carregar revisão semanal: ${failedResult.data.detail}`,
       });
       return;
     }
 
-    setWeeklyReport(result.data);
+    setWeeklyReport({
+      generated_at: new Date().toISOString(),
+      missions: mergeMissionsById(
+        operationalResult.data,
+        reviewResult.data,
+        historicalResult.data
+      ),
+    });
   }
 
   async function loadCurrentUser() {

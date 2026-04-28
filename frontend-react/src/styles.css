@@ -897,50 +897,82 @@ h3 {
   gap: 18px;
 }
 
-.report-metrics {
+.weekly-review-content {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px;
 }
 
-.report-metric {
+.weekly-review-section {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
   padding: 14px;
 }
 
-.report-metric span {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: uppercase;
+.weekly-review-section h3,
+.weekly-failure-item h4 {
+  margin: 0;
 }
 
-.report-metric strong {
-  font-size: 1.2rem;
+.weekly-review-section p {
+  margin: 0;
+  color: #dbe2ea;
 }
 
-.report-reasons {
-  display: grid;
-  gap: 10px;
-}
-
-.report-reasons span {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.report-reasons ul {
+.weekly-review-section ul,
+.weekly-failure-list {
   display: grid;
   gap: 8px;
+}
+
+.weekly-review-section ul {
   margin: 0;
   padding-left: 18px;
   color: #dbe2ea;
+}
+
+.weekly-pattern-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weekly-pattern-summary p {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: rgba(17, 24, 32, 0.58);
+  padding: 12px;
+}
+
+.weekly-pattern-summary span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.weekly-pattern-summary strong {
+  color: var(--text);
+  font-size: 1.5rem;
+}
+
+.weekly-failure-item {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: rgba(17, 24, 32, 0.58);
+  padding: 12px;
+}
+
+.weekly-empty-state {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .overdue-reason {
