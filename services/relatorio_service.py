@@ -61,10 +61,10 @@ class RelatorioService:
         }
 
     def _pertence_a_semana(self, missao, inicio: date, fim: date) -> bool:
-        if missao.due_date is not None and inicio <= missao.due_date <= fim:
-            return True
-        data_criacao = missao.created_at.date()
-        return inicio <= data_criacao <= fim
+        data_evento = missao.completed_at or missao.failed_at
+        if data_evento is None:
+            return False
+        return inicio <= data_evento.date() <= fim
 
     def _resolve_intervalo(self, start_date: date | None, end_date: date | None) -> tuple[date, date]:
         if (start_date is None) != (end_date is None):

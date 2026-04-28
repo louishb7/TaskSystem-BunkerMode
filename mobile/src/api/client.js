@@ -107,11 +107,11 @@ export const api = {
       method: "PATCH",
     });
   },
-  submitJustification(token, missionId, reason) {
-    return requestMission(`/missoes/${missionId}/justificar`, {
+  submitFailureJustification(token, missionId, payload) {
+    return requestMission(`/missoes/${missionId}/justification`, {
       token,
       method: "POST",
-      body: { reason },
+      body: payload,
     });
   },
   register(payload) {
@@ -165,13 +165,6 @@ export const api = {
   },
   submitGeneralReview(token, missionId, payload) {
     return requestMission(`/missoes/${missionId}/revisar`, {
-      token,
-      method: "POST",
-      body: payload,
-    });
-  },
-  submitGeneralVerdict(token, missionId, payload) {
-    return requestMission(`/missoes/${missionId}/general-verdict`, {
       token,
       method: "POST",
       body: payload,

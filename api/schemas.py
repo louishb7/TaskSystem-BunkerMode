@@ -63,8 +63,3 @@ class MissaoUpdatePayload(BaseModel):
     prazo: str | None = None
     instrucao: str | None = Field(default=None, min_length=1)
     status: str | None = None
-
-
-class RelatorioSemanalQuery(BaseModel):
-    start_date: str | None = None
-    end_date: str | None = None

@@ -28,6 +28,7 @@ export default function SoldierHomeScreen({ token, user, onLogout, onUserChange,
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showPendingJustifications, setShowPendingJustifications] = useState(false);
 
   useEffect(() => {
     enterSoldierModeAndLoad();
@@ -107,12 +108,12 @@ export default function SoldierHomeScreen({ token, user, onLogout, onUserChange,
     return { ok: true };
   }
 
-  async function handleJustify(missionId, reason) {
-    if (!reason) {
+  async function handleJustify(missionId, payload) {
+    if (!payload?.failure_reason) {
       return { ok: false, error: "Informe a justificativa antes de continuar." };
     }
 
-    const result = await api.submitJustification(token, missionId, reason);
+    const result = await api.submitFailureJustification(token, missionId, payload);
 
     if (await handleUnauthorized(result)) {
       return { ok: false, error: "" };
@@ -130,6 +131,31 @@ export default function SoldierHomeScreen({ token, user, onLogout, onUserChange,
     return { ok: true };
   }
 
+  const criticalJustifications = missions.filter(
+    (mission) =>
+      mission?.requires_immediate_justification === true &&
+      mission?.permissions?.can_justify === true
+  );
+  const pendingJustifications = missions.filter(
+    (mission) =>
+      mission?.has_pending_non_blocking_justification === true &&
+      mission?.permissions?.can_justify === true
+  );
+  const hasCriticalJustification = criticalJustifications.length > 0;
+  const executionMissions = hasCriticalJustification
+    ? criticalJustifications
+    : missions.filter((mission) => mission?.permissions?.can_complete === true);
+  const visibleMissions =
+    !hasCriticalJustification && showPendingJustifications
+      ? pendingJustifications
+      : executionMissions;
+  const missionCount = visibleMissions.length;
+  const sectionLabel = hasCriticalJustification
+    ? "JUSTIFICATIVA CRITICA"
+    : showPendingJustifications
+      ? "PENDENCIAS"
+      : "ORDENS DO DIA";
+
   if (initialLoading) {
     return (
       <View style={styles.initial}>
@@ -141,7 +167,7 @@ export default function SoldierHomeScreen({ token, user, onLogout, onUserChange,
   return (
     <View style={styles.container}>
       <Header
-        missionCount={missions.length}
+        missionCount={missionCount}
         refreshing={refreshing}
         user={user}
         onLogout={onLogout}
@@ -155,11 +181,23 @@ export default function SoldierHomeScreen({ token, user, onLogout, onUserChange,
       </View>
 
       <View style={styles.listZone}>
-        <Text style={styles.sectionLabel}>ORDENS DO DIA</Text>
+        {!hasCriticalJustification ? (
+          <View style={styles.pendingRow}>
+            <Pressable
+              onPress={() => setShowPendingJustifications((current) => !current)}
+              style={styles.pendingButton}
+            >
+              <Text style={styles.pendingButtonText}>
+                PENDENCIAS ({pendingJustifications.length})
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+        <Text style={styles.sectionLabel}>{sectionLabel}</Text>
         <StatusNotice type="error" message={error} />
         <FlatList
           contentContainerStyle={styles.listContent}
-          data={missions}
+          data={visibleMissions}
           keyExtractor={(item, index) => String(item?.id ?? index)}
           refreshControl={
             <RefreshControl
@@ -213,6 +251,22 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.textMuted,
     marginBottom: spacing.sm + spacing.xs,
+  },
+  pendingRow: {
+    alignItems: "flex-end",
+    marginBottom: spacing.sm,
+  },
+  pendingButton: {
+    borderColor: colors.borderStrong,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm + spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  pendingButtonText: {
+    ...typography.label,
+    color: colors.amber,
+    fontWeight: "700",
   },
   listContent: {
     paddingBottom: spacing.lg,

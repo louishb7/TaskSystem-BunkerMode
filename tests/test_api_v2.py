@@ -368,8 +368,8 @@ def test_fluxo_lifecycle_expirada_justificada_revisada_reflete_no_relatorio():
     assert revisao["general_verdict"] == "rejected"
 
     relatorio = obter_relatorio_semanal(
-        start_date="2020-01-01",
-        end_date="2020-01-07",
+        start_date="2026-04-20",
+        end_date="2026-04-26",
         usuario=usuario,
         relatorio_service=relatorios,
     )

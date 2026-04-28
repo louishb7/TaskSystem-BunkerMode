@@ -10,6 +10,14 @@ function getErrorMessage(result, fallback) {
   return result?.data?.detail || fallback;
 }
 
+const failureReasonLabels = {
+  not_done: "Nao fez",
+  done_not_marked: "Fez, mas nao registrou",
+  partially_done: "Fez parcialmente",
+  external_blocker: "Imprevisto real",
+  other: "Outro motivo",
+};
+
 export default function ReviewCard({ mission, token, onReload, onLogout }) {
   const [loadingAction, setLoadingAction] = useState("");
   const [error, setError] = useState("");
@@ -38,6 +46,8 @@ export default function ReviewCard({ mission, token, onReload, onLogout }) {
   }
 
   const failedAt = mission?.failed_at ? ` · Falhou em: ${formatDisplayDate(mission.failed_at)}` : "";
+  const reasonTypeLabel =
+    failureReasonLabels[mission?.failure_reason_type] || "Tipo nao informado";
 
   return (
     <View style={styles.card}>
@@ -47,6 +57,7 @@ export default function ReviewCard({ mission, token, onReload, onLogout }) {
 
       <View style={styles.justification}>
         <Text style={styles.justificationLabel}>JUSTIFICATIVA DO SOLDADO</Text>
+        <Text style={styles.reasonType}>{reasonTypeLabel}</Text>
         <Text style={styles.reason}>{mission?.failure_reason || "Justificativa nao registrada"}</Text>
       </View>
 
@@ -116,6 +127,12 @@ const styles = StyleSheet.create({
   reason: {
     color: colors.textPrimary,
     fontSize: 14,
+    marginTop: spacing.xs,
+  },
+  reasonType: {
+    color: colors.amber,
+    fontSize: 13,
+    fontWeight: "700",
     marginTop: spacing.xs,
   },
   actions: {

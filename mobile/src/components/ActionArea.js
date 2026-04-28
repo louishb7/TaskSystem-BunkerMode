@@ -4,8 +4,17 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { colors, layout, radius, spacing, typography } from "../styles/tokens";
 import StatusNotice from "./StatusNotice";
 
+const failureReasonTypes = [
+  { value: "not_done", label: "Nao fiz" },
+  { value: "done_not_marked", label: "Fiz, mas esqueci de marcar" },
+  { value: "partially_done", label: "Fiz parcialmente" },
+  { value: "external_blocker", label: "Imprevisto real" },
+  { value: "other", label: "Outro motivo" },
+];
+
 export default function ActionArea({ mission, onComplete, onJustify }) {
   const [justification, setJustification] = useState("");
+  const [failureReasonType, setFailureReasonType] = useState("not_done");
   const [completeLoading, setCompleteLoading] = useState(false);
   const [justifyLoading, setJustifyLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,7 +40,10 @@ export default function ActionArea({ mission, onComplete, onJustify }) {
   async function handleJustify() {
     setError("");
     setJustifyLoading(true);
-    const result = await onJustify(mission.id, justification.trim());
+    const result = await onJustify(mission.id, {
+      failure_reason_type: failureReasonType,
+      failure_reason: justification.trim(),
+    });
     setJustifyLoading(false);
 
     if (!result?.ok) {
@@ -40,6 +52,7 @@ export default function ActionArea({ mission, onComplete, onJustify }) {
     }
 
     setJustification("");
+    setFailureReasonType("not_done");
   }
 
   return (
@@ -64,6 +77,28 @@ export default function ActionArea({ mission, onComplete, onJustify }) {
       {canJustify ? (
         <View style={styles.justifyBlock}>
           <Text style={styles.justifyLabel}>JUSTIFICATIVA OBRIGATORIA</Text>
+          <View style={styles.reasonTypeGrid}>
+            {failureReasonTypes.map((option) => {
+              const selected = option.value === failureReasonType;
+              return (
+                <Pressable
+                  disabled={justifyLoading}
+                  key={option.value}
+                  onPress={() => setFailureReasonType(option.value)}
+                  style={[styles.reasonTypeButton, selected && styles.reasonTypeSelected]}
+                >
+                  <Text
+                    style={[
+                      styles.reasonTypeText,
+                      selected && styles.reasonTypeTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <TextInput
             multiline
             onChangeText={setJustification}
@@ -122,6 +157,31 @@ const styles = StyleSheet.create({
     color: colors.amber,
     fontWeight: "600",
     marginBottom: spacing.sm,
+  },
+  reasonTypeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  reasonTypeButton: {
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  reasonTypeSelected: {
+    backgroundColor: colors.amber,
+    borderColor: colors.amber,
+  },
+  reasonTypeText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: "600",
+  },
+  reasonTypeTextSelected: {
+    color: colors.bg,
   },
   justifyInput: {
     backgroundColor: colors.bg,

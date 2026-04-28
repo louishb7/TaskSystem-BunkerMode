@@ -138,13 +138,6 @@ export const api = {
       method: "PATCH",
     });
   },
-  submitSoldierExcuse(token, missionId, payload) {
-    return requestMission(`/missoes/${missionId}/justificar`, {
-      token,
-      method: "POST",
-      body: payload,
-    });
-  },
   submitFailureJustification(token, missionId, payload) {
     return requestMission(`/missoes/${missionId}/justification`, {
       token,
@@ -158,24 +151,6 @@ export const api = {
       method: "POST",
       body: payload,
     });
-  },
-  submitGeneralVerdict(token, missionId, payload) {
-    return requestMission(`/missoes/${missionId}/general-verdict`, {
-      token,
-      method: "POST",
-      body: payload,
-    });
-  },
-  getWeeklyReport(token, params = {}) {
-    const search = new URLSearchParams();
-    if (params.start_date) {
-      search.set("start_date", params.start_date);
-    }
-    if (params.end_date) {
-      search.set("end_date", params.end_date);
-    }
-    const suffix = search.toString() ? `?${search.toString()}` : "";
-    return request(`/relatorios/semanal${suffix}`, { token });
   },
   deleteMission(token, missionId) {
     return request(`/missoes/${missionId}`, { token, method: "DELETE" });

@@ -864,6 +864,54 @@ def test_relatorio_semanal_ignora_outro_usuario_e_semana_vazia():
     assert relatorio["failure_reasons"] == []
 
 
+def test_relatorio_semanal_usa_datas_reais_de_execucao_e_falha():
+    missoes = [
+        Missao(
+            missao_id=1,
+            titulo="Pendente criada na semana",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Ainda sem desfecho",
+            status=StatusMissao.PENDENTE,
+            created_at=datetime(2026, 4, 21, 8, 0, 0),
+            user_id=1,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Concluída fora do prazo semanal",
+            prioridade=1,
+            prazo="01-01-2020",
+            instrucao="Conta pela conclusão real",
+            status=StatusMissao.CONCLUIDA,
+            completed_at=datetime(2026, 4, 22, 10, 0, 0),
+            created_at=datetime(2020, 1, 1, 8, 0, 0),
+            user_id=1,
+        ),
+        Missao(
+            missao_id=3,
+            titulo="Falha fora da semana",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Não deve entrar pelo prazo",
+            status=StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
+            failed_at=datetime(2026, 4, 10, 10, 0, 0),
+            created_at=datetime(2026, 4, 21, 8, 0, 0),
+            user_id=1,
+        ),
+    ]
+    service = RelatorioService(RepositorioRelatorioFake(missoes))
+
+    relatorio = service.get_weekly_report(
+        1,
+        start_date=date(2026, 4, 20),
+        end_date=date(2026, 4, 26),
+    )
+
+    assert relatorio["total_missions"] == 1
+    assert relatorio["completed_missions"] == 1
+    assert relatorio["failed_missions"] == 0
+
+
 def test_relatorio_semanal_valida_intervalo_invertido_e_parcial():
     service = RelatorioService(RepositorioRelatorioFake([]))
 
