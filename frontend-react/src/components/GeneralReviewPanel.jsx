@@ -1,14 +1,29 @@
 import React from "react";
 import { formatDateTime } from "../utils/date.js";
 
+const REVIEW_STATUS = "FALHA_JUSTIFICADA_PENDENTE_REVISAO";
+
+const FAILURE_REASON_LABELS = Object.freeze({
+  not_done: "Não fez",
+  done_not_marked: "Fez, mas não registrou",
+  partially_done: "Fez parcialmente",
+  external_blocker: "Imprevisto real",
+  other: "Outro motivo",
+});
+
+function getFailureReasonLabel(type) {
+  return FAILURE_REASON_LABELS[type] || "Outro motivo";
+}
+
 export default function GeneralReviewPanel({
   missions,
   loadingMissionId,
   onReview,
 }) {
-  if (!missions.length) {
-    return null;
-  }
+  const reviewMissions = missions.filter(
+    (mission) =>
+      mission.status_code === REVIEW_STATUS || mission.permissions?.can_review === true
+  );
 
   return (
     <section className="review-panel" aria-label="Falhas aguardando análise do General">
@@ -22,9 +37,18 @@ export default function GeneralReviewPanel({
         </div>
       </div>
 
+      {!reviewMissions.length && (
+        <div className="review-empty-state">
+          <p>Sem falhas para revisar.</p>
+        </div>
+      )}
+
       <div className="review-list">
-        {missions.map((mission) => (
-          <article key={`review-${mission.id}`} className="review-card">
+        {reviewMissions.map((mission) => (
+          <article
+            key={`review-${mission.id}`}
+            className={`review-card ${mission.is_decided ? "decided-review" : ""}`}
+          >
             <div className="review-card-header">
               <div>
                 <h4>{mission.titulo}</h4>
@@ -33,10 +57,21 @@ export default function GeneralReviewPanel({
                   {formatDateTime(mission.failed_at)}
                 </p>
               </div>
+              {mission.is_decided && (
+                <span className="status-badge decided">Decisão do General</span>
+              )}
+            </div>
+            <div className="review-reason">
+              <span>Ordem</span>
+              <p>{mission.instrucao}</p>
+            </div>
+            <div className="review-reason">
+              <span>Tipo da justificativa</span>
+              <p>{getFailureReasonLabel(mission.failure_reason_type)}</p>
             </div>
             <div className="review-reason">
               <span>Justificativa registrada</span>
-              <p>{mission.failure_reason}</p>
+              <p>{mission.failure_reason || "Sem justificativa registrada."}</p>
             </div>
             <div className="actions-row">
               <button
@@ -45,7 +80,7 @@ export default function GeneralReviewPanel({
                 onClick={() => onReview(mission.id, true)}
                 disabled={loadingMissionId === mission.id}
               >
-                Justifica.
+                ✅ Justificado
               </button>
               <button
                 className="button danger"
@@ -53,7 +88,7 @@ export default function GeneralReviewPanel({
                 onClick={() => onReview(mission.id, false)}
                 disabled={loadingMissionId === mission.id}
               >
-                Explica, mas não justifica.
+                ❌ Não justificado
               </button>
             </div>
           </article>
