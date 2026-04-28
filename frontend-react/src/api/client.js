@@ -142,6 +142,13 @@ export const api = {
       body: payload,
     });
   },
+  submitFailureJustification(token, missionId, payload) {
+    return requestMission(`/missoes/${missionId}/justification`, {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
   submitGeneralReview(token, missionId, payload) {
     return requestMission(`/missoes/${missionId}/revisar`, {
       token,

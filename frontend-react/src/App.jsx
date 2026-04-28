@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "./api/client.js";
 import AuthScreen from "./components/AuthScreen.jsx";
+import FailureJustificationForm from "./components/FailureJustificationForm.jsx";
 import GeneralReviewPanel from "./components/GeneralReviewPanel.jsx";
 import MissionForm from "./components/MissionForm.jsx";
 import MissionList from "./components/MissionList.jsx";
@@ -113,8 +114,8 @@ export default function App() {
   const [showUnlockGeneral, setShowUnlockGeneral] = useState(false);
   const [sessionModeLoading, setSessionModeLoading] = useState(false);
   const [unlockPassword, setUnlockPassword] = useState("");
-  const [excuseDrafts, setExcuseDrafts] = useState({});
-  const [excuseLoading, setExcuseLoading] = useState(false);
+  const [showPendingJustifications, setShowPendingJustifications] = useState(false);
+  const [justificationLoadingId, setJustificationLoadingId] = useState(null);
   const [verdictLoadingId, setVerdictLoadingId] = useState(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
@@ -135,17 +136,33 @@ export default function App() {
     () => filterMissions(missions, filters),
     [missions, filters]
   );
-  const pendingSoldierExcuses = useMemo(
+  const criticalSoldierJustifications = useMemo(
     () =>
       soldierMode
-        ? missions.filter((mission) => mission.permissions?.can_justify)
+        ? missions.filter(
+            (mission) =>
+              mission.requires_immediate_justification === true &&
+              mission.permissions?.can_justify === true
+          )
         : [],
     [missions, soldierMode]
   );
+  const commonSoldierJustifications = useMemo(
+    () =>
+      soldierMode
+        ? missions.filter(
+            (mission) =>
+              mission.has_pending_non_blocking_justification === true &&
+              mission.permissions?.can_justify === true
+          )
+        : [],
+    [missions, soldierMode]
+  );
+  const soldierBlocked = criticalSoldierJustifications.length > 0;
   const boardMissions = useMemo(
     () => (
       soldierMode
-        ? visibleMissions.filter((mission) => !mission.permissions?.can_justify)
+        ? visibleMissions.filter((mission) => mission.permissions?.can_complete)
         : visibleMissions
     ),
     [soldierMode, visibleMissions]
@@ -221,7 +238,7 @@ export default function App() {
     setShowSoldierConfirm(false);
     setShowUnlockGeneral(false);
     setUnlockPassword("");
-    setExcuseDrafts({});
+    setShowPendingJustifications(false);
   }
 
   function handleUnauthorized(result) {
@@ -546,17 +563,7 @@ export default function App() {
   }
 
   async function toggleMissionDecision(missionId) {
-    const previousMissions = missions;
-
     setDecisionLoadingId(missionId);
-    setMissions((current) =>
-      current.map((mission) =>
-        mission.id === missionId
-          ? { ...mission, is_decided: !mission.is_decided }
-          : mission
-      )
-    );
-
     const result = await api.toggleMissionDecision(token, missionId);
     setDecisionLoadingId(null);
 
@@ -565,7 +572,6 @@ export default function App() {
     }
 
     if (!result.ok) {
-      setMissions(previousMissions);
       setMissionStatus({
         type: "error",
         message: `Erro ao atualizar decisão: ${result.data.detail}`,
@@ -573,17 +579,13 @@ export default function App() {
       return;
     }
 
-    setMissions((current) =>
-      current.map((mission) =>
-        mission.id === missionId ? { ...mission, ...result.data } : mission
-      )
-    );
     setMissionStatus({
       type: "success",
       message: result.data.is_decided
         ? "Missão marcada como decidida."
         : "Missão voltou ao estado normal.",
     });
+    await loadMissions();
     if (showWeeklyReport) {
       await loadWeeklyReport();
     }
@@ -617,31 +619,20 @@ export default function App() {
     }
   }
 
-  function updateExcuseDraft(missionId, value) {
-    setExcuseDrafts((current) => ({
-      ...current,
-      [missionId]: value,
-    }));
-  }
-
-  async function submitSoldierExcuse(missionId) {
-    const targetMission = pendingSoldierExcuses.find((mission) => mission.id === missionId);
+  async function submitFailureJustification(missionId, payload) {
+    const targetMission = missions.find(
+      (mission) => mission.id === missionId && mission.permissions?.can_justify
+    );
     if (!targetMission) {
-      return;
+      return { error: "Missão indisponível para justificativa." };
     }
 
-    const reason = (excuseDrafts[missionId] || "").trim();
-    if (!reason) {
-      setMissionStatus({ type: "error", message: "Explique o motivo da falha antes de seguir." });
-      return;
-    }
-
-    setExcuseLoading(true);
-    const result = await api.submitSoldierExcuse(token, missionId, { reason });
-    setExcuseLoading(false);
+    setJustificationLoadingId(missionId);
+    const result = await api.submitFailureJustification(token, missionId, payload);
+    setJustificationLoadingId(null);
 
     if (handleUnauthorized(result)) {
-      return;
+      return { error: "Sessão expirada. Faça login novamente." };
     }
 
     if (!result.ok) {
@@ -649,15 +640,11 @@ export default function App() {
         type: "error",
         message: `Erro ao registrar justificativa: ${result.data.detail}`,
       });
-      return;
+      return { error: result.data.detail || "Erro ao registrar justificativa." };
     }
 
-    setExcuseDrafts((current) => {
-      const next = { ...current };
-      delete next[missionId];
-      return next;
-    });
-    await loadMissions("Justificativa registrada. A missão saiu do registro diário do Soldado.");
+    await loadMissions("Justificativa registrada. A missão saiu das pendências do Soldado.");
+    return { ok: true };
   }
 
   async function submitGeneralReview(missionId, accepted) {
@@ -885,13 +872,15 @@ export default function App() {
                   </div>
                 </div>
 
-                <MissionToolbar
-                  filters={filters}
-                  onChange={setFilters}
-                  onRefresh={() => loadMissions()}
-                  loading={missionLoading}
-                  planningLocked={soldierMode}
-                />
+                {!soldierBlocked && (
+                  <MissionToolbar
+                    filters={filters}
+                    onChange={setFilters}
+                    onRefresh={() => loadMissions()}
+                    loading={missionLoading}
+                    planningLocked={soldierMode}
+                  />
+                )}
 
                 {missionStatus.message && (
                   <p className={`feedback ${missionStatus.type}`}>{missionStatus.message}</p>
@@ -900,21 +889,21 @@ export default function App() {
                   <p className={`feedback ${sessionStatus.type}`}>{sessionStatus.message}</p>
                 )}
 
-                {soldierMode && pendingSoldierExcuses.length > 0 && (
-                  <section className="review-panel soldier-pending-panel" aria-label="Pendências de justificativa">
+                {soldierMode && soldierBlocked && (
+                  <section className="review-panel soldier-blocking-panel" aria-label="Justificativa obrigatória">
                     <div className="review-panel-header">
                       <div>
-                        <p className="section-kicker">Pendências de justificativa</p>
-                        <h3>Missões vencidas aguardando resposta</h3>
+                        <p className="section-kicker">Justificativa obrigatória</p>
+                        <h3>Você se comprometeu com esta missão</h3>
                         <p className="muted review-copy">
-                          Essas ordens saíram da execução. Registre o motivo antes de seguir.
+                          Registre o que aconteceu para liberar o fluxo de execução.
                         </p>
                       </div>
                     </div>
 
                     <div className="review-list">
-                      {pendingSoldierExcuses.map((mission) => (
-                        <article key={`excuse-${mission.id}`} className="review-card soldier-pending-card">
+                      {criticalSoldierJustifications.map((mission) => (
+                        <article key={`critical-${mission.id}`} className="review-card soldier-critical-card">
                           <div className="review-card-header">
                             <div>
                               <h4>{mission.titulo}</h4>
@@ -923,36 +912,78 @@ export default function App() {
                                 {formatDateTime(mission.failed_at)}
                               </p>
                             </div>
+                            <span className="status-badge decided">Decidido</span>
                           </div>
                           <div className="review-reason">
-                            <span>O que aconteceu</span>
+                            <span>Ordem</span>
                             <p>{mission.instrucao}</p>
                           </div>
-                          <div className="soldier-excuse-form">
-                            <label>
-                              Justificativa
-                              <textarea
-                                name={`soldier-excuse-${mission.id}`}
-                                rows="3"
-                                value={excuseDrafts[mission.id] || ""}
-                                onChange={(event) => updateExcuseDraft(mission.id, event.target.value)}
-                                placeholder="Explique o motivo"
-                              />
-                            </label>
-                            <button
-                              className="button primary"
-                              type="button"
-                              onClick={() => submitSoldierExcuse(mission.id)}
-                              disabled={excuseLoading}
-                            >
-                              {excuseLoading ? "Enviando..." : "Enviar justificativa"}
-                            </button>
-                          </div>
+                          <FailureJustificationForm
+                            mission={mission}
+                            loading={justificationLoadingId === mission.id}
+                            onSubmit={submitFailureJustification}
+                            submitLabel="Registrar e continuar"
+                          />
                         </article>
                       ))}
                     </div>
                   </section>
                 )}
+
+                {soldierMode && !soldierBlocked && (
+                  <div className="pending-action-row">
+                    <button
+                      className="button secondary"
+                      type="button"
+                      onClick={() => setShowPendingJustifications((current) => !current)}
+                      disabled={commonSoldierJustifications.length === 0}
+                    >
+                      Pendências ({commonSoldierJustifications.length})
+                    </button>
+                  </div>
+                )}
+
+                {soldierMode &&
+                  !soldierBlocked &&
+                  showPendingJustifications &&
+                  commonSoldierJustifications.length > 0 && (
+                    <section className="review-panel soldier-pending-panel" aria-label="Pendências de justificativa">
+                      <div className="review-panel-header">
+                        <div>
+                          <p className="section-kicker">Pendências</p>
+                          <h3>Missões vencidas aguardando justificativa</h3>
+                          <p className="muted review-copy">
+                            Essas falhas não bloqueiam a execução de hoje, mas precisam ser registradas.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="review-list">
+                        {commonSoldierJustifications.map((mission) => (
+                          <article key={`pending-${mission.id}`} className="review-card soldier-pending-card">
+                            <div className="review-card-header">
+                              <div>
+                                <h4>{mission.titulo}</h4>
+                                <p className="muted">
+                                  Prazo vencido: {mission.prazo || "Sem prazo definido"} · Falhou em{" "}
+                                  {formatDateTime(mission.failed_at)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="review-reason">
+                              <span>Ordem</span>
+                              <p>{mission.instrucao}</p>
+                            </div>
+                            <FailureJustificationForm
+                              mission={mission}
+                              loading={justificationLoadingId === mission.id}
+                              onSubmit={submitFailureJustification}
+                            />
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  )}
 
                 {!soldierMode && (
                   <GeneralReviewPanel
@@ -962,18 +993,20 @@ export default function App() {
                   />
                 )}
 
-                <MissionList
-                  missions={boardMissions}
-                  loading={missionLoading}
-                  onEdit={setEditingMission}
-                  onComplete={completeMission}
-                  onDelete={deleteMission}
-                  onHistory={loadHistory}
-                  onToggleDecision={toggleMissionDecision}
-                  togglingDecisionId={decisionLoadingId}
-                  planningLocked={soldierMode}
-                  canExecute={soldierMode}
-                />
+                {!soldierBlocked && (
+                  <MissionList
+                    missions={boardMissions}
+                    loading={missionLoading}
+                    onEdit={setEditingMission}
+                    onComplete={completeMission}
+                    onDelete={deleteMission}
+                    onHistory={loadHistory}
+                    onToggleDecision={toggleMissionDecision}
+                    togglingDecisionId={decisionLoadingId}
+                    planningLocked={soldierMode}
+                    canExecute={soldierMode}
+                  />
+                )}
               </>
             )}
           </section>

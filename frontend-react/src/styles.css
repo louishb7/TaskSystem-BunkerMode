@@ -761,6 +761,11 @@ h3 {
   border-color: rgba(217, 164, 65, 0.22);
 }
 
+.soldier-blocking-panel {
+  border-color: rgba(255, 123, 152, 0.36);
+  background: rgba(255, 123, 152, 0.05);
+}
+
 .review-panel-header h3,
 .review-card h4 {
   margin-bottom: 4px;
@@ -805,12 +810,65 @@ h3 {
   border-color: rgba(217, 164, 65, 0.2);
 }
 
-.soldier-excuse-form {
+.soldier-critical-card {
+  border-color: rgba(255, 123, 152, 0.28);
+}
+
+.pending-action-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 14px;
+}
+
+.failure-justification-form {
   display: grid;
   gap: 10px;
 }
 
-.soldier-excuse-form .button {
+.failure-justification-form fieldset {
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.failure-justification-form fieldset:disabled {
+  opacity: 0.72;
+}
+
+.failure-justification-form legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.failure-reason-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.reason-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  padding: 8px 10px;
+  text-transform: none;
+}
+
+.reason-option input {
+  width: auto;
+  min-height: 0;
+}
+
+.failure-justification-form .button {
   justify-self: start;
 }
 
