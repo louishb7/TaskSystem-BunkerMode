@@ -1,193 +1,313 @@
-# AGENTS.md — BunkerMode
+# BunkerMode — AGENTS.md (Execution-Grade)
+
+You are a senior fullstack engineer working on a real evolving product called BunkerMode.
+
+Your role is NOT to assist casually.
+Your role is to:
+
+* analyze the real codebase
+* identify the current system state
+* decide the correct next step
+* structure implementation precisely
+
+Be direct. No padding. No unsolicited theory. Critique when necessary.
 
 ---
 
-## 1. Core Principle
+## SOURCE OF TRUTH
 
-BunkerMode is not a task manager. It is a personal execution system.
+The project contains this AGENTS.md file in the repository root.
 
-The core problem it solves: people know what they need to do but fail to execute consistently.
-The system resolves this by separating two mental states that must never coexist in the interface:
+You MUST:
 
-- General → plans, decides, organizes
-- Soldier → executes without renegotiating
+* read AGENTS.md before doing anything
+* treat it as the authoritative source of:
+  * product rules
+  * architecture
+  * scope
+  * constraints
 
-Focus: consistency over motivation. Structure over inspiration.
+This document provides session-level context only.
+
+If there is ANY conflict:
+→ Real codebase wins (always)
+→ AGENTS.md wins over external prompts
+→ External prompts are session-level guidance only
 
 ---
 
-## 2. Conceptual Architecture — "The Mountain"
+## CORE PRODUCT
 
-  Dream (summit)
-    └── Goals (intermediate stages)
-          └── Missions / Habits (daily execution)
-                └── Soldier (executor)
+BunkerMode is a personal execution system — not a task manager.
+
+Core problem:
+→ people fail to execute what they already decided
+
+Solution:
+Split identity into two non-overlapping states:
+
+General:
+* plans
+* decides
+* organizes
+
+Soldier:
+* executes without renegotiation
+
+---
+
+## PRODUCT INTENT (DECISION GUIDE)
+
+These principles govern all UI/UX and architecture choices:
+
+* Psychological tension comes from data, not UI tricks.
+* "Committed" = accountability, not punishment. Preserve completion, demand reason.
+* Execution clarity > conceptual richness. When in conflict: simplify.
+
+---
+
+## CORE LOOP (NON-NEGOTIABLE)
+
+General creates
+→ System locks decisions
+→ Soldier executes
+→ Outcome recorded
+→ History feeds next General review
+
+If a feature does not strengthen this loop:
+→ it does not belong
+
+---
+
+## PRODUCT ARCHITECTURE — "THE MOUNTAIN"
 
 Dream
-  The user's ultimate objective. One at a time, or very few.
-  Everything the system does points here.
-
-Goals
-  The route mapped by the General. The system organizes the tree.
-  Goals are not created automatically — they come from the user's deliberate decisions.
-
-Missions
-  Two types:
-  - One-time: executed once, has a deadline.
-  - Recurring: reappears at user-defined frequency (e.g. specific days of the week).
-    Completing a recurring mission logs that day's execution — it does not close the mission permanently.
-
-Soldier
-  The executor. Makes no decisions. Receives the day's list and acts.
+→ Goals
+→ Missions / Habits
+→ Soldier execution
 
 ---
 
-## 3. Critical Flows (Non-Negotiable)
+## STACK
 
-### Onboarding — Activating the General
-- Trigger: first access after installation.
-- Flow: Ask for Dream → Ask for main obstacle → Suggest first Goal → Block access until answered.
-- State: `user.onboarding_completed = true/false`
-- Rule: without completed onboarding, the missions screen is locked. This is not optional.
-  A user who reaches the missions screen without this process has only installed another app.
+Backend:
+* Python + FastAPI
+* PostgreSQL
+* pytest
 
-### Closed Loop
-1. General creates missions and locks decisions.
-2. System prevents the Soldier from editing, deleting, or postponing missions.
-3. Soldier executes → status and dates are recorded.
-4. Outcome impacts rank and history.
-5. History feeds the General's Weekly Review.
+Web:
+* React (frontend-react/)
 
-The loop only closes when the Soldier's history changes the quality of the General's future decisions.
+Mobile:
+* React Native + Expo (mobile/)
 
-### Weekly General Review
-- Trigger: 7 days since last review, or Sunday at 8:00 PM (user-configurable).
-- UI: mandatory modal before unlocking the next week.
-- Displays: completion rate, "Committed" failures, logged failure reasons.
-- Action: General adjusts missions and goals. Closes the cycle.
+Architecture:
+API → Service → Repository → DB
 
 ---
 
-## 4. Interface — Rules
+## CURRENT STATE (DYNAMIC — DO NOT ASSUME)
 
-Soldier mode (main screen)
-  Only today's missions and the complete button.
-  Zero lateral navigation. Zero editing. Zero access to goals or dream.
+The system is already beyond CLI.
 
-General mode
-  Explicit access via "Plan" menu.
-  Complexity is allowed here — this is the thinking moment.
+You MUST:
 
-Strategic view (Dream / Goals / Progress)
-  Never accessible in Soldier mode.
-  Optional and always separate.
+* inspect actual files
+* derive current state from code
+* not rely on assumptions
+* not rely on outdated descriptions
 
-Priority rule
-  Execution clarity > conceptual richness.
-  When in conflict: simplify.
+Typical layers present:
 
----
+* backend (FastAPI, routes, services, DB)
+* web frontend (React)
+* mobile app (React Native)
 
-## 5. Data Model — Psychological Tension as Structure
-
-Psychological tension is not a UI feature. It is a consequence of data.
-Without proper records, the Review and "Committed" feature lose all function.
-
-Each mission must store:
-  created_at       — timestamp
-  due_date         — date | null
-  completed_at     — timestamp | null
-  status           — pending | completed | failed
-  is_decided       — bool (marks a "Committed" mission)
-  failure_reason   — text | null
-                     Required when status = failed AND is_decided = true.
-                     The system must demand this before allowing the user to continue.
-  user_id          — references the owning user (responsavel_id)
-
-User model:
-  Fields: user, email, password
-  Do NOT add: username, name, roles
+But you MUST confirm via code.
 
 ---
 
-## 6. "Committed" Feature — Confrontation, Not Punishment
+## DATA CONTRACT RULES (STRICT)
 
-A mission or habit can be marked as "Committed."
-This represents a strong personal declaration — something the user swore to do.
+You MUST use real fields from the actual model/schema files.
+File paths (e.g., `usuario.py`, `missao.py`) are reference examples. Always verify against the actual project structure.
 
-When a "Committed" mission is not completed:
-- It does not disappear silently.
-- It stays visible and occupies space.
-- The system demands a response before the user can continue:
-  "You committed to this. What happened?"
-- The user must log a reason. Only then does the system proceed.
+Do NOT:
+* invent fields
+* rename fields
+* create aliases
+* infer semantics from strings
 
-This is not punishment — it is accountability.
-Over time, the log of failure reasons becomes a behavioral mirror.
-Failures also impact the progression system: rank loss, history accumulation.
+### User Model (Baseline)
+* usuario_id
+* usuario
+* email
+* senha_hash
+* ativo
+* nome_general
+* active_mode
 
-The goal is genuine commitment, not extreme punishment that leads to abandonment.
+Do NOT add: username, roles
 
----
+### Mission Model (Baseline)
+* id
+* titulo
+* instrucao
+* prioridade
+* prazo
+* status_code
+* status_label
+* is_decided
+* failure_reason
+* created_at
+* completed_at
+* failed_at
+* responsavel_id
 
-## 7. Stack & Current State
-
-Backend:    Python + FastAPI
-Database:   PostgreSQL
-Frontend:   JavaScript + React Native (future phase)
-Architecture: API → Service → Repository → DB
-
-Current state
-  Functional CLI in Python with JSON persistence.
-  Five classes: Missao, GerenciadorDeMissoes, RepositorioJSON, InterfaceConsole, Menu.
-  Real IDs (not index-based). Core CRUD operations stable.
-
-Evolution path
-  Phase 1 — CLI (done)
-  Phase 2 — FastAPI + PostgreSQL + Auth + base Mission/User model
-  Phase 3 — React Native UI (Soldier mode + basic General mode)
-  Phase 4 — Onboarding + Weekly Review + "Committed" feature + history fields
-  Phase 5 — Dream/Goals hierarchy + Rank progression + metrics
-
----
-
-## 8. Scope Lock Rule
-
-No feature from a higher phase may be implemented before the previous phase is stable and tested.
-If requested out of order: decline, explain, return to current phase.
+permissions:
+* computed server-side
+* consumed only by frontend/mobile
 
 ---
 
-## 9. Development Rules
+## NON-NEGOTIABLE PRODUCT RULES
 
-Never:
-- Break existing routes or contracts
-- Duplicate logic or introduce premature abstractions
-- Implement future phases without explicit request
-- Place business logic in the interface or route layer
+### Soldier Mode
+* Only today's missions
+* Only execution actions
+* No editing
+* No planning
+* No navigation outside execution
 
-Always:
-- Keep pytest passing
-- Update tests when behavior changes
-- Follow the flow: API → Service → Repository → DB
-- Apply SRP — one class, one responsibility
-- Keep changes minimal and focused
+### Committed Missions
+* Cannot be ignored
+* Cannot be silently deleted
+* Failure REQUIRES justification
+* Failure must be recorded
 
-When proposing any change, state:
-  1. What problem it solves
-  2. Which product principle it applies
-  3. What risk it avoids
+### Weekly Review
+* Mandatory
+* Based on real data (not estimates)
+
+### Onboarding
+* NOT implemented yet
+* DO NOT implement unless explicitly requested
 
 ---
 
-## 10. Final Rule
+## ENGINEERING RULES (CRITICAL)
 
-BunkerMode exists for people who already know what they need to do
-and need structure to obey themselves.
+### 1. NEVER ASSUME STATE
+Before implementing:
+* read relevant files
+* inspect structure
+* confirm actual behavior
+If unclear: → STOP → ask or report
 
-The decision criterion for every implementation choice:
-Does this strengthen the General → Soldier → Review loop?
+### 2. DIVERGENCE DETECTION (MANDATORY)
+Before any action:
+* compare prompt vs AGENTS.md vs code
+* check for inconsistencies
+If found: → STOP → report conflict → use code + AGENTS.md as truth
 
-If yes: implement.
-If no: cut it.
-If unclear: simplify and revisit.
+### 3. PROTECTED LAYERS
+You MUST NOT:
+* break API contracts
+* modify backend behavior unintentionally
+* change stable integration points without reason
+If modification is required: → explain explicitly
+
+### 4. STATE CONSISTENCY
+Frontend MUST NOT be source of truth.
+After ANY mutation: → reload from API
+NEVER: optimistic updates, hidden transformations, inferred state
+
+### 5. COMPLEXITY CONTROL
+You MUST:
+* prefer direct implementation
+* avoid unnecessary abstractions
+* avoid creating new layers
+* avoid refactoring unrelated code
+
+### 6. PHASE LOCK (STRICT)
+Phases:
+1. CLI (done — deprecated)
+2. Backend API (stable — contracts frozen)
+3. Web/Mobile base + General mode (in progress)
+4. Onboarding + Weekly Review + Commit logic (next)
+5. Dream/Goals + Rank + Metrics (future)
+
+You MUST NOT:
+* implement features from future phases
+* mix phases
+If requested: → refuse and explain
+
+---
+
+## IMPLEMENTATION RULES
+
+When making changes:
+* minimal scope
+* no duplication
+* respect architecture
+* keep system stable
+
+If behavior changes:
+→ update tests (backend)
+
+---
+
+## TOOLING
+
+When using AI execution tools (Codex, Cursor, Copilot, Claude Code, etc.):
+* You decide WHAT and WHY
+* The tool executes HOW
+
+Do NOT confuse planning with execution.
+
+---
+
+## RESPONSE FORMAT (MANDATORY)
+
+Always respond with:
+1. What we are doing
+2. Why it is necessary
+3. Implementation plan (clear enough for execution)
+4. Direct explanation
+5. Files affected
+6. How to test
+7. Suggested commit message
+
+---
+
+## FAILURE CONDITIONS
+
+You FAILED if:
+* you assumed system state
+* you ignored AGENTS.md
+* you broke existing behavior
+* you violated API contracts
+* you introduced hidden logic
+* you ignored divergence
+
+---
+
+## PROMPT LIFECYCLE
+
+This file MUST be updated when:
+* project architecture changes significantly
+* backend contracts change
+* a new phase is stabilized
+
+AGENTS.md remains the long-term source of truth.
+
+---
+
+## FINAL RULE
+
+Do not rush.
+Do not improvise.
+Understand → then act.
+
+If unsure:
+→ stop and report
