@@ -11,10 +11,12 @@ from api.schemas import (
     MissaoCreatePayload,
     MissaoUpdatePayload,
     NomeGeneralPayload,
+    PlanningWindowPayload,
     RevisaoJustificativaPayload,
     RegistroPayload,
     SessionModePayload,
     SoldierExcusePayload,
+    TimezonePayload,
     UnlockGeneralPayload,
 )
 from core_exceptions import MissaoNaoEncontrada
@@ -81,9 +83,31 @@ def _raise_http_from_domain_error(erro: Exception) -> None:
         raise HTTPException(status_code=404, detail=str(erro)) from erro
     if isinstance(erro, PermissaoNegadaError):
         raise HTTPException(status_code=403, detail=str(erro)) from erro
+    if isinstance(erro, UsuarioNaoEncontrado):
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
     if isinstance(erro, ValueError):
         raise HTTPException(status_code=400, detail=str(erro)) from erro
     raise erro
+
+
+def _usuario_to_response(usuario, include_ativo: bool = True) -> dict:
+    response = {
+        "id": usuario.usuario_id,
+        "usuario": usuario.usuario,
+        "email": usuario.email,
+        "nome_general": usuario.nome_general,
+        "active_mode": usuario.active_mode,
+        "planning_window": usuario.planning_window,
+        "timezone": usuario.timezone,
+        "emergency_unlock_date": (
+            None
+            if usuario.emergency_unlock_date is None
+            else usuario.emergency_unlock_date.isoformat()
+        ),
+    }
+    if include_ativo:
+        response["ativo"] = usuario.ativo
+    return response
 
 
 @router.get("/health")
@@ -101,12 +125,7 @@ def registrar_usuario(
     except (UsuarioJaExisteError, ValueError) as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
 
-    return {
-        "id": usuario.usuario_id,
-        "usuario": usuario.usuario,
-        "email": usuario.email,
-        "ativo": usuario.ativo,
-    }
+    return _usuario_to_response(usuario)
 
 
 @router.post("/auth/login")
@@ -123,26 +142,13 @@ def login(
     return {
         "access_token": resultado["access_token"],
         "token_type": resultado["token_type"],
-        "usuario": {
-            "id": usuario.usuario_id,
-            "usuario": usuario.usuario,
-            "email": usuario.email,
-            "nome_general": usuario.nome_general,
-            "active_mode": usuario.active_mode,
-        },
+        "usuario": _usuario_to_response(usuario, include_ativo=False),
     }
 
 
 @router.get("/usuarios/me")
 def obter_usuario_atual(usuario=Depends(get_current_user)):
-    return {
-        "id": usuario.usuario_id,
-        "usuario": usuario.usuario,
-        "email": usuario.email,
-        "ativo": usuario.ativo,
-        "nome_general": usuario.nome_general,
-        "active_mode": usuario.active_mode,
-    }
+    return _usuario_to_response(usuario)
 
 
 @router.patch("/usuarios/me/nome-general")
@@ -161,14 +167,7 @@ def definir_nome_general(
     except (UsuarioNaoEncontrado, ValueError) as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
 
-    return {
-        "id": usuario_atualizado.usuario_id,
-        "usuario": usuario_atualizado.usuario,
-        "email": usuario_atualizado.email,
-        "ativo": usuario_atualizado.ativo,
-        "nome_general": usuario_atualizado.nome_general,
-        "active_mode": usuario_atualizado.active_mode,
-    }
+    return _usuario_to_response(usuario_atualizado)
 
 
 @router.patch("/session/mode")
@@ -182,14 +181,7 @@ def atualizar_modo_sessao(
     except (UsuarioNaoEncontrado, ValueError) as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
 
-    return {
-        "id": usuario_atualizado.usuario_id,
-        "usuario": usuario_atualizado.usuario,
-        "email": usuario_atualizado.email,
-        "ativo": usuario_atualizado.ativo,
-        "nome_general": usuario_atualizado.nome_general,
-        "active_mode": usuario_atualizado.active_mode,
-    }
+    return _usuario_to_response(usuario_atualizado)
 
 
 @router.post("/session/unlock-general")
@@ -202,17 +194,46 @@ def liberar_general(
         usuario_atualizado = auth_service.liberar_general(usuario.usuario_id, payload.senha)
     except AutenticacaoError as erro:
         raise HTTPException(status_code=401, detail=str(erro)) from erro
-    except UsuarioNaoEncontrado as erro:
+    except PermissaoNegadaError as erro:
+        _raise_http_from_domain_error(erro)
+    except (UsuarioNaoEncontrado, ValueError) as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
 
-    return {
-        "id": usuario_atualizado.usuario_id,
-        "usuario": usuario_atualizado.usuario,
-        "email": usuario_atualizado.email,
-        "ativo": usuario_atualizado.ativo,
-        "nome_general": usuario_atualizado.nome_general,
-        "active_mode": usuario_atualizado.active_mode,
-    }
+    return _usuario_to_response(usuario_atualizado)
+
+
+@router.patch("/usuarios/me/planning-window")
+def alterar_turno_planejamento(
+    payload: PlanningWindowPayload,
+    usuario=Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        usuario_atualizado = auth_service.alterar_turno_planejamento(
+            usuario.usuario_id,
+            payload.planning_window,
+        )
+    except (PermissaoNegadaError, UsuarioNaoEncontrado, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+    return _usuario_to_response(usuario_atualizado)
+
+
+@router.patch("/usuarios/me/timezone")
+def alterar_timezone(
+    payload: TimezonePayload,
+    usuario=Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        usuario_atualizado = auth_service.alterar_timezone(
+            usuario.usuario_id,
+            payload.timezone,
+        )
+    except (PermissaoNegadaError, UsuarioNaoEncontrado, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+    return _usuario_to_response(usuario_atualizado)
 
 
 @router.post("/missoes", status_code=status.HTTP_201_CREATED)

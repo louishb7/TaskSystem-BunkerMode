@@ -1,8 +1,11 @@
 from datetime import datetime
 
+import pytest
 from fastapi import HTTPException
 
 from api.routes import (
+    alterar_timezone,
+    alterar_turno_planejamento,
     concluir_missao,
     criar_missao,
     definir_nome_general,
@@ -25,9 +28,11 @@ from api.schemas import (
     MissaoCreatePayload,
     MissaoUpdatePayload,
     NomeGeneralPayload,
+    PlanningWindowPayload,
     RegistroPayload,
     RevisaoJustificativaPayload,
     SoldierExcusePayload,
+    TimezonePayload,
 )
 from missao import Missao, StatusMissao
 from services.auth_service import AuthService
@@ -108,6 +113,21 @@ class RepositorioV2Fake:
         if usuario is not None:
             usuario.definir_modo(active_mode)
 
+    def atualizar_turno_planejamento(self, usuario_id, planning_window):
+        usuario = self.buscar_usuario_por_id(usuario_id)
+        if usuario is not None:
+            usuario.definir_turno_planejamento(planning_window)
+
+    def atualizar_timezone(self, usuario_id, timezone):
+        usuario = self.buscar_usuario_por_id(usuario_id)
+        if usuario is not None:
+            usuario.definir_timezone(timezone)
+
+    def registrar_uso_emergencia_general(self, usuario_id, local_date):
+        usuario = self.buscar_usuario_por_id(usuario_id)
+        if usuario is not None:
+            usuario.registrar_uso_emergencia_general(local_date)
+
     def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id):
         self.contextos[missao_id] = {
             "criada_por_id": criada_por_id,
@@ -171,8 +191,62 @@ def test_auth_register_login_e_me_v2():
     _, _, _, _, usuario, usuario_obj = preparar_ambiente()
 
     assert usuario["email"] == "henrique@email.com"
+    assert usuario["planning_window"] == "night"
+    assert usuario["timezone"] == "America/Recife"
+    assert usuario["emergency_unlock_date"] is None
     assert usuario_obj.usuario == "Henrique"
     assert usuario_obj.active_mode == "general"
+
+
+def test_api_altera_turno_e_timezone_apenas_no_modo_general():
+    _, auth, _, _, _, usuario = preparar_ambiente()
+
+    resposta_turno = alterar_turno_planejamento(
+        PlanningWindowPayload(planning_window="morning"),
+        usuario=usuario,
+        auth_service=auth,
+    )
+    resposta_timezone = alterar_timezone(
+        TimezonePayload(timezone="Europe/Lisbon"),
+        usuario=usuario,
+        auth_service=auth,
+    )
+
+    assert resposta_turno["planning_window"] == "morning"
+    assert resposta_timezone["timezone"] == "Europe/Lisbon"
+
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    with pytest.raises(HTTPException) as erro_turno:
+        alterar_turno_planejamento(
+            PlanningWindowPayload(planning_window="night"),
+            usuario=usuario,
+            auth_service=auth,
+        )
+    with pytest.raises(HTTPException) as erro_timezone:
+        alterar_timezone(
+            TimezonePayload(timezone="America/New_York"),
+            usuario=usuario,
+            auth_service=auth,
+        )
+
+    assert erro_turno.value.status_code == 403
+    assert erro_timezone.value.status_code == 403
+
+
+def test_api_rejeita_timezone_invalido():
+    _, auth, _, _, _, usuario = preparar_ambiente()
+
+    with pytest.raises(HTTPException) as erro:
+        alterar_timezone(
+            TimezonePayload(timezone="Timezone/Invalido"),
+            usuario=usuario,
+            auth_service=auth,
+        )
+
+    assert erro.value.status_code == 400
+    assert "Timezone inválido" in erro.value.detail
 
 
 def test_soldado_nao_pode_concluir_missao_vencida():

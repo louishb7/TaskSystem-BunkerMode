@@ -216,6 +216,34 @@ def test_busca_usuario_reconstroi_nome_do_general(monkeypatch, repositorio):
 
     assert usuario.nome_general == "General Atlas"
     assert usuario.active_mode == "soldier"
+    assert usuario.planning_window == "night"
+    assert usuario.timezone == "America/Recife"
+    assert usuario.emergency_unlock_date is None
+
+
+def test_busca_usuario_reconstroi_lock_de_planejamento(monkeypatch, repositorio):
+    cursor = FakeCursor(
+        fetchone_result=(
+            1,
+            "Henrique",
+            "henrique@email.com",
+            "hash",
+            True,
+            "General Atlas",
+            "soldier",
+            "morning",
+            "Europe/Lisbon",
+            date(2026, 4, 24),
+        )
+    )
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
+
+    usuario = repositorio.buscar_usuario_por_id(1)
+
+    assert usuario.planning_window == "morning"
+    assert usuario.timezone == "Europe/Lisbon"
+    assert usuario.emergency_unlock_date == date(2026, 4, 24)
 
 
 def test_atualizar_nome_general_confirma_transacao(monkeypatch, repositorio):
@@ -238,6 +266,24 @@ def test_atualizar_modo_ativo_confirma_transacao(monkeypatch, repositorio):
 
     assert connection.commit_called is True
     assert cursor.executions[-1][1] == ("soldier", 3)
+
+
+def test_atualizar_turno_timezone_e_emergencia_confirma_transacao(monkeypatch, repositorio):
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
+
+    repositorio.atualizar_turno_planejamento(3, "Morning")
+    repositorio.atualizar_timezone(3, "Europe/Lisbon")
+    repositorio.registrar_uso_emergencia_general(3, date(2026, 4, 24))
+
+    assert connection.commit_called is True
+    update_params = [params for _, params in cursor.executions if params is not None]
+    assert update_params[-3:] == [
+        ("morning", 3),
+        ("Europe/Lisbon", 3),
+        (date(2026, 4, 24), 3),
+    ]
 
 
 @pytest.fixture

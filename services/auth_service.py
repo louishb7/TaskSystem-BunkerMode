@@ -1,3 +1,6 @@
+from datetime import datetime, time, timezone as utc_timezone
+from zoneinfo import ZoneInfo
+
 from auth import decode_token, generate_token, hash_password, verify_password
 from services.exceptions import (
     AutenticacaoError,
@@ -11,8 +14,15 @@ from usuario import Usuario
 class AuthService:
     """Gerencia cadastro e autenticação de usuários."""
 
-    def __init__(self, repositorio):
+    PLANNING_WINDOWS = {
+        "morning": (time(5, 0), time(10, 59, 59)),
+        "afternoon": (time(12, 0), time(17, 59, 59)),
+        "night": (time(21, 0), time(2, 59, 59)),
+    }
+
+    def __init__(self, repositorio, now_provider=None):
         self.repositorio = repositorio
+        self.now_provider = now_provider or self._utc_now
 
     def registrar_usuario(self, dados: dict) -> Usuario:
         existente = self.repositorio.buscar_usuario_por_email(dados["email"])
@@ -75,6 +85,63 @@ class AuthService:
         if not verify_password(senha, usuario.senha_hash):
             raise AutenticacaoError("Senha incorreta.")
 
+        agora_local = self._agora_no_timezone_usuario(usuario)
+        data_local = agora_local.date()
+        if not self._dentro_do_turno(usuario.planning_window, agora_local.time()):
+            if usuario.emergency_unlock_date == data_local:
+                raise PermissaoNegadaError(
+                    "General fora do posto e passe de emergência já utilizado hoje."
+                )
+            usuario.registrar_uso_emergencia_general(data_local)
+            self.repositorio.registrar_uso_emergencia_general(
+                usuario.usuario_id,
+                usuario.emergency_unlock_date,
+            )
+
         usuario.definir_modo("general")
         self.repositorio.atualizar_modo_ativo(usuario.usuario_id, usuario.active_mode)
         return usuario
+
+    def alterar_turno_planejamento(self, usuario_id: int, planning_window: str) -> Usuario:
+        usuario = self.repositorio.buscar_usuario_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNaoEncontrado("Usuário autenticado não encontrado.")
+        if usuario.active_mode != "general":
+            raise PermissaoNegadaError(
+                "Turno de planejamento só pode ser alterado no modo General."
+            )
+
+        usuario.definir_turno_planejamento(planning_window)
+        self.repositorio.atualizar_turno_planejamento(
+            usuario.usuario_id,
+            usuario.planning_window,
+        )
+        return usuario
+
+    def alterar_timezone(self, usuario_id: int, timezone: str) -> Usuario:
+        usuario = self.repositorio.buscar_usuario_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNaoEncontrado("Usuário autenticado não encontrado.")
+        if usuario.active_mode != "general":
+            raise PermissaoNegadaError("Timezone só pode ser alterado no modo General.")
+
+        usuario.definir_timezone(timezone)
+        self.repositorio.atualizar_timezone(usuario.usuario_id, usuario.timezone)
+        return usuario
+
+    def _utc_now(self) -> datetime:
+        return datetime.now(utc_timezone.utc)
+
+    def _agora_no_timezone_usuario(self, usuario: Usuario) -> datetime:
+        agora = self.now_provider()
+        if agora.tzinfo is None:
+            agora = agora.replace(tzinfo=utc_timezone.utc)
+        return agora.astimezone(ZoneInfo(usuario.timezone))
+
+    def _dentro_do_turno(self, planning_window: str, local_time: time) -> bool:
+        if planning_window not in self.PLANNING_WINDOWS:
+            raise ValueError("Turno de planejamento inválido.")
+        start, end = self.PLANNING_WINDOWS[planning_window]
+        if start <= end:
+            return start <= local_time <= end
+        return local_time >= start or local_time <= end

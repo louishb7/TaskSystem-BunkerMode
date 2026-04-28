@@ -1,3 +1,12 @@
+from datetime import date
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+
+PLANNING_WINDOWS = {"morning", "afternoon", "night"}
+DEFAULT_PLANNING_WINDOW = "night"
+DEFAULT_TIMEZONE = "America/Recife"
+
+
 class Usuario:
     """Representa um usuário autenticável do sistema."""
 
@@ -10,6 +19,9 @@ class Usuario:
         ativo=True,
         nome_general=None,
         active_mode="general",
+        planning_window=DEFAULT_PLANNING_WINDOW,
+        timezone=DEFAULT_TIMEZONE,
+        emergency_unlock_date=None,
     ):
         self.usuario_id = self._validar_usuario_id(usuario_id)
         self.usuario = self._validar_usuario(usuario)
@@ -18,6 +30,11 @@ class Usuario:
         self.ativo = self._validar_ativo(ativo)
         self.nome_general = self._validar_nome_general(nome_general)
         self.active_mode = self._validar_active_mode(active_mode)
+        self.planning_window = self._validar_planning_window(planning_window)
+        self.timezone = self._validar_timezone(timezone)
+        self.emergency_unlock_date = self._validar_emergency_unlock_date(
+            emergency_unlock_date
+        )
 
     def _validar_usuario_id(self, usuario_id):
         if usuario_id is None:
@@ -77,3 +94,39 @@ class Usuario:
 
     def definir_modo(self, active_mode):
         self.active_mode = self._validar_active_mode(active_mode)
+
+    def _validar_planning_window(self, planning_window):
+        if not isinstance(planning_window, str):
+            raise ValueError("Turno de planejamento deve ser um texto.")
+        planning_window = planning_window.strip().lower()
+        if planning_window not in PLANNING_WINDOWS:
+            raise ValueError("Turno de planejamento inválido.")
+        return planning_window
+
+    def definir_turno_planejamento(self, turno):
+        self.planning_window = self._validar_planning_window(turno)
+
+    def _validar_timezone(self, timezone):
+        if not isinstance(timezone, str):
+            raise ValueError("Timezone deve ser um texto.")
+        timezone = timezone.strip()
+        if not timezone:
+            raise ValueError("Timezone é obrigatório.")
+        try:
+            ZoneInfo(timezone)
+        except ZoneInfoNotFoundError as erro:
+            raise ValueError("Timezone inválido.") from erro
+        return timezone
+
+    def definir_timezone(self, timezone):
+        self.timezone = self._validar_timezone(timezone)
+
+    def _validar_emergency_unlock_date(self, emergency_unlock_date):
+        if emergency_unlock_date is None:
+            return None
+        if not isinstance(emergency_unlock_date, date):
+            raise ValueError("Data de emergência do General inválida.")
+        return emergency_unlock_date
+
+    def registrar_uso_emergencia_general(self, local_date):
+        self.emergency_unlock_date = self._validar_emergency_unlock_date(local_date)

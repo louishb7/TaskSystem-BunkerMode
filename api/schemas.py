@@ -26,6 +26,14 @@ class UnlockGeneralPayload(BaseModel):
     senha: str = Field(min_length=1)
 
 
+class PlanningWindowPayload(BaseModel):
+    planning_window: Literal["morning", "afternoon", "night"]
+
+
+class TimezonePayload(BaseModel):
+    timezone: str = Field(min_length=1)
+
+
 class SoldierExcusePayload(BaseModel):
     reason: str = Field(min_length=1)
 

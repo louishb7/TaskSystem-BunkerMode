@@ -64,7 +64,10 @@ class RepositorioPostgres:
                 senha_hash TEXT NOT NULL,
                 ativo BOOLEAN NOT NULL DEFAULT TRUE,
                 nome_general TEXT NULL,
-                active_mode TEXT NOT NULL DEFAULT 'general'
+                active_mode TEXT NOT NULL DEFAULT 'general',
+                planning_window TEXT NOT NULL DEFAULT 'night',
+                timezone TEXT NOT NULL DEFAULT 'America/Recife',
+                emergency_unlock_date DATE NULL
             );
             """,
             """
@@ -74,6 +77,18 @@ class RepositorioPostgres:
             """
             ALTER TABLE IF EXISTS usuarios
             ADD COLUMN IF NOT EXISTS active_mode TEXT NOT NULL DEFAULT 'general';
+            """,
+            """
+            ALTER TABLE IF EXISTS usuarios
+            ADD COLUMN IF NOT EXISTS planning_window TEXT NOT NULL DEFAULT 'night';
+            """,
+            """
+            ALTER TABLE IF EXISTS usuarios
+            ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'America/Recife';
+            """,
+            """
+            ALTER TABLE IF EXISTS usuarios
+            ADD COLUMN IF NOT EXISTS emergency_unlock_date DATE NULL;
             """,
             """
             ALTER TABLE IF EXISTS missoes
@@ -230,7 +245,24 @@ class RepositorioPostgres:
         )
 
     def _reconstruir_usuario(self, linha: tuple) -> Usuario:
-        usuario_id, usuario, email, senha_hash, ativo, nome_general, active_mode = linha
+        if len(linha) == 7:
+            usuario_id, usuario, email, senha_hash, ativo, nome_general, active_mode = linha
+            planning_window = "night"
+            timezone = "America/Recife"
+            emergency_unlock_date = None
+        else:
+            (
+                usuario_id,
+                usuario,
+                email,
+                senha_hash,
+                ativo,
+                nome_general,
+                active_mode,
+                planning_window,
+                timezone,
+                emergency_unlock_date,
+            ) = linha
         return Usuario(
             usuario_id=usuario_id,
             usuario=usuario,
@@ -239,6 +271,9 @@ class RepositorioPostgres:
             ativo=ativo,
             nome_general=nome_general,
             active_mode=active_mode,
+            planning_window=planning_window,
+            timezone=timezone,
+            emergency_unlock_date=emergency_unlock_date,
         )
 
     def _reconstruir_evento(self, linha: tuple) -> EventoAuditoria:
@@ -450,8 +485,11 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO usuarios (usuario, email, senha_hash, ativo)
-                        VALUES (%s, %s, %s, %s)
+                        INSERT INTO usuarios (
+                            usuario, email, senha_hash, ativo, nome_general,
+                            active_mode, planning_window, timezone, emergency_unlock_date
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING usuario_id;
                         """,
                         (
@@ -459,6 +497,11 @@ class RepositorioPostgres:
                             usuario.email,
                             usuario.senha_hash,
                             usuario.ativo,
+                            usuario.nome_general,
+                            usuario.active_mode,
+                            usuario.planning_window,
+                            usuario.timezone,
+                            usuario.emergency_unlock_date,
                         ),
                     )
                     usuario.usuario_id = cursor.fetchone()[0]
@@ -477,7 +520,8 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general, active_mode
+                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
+                               active_mode, planning_window, timezone, emergency_unlock_date
                         FROM usuarios
                         WHERE email = %s;
                         """,
@@ -499,7 +543,8 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general, active_mode
+                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
+                               active_mode, planning_window, timezone, emergency_unlock_date
                         FROM usuarios
                         WHERE usuario_id = %s;
                         """,
@@ -562,6 +607,81 @@ class RepositorioPostgres:
         except psycopg.Error as erro:
             raise EscritaRepositorioError(
                 "Erro ao atualizar o modo ativo no banco de dados."
+            ) from erro
+
+    def atualizar_turno_planejamento(self, usuario_id: int, planning_window: str) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        UPDATE usuarios
+                        SET planning_window = %s
+                        WHERE usuario_id = %s;
+                        """,
+                        (planning_window.strip().lower(), usuario_id),
+                    )
+                    if cursor.rowcount == 0:
+                        raise UsuarioNaoPersistidoError(
+                            f"Usuário {usuario_id} não encontrado para atualizar o turno de planejamento."
+                        )
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao atualizar o turno de planejamento no banco de dados."
+            ) from erro
+
+    def atualizar_timezone(self, usuario_id: int, timezone: str) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        UPDATE usuarios
+                        SET timezone = %s
+                        WHERE usuario_id = %s;
+                        """,
+                        (timezone.strip(), usuario_id),
+                    )
+                    if cursor.rowcount == 0:
+                        raise UsuarioNaoPersistidoError(
+                            f"Usuário {usuario_id} não encontrado para atualizar o timezone."
+                        )
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao atualizar o timezone no banco de dados."
+            ) from erro
+
+    def registrar_uso_emergencia_general(self, usuario_id: int, local_date) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        UPDATE usuarios
+                        SET emergency_unlock_date = %s
+                        WHERE usuario_id = %s;
+                        """,
+                        (local_date, usuario_id),
+                    )
+                    if cursor.rowcount == 0:
+                        raise UsuarioNaoPersistidoError(
+                            f"Usuário {usuario_id} não encontrado para registrar emergência do General."
+                        )
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao registrar emergência do General no banco de dados."
             ) from erro
 
     def salvar_contexto_missao(
