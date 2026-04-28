@@ -97,6 +97,10 @@ class RepositorioPostgres:
             """,
             """
             ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS failure_reason_type TEXT NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
             ADD COLUMN IF NOT EXISTS soldier_excuse TEXT NULL;
             """,
             """
@@ -153,6 +157,7 @@ class RepositorioPostgres:
             created_at = None
             completed_at = None
             failed_at = None
+            failure_reason_type = None
             failure_reason = None
             soldier_excuse = None
             general_verdict = None
@@ -171,8 +176,9 @@ class RepositorioPostgres:
             ) = linha
             created_at = None
             completed_at = None
+            failure_reason_type = None
             failure_reason = soldier_excuse
-        else:
+        elif len(linha) == 13:
             (
                 missao_id,
                 titulo,
@@ -188,6 +194,24 @@ class RepositorioPostgres:
                 soldier_excuse,
                 general_verdict,
             ) = linha
+            failure_reason_type = None
+        else:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
+                is_decided,
+                created_at,
+                completed_at,
+                failed_at,
+                failure_reason_type,
+                failure_reason,
+                soldier_excuse,
+                general_verdict,
+            ) = linha
         return Missao(
             missao_id=missao_id,
             titulo=titulo,
@@ -199,6 +223,7 @@ class RepositorioPostgres:
             created_at=created_at,
             completed_at=completed_at,
             failed_at=failed_at,
+            failure_reason_type=failure_reason_type,
             failure_reason=failure_reason,
             soldier_excuse=soldier_excuse,
             general_verdict=general_verdict,
@@ -235,7 +260,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided,
-                               created_at, completed_at, failed_at, failure_reason, soldier_excuse, general_verdict
+                               created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
                         FROM missoes
                         ORDER BY prioridade, missao_id;
                         """
@@ -257,7 +282,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
-                               m.created_at, m.completed_at, m.failed_at, m.failure_reason, m.soldier_excuse, m.general_verdict
+                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason, m.soldier_excuse, m.general_verdict
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
                         WHERE mc.responsavel_id = %s
@@ -282,7 +307,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided,
-                               created_at, completed_at, failed_at, failure_reason, soldier_excuse, general_verdict
+                               created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
                         FROM missoes
                         WHERE missao_id = %s;
                         """,
@@ -306,9 +331,9 @@ class RepositorioPostgres:
                         """
                         INSERT INTO missoes (
                             titulo, prioridade, prazo, instrucao, status, is_decided,
-                            created_at, completed_at, failed_at, failure_reason, soldier_excuse, general_verdict
+                            created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
                         (
@@ -321,6 +346,7 @@ class RepositorioPostgres:
                             missao.created_at,
                             missao.completed_at,
                             missao.failed_at,
+                            None if missao.failure_reason_type is None else missao.failure_reason_type.value,
                             missao.failure_reason,
                             missao.soldier_excuse,
                             missao.general_verdict,
@@ -353,6 +379,7 @@ class RepositorioPostgres:
                             created_at = %s,
                             completed_at = %s,
                             failed_at = %s,
+                            failure_reason_type = %s,
                             failure_reason = %s,
                             soldier_excuse = %s,
                             general_verdict = %s
@@ -368,6 +395,7 @@ class RepositorioPostgres:
                             missao.created_at,
                             missao.completed_at,
                             missao.failed_at,
+                            None if missao.failure_reason_type is None else missao.failure_reason_type.value,
                             missao.failure_reason,
                             missao.soldier_excuse,
                             missao.general_verdict,

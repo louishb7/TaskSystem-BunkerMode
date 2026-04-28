@@ -10,6 +10,14 @@ class StatusMissao(Enum):
     FALHA_REVISADA = "Falha revisada"
 
 
+class TipoJustificativaFalha(Enum):
+    NOT_DONE = "not_done"
+    DONE_NOT_MARKED = "done_not_marked"
+    PARTIALLY_DONE = "partially_done"
+    EXTERNAL_BLOCKER = "external_blocker"
+    OTHER = "other"
+
+
 class PrioridadeMissao(Enum):
     ALTA = 1
     MEDIA = 2
@@ -48,6 +56,7 @@ class Missao:
         created_at=None,
         completed_at=None,
         failed_at=None,
+        failure_reason_type=None,
         failure_reason=None,
         soldier_excuse=None,
         general_verdict=None,
@@ -63,6 +72,7 @@ class Missao:
         self.created_at = self._validar_datetime(created_at, "Data de criação inválida.", default_now=True)
         self.completed_at = self._validar_datetime(completed_at, "Data de conclusão inválida.")
         self.failed_at = self._validar_datetime(failed_at, "Data de falha inválida.")
+        self.failure_reason_type = self._validar_failure_reason_type(failure_reason_type)
         self.failure_reason = self._validar_texto_opcional(
             failure_reason if failure_reason is not None else soldier_excuse,
             "Justificativa da falha não pode ser vazia.",
@@ -94,10 +104,13 @@ class Missao:
             "created_at": self.created_at.isoformat(),
             "completed_at": None if self.completed_at is None else self.completed_at.isoformat(),
             "failed_at": None if self.failed_at is None else self.failed_at.isoformat(),
+            "failure_reason_type": None if self.failure_reason_type is None else self.failure_reason_type.value,
             "failure_reason": self.failure_reason,
             "soldier_excuse": self.failure_reason,
             "general_verdict": self.general_verdict,
             "user_id": self.user_id,
+            "requires_immediate_justification": self.requires_immediate_justification(),
+            "has_pending_non_blocking_justification": self.has_pending_non_blocking_justification(),
             "permissions": permissions or {
                 "can_complete": False,
                 "can_edit": False,
@@ -195,6 +208,12 @@ class Missao:
     def requires_soldier_justification(self):
         return self.is_failed_waiting_justification()
 
+    def requires_immediate_justification(self):
+        return self.requires_soldier_justification() and self.is_decided
+
+    def has_pending_non_blocking_justification(self):
+        return self.requires_soldier_justification() and not self.is_decided
+
     def pode_ser_justificada(self):
         return self.requires_soldier_justification()
 
@@ -245,6 +264,7 @@ class Missao:
         self.status = StatusMissao.CONCLUIDA
         self.completed_at = self._validar_datetime(instante, "Data de conclusão inválida.", default_now=True)
         self.failed_at = None
+        self.failure_reason_type = None
         self.failure_reason = None
         self.general_verdict = None
 
@@ -252,6 +272,7 @@ class Missao:
         self.status = StatusMissao.PENDENTE
         self.completed_at = None
         self.failed_at = None
+        self.failure_reason_type = None
         self.failure_reason = None
         self.general_verdict = None
 
@@ -271,11 +292,14 @@ class Missao:
             self.completed_at = None
             if self.failed_at is None:
                 self.failed_at = datetime.now()
+            self.failure_reason_type = None
             self.failure_reason = None
             self.general_verdict = None
         elif novo_status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO:
             if not self.failure_reason:
                 raise ValueError("Falha justificada precisa de justificativa do Soldado.")
+            if self.failure_reason_type is None:
+                self.failure_reason_type = TipoJustificativaFalha.OTHER
             self.status = novo_status
             self.completed_at = None
             if self.failed_at is None:
@@ -284,6 +308,8 @@ class Missao:
         elif novo_status == StatusMissao.FALHA_REVISADA:
             if not self.failure_reason:
                 raise ValueError("Falha revisada precisa de justificativa do Soldado.")
+            if self.failure_reason_type is None:
+                self.failure_reason_type = TipoJustificativaFalha.OTHER
             if self.general_verdict is None:
                 raise ValueError("Falha revisada precisa de resultado da revisão.")
             self.status = novo_status
@@ -307,12 +333,14 @@ class Missao:
         self.completed_at = None
         if self.failed_at is None:
             self.failed_at = self._validar_datetime(instante, "Data de falha inválida.", default_now=True)
+        self.failure_reason_type = None
         self.failure_reason = None
         self.general_verdict = None
 
-    def registrar_justificativa_soldado(self, motivo):
+    def registrar_justificativa_soldado(self, motivo, tipo=TipoJustificativaFalha.OTHER):
         if not self.requires_soldier_justification():
             raise ValueError("A missão não está aguardando justificativa.")
+        self.failure_reason_type = self._validar_failure_reason_type(tipo, obrigatorio=True)
         self.failure_reason = self._validar_texto_opcional(
             motivo,
             "Justificativa da falha não pode ser vazia.",
@@ -333,6 +361,7 @@ class Missao:
             if self.completed_at is None:
                 self.completed_at = self.created_at
             self.failed_at = None
+            self.failure_reason_type = None
             self.failure_reason = None
             self.general_verdict = None
             return
@@ -341,6 +370,7 @@ class Missao:
 
         if self.is_pending():
             self.failed_at = None
+            self.failure_reason_type = None
             self.failure_reason = None
             self.general_verdict = None
             return
@@ -349,6 +379,7 @@ class Missao:
             self.failed_at = self.created_at
 
         if self.is_failed_waiting_justification():
+            self.failure_reason_type = None
             self.failure_reason = None
             self.general_verdict = None
             return
@@ -356,12 +387,16 @@ class Missao:
         if self.is_failed_waiting_review():
             if not self.failure_reason:
                 raise ValueError("Falha justificada precisa de justificativa do Soldado.")
+            if self.failure_reason_type is None:
+                self.failure_reason_type = TipoJustificativaFalha.OTHER
             self.general_verdict = None
             return
 
         if self.is_failed_reviewed():
             if not self.failure_reason:
                 raise ValueError("Falha revisada precisa de justificativa do Soldado.")
+            if self.failure_reason_type is None:
+                self.failure_reason_type = TipoJustificativaFalha.OTHER
             if self.general_verdict is None:
                 raise ValueError("Falha revisada precisa de resultado da revisão.")
 
@@ -428,6 +463,20 @@ class Missao:
         if not isinstance(valor, datetime):
             raise ValueError(mensagem_erro)
         return valor
+
+    def _validar_failure_reason_type(self, valor, obrigatorio=False):
+        if valor is None:
+            if obrigatorio:
+                raise ValueError("Tipo da justificativa da falha é obrigatório.")
+            return None
+        if isinstance(valor, TipoJustificativaFalha):
+            return valor
+        if not isinstance(valor, str):
+            raise ValueError("Tipo da justificativa da falha é inválido.")
+        try:
+            return TipoJustificativaFalha(valor.strip())
+        except ValueError as erro:
+            raise ValueError("Tipo da justificativa da falha é inválido.") from erro
 
     def _validar_texto_opcional(self, valor, mensagem_erro, obrigatorio=False):
         if valor is None:

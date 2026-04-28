@@ -154,11 +154,17 @@ class MissaoService:
         self._buscar_por_id_do_usuario(missao_id, usuario)
         return self.repositorio.listar_auditoria_por_missao(missao_id)
 
-    def registrar_justificativa_soldado(self, missao_id: int, motivo: str, usuario=None) -> Missao:
+    def registrar_justificativa_falha(
+        self,
+        missao_id: int,
+        tipo: str,
+        motivo: str,
+        usuario=None,
+    ) -> Missao:
         self._garantir_modo_soldado(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
         self._marcar_falha_se_vencida(missao, usuario)
-        missao.registrar_justificativa_soldado(motivo)
+        missao.registrar_justificativa_soldado(motivo, tipo=tipo)
         self.repositorio.atualizar_missao(missao)
 
         if usuario is not None:
@@ -166,10 +172,21 @@ class MissaoService:
                 missao_id=missao.missao_id,
                 usuario_id=usuario.usuario_id,
                 acao="justificativa_registrada",
-                detalhes=f"Soldado registrou justificativa: {missao.failure_reason}",
+                detalhes=(
+                    "Soldado registrou justificativa "
+                    f"({missao.failure_reason_type.value}): {missao.failure_reason}"
+                ),
             )
 
         return missao
+
+    def registrar_justificativa_soldado(self, missao_id: int, motivo: str, usuario=None) -> Missao:
+        return self.registrar_justificativa_falha(
+            missao_id,
+            tipo="other",
+            motivo=motivo,
+            usuario=usuario,
+        )
 
     def revisar_justificativa(self, missao_id: int, accepted: bool, usuario=None) -> Missao:
         self._garantir_modo_general(usuario)

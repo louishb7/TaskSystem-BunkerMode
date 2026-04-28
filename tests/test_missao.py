@@ -193,10 +193,37 @@ def test_marcar_como_falha_move_para_fluxo_de_justificativa(missao_base):
 def test_justificativa_move_para_revisao(missao_base):
     missao_base.marcar_como_falha()
 
-    missao_base.registrar_justificativa_soldado("Perdi a janela por consulta médica.")
+    missao_base.registrar_justificativa_soldado(
+        "Perdi a janela por consulta médica.",
+        tipo="external_blocker",
+    )
 
     assert missao_base.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert missao_base.failure_reason_type.value == "external_blocker"
     assert missao_base.failure_reason == "Perdi a janela por consulta médica."
+
+
+def test_tipo_done_not_marked_nao_conclui_missao(missao_base):
+    missao_base.marcar_como_falha()
+
+    missao_base.registrar_justificativa_soldado(
+        "Executei, mas não registrei dentro da janela.",
+        tipo="done_not_marked",
+    )
+
+    assert missao_base.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert missao_base.completed_at is None
+    assert missao_base.failure_reason_type.value == "done_not_marked"
+
+
+def test_tipo_de_justificativa_invalido_e_rejeitado(missao_base):
+    missao_base.marcar_como_falha()
+
+    with pytest.raises(ValueError, match="Tipo da justificativa"):
+        missao_base.registrar_justificativa_soldado(
+            "Motivo inválido.",
+            tipo="motivo_inexistente",
+        )
 
 
 def test_revisao_do_general_encerra_falha(missao_base):
@@ -273,6 +300,9 @@ def test_to_dict_expoe_status_canonico_e_permissions_padrao(missao_base):
     assert payload["status"] == "Pendente"
     assert payload["status_code"] == "PENDENTE"
     assert payload["status_label"] == "Pendente"
+    assert payload["failure_reason_type"] is None
+    assert payload["requires_immediate_justification"] is False
+    assert payload["has_pending_non_blocking_justification"] is False
     assert payload["permissions"] == {
         "can_complete": False,
         "can_edit": False,

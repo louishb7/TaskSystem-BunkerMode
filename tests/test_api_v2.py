@@ -15,10 +15,12 @@ from api.routes import (
     listar_missoes_em_revisao,
     login,
     obter_relatorio_semanal,
+    registrar_justificativa_falha,
     registrar_usuario,
     revisar_justificativa,
 )
 from api.schemas import (
+    FailureJustificationPayload,
     LoginPayload,
     MissaoCreatePayload,
     MissaoUpdatePayload,
@@ -150,6 +152,9 @@ def assert_mission_contract(payload):
     assert payload["status"]
     assert payload["status_code"]
     assert payload["status_label"]
+    assert "failure_reason_type" in payload
+    assert isinstance(payload["requires_immediate_justification"], bool)
+    assert isinstance(payload["has_pending_non_blocking_justification"], bool)
     assert payload["permissions"] == {
         "can_complete": payload["permissions"]["can_complete"],
         "can_edit": payload["permissions"]["can_edit"],
@@ -276,6 +281,46 @@ def test_soldado_pode_justificar_e_general_revisar():
     assert resposta["permissions"]["can_edit"] is False
     assert resposta["permissions"]["can_delete"] is False
     assert resposta["permissions"]["can_toggle_decided"] is False
+
+
+def test_rota_justification_persiste_tipo_e_texto_da_justificativa():
+    _, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Missão vencida tipificada",
+            prioridade=1,
+            prazo="01-01-2020",
+            instrucao="Executar operação",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    try:
+        concluir_missao(1, usuario=usuario, missao_service=missoes)
+    except HTTPException:
+        pass
+
+    resposta = registrar_justificativa_falha(
+        1,
+        FailureJustificationPayload(
+            failure_reason_type="done_not_marked",
+            failure_reason="Executei, mas não registrei no prazo.",
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    recarregada = missoes.buscar_por_id(1)
+
+    assert resposta["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
+    assert resposta["failure_reason_type"] == "done_not_marked"
+    assert resposta["failure_reason"] == "Executei, mas não registrei no prazo."
+    assert resposta["completed_at"] is None
+    assert recarregada.failure_reason_type.value == "done_not_marked"
+    assert recarregada.completed_at is None
 
 
 def test_fluxo_lifecycle_expirada_justificada_revisada_reflete_no_relatorio():

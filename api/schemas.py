@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -26,6 +28,17 @@ class UnlockGeneralPayload(BaseModel):
 
 class SoldierExcusePayload(BaseModel):
     reason: str = Field(min_length=1)
+
+
+class FailureJustificationPayload(BaseModel):
+    failure_reason_type: Literal[
+        "not_done",
+        "done_not_marked",
+        "partially_done",
+        "external_blocker",
+        "other",
+    ]
+    failure_reason: str = Field(min_length=1)
 
 
 class GeneralVerdictPayload(BaseModel):

@@ -173,7 +173,7 @@ def test_adicionar_missao_atualiza_id_e_confirma_transacao(
         "Pendente",
         False,
     )
-    assert params[7:] == (None, None, None, None, None)
+    assert params[7:] == (None, None, None, None, None, None)
 
 
 def test_atualizar_missao_lanca_erro_quando_linha_nao_existe(

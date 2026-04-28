@@ -531,6 +531,83 @@ def test_missao_vencida_pode_receber_justificativa_do_soldado_e_aparece_em_revis
     assert [item.missao_id for item in missoes_em_revisao] == [10]
 
 
+def test_missao_expirada_recebe_justificativa_tipificada_e_persiste_estado():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.atualizar_prazo("01-01-2020")
+    service = criar_missao_service(repositorio)
+    soldado = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    service.listar_missoes(usuario=soldado)
+    missao = service.registrar_justificativa_falha(
+        10,
+        "partially_done",
+        "Executei apenas metade antes do prazo.",
+        usuario=soldado,
+    )
+
+    assert missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert missao.failure_reason_type.value == "partially_done"
+    assert missao.failure_reason == "Executei apenas metade antes do prazo."
+    assert repositorio.missao_atualizada is missao
+
+
+def test_missao_concluida_nao_recebe_justificativa_de_falha():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.concluir(instante=INSTANTE_TESTE)
+    service = criar_missao_service(repositorio)
+    soldado = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    with pytest.raises(ValueError, match="aguardando justificativa"):
+        service.registrar_justificativa_falha(
+            10,
+            "not_done",
+            "Tentativa inválida.",
+            usuario=soldado,
+        )
+
+    assert repositorio.missao.status == StatusMissao.CONCLUIDA
+
+
+def test_done_not_marked_nao_marca_missao_como_concluida_no_servico():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.atualizar_prazo("01-01-2020")
+    service = criar_missao_service(repositorio)
+    soldado = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    service.listar_missoes(usuario=soldado)
+    missao = service.registrar_justificativa_falha(
+        10,
+        "done_not_marked",
+        "Eu fiz, mas não registrei.",
+        usuario=soldado,
+    )
+
+    assert missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert missao.completed_at is None
+    assert missao.failure_reason_type.value == "done_not_marked"
+
+
+def test_falha_decidida_expoe_justificativa_imediata_e_comum_nao_bloqueia():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.atualizar_prazo("01-01-2020")
+    service = criar_missao_service(repositorio)
+    soldado = SimpleNamespace(usuario_id=1, active_mode="soldier")
+
+    service.alternar_decisao(10, usuario=SimpleNamespace(usuario_id=1, active_mode="general"))
+    service.listar_missoes(usuario=soldado)
+    resposta_decidida = service.to_response(repositorio.missao, usuario=soldado)
+
+    repositorio.missao.is_decided = False
+    resposta_comum = service.to_response(repositorio.missao, usuario=soldado)
+
+    assert resposta_decidida["status_code"] == "FALHA_PENDENTE_JUSTIFICATIVA"
+    assert resposta_decidida["permissions"]["can_justify"] is True
+    assert resposta_decidida["requires_immediate_justification"] is True
+    assert resposta_decidida["has_pending_non_blocking_justification"] is False
+    assert resposta_comum["requires_immediate_justification"] is False
+    assert resposta_comum["has_pending_non_blocking_justification"] is True
+
+
 def test_listar_missoes_general_retorna_apenas_quadro_operacional():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao = Missao(

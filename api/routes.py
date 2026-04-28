@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.schemas import (
+    FailureJustificationPayload,
     GeneralVerdictPayload,
     LoginPayload,
     MissaoCreatePayload,
@@ -332,6 +333,25 @@ def registrar_justificativa_soldado(
         missao = missao_service.registrar_justificativa_soldado(
             missao_id,
             payload.reason,
+            usuario=usuario,
+        )
+    except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+    return missao_service.to_response(missao, usuario=usuario)
+
+
+@router.post("/missoes/{missao_id}/justification")
+def registrar_justificativa_falha(
+    missao_id: int,
+    payload: FailureJustificationPayload,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missao = missao_service.registrar_justificativa_falha(
+            missao_id,
+            payload.failure_reason_type,
+            payload.failure_reason,
             usuario=usuario,
         )
     except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
