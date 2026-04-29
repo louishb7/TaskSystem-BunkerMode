@@ -1,16 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FlatList, ImageBackground, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "../../api/client";
 import ModeSwitcher from "../../components/ModeSwitcher";
 import { STATUS } from "../../utils/missionStatus";
 
-const bunkerBackground = require("../../assets/bunkermode/backgrounds/bg_bunker_reference.png");
-
 function getErrorMessage(result, fallback) {
   if (result?.status === 0) {
-    return "NAO FOI POSSIVEL CONECTAR A API.";
+    return "NÃO FOI POSSÍVEL CONECTAR À API.";
   }
   return result?.data?.detail || fallback;
 }
@@ -55,7 +53,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
       return false;
     }
     if (!result.ok) {
-      setError(getErrorMessage(result, "NAO FOI POSSIVEL RECARREGAR USUARIO."));
+      setError(getErrorMessage(result, "NÃO FOI POSSÍVEL RECARREGAR O USUÁRIO."));
       return false;
     }
     await onUserChange(result.data);
@@ -75,7 +73,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "NAO FOI POSSIVEL CARREGAR MISSOES."));
+      setError(getErrorMessage(result, "NÃO FOI POSSÍVEL CARREGAR MISSÕES."));
       return;
     }
 
@@ -96,7 +94,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "NAO FOI POSSIVEL CONCLUIR MISSAO."));
+      setError(getErrorMessage(result, "NÃO FOI POSSÍVEL CONCLUIR A MISSÃO."));
       await loadMissions();
       return;
     }
@@ -129,21 +127,23 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
 
   if (loading) {
     return (
-      <ImageBackground resizeMode="cover" source={bunkerBackground} style={styles.container}>
+      <View style={styles.container}>
+        <BunkerTexture />
         <View style={styles.scrim}>
-        <Text style={styles.title}>SOLDADO EM EXECUCAO</Text>
+        <Text style={styles.title}>SOLDADO EM EXECUÇÃO</Text>
         <Text style={styles.text}>SINCRONIZANDO</Text>
         </View>
-      </ImageBackground>
+      </View>
     );
   }
 
   return (
-    <ImageBackground resizeMode="cover" source={bunkerBackground} style={styles.container}>
+    <View style={styles.container}>
+      <BunkerTexture />
       <View style={styles.scrim}>
       <View style={styles.header}>
-        <Text style={styles.title}>SOLDIER</Text>
-        <Text style={styles.meta}>EXECUTION ONLY / {pendingMissions.length} MISSIONS</Text>
+        <Text style={styles.title}>SOLDADO</Text>
+        <Text style={styles.meta}>EXECUÇÃO APENAS / {pendingMissions.length} MISSÕES</Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -153,7 +153,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
         contentContainerStyle={styles.listContent}
         data={pendingMissions}
         keyExtractor={(item, index) => String(item?.id ?? index)}
-        ListEmptyComponent={<Text style={styles.text}>SEM MISSOES PENDENTES</Text>}
+        ListEmptyComponent={<Text style={styles.text}>SEM MISSÕES PENDENTES</Text>}
         renderItem={({ item }) => (
           <MissionRow
             completing={completingId === item?.id}
@@ -190,12 +190,12 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
             {returnStep === "confirm" ? (
               <>
                 <Text style={styles.protocolText}>
-                  Voce esta quebrando o protocolo de execucao.
+                  Você está quebrando o protocolo de execução.
                 </Text>
                 <View style={styles.protocolActions}>
                   <ProtocolButton
                     disabled={unlocking}
-                    label="Cancelar"
+                    label="CANCELAR"
                     onPress={() => {
                       setSenha("");
                       setReturnStep("closed");
@@ -203,7 +203,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
                   />
                   <ProtocolButton
                     disabled={unlocking}
-                    label="Continuar"
+                    label="CONTINUAR"
                     onPress={() => setReturnStep("password")}
                   />
                 </View>
@@ -223,7 +223,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
                 <View style={styles.protocolActions}>
                   <ProtocolButton
                     disabled={unlocking}
-                    label="Cancelar"
+                    label="CANCELAR"
                     onPress={() => {
                       setSenha("");
                       setReturnStep("closed");
@@ -241,12 +241,12 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
         </View>
       ) : null}
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
 function MissionRow({ completing, expanded, mission, onComplete, onToggle }) {
-  const title = mission?.titulo || "MISSAO";
+  const title = mission?.titulo || "MISSÃO";
   const instruction = mission?.instrucao || "";
   const shortInstruction = instruction.length > 96 ? `${instruction.slice(0, 93)}...` : instruction;
   const status = mission?.status_label || mission?.status_code || "PENDENTE";
@@ -269,7 +269,7 @@ function MissionRow({ completing, expanded, mission, onComplete, onToggle }) {
       {expanded ? (
         <View style={styles.detailBlock}>
           <Text style={styles.detailLabel}>INSTRUCAO</Text>
-          <Text style={styles.detailText}>{instruction || "SEM INSTRUCAO"}</Text>
+          <Text style={styles.detailText}>{instruction || "SEM INSTRUÇÃO"}</Text>
           {mission?.is_decided ? <Text style={styles.detailText}>COMPROMISSO DECIDIDO</Text> : null}
         </View>
       ) : null}
@@ -277,6 +277,26 @@ function MissionRow({ completing, expanded, mission, onComplete, onToggle }) {
       <Pressable disabled={completing} onPress={onComplete} style={styles.button}>
         <Text style={styles.buttonText}>{completing ? "EXECUTANDO" : "CONCLUIR"}</Text>
       </Pressable>
+    </View>
+  );
+}
+
+function BunkerTexture() {
+  return (
+    <View pointerEvents="none" style={styles.texture}>
+      {Array.from({ length: 9 }).map((_, index) => (
+        <View
+          key={String(index)}
+          style={[
+            styles.textureLine,
+            {
+              left: `${index * 13}%`,
+              opacity: index % 3 === 0 ? 0.1 : 0.05,
+            },
+          ]}
+        />
+      ))}
+      <View style={styles.textureFrame} />
     </View>
   );
 }
@@ -296,8 +316,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000000",
   },
+  texture: {
+    bottom: -24,
+    left: -24,
+    opacity: 0.9,
+    position: "absolute",
+    right: -24,
+    top: -24,
+    transform: [{ rotate: "-4deg" }],
+  },
+  textureLine: {
+    backgroundColor: "#EDEDED",
+    bottom: 0,
+    position: "absolute",
+    top: 0,
+    width: 1,
+  },
+  textureFrame: {
+    borderColor: "rgba(237,237,237,0.045)",
+    borderWidth: 1,
+    bottom: 36,
+    left: 28,
+    position: "absolute",
+    right: 28,
+    top: 36,
+  },
   scrim: {
-    backgroundColor: "rgba(0,0,0,0.88)",
+    backgroundColor: "rgba(0,0,0,0.94)",
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 16,

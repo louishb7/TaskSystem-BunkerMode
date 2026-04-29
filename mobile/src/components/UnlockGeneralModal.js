@@ -52,7 +52,7 @@ export default function UnlockGeneralModal({ visible, token, onSuccess, onCancel
       return;
     }
 
-    setError(getErrorMessage(result, "Nao foi possivel liberar o General."));
+    setError(getErrorMessage(result, "Não foi possível liberar o General."));
   }
 
   return (

@@ -8,7 +8,7 @@ import DeadlineTag from "./DeadlineTag";
 import PriorityBar from "./PriorityBar";
 
 export default function MissionCard({ mission, onComplete, onJustify }) {
-  const title = mission?.titulo || "Sem titulo";
+  const title = mission?.titulo || "Sem título";
   const instruction = mission?.instrucao || "";
   const isDecided = mission?.is_decided === true;
   const statusLabel = mission?.status_label || mission?.status_code || "";

@@ -1,18 +1,19 @@
 # BunkerMode Mobile
 
-React Native client for BunkerMode mobile execution.
+Cliente React Native do BunkerMode. O mobile é a experiência principal do produto.
 
-## Scope
+## Escopo
 
-- Login with the existing API.
-- General stack for planning/review surfaces already implemented in mobile.
-- Soldier stack for execution-only mode.
-- Stack selection comes from `usuario.active_mode` returned by the API.
-- Operational mission list comes from the existing API.
-- Complete missions only when `permissions.can_complete` is true.
-- Return to General is requested through the backend unlock flow.
+- Entrada usando a API existente.
+- Pilha do General para planejamento e revisão.
+- Pilha do Soldado para execução sem renegociação.
+- A seleção da pilha vem de `usuario.active_mode`, retornado pela API.
+- A lista de missões operacionais vem da API existente.
+- Missões só podem ser concluídas quando `permissions.can_complete` for `true`.
+- O retorno ao General usa o fluxo de liberação do backend.
+- Textos visíveis ao usuário devem permanecer em português.
 
-## Run
+## Executar
 
 ```bash
 cd mobile
@@ -20,16 +21,16 @@ npm install
 npm run start
 ```
 
-By default the app uses:
+Por padrão, o app usa:
 
 ```bash
 http://127.0.0.1:8000/api/v2
 ```
 
-Override for device or emulator access:
+Para usar em dispositivo ou emulador:
 
 ```bash
 EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api/v2 npm run start
 ```
 
-Use `10.0.2.2` for Android emulator when the API is running on the host machine.
+Use `10.0.2.2` no emulador Android quando a API estiver rodando na máquina host.

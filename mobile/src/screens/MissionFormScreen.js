@@ -47,7 +47,7 @@ export default function MissionFormScreen({ token, user, mission, onSave, onCanc
 
   async function submit() {
     if (!titulo.trim() || !instrucao.trim()) {
-      setError("Informe titulo e instrucao.");
+      setError("Informe título e instrução.");
       return;
     }
 
@@ -75,7 +75,7 @@ export default function MissionFormScreen({ token, user, mission, onSave, onCanc
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "Nao foi possivel salvar a missao."));
+      setError(getErrorMessage(result, "Não foi possível salvar a missão."));
       return;
     }
 
@@ -89,7 +89,7 @@ export default function MissionFormScreen({ token, user, mission, onSave, onCanc
     >
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.brand}>BUNKERMODE</Text>
-        <Text style={styles.title}>{editingMission ? "Editar missao" : "Nova missao"}</Text>
+        <Text style={styles.title}>{editingMission ? "Editar missão" : "Nova missão"}</Text>
 
         <TextInput
           onBlur={() => setFocusedField("")}
@@ -120,8 +120,8 @@ export default function MissionFormScreen({ token, user, mission, onSave, onCanc
         <Segmented
           options={[
             ["hoje", "Hoje"],
-            ["amanha", "Amanha"],
-            ["data_especifica", "Data especifica"],
+            ["amanha", "Amanhã"],
+            ["data_especifica", "Data específica"],
           ]}
           selected={prazoTipo}
           onSelect={setPrazoTipo}
@@ -142,7 +142,7 @@ export default function MissionFormScreen({ token, user, mission, onSave, onCanc
         <Segmented
           options={[
             [1, "Alta"],
-            [2, "Media"],
+            [2, "Média"],
             [3, "Baixa"],
           ]}
           selected={prioridade}
@@ -159,7 +159,7 @@ export default function MissionFormScreen({ token, user, mission, onSave, onCanc
           {loading ? (
             <ActivityIndicator color={colors.bg} />
           ) : (
-            <Text style={styles.submitText}>{editingMission ? "SALVAR EDICAO" : "CRIAR MISSAO"}</Text>
+            <Text style={styles.submitText}>{editingMission ? "SALVAR EDIÇÃO" : "CRIAR MISSÃO"}</Text>
           )}
         </Pressable>
 

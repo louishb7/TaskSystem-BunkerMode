@@ -11,8 +11,8 @@ function getErrorMessage(result, fallback) {
 }
 
 const failureReasonLabels = {
-  not_done: "Nao fez",
-  done_not_marked: "Fez, mas nao registrou",
+  not_done: "Não fez",
+  done_not_marked: "Fez, mas não registrou",
   partially_done: "Fez parcialmente",
   external_blocker: "Imprevisto real",
   other: "Outro motivo",
@@ -32,13 +32,13 @@ export default function ReviewCard({ mission, token, onReload, onLogout }) {
       if (onLogout) {
         onLogout();
       } else {
-        setError("Sessao expirada.");
+        setError("Sessão expirada.");
       }
       return;
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "Nao foi possivel revisar a falha."));
+      setError(getErrorMessage(result, "Não foi possível revisar a falha."));
       return;
     }
 
@@ -47,18 +47,18 @@ export default function ReviewCard({ mission, token, onReload, onLogout }) {
 
   const failedAt = mission?.failed_at ? ` · Falhou em: ${formatDisplayDate(mission.failed_at)}` : "";
   const reasonTypeLabel =
-    failureReasonLabels[mission?.failure_reason_type] || "Tipo nao informado";
+    failureReasonLabels[mission?.failure_reason_type] || "Tipo não informado";
 
   return (
     <View style={styles.card}>
-      <Text style={styles.label}>AGUARDANDO REVISAO</Text>
-      <Text style={styles.title}>{mission?.titulo || "Sem titulo"}</Text>
+      <Text style={styles.label}>AGUARDANDO REVISÃO</Text>
+      <Text style={styles.title}>{mission?.titulo || "Sem título"}</Text>
       <Text style={styles.meta}>Prazo: {mission?.prazo || "Sem prazo"}{failedAt}</Text>
 
       <View style={styles.justification}>
         <Text style={styles.justificationLabel}>JUSTIFICATIVA DO SOLDADO</Text>
         <Text style={styles.reasonType}>{reasonTypeLabel}</Text>
-        <Text style={styles.reason}>{mission?.failure_reason || "Justificativa nao registrada"}</Text>
+        <Text style={styles.reason}>{mission?.failure_reason || "Justificativa não registrada"}</Text>
       </View>
 
       <View style={styles.actions}>

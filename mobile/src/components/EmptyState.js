@@ -8,7 +8,7 @@ export default function EmptyState() {
     <View style={styles.container}>
       <Text style={styles.symbol}>✓</Text>
       <Text style={styles.title}>Sem ordens no momento</Text>
-      <Text style={styles.subtitle}>O General ainda nao definiu missoes para hoje.</Text>
+      <Text style={styles.subtitle}>O General ainda não definiu missões para hoje.</Text>
     </View>
   );
 }

@@ -18,7 +18,7 @@ async function parseResponse(response) {
     return {
       ok: response.ok,
       status: response.status,
-      data: { detail: "Resposta invalida ou vazia do servidor." },
+      data: { detail: "Resposta inválida ou vazia do servidor." },
     };
   }
 }
@@ -45,7 +45,7 @@ async function request(path, { token, method = "GET", body } = {}) {
     return {
       ok: false,
       status: 0,
-      data: { detail: "Nao foi possivel conectar a API." },
+      data: { detail: "Não foi possível conectar à API." },
     };
   }
 }

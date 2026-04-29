@@ -5,7 +5,7 @@ import { colors, layout, radius, spacing, typography } from "../styles/tokens";
 import StatusNotice from "./StatusNotice";
 
 const failureReasonTypes = [
-  { value: "not_done", label: "Nao fiz" },
+  { value: "not_done", label: "Não fiz" },
   { value: "done_not_marked", label: "Fiz, mas esqueci de marcar" },
   { value: "partially_done", label: "Fiz parcialmente" },
   { value: "external_blocker", label: "Imprevisto real" },
@@ -33,7 +33,7 @@ export default function ActionArea({ mission, onComplete, onJustify }) {
     setCompleteLoading(false);
 
     if (!result?.ok) {
-      setError(result?.error || "Nao foi possivel concluir a missao.");
+      setError(result?.error || "Não foi possível concluir a missão.");
     }
   }
 
@@ -47,7 +47,7 @@ export default function ActionArea({ mission, onComplete, onJustify }) {
     setJustifyLoading(false);
 
     if (!result?.ok) {
-      setError(result?.error || "Nao foi possivel enviar a justificativa.");
+      setError(result?.error || "Não foi possível enviar a justificativa.");
       return;
     }
 
@@ -69,14 +69,14 @@ export default function ActionArea({ mission, onComplete, onJustify }) {
           {completeLoading ? (
             <ActivityIndicator color={colors.textPrimary} />
           ) : (
-            <Text style={styles.completeText}>CONCLUIR MISSAO</Text>
+            <Text style={styles.completeText}>CONCLUIR MISSÃO</Text>
           )}
         </Pressable>
       ) : null}
 
       {canJustify ? (
         <View style={styles.justifyBlock}>
-          <Text style={styles.justifyLabel}>JUSTIFICATIVA OBRIGATORIA</Text>
+          <Text style={styles.justifyLabel}>JUSTIFICATIVA OBRIGATÓRIA</Text>
           <View style={styles.reasonTypeGrid}>
             {failureReasonTypes.map((option) => {
               const selected = option.value === failureReasonType;

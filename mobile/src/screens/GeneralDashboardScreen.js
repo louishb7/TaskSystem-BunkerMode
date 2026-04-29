@@ -19,7 +19,7 @@ const logo = require("../assets/bunkermode/logo/logo_final_selected.png");
 
 function getErrorMessage(result, fallback) {
   if (result?.status === 0) {
-    return "Nao foi possivel conectar a API.";
+    return "Não foi possível conectar à API.";
   }
   return result?.data?.detail || fallback;
 }
@@ -89,19 +89,19 @@ export default function GeneralDashboardScreen({
     if (missionsResult.ok) {
       setMissions(missionsResult.data);
     } else {
-      nextError = getErrorMessage(missionsResult, "Nao foi possivel carregar missoes.");
+      nextError = getErrorMessage(missionsResult, "Não foi possível carregar missões.");
     }
 
     if (reviewResult.ok) {
       setReviewMissions(reviewResult.data);
     } else if (!nextError) {
-      nextError = getErrorMessage(reviewResult, "Nao foi possivel carregar revisoes.");
+      nextError = getErrorMessage(reviewResult, "Não foi possível carregar revisões.");
     }
 
     if (reportResult.ok) {
       setReport(reportResult.data);
     } else if (!nextError) {
-      nextError = getErrorMessage(reportResult, "Nao foi possivel carregar relatorio.");
+      nextError = getErrorMessage(reportResult, "Não foi possível carregar o relatório.");
     }
 
     setError(nextError);
@@ -115,7 +115,7 @@ export default function GeneralDashboardScreen({
       return;
     }
     if (!result.ok) {
-      setError(getErrorMessage(result, "Nao foi possivel ativar o Soldado."));
+      setError(getErrorMessage(result, "Não foi possível ativar o Soldado."));
       return;
     }
 
@@ -124,7 +124,7 @@ export default function GeneralDashboardScreen({
       return;
     }
     if (!userResult.ok) {
-      setError(getErrorMessage(userResult, "Nao foi possivel recarregar o usuario."));
+      setError(getErrorMessage(userResult, "Não foi possível recarregar o usuário."));
       return;
     }
 
@@ -157,7 +157,7 @@ export default function GeneralDashboardScreen({
       return;
     }
     if (!result.ok) {
-      setError(getErrorMessage(result, "Nao foi possivel alternar decisao."));
+      setError(getErrorMessage(result, "Não foi possível alternar a decisão."));
     }
     await loadAll();
   }
@@ -170,7 +170,7 @@ export default function GeneralDashboardScreen({
       return;
     }
     if (!result.ok) {
-      setError(getErrorMessage(result, "Nao foi possivel remover a missao."));
+      setError(getErrorMessage(result, "Não foi possível remover a missão."));
     }
     await loadAll();
   }
@@ -201,6 +201,9 @@ export default function GeneralDashboardScreen({
 
   return (
     <View style={styles.container}>
+      {/* Direção escolhida: Posto Operacional.
+          A tela prioriza prontidão e ordens antes de relatórios.
+          Isso reduz leitura de dashboard e reforça o papel do General como comando. */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.brandLockup}>
@@ -211,8 +214,8 @@ export default function GeneralDashboardScreen({
             <Text style={styles.generalBadgeText}>GENERAL</Text>
           </View>
         </View>
-        <Text style={styles.title}>GENERAL</Text>
-        <Text style={styles.caption}>Visao. Plano. Estrategia.</Text>
+        <Text style={styles.title}>POSTO DO GENERAL</Text>
+        <Text style={styles.caption}>Visão. Plano. Estratégia.</Text>
         <View style={styles.headerActions}>
           <Pressable onPress={onLogout}>
             <Text style={styles.logout}>SAIR</Text>
@@ -235,29 +238,12 @@ export default function GeneralDashboardScreen({
             metrics={[
               { label: "Total", value: counts.total },
               { label: "Pendentes", value: counts.pending },
-              { label: "Revisao", value: counts.review },
+              { label: "Revisão", value: counts.review },
             ]}
           />
         </SectionBlock>
 
-        <SectionBlock label="MONTANHA">
-          <View style={styles.mountainGrid}>
-            <TacticalPanel style={styles.mountainPanel}>
-              <Text style={styles.mountainTitle}>DREAM</Text>
-              <Text style={styles.mountainText}>Destino define direcao.</Text>
-            </TacticalPanel>
-            <TacticalPanel style={styles.mountainPanel}>
-              <Text style={styles.mountainTitle}>OBJECTIVES</Text>
-              <Text style={styles.mountainText}>Plano transforma decisao.</Text>
-            </TacticalPanel>
-            <TacticalPanel danger style={styles.mountainPanel}>
-              <Text style={styles.mountainTitle}>MISSIONS</Text>
-              <Text style={styles.mountainText}>Ordem pronta para execucao.</Text>
-            </TacticalPanel>
-          </View>
-        </SectionBlock>
-
-        <SectionBlock label="HISTORY / REVIEW" meta={counts.review ? `${counts.review} PENDENTE` : "LIMPO"}>
+        <SectionBlock label="HISTÓRICO / REVISÃO" meta={counts.review ? `${counts.review} PENDENTE` : "LIMPO"}>
           <ReviewBlock
             missions={reviewMissions}
             token={token}
@@ -283,11 +269,23 @@ export default function GeneralDashboardScreen({
           )}
         </SectionBlock>
 
-        <SectionBlock label="RELATORIO SEMANAL">
+        <SectionBlock label="MONTANHA">
+          <TacticalPanel muted style={styles.mountainPanel}>
+            <View style={styles.mountainPath}>
+              <MountainStep label="SONHO" text="Direção" />
+              <View style={styles.pathLine} />
+              <MountainStep label="OBJETIVOS" text="Plano" />
+              <View style={styles.pathLine} />
+              <MountainStep label="MISSÕES" text="Execução" active />
+            </View>
+          </TacticalPanel>
+        </SectionBlock>
+
+        <SectionBlock label="RELATÓRIO SEMANAL">
           {report ? (
             <ReportSummary report={report} />
           ) : (
-            <StatusNotice type="info" message="Nenhum dado disponivel." />
+            <StatusNotice type="info" message="Nenhum dado disponível." />
           )}
         </SectionBlock>
       </ScrollView>
@@ -295,6 +293,15 @@ export default function GeneralDashboardScreen({
       <Pressable onPress={openCreateForm} style={styles.fab}>
         <Text style={styles.fabText}>+</Text>
       </Pressable>
+    </View>
+  );
+}
+
+function MountainStep({ active = false, label, text }) {
+  return (
+    <View style={styles.mountainStep}>
+      <Text style={[styles.mountainTitle, active && styles.mountainTitleActive]}>{label}</Text>
+      <Text style={styles.mountainText}>{text}</Text>
     </View>
   );
 }
@@ -370,21 +377,35 @@ const styles = StyleSheet.create({
     padding: spacing.screenH,
     paddingBottom: spacing.xl + 64,
   },
-  mountainGrid: {
-    gap: spacing.sm,
-  },
   mountainPanel: {
     padding: spacing.md,
+  },
+  mountainPath: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   mountainTitle: {
     ...typography.label,
     color: colors.textPrimary,
+  },
+  mountainTitleActive: {
+    color: colors.red,
   },
   mountainText: {
     color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 19,
     marginTop: spacing.xs,
+  },
+  mountainStep: {
+    flex: 1,
+  },
+  pathLine: {
+    backgroundColor: colors.borderStrong,
+    height: 1,
+    marginHorizontal: spacing.sm,
+    width: 18,
   },
   fab: {
     position: "absolute",

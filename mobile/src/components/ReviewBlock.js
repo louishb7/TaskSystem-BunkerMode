@@ -9,14 +9,14 @@ export default function ReviewBlock({ missions, onLogout, onReload, token }) {
   if (!missions?.length) {
     return (
       <View style={styles.empty}>
-        <StatusNotice type="info" message="Nenhuma falha aguardando revisao." />
+        <StatusNotice type="info" message="Nenhuma falha aguardando revisão." />
       </View>
     );
   }
 
   return (
     <View>
-      <Text style={styles.warning}>REVISAO OBRIGATORIA</Text>
+      <Text style={styles.warning}>REVISÃO OBRIGATÓRIA</Text>
       {missions.map((mission, index) => (
         <ReviewCard
           key={String(mission?.id ?? index)}

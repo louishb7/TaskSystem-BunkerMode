@@ -29,7 +29,7 @@ export default function LoginScreen({ onAuthenticated }) {
 
   async function handleLogin() {
     if (!usuario.trim() || !senha) {
-      setError("Preencha usuario e senha.");
+      setError("Preencha usuário e senha.");
       return;
     }
 
@@ -39,7 +39,7 @@ export default function LoginScreen({ onAuthenticated }) {
     setLoading(false);
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "Nao foi possivel entrar em campo."));
+      setError(getErrorMessage(result, "Não foi possível entrar em campo."));
       return;
     }
 
@@ -54,7 +54,7 @@ export default function LoginScreen({ onAuthenticated }) {
       <View style={styles.top}>
         <Image resizeMode="contain" source={logo} style={styles.logo} />
         <Text style={styles.brand}>BUNKERMODE</Text>
-        <Text style={styles.subtitle}>GENERAL PENSA. SOLDADO EXECUTA.</Text>
+        <Text style={styles.subtitle}>O GENERAL PENSA. O SOLDADO EXECUTA.</Text>
       </View>
 
       <View style={styles.form}>
@@ -65,7 +65,7 @@ export default function LoginScreen({ onAuthenticated }) {
           onChangeText={setUsuario}
           onBlur={() => setFocusedField("")}
           onFocus={() => setFocusedField("usuario")}
-          placeholder="usuario"
+          placeholder="usuário"
           placeholderTextColor={colors.textMuted}
           style={[styles.input, focusedField === "usuario" && styles.inputFocused]}
           value={usuario}

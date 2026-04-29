@@ -5,7 +5,7 @@ import { colors, layout, radius, spacing, typography } from "../styles/tokens";
 
 function getPriority(priority) {
   if (Number(priority) === 1) {
-    return { color: colors.red, label: "CRITICA" };
+    return { color: colors.red, label: "CRÍTICA" };
   }
 
   if (Number(priority) === 2) {
@@ -13,7 +13,7 @@ function getPriority(priority) {
   }
 
   if (Number(priority) === 3) {
-    return { color: colors.textSecondary, label: "PADRAO" };
+    return { color: colors.textSecondary, label: "PADRÃO" };
   }
 
   return { color: colors.textMuted, label: "-" };

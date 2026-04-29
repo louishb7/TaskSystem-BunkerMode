@@ -35,7 +35,7 @@ export default function GeneralMissionCard({
         <DeadlineTag dueDate={mission?.prazo ?? null} />
       </View>
 
-      <Text style={styles.title}>{mission?.titulo || "Sem titulo"}</Text>
+      <Text style={styles.title}>{mission?.titulo || "Sem título"}</Text>
 
       {mission?.instrucao ? (
         <Text numberOfLines={3} style={styles.instruction}>
@@ -63,7 +63,7 @@ export default function GeneralMissionCard({
                   {disabled ? (
                     <ActivityIndicator color={colors.red} />
                   ) : (
-                    <Text style={[styles.actionText, styles.decidedText]}>Confirmar remocao</Text>
+                    <Text style={[styles.actionText, styles.decidedText]}>CONFIRMAR REMOÇÃO</Text>
                   )}
                 </Pressable>
                 <Pressable
@@ -71,7 +71,7 @@ export default function GeneralMissionCard({
                   onPress={() => setConfirmingToggle(false)}
                   style={[styles.actionButton, styles.secondaryButton]}
                 >
-                  <Text style={[styles.actionText, styles.secondaryText]}>Cancelar</Text>
+                  <Text style={[styles.actionText, styles.secondaryText]}>CANCELAR</Text>
                 </Pressable>
               </View>
             ) : (
@@ -89,8 +89,8 @@ export default function GeneralMissionCard({
                 {disabled ? (
                   <ActivityIndicator color={colors.red} />
                 ) : (
-                  <Text style={[styles.actionText, isDecided ? styles.decidedText : styles.secondaryText]}>
-                    {isDecided ? "REMOVER DECIDIDO" : "MARCAR DECIDIDO"}
+                <Text style={[styles.actionText, isDecided ? styles.decidedText : styles.secondaryText]}>
+                    {isDecided ? "REMOVER DECIDIDA" : "MARCAR DECIDIDA"}
                   </Text>
                 )}
               </Pressable>
@@ -124,14 +124,14 @@ export default function GeneralMissionCard({
                 onPress={() => onDelete(mission.id)}
                 style={[styles.actionButton, styles.confirmRemoveButton]}
               >
-                <Text style={[styles.actionText, styles.confirmRemoveText]}>Confirmar remocao</Text>
+                <Text style={[styles.actionText, styles.confirmRemoveText]}>CONFIRMAR REMOÇÃO</Text>
               </Pressable>
               <Pressable
                 disabled={disabled}
                 onPress={() => setConfirmingDelete(false)}
                 style={[styles.actionButton, styles.secondaryButton]}
               >
-                <Text style={[styles.actionText, styles.secondaryText]}>Cancelar</Text>
+                <Text style={[styles.actionText, styles.secondaryText]}>CANCELAR</Text>
               </Pressable>
             </View>
           ) : null}

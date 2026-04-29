@@ -12,8 +12,8 @@ function valueOrDash(value, suffix = "") {
 
 export default function ReportSummary({ report }) {
   const metrics = [
-    ["Taxa de conclusao", valueOrDash(report?.completion_rate, "%")],
-    ["Concluidas / total", `${valueOrDash(report?.completed_missions)} / ${valueOrDash(report?.total_missions)}`],
+    ["Taxa de conclusão", valueOrDash(report?.completion_rate, "%")],
+    ["Concluídas / total", `${valueOrDash(report?.completed_missions)} / ${valueOrDash(report?.total_missions)}`],
     ["Falhas em decididas", valueOrDash(report?.committed_missions_failed)],
     ["Aguardando justificativa", valueOrDash(report?.missions_waiting_justification)],
   ];

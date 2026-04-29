@@ -14,8 +14,8 @@ export default function ModeSwitcher({
   return (
     <View style={[styles.container, soldier && styles.soldierContainer]}>
       <View>
-        <Text style={styles.kicker}>{soldier ? "RESTRICTED MODE" : "COMMAND MODE"}</Text>
-        <Text style={styles.mode}>{soldier ? "SOLDIER" : "GENERAL"}</Text>
+        <Text style={styles.kicker}>{soldier ? "MODO RESTRITO" : "POSTO DE COMANDO"}</Text>
+        <Text style={styles.mode}>{soldier ? "SOLDADO" : "GENERAL"}</Text>
       </View>
       <Pressable
         disabled={disabled || pending}
@@ -26,7 +26,7 @@ export default function ModeSwitcher({
           <ActivityIndicator color={soldier ? colors.textPrimary : colors.black} />
         ) : (
           <Text style={[styles.buttonText, soldier ? styles.generalText : styles.soldierText]}>
-            {soldier ? "AUTH GENERAL" : "ENTER SOLDIER"}
+            {soldier ? "LIBERAR GENERAL" : "ATIVAR SOLDADO"}
           </Text>
         )}
       </Pressable>
