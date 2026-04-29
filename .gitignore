@@ -45,3 +45,8 @@ mobile/dist-test/
 dist/
 build/
 frontend-react/.vite/
+
+#Others
+*.zip
+*_temp.png
+*_draft.png

@@ -1,8 +1,8 @@
-# BunkerMode Task System
+# BunkerMode — Sistema de Execução
 
 Backend em FastAPI para autenticação, criação de missões, listagem de missões e histórico de auditoria.
 
-## Stack
+## Stack técnico
 - FastAPI
 - PostgreSQL com psycopg 3
 - Pytest

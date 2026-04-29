@@ -252,7 +252,7 @@ def test_api_rejeita_timezone_invalido():
         )
 
     assert erro.value.status_code == 400
-    assert "Timezone inválido" in erro.value.detail
+    assert "Fuso horário inválido" in erro.value.detail
 
 
 def test_soldado_nao_pode_concluir_missao_vencida():

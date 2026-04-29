@@ -101,7 +101,7 @@ export default function AuthScreen({ onLogin, onRegister, status, loading }) {
           )}
 
           <label>
-            Email
+            E-mail
             <input
               name="email"
               value={form.email}

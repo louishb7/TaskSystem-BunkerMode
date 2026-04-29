@@ -15,6 +15,10 @@ class AuthService:
     """Gerencia cadastro e autenticação de usuários."""
 
     TIMEZONE_CHANGE_COOLDOWN = timedelta(days=30)
+    # Suspensão temporária para a fase de testes: o retorno ao General
+    # não deve ser bloqueado por horário enquanto a alternância mobile é validada.
+    # Reative quando o fluxo estiver estável e a janela de planejamento voltar a valer.
+    GENERAL_UNLOCK_WINDOW_ENFORCEMENT_ENABLED = False
 
     PLANNING_WINDOWS = {
         "morning": (time(5, 0), time(10, 59, 59)),
@@ -29,7 +33,7 @@ class AuthService:
     def registrar_usuario(self, dados: dict) -> Usuario:
         existente = self.repositorio.buscar_usuario_por_email(dados["email"])
         if existente is not None:
-            raise UsuarioJaExisteError("Email já está em uso.")
+            raise UsuarioJaExisteError("E-mail já está em uso.")
 
         usuario = Usuario(
             usuario=dados["usuario"],
@@ -87,18 +91,19 @@ class AuthService:
         if not verify_password(senha, usuario.senha_hash):
             raise AutenticacaoError("Senha incorreta.")
 
-        agora_local = self._agora_no_timezone_usuario(usuario)
-        data_local = agora_local.date()
-        if not self._dentro_do_turno(usuario.planning_window, agora_local.time()):
-            if usuario.emergency_unlock_date == data_local:
-                raise PermissaoNegadaError(
-                    "General fora do posto e passe de emergência já utilizado hoje."
+        if self.GENERAL_UNLOCK_WINDOW_ENFORCEMENT_ENABLED:
+            agora_local = self._agora_no_timezone_usuario(usuario)
+            data_local = agora_local.date()
+            if not self._dentro_do_turno(usuario.planning_window, agora_local.time()):
+                if usuario.emergency_unlock_date == data_local:
+                    raise PermissaoNegadaError(
+                        "General fora do posto e passe de emergência já utilizado hoje."
+                    )
+                usuario.registrar_uso_emergencia_general(data_local)
+                self.repositorio.registrar_uso_emergencia_general(
+                    usuario.usuario_id,
+                    usuario.emergency_unlock_date,
                 )
-            usuario.registrar_uso_emergencia_general(data_local)
-            self.repositorio.registrar_uso_emergencia_general(
-                usuario.usuario_id,
-                usuario.emergency_unlock_date,
-            )
 
         usuario.definir_modo("general")
         self.repositorio.atualizar_modo_ativo(usuario.usuario_id, usuario.active_mode)
@@ -131,7 +136,7 @@ class AuthService:
         if usuario is None:
             raise UsuarioNaoEncontrado("Usuário autenticado não encontrado.")
         if usuario.active_mode != "general":
-            raise PermissaoNegadaError("Timezone só pode ser alterado no modo General.")
+            raise PermissaoNegadaError("Fuso horário só pode ser alterado no modo General.")
 
         timezone_validado = usuario._validar_timezone(timezone)
         agora_utc = self._agora_utc()
@@ -140,7 +145,7 @@ class AuthService:
             and agora_utc - usuario.timezone_updated_at < self.TIMEZONE_CHANGE_COOLDOWN
         ):
             raise PermissaoNegadaError(
-                "Timezone só pode ser alterado uma vez a cada 30 dias."
+                "Fuso horário só pode ser alterado uma vez a cada 30 dias."
             )
 
         usuario.timezone = timezone_validado

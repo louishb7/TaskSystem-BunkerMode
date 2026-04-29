@@ -57,12 +57,12 @@ class Usuario:
 
     def _validar_email(self, email):
         if not isinstance(email, str):
-            raise ValueError("Email deve ser um texto.")
+            raise ValueError("E-mail deve ser um texto.")
         email = email.strip().lower()
         if not email or "@" not in email or email.startswith("@") or email.endswith("@"):
-            raise ValueError("Email inválido.")
+            raise ValueError("E-mail inválido.")
         if " " in email:
-            raise ValueError("Email não pode conter espaços.")
+            raise ValueError("E-mail não pode conter espaços.")
         return email
 
     def _validar_senha_hash(self, senha_hash):
@@ -112,14 +112,14 @@ class Usuario:
 
     def _validar_timezone(self, timezone):
         if not isinstance(timezone, str):
-            raise ValueError("Timezone deve ser um texto.")
+            raise ValueError("Fuso horário deve ser um texto.")
         timezone = timezone.strip()
         if not timezone:
-            raise ValueError("Timezone é obrigatório.")
+            raise ValueError("Fuso horário é obrigatório.")
         try:
             ZoneInfo(timezone)
         except ZoneInfoNotFoundError as erro:
-            raise ValueError("Timezone inválido.") from erro
+            raise ValueError("Fuso horário inválido.") from erro
         return timezone
 
     def definir_timezone(self, timezone):

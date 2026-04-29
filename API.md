@@ -1,6 +1,6 @@
 # API - BunkerMode
 
-Base URL:
+URL base:
 http://127.0.0.1:8000
 
 ## Rodar localmente
@@ -9,7 +9,7 @@ http://127.0.0.1:8000
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## Auth
+## Autenticação
 
 POST /api/v2/auth/register
 
@@ -34,6 +34,6 @@ GET /api/v2/missoes
 
 PATCH /api/v2/missoes/{id}/concluir
 
-## Header
+## Cabeçalho
 
 Authorization: Bearer TOKEN

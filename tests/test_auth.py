@@ -108,7 +108,7 @@ def test_turno_planejamento_valida_janelas_inclusive_madrugada(turno, hora, espe
     assert service._dentro_do_turno(turno, local_time) is esperado
 
 
-def test_unlock_emergencial_usa_data_local_do_timezone_do_usuario():
+def test_unlock_general_tem_bloqueio_por_horario_suspenso_temporariamente():
     recife = Usuario(
         usuario_id=1,
         usuario="Recife",
@@ -118,25 +118,15 @@ def test_unlock_emergencial_usa_data_local_do_timezone_do_usuario():
         timezone="America/Recife",
         active_mode="soldier",
     )
-    lisboa = Usuario(
-        usuario_id=1,
-        usuario="Lisboa",
-        email="lisboa@email.com",
-        senha_hash=hash_password("segredo123"),
-        planning_window="morning",
-        timezone="Europe/Lisbon",
-        active_mode="soldier",
-    )
     agora_utc = datetime(2026, 4, 25, 2, 30, tzinfo=timezone.utc)
 
     service_em(agora_utc, recife).liberar_general(1, "segredo123")
-    service_em(agora_utc, lisboa).liberar_general(1, "segredo123")
 
-    assert recife.emergency_unlock_date == date(2026, 4, 24)
-    assert lisboa.emergency_unlock_date == date(2026, 4, 25)
+    assert recife.active_mode == "general"
+    assert recife.emergency_unlock_date is None
 
 
-def test_unlock_emergencial_permite_um_uso_por_dia_local():
+def test_unlock_general_nao_consume_emergencia_enquanto_bloqueio_estiver_suspenso():
     usuario = Usuario(
         usuario_id=1,
         usuario="Henrique",
@@ -152,20 +142,15 @@ def test_unlock_emergencial_permite_um_uso_por_dia_local():
         "segredo123",
     )
     assert usuario.active_mode == "general"
-    assert usuario.emergency_unlock_date == date(2026, 4, 24)
+    assert usuario.emergency_unlock_date is None
 
     usuario.definir_modo("soldier")
-    with pytest.raises(PermissaoNegadaError, match="passe de emergência"):
-        service_em(
-            datetime(2026, 4, 24, 16, 0, tzinfo=timezone.utc),
-            usuario,
-        ).liberar_general(1, "segredo123")
-
-    service_em(datetime(2026, 4, 25, 15, 0, tzinfo=timezone.utc), usuario).liberar_general(
+    service_em(datetime(2026, 4, 24, 16, 0, tzinfo=timezone.utc), usuario).liberar_general(
         1,
         "segredo123",
     )
-    assert usuario.emergency_unlock_date == date(2026, 4, 25)
+    assert usuario.active_mode == "general"
+    assert usuario.emergency_unlock_date is None
 
 
 def test_unlock_dentro_do_turno_nao_consume_emergencia():
@@ -383,5 +368,5 @@ def test_timezone_invalido_falha_claramente():
     )
     service = AuthService(RepositorioAuthFake(usuario))
 
-    with pytest.raises(ValueError, match="Timezone inválido."):
+    with pytest.raises(ValueError, match="Fuso horário inválido."):
         service.alterar_timezone(1, "Nao/Existe")
