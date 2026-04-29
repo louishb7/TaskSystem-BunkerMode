@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException
@@ -118,10 +118,11 @@ class RepositorioV2Fake:
         if usuario is not None:
             usuario.definir_turno_planejamento(planning_window)
 
-    def atualizar_timezone(self, usuario_id, timezone):
+    def atualizar_timezone(self, usuario_id, timezone, timezone_updated_at):
         usuario = self.buscar_usuario_por_id(usuario_id)
         if usuario is not None:
             usuario.definir_timezone(timezone)
+            usuario.registrar_alteracao_timezone(timezone_updated_at)
 
     def registrar_uso_emergencia_general(self, usuario_id, local_date):
         usuario = self.buscar_usuario_por_id(usuario_id)
@@ -148,7 +149,10 @@ class RepositorioV2Fake:
 
 def preparar_ambiente():
     repo = RepositorioV2Fake()
-    auth = AuthService(repo)
+    auth = AuthService(
+        repo,
+        now_provider=lambda: datetime(2026, 4, 25, 0, 30, tzinfo=timezone.utc),
+    )
     missoes = MissaoService(
         repo,
         today_provider=lambda: DATA_TESTE.date(),
@@ -194,6 +198,7 @@ def test_auth_register_login_e_me_v2():
     assert usuario["planning_window"] == "night"
     assert usuario["timezone"] == "America/Recife"
     assert usuario["emergency_unlock_date"] is None
+    assert usuario["timezone_updated_at"] is None
     assert usuario_obj.usuario == "Henrique"
     assert usuario_obj.active_mode == "general"
 
@@ -214,6 +219,7 @@ def test_api_altera_turno_e_timezone_apenas_no_modo_general():
 
     assert resposta_turno["planning_window"] == "morning"
     assert resposta_timezone["timezone"] == "Europe/Lisbon"
+    assert resposta_timezone["timezone_updated_at"] == "2026-04-25T00:30:00+00:00"
 
     usuario.definir_modo("soldier")
     auth.alterar_modo(usuario.usuario_id, "soldier")

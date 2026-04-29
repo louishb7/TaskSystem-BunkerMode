@@ -1,4 +1,4 @@
-from datetime import datetime, time, timezone as utc_timezone
+from datetime import datetime, time, timedelta, timezone as utc_timezone
 from zoneinfo import ZoneInfo
 
 from auth import decode_token, generate_token, hash_password, verify_password
@@ -13,6 +13,8 @@ from usuario import Usuario
 
 class AuthService:
     """Gerencia cadastro e autenticação de usuários."""
+
+    TIMEZONE_CHANGE_COOLDOWN = timedelta(days=30)
 
     PLANNING_WINDOWS = {
         "morning": (time(5, 0), time(10, 59, 59)),
@@ -111,6 +113,12 @@ class AuthService:
                 "Turno de planejamento só pode ser alterado no modo General."
             )
 
+        agora_local = self._agora_no_timezone_usuario(usuario)
+        if not self._dentro_do_turno(usuario.planning_window, agora_local.time()):
+            raise PermissaoNegadaError(
+                "Turno de planejamento só pode ser alterado dentro do turno atual."
+            )
+
         usuario.definir_turno_planejamento(planning_window)
         self.repositorio.atualizar_turno_planejamento(
             usuario.usuario_id,
@@ -125,18 +133,36 @@ class AuthService:
         if usuario.active_mode != "general":
             raise PermissaoNegadaError("Timezone só pode ser alterado no modo General.")
 
-        usuario.definir_timezone(timezone)
-        self.repositorio.atualizar_timezone(usuario.usuario_id, usuario.timezone)
+        timezone_validado = usuario._validar_timezone(timezone)
+        agora_utc = self._agora_utc()
+        if (
+            usuario.timezone_updated_at is not None
+            and agora_utc - usuario.timezone_updated_at < self.TIMEZONE_CHANGE_COOLDOWN
+        ):
+            raise PermissaoNegadaError(
+                "Timezone só pode ser alterado uma vez a cada 30 dias."
+            )
+
+        usuario.timezone = timezone_validado
+        usuario.registrar_alteracao_timezone(agora_utc)
+        self.repositorio.atualizar_timezone(
+            usuario.usuario_id,
+            usuario.timezone,
+            usuario.timezone_updated_at,
+        )
         return usuario
 
     def _utc_now(self) -> datetime:
         return datetime.now(utc_timezone.utc)
 
-    def _agora_no_timezone_usuario(self, usuario: Usuario) -> datetime:
+    def _agora_utc(self) -> datetime:
         agora = self.now_provider()
         if agora.tzinfo is None:
             agora = agora.replace(tzinfo=utc_timezone.utc)
-        return agora.astimezone(ZoneInfo(usuario.timezone))
+        return agora.astimezone(utc_timezone.utc)
+
+    def _agora_no_timezone_usuario(self, usuario: Usuario) -> datetime:
+        return self._agora_utc().astimezone(ZoneInfo(usuario.timezone))
 
     def _dentro_do_turno(self, planning_window: str, local_time: time) -> bool:
         if planning_window not in self.PLANNING_WINDOWS:

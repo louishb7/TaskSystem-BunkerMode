@@ -69,8 +69,9 @@ class RepositorioAuthFake:
     def atualizar_turno_planejamento(self, usuario_id, planning_window):
         self.usuario.definir_turno_planejamento(planning_window)
 
-    def atualizar_timezone(self, usuario_id, timezone_name):
+    def atualizar_timezone(self, usuario_id, timezone_name, timezone_updated_at):
         self.usuario.definir_timezone(timezone_name)
+        self.usuario.registrar_alteracao_timezone(timezone_updated_at)
 
     def registrar_uso_emergencia_general(self, usuario_id, local_date):
         self.usuario.registrar_uso_emergencia_general(local_date)
@@ -207,7 +208,61 @@ def test_unlock_valida_senha_antes_de_consumir_emergencia():
     assert usuario.emergency_unlock_date is None
 
 
-def test_configuracao_de_turno_e_timezone_respeita_modo_general():
+def test_timezone_pode_ser_alterado_em_general_sem_alteracao_anterior():
+    usuario = Usuario(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash=hash_password("segredo123"),
+        active_mode="general",
+    )
+    agora = datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)
+
+    service_em(agora, usuario).alterar_timezone(1, "Europe/Lisbon")
+
+    assert usuario.timezone == "Europe/Lisbon"
+    assert usuario.timezone_updated_at == agora
+
+
+def test_timezone_nao_pode_ser_alterado_antes_de_30_dias():
+    ultima_alteracao = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    usuario = Usuario(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash=hash_password("segredo123"),
+        active_mode="general",
+        timezone_updated_at=ultima_alteracao,
+    )
+
+    with pytest.raises(PermissaoNegadaError, match="uma vez a cada 30 dias"):
+        service_em(
+            datetime(2026, 4, 30, 11, 59, tzinfo=timezone.utc),
+            usuario,
+        ).alterar_timezone(1, "Europe/Lisbon")
+
+    assert usuario.timezone == "America/Recife"
+    assert usuario.timezone_updated_at == ultima_alteracao
+
+
+def test_timezone_pode_ser_alterado_apos_30_dias():
+    usuario = Usuario(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash=hash_password("segredo123"),
+        active_mode="general",
+        timezone_updated_at=datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc),
+    )
+    agora = datetime(2026, 5, 1, 12, 0, tzinfo=timezone.utc)
+
+    service_em(agora, usuario).alterar_timezone(1, "Europe/Lisbon")
+
+    assert usuario.timezone == "Europe/Lisbon"
+    assert usuario.timezone_updated_at == agora
+
+
+def test_timezone_nao_pode_ser_alterado_em_modo_soldier():
     usuario = Usuario(
         usuario_id=1,
         usuario="Henrique",
@@ -215,19 +270,107 @@ def test_configuracao_de_turno_e_timezone_respeita_modo_general():
         senha_hash=hash_password("segredo123"),
         active_mode="soldier",
     )
-    service = AuthService(RepositorioAuthFake(usuario))
 
-    with pytest.raises(PermissaoNegadaError):
-        service.alterar_turno_planejamento(1, "morning")
-    with pytest.raises(PermissaoNegadaError):
-        service.alterar_timezone(1, "Europe/Lisbon")
+    with pytest.raises(PermissaoNegadaError, match="modo General"):
+        service_em(
+            datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc),
+            usuario,
+        ).alterar_timezone(1, "Europe/Lisbon")
 
-    usuario.definir_modo("general")
-    service.alterar_turno_planejamento(1, "afternoon")
-    service.alterar_timezone(1, "Europe/Lisbon")
+
+def test_turno_planejamento_pode_ser_alterado_em_general_dentro_do_turno_atual():
+    usuario = Usuario(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash=hash_password("segredo123"),
+        active_mode="general",
+        planning_window="morning",
+        timezone="America/Recife",
+    )
+
+    service_em(
+        datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc),
+        usuario,
+    ).alterar_turno_planejamento(1, "afternoon")
 
     assert usuario.planning_window == "afternoon"
-    assert usuario.timezone == "Europe/Lisbon"
+
+
+def test_turno_planejamento_nao_pode_ser_alterado_em_general_fora_do_turno_atual():
+    usuario = Usuario(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash=hash_password("segredo123"),
+        active_mode="general",
+        planning_window="night",
+        timezone="America/Recife",
+    )
+
+    with pytest.raises(PermissaoNegadaError, match="dentro do turno atual"):
+        service_em(
+            datetime(2026, 4, 24, 17, 0, tzinfo=timezone.utc),
+            usuario,
+        ).alterar_turno_planejamento(1, "afternoon")
+
+    assert usuario.planning_window == "night"
+
+
+def test_turno_planejamento_nao_pode_ser_alterado_em_modo_soldier():
+    usuario = Usuario(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash=hash_password("segredo123"),
+        active_mode="soldier",
+        planning_window="morning",
+    )
+
+    with pytest.raises(PermissaoNegadaError, match="modo General"):
+        service_em(
+            datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc),
+            usuario,
+        ).alterar_turno_planejamento(1, "afternoon")
+
+
+def test_turno_planejamento_usa_turno_atual_e_nao_turno_solicitado():
+    usuario = Usuario(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash=hash_password("segredo123"),
+        active_mode="general",
+        planning_window="night",
+        timezone="America/Recife",
+    )
+
+    with pytest.raises(PermissaoNegadaError, match="dentro do turno atual"):
+        service_em(
+            datetime(2026, 4, 24, 17, 0, tzinfo=timezone.utc),
+            usuario,
+        ).alterar_turno_planejamento(1, "afternoon")
+
+    assert usuario.planning_window == "night"
+
+
+def test_turno_planejamento_permite_janela_noturna_cruzando_meia_noite():
+    usuario = Usuario(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash=hash_password("segredo123"),
+        active_mode="general",
+        planning_window="night",
+        timezone="America/Recife",
+    )
+
+    service_em(
+        datetime(2026, 4, 24, 4, 0, tzinfo=timezone.utc),
+        usuario,
+    ).alterar_turno_planejamento(1, "morning")
+
+    assert usuario.planning_window == "morning"
 
 
 def test_timezone_invalido_falha_claramente():

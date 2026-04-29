@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
@@ -22,6 +22,7 @@ class Usuario:
         planning_window=DEFAULT_PLANNING_WINDOW,
         timezone=DEFAULT_TIMEZONE,
         emergency_unlock_date=None,
+        timezone_updated_at=None,
     ):
         self.usuario_id = self._validar_usuario_id(usuario_id)
         self.usuario = self._validar_usuario(usuario)
@@ -34,6 +35,9 @@ class Usuario:
         self.timezone = self._validar_timezone(timezone)
         self.emergency_unlock_date = self._validar_emergency_unlock_date(
             emergency_unlock_date
+        )
+        self.timezone_updated_at = self._validar_timezone_updated_at(
+            timezone_updated_at
         )
 
     def _validar_usuario_id(self, usuario_id):
@@ -120,6 +124,18 @@ class Usuario:
 
     def definir_timezone(self, timezone):
         self.timezone = self._validar_timezone(timezone)
+
+    def _validar_timezone_updated_at(self, timezone_updated_at):
+        if timezone_updated_at is None:
+            return None
+        if not isinstance(timezone_updated_at, datetime):
+            raise ValueError("Data de alteração do timezone inválida.")
+        if timezone_updated_at.tzinfo is None:
+            raise ValueError("Data de alteração do timezone deve ter timezone.")
+        return timezone_updated_at
+
+    def registrar_alteracao_timezone(self, agora_utc):
+        self.timezone_updated_at = self._validar_timezone_updated_at(agora_utc)
 
     def _validar_emergency_unlock_date(self, emergency_unlock_date):
         if emergency_unlock_date is None:

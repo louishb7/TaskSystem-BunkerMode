@@ -1,5 +1,5 @@
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 
@@ -219,9 +219,11 @@ def test_busca_usuario_reconstroi_nome_do_general(monkeypatch, repositorio):
     assert usuario.planning_window == "night"
     assert usuario.timezone == "America/Recife"
     assert usuario.emergency_unlock_date is None
+    assert usuario.timezone_updated_at is None
 
 
 def test_busca_usuario_reconstroi_lock_de_planejamento(monkeypatch, repositorio):
+    timezone_updated_at = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
     cursor = FakeCursor(
         fetchone_result=(
             1,
@@ -234,6 +236,7 @@ def test_busca_usuario_reconstroi_lock_de_planejamento(monkeypatch, repositorio)
             "morning",
             "Europe/Lisbon",
             date(2026, 4, 24),
+            timezone_updated_at,
         )
     )
     connection = FakeConnection(cursor)
@@ -244,6 +247,7 @@ def test_busca_usuario_reconstroi_lock_de_planejamento(monkeypatch, repositorio)
     assert usuario.planning_window == "morning"
     assert usuario.timezone == "Europe/Lisbon"
     assert usuario.emergency_unlock_date == date(2026, 4, 24)
+    assert usuario.timezone_updated_at == timezone_updated_at
 
 
 def test_atualizar_nome_general_confirma_transacao(monkeypatch, repositorio):
@@ -272,16 +276,17 @@ def test_atualizar_turno_timezone_e_emergencia_confirma_transacao(monkeypatch, r
     cursor = FakeCursor()
     connection = FakeConnection(cursor)
     monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
+    timezone_updated_at = datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)
 
     repositorio.atualizar_turno_planejamento(3, "Morning")
-    repositorio.atualizar_timezone(3, "Europe/Lisbon")
+    repositorio.atualizar_timezone(3, "Europe/Lisbon", timezone_updated_at)
     repositorio.registrar_uso_emergencia_general(3, date(2026, 4, 24))
 
     assert connection.commit_called is True
     update_params = [params for _, params in cursor.executions if params is not None]
     assert update_params[-3:] == [
         ("morning", 3),
-        ("Europe/Lisbon", 3),
+        ("Europe/Lisbon", timezone_updated_at, 3),
         (date(2026, 4, 24), 3),
     ]
 

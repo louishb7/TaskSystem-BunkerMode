@@ -104,6 +104,11 @@ def _usuario_to_response(usuario, include_ativo: bool = True) -> dict:
             if usuario.emergency_unlock_date is None
             else usuario.emergency_unlock_date.isoformat()
         ),
+        "timezone_updated_at": (
+            None
+            if usuario.timezone_updated_at is None
+            else usuario.timezone_updated_at.isoformat()
+        ),
     }
     if include_ativo:
         response["ativo"] = usuario.ativo

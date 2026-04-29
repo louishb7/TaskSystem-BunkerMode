@@ -67,7 +67,8 @@ class RepositorioPostgres:
                 active_mode TEXT NOT NULL DEFAULT 'general',
                 planning_window TEXT NOT NULL DEFAULT 'night',
                 timezone TEXT NOT NULL DEFAULT 'America/Recife',
-                emergency_unlock_date DATE NULL
+                emergency_unlock_date DATE NULL,
+                timezone_updated_at TIMESTAMPTZ NULL
             );
             """,
             """
@@ -89,6 +90,10 @@ class RepositorioPostgres:
             """
             ALTER TABLE IF EXISTS usuarios
             ADD COLUMN IF NOT EXISTS emergency_unlock_date DATE NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS usuarios
+            ADD COLUMN IF NOT EXISTS timezone_updated_at TIMESTAMPTZ NULL;
             """,
             """
             ALTER TABLE IF EXISTS missoes
@@ -250,7 +255,8 @@ class RepositorioPostgres:
             planning_window = "night"
             timezone = "America/Recife"
             emergency_unlock_date = None
-        else:
+            timezone_updated_at = None
+        elif len(linha) == 10:
             (
                 usuario_id,
                 usuario,
@@ -263,6 +269,21 @@ class RepositorioPostgres:
                 timezone,
                 emergency_unlock_date,
             ) = linha
+            timezone_updated_at = None
+        else:
+            (
+                usuario_id,
+                usuario,
+                email,
+                senha_hash,
+                ativo,
+                nome_general,
+                active_mode,
+                planning_window,
+                timezone,
+                emergency_unlock_date,
+                timezone_updated_at,
+            ) = linha
         return Usuario(
             usuario_id=usuario_id,
             usuario=usuario,
@@ -274,6 +295,7 @@ class RepositorioPostgres:
             planning_window=planning_window,
             timezone=timezone,
             emergency_unlock_date=emergency_unlock_date,
+            timezone_updated_at=timezone_updated_at,
         )
 
     def _reconstruir_evento(self, linha: tuple) -> EventoAuditoria:
@@ -487,9 +509,10 @@ class RepositorioPostgres:
                         """
                         INSERT INTO usuarios (
                             usuario, email, senha_hash, ativo, nome_general,
-                            active_mode, planning_window, timezone, emergency_unlock_date
+                            active_mode, planning_window, timezone, emergency_unlock_date,
+                            timezone_updated_at
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING usuario_id;
                         """,
                         (
@@ -502,6 +525,7 @@ class RepositorioPostgres:
                             usuario.planning_window,
                             usuario.timezone,
                             usuario.emergency_unlock_date,
+                            usuario.timezone_updated_at,
                         ),
                     )
                     usuario.usuario_id = cursor.fetchone()[0]
@@ -521,7 +545,8 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
-                               active_mode, planning_window, timezone, emergency_unlock_date
+                               active_mode, planning_window, timezone, emergency_unlock_date,
+                               timezone_updated_at
                         FROM usuarios
                         WHERE email = %s;
                         """,
@@ -544,7 +569,8 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
-                               active_mode, planning_window, timezone, emergency_unlock_date
+                               active_mode, planning_window, timezone, emergency_unlock_date,
+                               timezone_updated_at
                         FROM usuarios
                         WHERE usuario_id = %s;
                         """,
@@ -634,7 +660,12 @@ class RepositorioPostgres:
                 "Erro ao atualizar o turno de planejamento no banco de dados."
             ) from erro
 
-    def atualizar_timezone(self, usuario_id: int, timezone: str) -> None:
+    def atualizar_timezone(
+        self,
+        usuario_id: int,
+        timezone: str,
+        timezone_updated_at,
+    ) -> None:
         self.inicializar_schema()
         try:
             with self._conectar() as conexao:
@@ -642,10 +673,11 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         UPDATE usuarios
-                        SET timezone = %s
+                        SET timezone = %s,
+                            timezone_updated_at = %s
                         WHERE usuario_id = %s;
                         """,
-                        (timezone.strip(), usuario_id),
+                        (timezone.strip(), timezone_updated_at, usuario_id),
                     )
                     if cursor.rowcount == 0:
                         raise UsuarioNaoPersistidoError(
