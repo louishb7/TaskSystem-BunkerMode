@@ -1,21 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, SafeAreaView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-import GeneralDashboardScreen from "./src/screens/GeneralDashboardScreen";
+import { api } from "./src/api/client";
+import GeneralStack from "./src/navigation/GeneralStack";
+import SoldierStack from "./src/navigation/SoldierStack";
 import LoginScreen from "./src/screens/LoginScreen";
-import SoldierHomeScreen from "./src/screens/SoldierHomeScreen";
 import { clearSession, loadSession, saveSession, saveUser } from "./src/storage/sessionStorage";
 import { colors, spacing } from "./src/styles/tokens";
-
-function screenForUser(nextUser) {
-  return nextUser?.active_mode === "general" ? "general" : "soldier";
-}
 
 export default function App() {
   const [booting, setBooting] = useState(true);
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
-  const [currentScreen, setCurrentScreen] = useState("login");
 
   useEffect(() => {
     restoreSession();
@@ -23,9 +20,26 @@ export default function App() {
 
   async function restoreSession() {
     const session = await loadSession();
-    setToken(session.token);
-    setUser(session.user);
-    setCurrentScreen(session.token && session.user ? screenForUser(session.user) : "login");
+    if (!session.token) {
+      setToken(null);
+      setUser(null);
+      setBooting(false);
+      return;
+    }
+
+    const result = await api.getCurrentUser(session.token);
+    if (result.ok) {
+      await saveUser(result.data);
+      setToken(session.token);
+      setUser(result.data);
+    } else if (result.status === 401) {
+      await clearSession();
+      setToken(null);
+      setUser(null);
+    } else {
+      setToken(session.token);
+      setUser(null);
+    }
     setBooting(false);
   }
 
@@ -33,7 +47,6 @@ export default function App() {
     await saveSession(nextToken, nextUser);
     setToken(nextToken);
     setUser(nextUser);
-    setCurrentScreen(screenForUser(nextUser));
   }
 
   async function handleUserChange(nextUser) {
@@ -45,47 +58,48 @@ export default function App() {
     await clearSession();
     setToken(null);
     setUser(null);
-    setCurrentScreen("login");
   }
 
+  let content;
   if (booting) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.amber} />
-        </View>
-      </SafeAreaView>
+    content = (
+      <View style={styles.boot}>
+        <ActivityIndicator color={colors.amber} />
+      </View>
     );
-  }
-
-  if (!token || !user || currentScreen === "login") {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <LoginScreen onAuthenticated={handleAuthenticated} />
-      </SafeAreaView>
+  } else if (!token || !user) {
+    content = (
+      <LoginScreen onAuthenticated={handleAuthenticated} />
+    );
+  } else if (user.active_mode === "general") {
+    content = (
+      <GeneralStack
+        token={token}
+        user={user}
+        onLogout={handleLogout}
+        onUserChange={handleUserChange}
+      />
+    );
+  } else {
+    content = (
+      <SoldierStack
+        token={token}
+        user={user}
+        onLogout={handleLogout}
+        onUserChange={handleUserChange}
+      />
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {currentScreen === "general" ? (
-        <GeneralDashboardScreen
-          token={token}
-          user={user}
-          onActivateSoldier={() => setCurrentScreen("soldier")}
-          onLogout={handleLogout}
-          onUserChange={handleUserChange}
-        />
-      ) : (
-        <SoldierHomeScreen
-          token={token}
-          user={user}
-          onLogout={handleLogout}
-          onSwitchToGeneral={() => setCurrentScreen("general")}
-          onUserChange={handleUserChange}
-        />
-      )}
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        style={[styles.safeArea, user?.active_mode === "soldier" && styles.soldierSafeArea]}
+      >
+        {content}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -93,6 +107,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  soldierSafeArea: {
+    backgroundColor: "#000000",
   },
   boot: {
     flex: 1,

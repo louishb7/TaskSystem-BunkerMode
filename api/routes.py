@@ -1,8 +1,6 @@
-import os
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from api.schemas import (
     FailureJustificationPayload,
@@ -32,23 +30,7 @@ from services.exceptions import (
 from services.missao_service import MissaoService
 from services.relatorio_service import RelatorioService
 
-app = FastAPI(title="BunkerMode API")
 router = APIRouter(prefix="/api/v2", tags=["v2"])
-
-
-def get_allowed_origins() -> list[str]:
-    raw_origins = os.getenv("BUNKERMODE_CORS_ALLOW_ORIGINS", "*")
-    origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
-    return origins or ["*"]
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=get_allowed_origins(),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 def get_auth_service() -> AuthService:
@@ -494,6 +476,3 @@ def _parse_query_date(raw_value: str | None):
         return datetime.strptime(raw_value, "%Y-%m-%d").date()
     except ValueError as erro:
         raise ValueError("Datas do relatório devem usar o formato YYYY-MM-DD.") from erro
-
-
-app.include_router(router)

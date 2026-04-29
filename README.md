@@ -34,8 +34,10 @@ Se a variável não for definida, a API sobe com `*`, o que facilita testes loca
 
 ## Rodar a API
 ```bash
-python -m api
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+O atalho `python -m api` continua disponível e usa o mesmo entrypoint.
 
 ## Documentação
 - `/docs`

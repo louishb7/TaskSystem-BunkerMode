@@ -3,6 +3,12 @@
 Base URL:
 http://127.0.0.1:8000
 
+## Rodar localmente
+
+```bash
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
 ## Auth
 
 POST /api/v2/auth/register

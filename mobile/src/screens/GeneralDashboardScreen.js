@@ -23,7 +23,6 @@ export default function GeneralDashboardScreen({
   user,
   onLogout,
   onUserChange,
-  onActivateSoldier,
 }) {
   const [missions, setMissions] = useState([]);
   const [reviewMissions, setReviewMissions] = useState([]);
@@ -111,8 +110,16 @@ export default function GeneralDashboardScreen({
       return;
     }
 
-    await onUserChange(result.data);
-    onActivateSoldier();
+    const userResult = await api.getCurrentUser(token);
+    if (await handleUnauthorized(userResult)) {
+      return;
+    }
+    if (!userResult.ok) {
+      setError(getErrorMessage(userResult, "Nao foi possivel recarregar o usuario."));
+      return;
+    }
+
+    await onUserChange(userResult.data);
   }
 
   function openCreateForm() {

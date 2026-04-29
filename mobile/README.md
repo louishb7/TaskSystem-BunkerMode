@@ -1,16 +1,16 @@
 # BunkerMode Mobile
 
-React Native client for Soldier execution only.
+React Native client for BunkerMode mobile execution.
 
 ## Scope
 
 - Login with the existing API.
-- Explicit activation of Soldier mode.
-- Operational mission list from the existing API.
+- General stack for planning/review surfaces already implemented in mobile.
+- Soldier stack for execution-only mode.
+- Stack selection comes from `usuario.active_mode` returned by the API.
+- Operational mission list comes from the existing API.
 - Complete missions only when `permissions.can_complete` is true.
-- Submit failure justification only when `permissions.can_justify` is true.
-
-No General planning screens are included.
+- Return to General is requested through the backend unlock flow.
 
 ## Run
 

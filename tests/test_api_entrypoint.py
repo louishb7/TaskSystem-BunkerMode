@@ -26,7 +26,7 @@ def test_main_executa_uvicorn_com_configuracao_padrao(monkeypatch):
     api_main.run()
 
     assert chamada == {
-        "app_path": "api.routes:app",
+        "app_path": "api.main:app",
         "host": "127.0.0.1",
         "port": 8000,
         "reload": False,
@@ -50,7 +50,7 @@ def test_main_respeita_variaveis_de_ambiente(monkeypatch):
     api_main.run()
 
     assert chamada == {
-        "app_path": "api.routes:app",
+        "app_path": "api.main:app",
         "host": "0.0.0.0",
         "port": 9000,
         "reload": True,
