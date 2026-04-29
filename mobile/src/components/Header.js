@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     ...typography.label,
-    color: colors.amber,
+    color: colors.textPrimary,
   },
   rightGroup: {
     alignItems: "center",
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   modeBadge: {
     backgroundColor: colors.transparent,
-    borderColor: colors.amber,
+    borderColor: colors.red,
     borderRadius: radius.sm,
     borderWidth: 1,
     paddingHorizontal: spacing.sm,
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   },
   modeText: {
     ...typography.label,
-    color: colors.amber,
+    color: colors.red,
   },
   logoutButton: {
     paddingHorizontal: spacing.xs,

@@ -1,15 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { api } from "../api/client";
 import EmptyState from "../components/EmptyState";
 import GeneralMissionCard from "../components/GeneralMissionCard";
+import ModeSwitcher from "../components/ModeSwitcher";
+import ProgressBlock from "../components/ProgressBlock";
 import ReportSummary from "../components/ReportSummary";
-import ReviewCard from "../components/ReviewCard";
+import ReviewBlock from "../components/ReviewBlock";
+import SectionBlock from "../components/SectionBlock";
 import StatusNotice from "../components/StatusNotice";
+import TacticalPanel from "../components/TacticalPanel";
 import MissionFormScreen from "./MissionFormScreen";
 import { isOperationalMission } from "../utils/missionStatus";
-import { colors, layout, radius, spacing, typography } from "../styles/tokens";
+import { colors, radius, spacing, typography } from "../styles/tokens";
+
+const logo = require("../assets/bunkermode/logo/logo_final_selected.png");
 
 function getErrorMessage(result, fallback) {
   if (result?.status === 0) {
@@ -33,6 +39,7 @@ export default function GeneralDashboardScreen({
   const [showForm, setShowForm] = useState(false);
   const [formMission, setFormMission] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+  const [activatingSoldier, setActivatingSoldier] = useState(false);
 
   useEffect(() => {
     loadAll({ initial: true });
@@ -101,7 +108,9 @@ export default function GeneralDashboardScreen({
   }
 
   async function activateSoldier() {
+    setActivatingSoldier(true);
     const result = await api.setSessionMode(token, { mode: "soldier" });
+    setActivatingSoldier(false);
     if (await handleUnauthorized(result)) {
       return;
     }
@@ -185,7 +194,7 @@ export default function GeneralDashboardScreen({
   if (initialLoading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color={colors.amber} />
+        <ActivityIndicator color={colors.red} />
       </View>
     );
   }
@@ -194,17 +203,17 @@ export default function GeneralDashboardScreen({
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.brand}>BUNKERMODE</Text>
+          <View style={styles.brandLockup}>
+            <Image resizeMode="contain" source={logo} style={styles.logo} />
+            <Text style={styles.brand}>BUNKERMODE</Text>
+          </View>
           <View style={styles.generalBadge}>
             <Text style={styles.generalBadgeText}>GENERAL</Text>
           </View>
         </View>
-        <Text style={styles.title}>Posto do General</Text>
-        <Text style={styles.caption}>General: {user?.nome_general || user?.usuario || "General"}</Text>
+        <Text style={styles.title}>GENERAL</Text>
+        <Text style={styles.caption}>Visao. Plano. Estrategia.</Text>
         <View style={styles.headerActions}>
-          <Pressable onPress={activateSoldier} style={styles.soldierButton}>
-            <Text style={styles.soldierButtonText}>ATIVAR SOLDADO</Text>
-          </Pressable>
           <Pressable onPress={onLogout}>
             <Text style={styles.logout}>SAIR</Text>
           </Pressable>
@@ -214,29 +223,50 @@ export default function GeneralDashboardScreen({
       <StatusNotice type="error" message={error} />
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.stats}>
-          <Metric label="Total" value={counts.total} />
-          <Metric label="Pendentes" value={counts.pending} />
-          <Metric label="Em revisao" value={counts.review} />
-        </View>
+        <ModeSwitcher
+          disabled={activatingSoldier}
+          mode="general"
+          onPress={activateSoldier}
+          pending={activatingSoldier}
+        />
 
-        {reviewMissions.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.reviewLabel}>AGUARDANDO REVISAO</Text>
-            {reviewMissions.map((mission, index) => (
-              <ReviewCard
-                key={String(mission?.id ?? index)}
-                mission={mission}
-                token={token}
-                onLogout={onLogout}
-                onReload={() => loadAll()}
-              />
-            ))}
+        <SectionBlock label="ESTADO DO SISTEMA" meta={user?.nome_general || user?.usuario || "GENERAL"}>
+          <ProgressBlock
+            metrics={[
+              { label: "Total", value: counts.total },
+              { label: "Pendentes", value: counts.pending },
+              { label: "Revisao", value: counts.review },
+            ]}
+          />
+        </SectionBlock>
+
+        <SectionBlock label="MONTANHA">
+          <View style={styles.mountainGrid}>
+            <TacticalPanel style={styles.mountainPanel}>
+              <Text style={styles.mountainTitle}>DREAM</Text>
+              <Text style={styles.mountainText}>Destino define direcao.</Text>
+            </TacticalPanel>
+            <TacticalPanel style={styles.mountainPanel}>
+              <Text style={styles.mountainTitle}>OBJECTIVES</Text>
+              <Text style={styles.mountainText}>Plano transforma decisao.</Text>
+            </TacticalPanel>
+            <TacticalPanel danger style={styles.mountainPanel}>
+              <Text style={styles.mountainTitle}>MISSIONS</Text>
+              <Text style={styles.mountainText}>Ordem pronta para execucao.</Text>
+            </TacticalPanel>
           </View>
-        ) : null}
+        </SectionBlock>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>ORDENS ATIVAS</Text>
+        <SectionBlock label="HISTORY / REVIEW" meta={counts.review ? `${counts.review} PENDENTE` : "LIMPO"}>
+          <ReviewBlock
+            missions={reviewMissions}
+            token={token}
+            onLogout={onLogout}
+            onReload={() => loadAll()}
+          />
+        </SectionBlock>
+
+        <SectionBlock label="ORDENS ATIVAS" meta={`${missions.length} REGISTROS`}>
           {missions.length > 0 ? (
             missions.map((mission, index) => (
               <GeneralMissionCard
@@ -251,30 +281,20 @@ export default function GeneralDashboardScreen({
           ) : (
             <EmptyState />
           )}
-        </View>
+        </SectionBlock>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>RELATORIO SEMANAL</Text>
+        <SectionBlock label="RELATORIO SEMANAL">
           {report ? (
             <ReportSummary report={report} />
           ) : (
             <StatusNotice type="info" message="Nenhum dado disponivel." />
           )}
-        </View>
+        </SectionBlock>
       </ScrollView>
 
       <Pressable onPress={openCreateForm} style={styles.fab}>
         <Text style={styles.fabText}>+</Text>
       </Pressable>
-    </View>
-  );
-}
-
-function Metric({ label, value }) {
-  return (
-    <View style={styles.metric}>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
     </View>
   );
 }
@@ -303,10 +323,19 @@ const styles = StyleSheet.create({
   },
   brand: {
     ...typography.label,
-    color: colors.amber,
+    color: colors.textPrimary,
+  },
+  brandLockup: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  logo: {
+    height: 34,
+    width: 34,
   },
   generalBadge: {
-    borderColor: colors.amber,
+    borderColor: colors.red,
     borderRadius: radius.sm,
     borderWidth: 1,
     paddingHorizontal: spacing.sm,
@@ -314,7 +343,7 @@ const styles = StyleSheet.create({
   },
   generalBadgeText: {
     ...typography.small,
-    color: colors.amber,
+    color: colors.red,
     fontWeight: "700",
   },
   title: {
@@ -330,21 +359,8 @@ const styles = StyleSheet.create({
   headerActions: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.md,
+    justifyContent: "flex-end",
     marginTop: spacing.md,
-  },
-  soldierButton: {
-    alignItems: "center",
-    backgroundColor: colors.amber,
-    borderRadius: radius.md,
-    height: 44,
-    justifyContent: "center",
-    paddingHorizontal: spacing.md,
-  },
-  soldierButtonText: {
-    ...typography.label,
-    color: colors.bg,
-    fontWeight: "700",
   },
   logout: {
     color: colors.textMuted,
@@ -354,54 +370,37 @@ const styles = StyleSheet.create({
     padding: spacing.screenH,
     paddingBottom: spacing.xl + 64,
   },
-  stats: {
-    flexDirection: "row",
+  mountainGrid: {
     gap: spacing.sm,
   },
-  metric: {
-    flex: 1,
-    backgroundColor: colors.bgCard,
-    borderColor: colors.borderSubtle,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+  mountainPanel: {
     padding: spacing.md,
   },
-  metricValue: {
+  mountainTitle: {
+    ...typography.label,
     color: colors.textPrimary,
-    fontSize: 24,
-    fontWeight: "700",
   },
-  metricLabel: {
-    ...typography.small,
+  mountainText: {
     color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
     marginTop: spacing.xs,
-  },
-  section: {
-    marginTop: spacing.lg,
-  },
-  sectionLabel: {
-    ...typography.label,
-    color: colors.textMuted,
-    marginBottom: spacing.sm + spacing.xs,
-  },
-  reviewLabel: {
-    ...typography.label,
-    color: colors.amber,
-    marginBottom: spacing.sm + spacing.xs,
   },
   fab: {
     position: "absolute",
     right: 24,
     bottom: 24,
     alignItems: "center",
-    backgroundColor: colors.green,
-    borderRadius: radius.pill,
+    backgroundColor: colors.red,
+    borderColor: colors.red,
+    borderRadius: radius.md,
+    borderWidth: 1,
     height: 56,
     justifyContent: "center",
     width: 56,
   },
   fabText: {
-    color: colors.bg,
+    color: colors.black,
     fontSize: 28,
     fontWeight: "300",
     lineHeight: 32,

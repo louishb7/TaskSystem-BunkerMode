@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, ImageBackground, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "../../api/client";
+import ModeSwitcher from "../../components/ModeSwitcher";
 import { STATUS } from "../../utils/missionStatus";
+
+const bunkerBackground = require("../../assets/bunkermode/backgrounds/bg_bunker_reference.png");
 
 function getErrorMessage(result, fallback) {
   if (result?.status === 0) {
@@ -126,18 +129,21 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <ImageBackground resizeMode="cover" source={bunkerBackground} style={styles.container}>
+        <View style={styles.scrim}>
         <Text style={styles.title}>SOLDADO EM EXECUCAO</Text>
         <Text style={styles.text}>SINCRONIZANDO</Text>
-      </View>
+        </View>
+      </ImageBackground>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <ImageBackground resizeMode="cover" source={bunkerBackground} style={styles.container}>
+      <View style={styles.scrim}>
       <View style={styles.header}>
-        <Text style={styles.title}>SOLDADO EM EXECUCAO</Text>
-        <Text style={styles.meta}>{pendingMissions.length} MISSOES</Text>
+        <Text style={styles.title}>SOLDIER</Text>
+        <Text style={styles.meta}>EXECUTION ONLY / {pendingMissions.length} MISSIONS</Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -162,13 +168,12 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
       />
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <Pressable
+        <ModeSwitcher
           disabled={unlocking}
+          mode="soldier"
           onPress={() => setReturnStep("confirm")}
-          style={styles.generalRequest}
-        >
-          <Text style={styles.generalRequestText}>SOLICITAR RETORNO AO GENERAL</Text>
-        </Pressable>
+          pending={unlocking}
+        />
       </View>
 
       {returnStep !== "closed" ? (
@@ -235,7 +240,8 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
           </View>
         </View>
       ) : null}
-    </View>
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -289,41 +295,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000000",
+  },
+  scrim: {
+    backgroundColor: "rgba(0,0,0,0.88)",
+    flex: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
   },
   header: {
-    borderBottomColor: "#FFFFFF",
+    borderBottomColor: "#3A3A3A",
     borderBottomWidth: 1,
     paddingBottom: 14,
   },
   title: {
-    color: "#00FF00",
+    color: "#EDEDED",
     fontFamily: mono,
-    fontSize: 18,
-    letterSpacing: 1,
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: 0,
   },
   meta: {
-    color: "#FFFFFF",
+    color: "#FF2A2A",
     fontFamily: mono,
-    fontSize: 16,
+    fontSize: 12,
+    fontWeight: "700",
     marginTop: 8,
   },
   text: {
-    color: "#FFFFFF",
+    color: "#EDEDED",
     fontFamily: mono,
     fontSize: 16,
     lineHeight: 22,
   },
   summary: {
-    color: "#CCCCCC",
+    color: "#A8A8A8",
     fontFamily: mono,
     fontSize: 14,
     lineHeight: 20,
     marginTop: 8,
   },
   status: {
-    color: "#777777",
+    color: "#666666",
     fontFamily: mono,
     fontSize: 12,
     marginTop: 8,
@@ -335,32 +347,32 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   detailBlock: {
-    borderColor: "#777777",
+    borderColor: "#3A3A3A",
     borderRadius: 0,
     borderWidth: 1,
     marginTop: 12,
     padding: 12,
   },
   detailLabel: {
-    color: "#777777",
+    color: "#FF2A2A",
     fontFamily: mono,
     fontSize: 12,
     marginBottom: 8,
   },
   detailText: {
-    color: "#FFFFFF",
+    color: "#EDEDED",
     fontFamily: mono,
     fontSize: 14,
     lineHeight: 20,
   },
   error: {
-    color: "#FFFFFF",
+    color: "#FF2A2A",
     fontFamily: mono,
     fontSize: 16,
     marginTop: 14,
   },
   notice: {
-    color: "#00FF00",
+    color: "#EDEDED",
     fontFamily: mono,
     fontSize: 16,
     marginTop: 14,
@@ -370,7 +382,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   mission: {
-    borderBottomColor: "#FFFFFF",
+    borderBottomColor: "#2A2A2A",
     borderBottomWidth: 1,
     paddingBottom: 14,
     paddingTop: 14,
@@ -380,34 +392,24 @@ const styles = StyleSheet.create({
   },
   button: {
     alignItems: "center",
-    borderColor: "#FFFFFF",
+    backgroundColor: "#FF2A2A",
+    borderColor: "#FF2A2A",
     borderRadius: 0,
     borderWidth: 1,
     marginTop: 12,
     padding: 12,
   },
   buttonText: {
-    color: "#FFFFFF",
+    color: "#000000",
     fontFamily: mono,
     fontSize: 16,
+    fontWeight: "900",
   },
   footer: {
-    borderTopColor: "#777777",
+    borderTopColor: "#2A2A2A",
     borderTopWidth: 1,
     paddingBottom: 12,
     paddingTop: 12,
-  },
-  generalRequest: {
-    alignItems: "center",
-    borderColor: "#777777",
-    borderRadius: 0,
-    borderWidth: 1,
-    padding: 8,
-  },
-  generalRequestText: {
-    color: "#777777",
-    fontFamily: mono,
-    fontSize: 12,
   },
   overlay: {
     alignItems: "center",
@@ -421,14 +423,14 @@ const styles = StyleSheet.create({
     top: 0,
   },
   protocolBox: {
-    borderColor: "#FFFFFF",
+    borderColor: "#FF2A2A",
     borderRadius: 0,
     borderWidth: 1,
     padding: 16,
     width: "100%",
   },
   protocolText: {
-    color: "#FFFFFF",
+    color: "#EDEDED",
     fontFamily: mono,
     fontSize: 16,
     lineHeight: 22,
@@ -440,22 +442,22 @@ const styles = StyleSheet.create({
   },
   protocolButton: {
     alignItems: "center",
-    borderColor: "#FFFFFF",
+    borderColor: "#3A3A3A",
     borderRadius: 0,
     borderWidth: 1,
     flex: 1,
     padding: 12,
   },
   protocolButtonText: {
-    color: "#FFFFFF",
+    color: "#EDEDED",
     fontFamily: mono,
     fontSize: 16,
   },
   input: {
-    borderColor: "#FFFFFF",
+    borderColor: "#FF2A2A",
     borderRadius: 0,
     borderWidth: 1,
-    color: "#FFFFFF",
+    color: "#EDEDED",
     fontFamily: mono,
     fontSize: 16,
     marginTop: 16,

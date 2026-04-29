@@ -64,7 +64,7 @@ export default function App() {
   if (booting) {
     content = (
       <View style={styles.boot}>
-        <ActivityIndicator color={colors.amber} />
+        <ActivityIndicator color={colors.red} />
       </View>
     );
   } else if (!token || !user) {

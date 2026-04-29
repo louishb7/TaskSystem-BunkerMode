@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     ...typography.label,
-    color: colors.amber,
+    color: colors.textPrimary,
   },
   title: {
     ...typography.title,
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + spacing.xs + spacing.xs / 2,
   },
   inputFocused: {
-    borderColor: colors.amber,
+    borderColor: colors.red,
   },
   multiline: {
     minHeight: layout.justificationInputMinHeight,
@@ -244,7 +244,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   segmentActive: {
-    backgroundColor: colors.amber,
+    backgroundColor: colors.red,
+    borderColor: colors.red,
   },
   segmentInactive: {
     backgroundColor: colors.bgCard,
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   segmentTextActive: {
-    color: colors.bg,
+    color: colors.black,
   },
   segmentTextInactive: {
     color: colors.textSecondary,
@@ -268,14 +269,14 @@ const styles = StyleSheet.create({
     width: layout.fullWidth,
   },
   submitCreate: {
-    backgroundColor: colors.green,
+    backgroundColor: colors.red,
   },
   submitEdit: {
-    backgroundColor: colors.amber,
+    backgroundColor: colors.red,
   },
   submitText: {
     ...typography.label,
-    color: colors.bg,
+    color: colors.black,
     fontWeight: "700",
   },
   cancel: {

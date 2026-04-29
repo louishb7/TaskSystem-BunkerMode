@@ -9,11 +9,11 @@ function getPriority(priority) {
   }
 
   if (Number(priority) === 2) {
-    return { color: colors.amber, label: "IMPORTANTE" };
+    return { color: colors.textPrimary, label: "IMPORTANTE" };
   }
 
   if (Number(priority) === 3) {
-    return { color: colors.blue, label: "PADRAO" };
+    return { color: colors.textSecondary, label: "PADRAO" };
   }
 
   return { color: colors.textMuted, label: "-" };
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   bar: {
     width: layout.priorityBarWidth,
     height: layout.priorityBarHeight,
-    borderRadius: radius.sm / 2,
+    borderRadius: radius.sm,
   },
   label: {
     ...typography.small,

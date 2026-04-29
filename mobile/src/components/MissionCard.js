@@ -12,7 +12,7 @@ export default function MissionCard({ mission, onComplete, onJustify }) {
   const instruction = mission?.instrucao || "";
   const isDecided = mission?.is_decided === true;
   const statusLabel = mission?.status_label || mission?.status_code || "";
-  const dueDate = mission?.prazo ?? mission?.due_date ?? null;
+  const dueDate = mission?.prazo ?? null;
 
   return (
     <View style={[styles.card, isDecided && styles.decidedCard]}>
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     padding: spacing.cardPad,
   },
   decidedCard: {
-    borderLeftColor: colors.amber,
+    borderLeftColor: colors.red,
     borderLeftWidth: 3,
   },
   metaRow: {

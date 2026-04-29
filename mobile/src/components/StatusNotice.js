@@ -11,13 +11,13 @@ const typeStyles = {
   },
   warning: {
     backgroundColor: surfaces.amberBg,
-    borderColor: colors.amber,
-    color: colors.amber,
+    borderColor: colors.red,
+    color: colors.red,
   },
   info: {
-    backgroundColor: surfaces.blueBg,
-    borderColor: colors.blue,
-    color: colors.blue,
+    backgroundColor: colors.bgCard,
+    borderColor: colors.borderStrong,
+    color: colors.textSecondary,
   },
 };
 

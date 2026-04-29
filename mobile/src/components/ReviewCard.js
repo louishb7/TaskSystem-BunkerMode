@@ -68,7 +68,7 @@ export default function ReviewCard({ mission, token, onReload, onLogout }) {
           style={[styles.action, styles.accept]}
         >
           {loadingAction === "accept" ? (
-            <ActivityIndicator color={colors.green} />
+            <ActivityIndicator color={colors.textPrimary} />
           ) : (
             <Text style={[styles.actionText, styles.acceptText]}>ACEITAR</Text>
           )}
@@ -94,7 +94,7 @@ export default function ReviewCard({ mission, token, onReload, onLogout }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: surfaces.amberBg,
-    borderColor: colors.amber,
+    borderColor: colors.red,
     borderRadius: radius.lg,
     borderWidth: 1,
     marginBottom: spacing.sm + spacing.xs,
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.small,
-    color: colors.amber,
+    color: colors.red,
   },
   title: {
     ...typography.heading,
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   reasonType: {
-    color: colors.amber,
+    color: colors.red,
     fontSize: 13,
     fontWeight: "700",
     marginTop: spacing.xs,
@@ -149,8 +149,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   accept: {
-    backgroundColor: surfaces.greenBg,
-    borderColor: colors.green,
+    backgroundColor: colors.bgCard,
+    borderColor: colors.textPrimary,
   },
   reject: {
     backgroundColor: surfaces.redBg,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   acceptText: {
-    color: colors.green,
+    color: colors.textPrimary,
   },
   rejectText: {
     color: colors.red,

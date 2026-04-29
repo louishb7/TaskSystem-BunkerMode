@@ -77,7 +77,7 @@ export default function UnlockGeneralModal({ visible, token, onSuccess, onCancel
 
           <Pressable disabled={loading} onPress={unlock} style={styles.button}>
             {loading ? (
-              <ActivityIndicator color={colors.bg} />
+              <ActivityIndicator color={colors.black} />
             ) : (
               <Text style={styles.buttonText}>LIBERAR GENERAL</Text>
             )}
@@ -128,11 +128,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   inputFocused: {
-    borderColor: colors.amber,
+    borderColor: colors.red,
   },
   button: {
     alignItems: "center",
-    backgroundColor: colors.amber,
+    backgroundColor: colors.red,
+    borderColor: colors.red,
+    borderWidth: 1,
     borderRadius: radius.md,
     height: layout.actionButtonHeight,
     justifyContent: "center",
@@ -141,7 +143,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     ...typography.label,
-    color: colors.bg,
+    color: colors.black,
     fontWeight: "700",
   },
   cancel: {

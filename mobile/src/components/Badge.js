@@ -6,9 +6,9 @@ import { colors, layout, radius, surfaces, typography } from "../styles/tokens";
 function getStatusStyle(label) {
   const statusStyles = {
     Pendente: {
-      backgroundColor: surfaces.greenBg,
-      borderColor: colors.green,
-      color: colors.green,
+      backgroundColor: colors.bgCard,
+      borderColor: colors.borderStrong,
+      color: colors.textSecondary,
     },
     "Falha aguardando justificativa": {
       backgroundColor: surfaces.redBg,
@@ -17,8 +17,8 @@ function getStatusStyle(label) {
     },
     "Falha justificada aguardando revisão": {
       backgroundColor: surfaces.amberBg,
-      borderColor: colors.amber,
-      color: colors.amber,
+      borderColor: colors.red,
+      color: colors.red,
     },
     "Falha revisada": {
       backgroundColor: surfaces.redBg,
@@ -26,9 +26,9 @@ function getStatusStyle(label) {
       color: colors.red,
     },
     "Concluída": {
-      backgroundColor: surfaces.blueBg,
-      borderColor: colors.blue,
-      color: colors.blue,
+      backgroundColor: colors.bgCard,
+      borderColor: colors.textPrimary,
+      color: colors.textPrimary,
     },
   };
 
@@ -53,8 +53,8 @@ export default function Badge({ type, label }) {
     type === "decided"
       ? {
           backgroundColor: surfaces.amberBg,
-          borderColor: colors.amber,
-          color: colors.amber,
+          borderColor: colors.red,
+          color: colors.red,
           label: "DECIDIDA",
         }
       : getStatusStyle(label);

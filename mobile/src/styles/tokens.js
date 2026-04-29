@@ -1,16 +1,22 @@
 export const colors = {
-  bg: "#0A0A0A",
+  black: "#000000",
+  offWhite: "#EDEDED",
+  bunkerRed: "#FF2A2A",
+  gray900: "#111111",
+  gray850: "#181818",
+  gray700: "#2A2A2A",
+  bg: "#000000",
   bgCard: "#111111",
-  bgElevated: "#1A1A1A",
-  borderSubtle: "#222222",
-  borderStrong: "#333333",
-  textPrimary: "#F5F5F5",
-  textSecondary: "#888888",
-  textMuted: "#444444",
-  green: "#22C55E",
-  amber: "#F59E0B",
-  red: "#EF4444",
-  blue: "#3B82F6",
+  bgElevated: "#181818",
+  borderSubtle: "#242424",
+  borderStrong: "#3A3A3A",
+  textPrimary: "#EDEDED",
+  textSecondary: "#A8A8A8",
+  textMuted: "#666666",
+  green: "#EDEDED",
+  amber: "#FF2A2A",
+  red: "#FF2A2A",
+  blue: "#EDEDED",
   transparent: "transparent",
 };
 
@@ -25,26 +31,26 @@ export const spacing = {
 };
 
 export const radius = {
-  sm: 4,
-  md: 8,
-  lg: 12,
+  sm: 0,
+  md: 2,
+  lg: 4,
   pill: 999,
 };
 
 export const typography = {
   label: {
     fontSize: 11,
-    fontWeight: "500",
-    letterSpacing: 0.8,
+    fontWeight: "700",
+    letterSpacing: 0,
     textTransform: "uppercase",
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: 30,
+    fontWeight: "800",
   },
   heading: {
     fontSize: 20,
-    fontWeight: "600",
+    fontWeight: "800",
   },
   body: {
     fontSize: 15,
@@ -55,7 +61,7 @@ export const typography = {
   },
   small: {
     fontSize: 10,
-    letterSpacing: 0.6,
+    letterSpacing: 0,
     textTransform: "uppercase",
   },
   loginSubtitle: {
@@ -78,10 +84,10 @@ export const typography = {
 };
 
 export const surfaces = {
-  amberBg: "#1A0F00",
-  redBg: "#1A0000",
-  greenBg: "#0F1A0F",
-  blueBg: "#0F0F1A",
+  amberBg: "#180303",
+  redBg: "#180303",
+  greenBg: "#111111",
+  blueBg: "#111111",
 };
 
 export const layout = {

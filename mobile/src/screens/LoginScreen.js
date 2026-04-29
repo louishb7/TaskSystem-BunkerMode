@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +13,8 @@ import {
 
 import { api } from "../api/client";
 import { colors, layout, radius, spacing, typography } from "../styles/tokens";
+
+const logo = require("../assets/bunkermode/logo/logo_final_selected.png");
 
 function getErrorMessage(result, fallback) {
   return result?.data?.detail || fallback;
@@ -49,8 +52,9 @@ export default function LoginScreen({ onAuthenticated }) {
       style={styles.container}
     >
       <View style={styles.top}>
+        <Image resizeMode="contain" source={logo} style={styles.logo} />
         <Text style={styles.brand}>BUNKERMODE</Text>
-        <Text style={styles.subtitle}>Entre em campo.</Text>
+        <Text style={styles.subtitle}>GENERAL PENSA. SOLDADO EXECUTA.</Text>
       </View>
 
       <View style={styles.form}>
@@ -84,7 +88,7 @@ export default function LoginScreen({ onAuthenticated }) {
           style={({ pressed }) => [styles.button, (pressed || loading) && styles.buttonActive]}
         >
           {loading ? (
-            <ActivityIndicator color={colors.bg} />
+            <ActivityIndicator color={colors.black} />
           ) : (
             <Text style={styles.buttonText}>ENTRAR EM CAMPO</Text>
           )}
@@ -110,16 +114,20 @@ const styles = StyleSheet.create({
   },
   brand: {
     ...typography.label,
-    color: colors.amber,
+    color: colors.textPrimary,
     textAlign: "center",
   },
   subtitle: {
     color: colors.textPrimary,
-    fontSize: typography.loginSubtitle.fontSize,
-    fontStyle: "italic",
-    fontWeight: typography.loginSubtitle.fontWeight,
+    fontSize: 16,
+    fontWeight: "800",
     marginTop: spacing.sm,
     textAlign: "center",
+  },
+  logo: {
+    height: 110,
+    marginBottom: spacing.md,
+    width: 110,
   },
   form: {
     gap: spacing.sm + spacing.xs,
@@ -136,11 +144,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + spacing.xs + spacing.xs / 2,
   },
   inputFocused: {
-    borderColor: colors.amber,
+    borderColor: colors.red,
   },
   button: {
     alignItems: "center",
-    backgroundColor: colors.green,
+    backgroundColor: colors.red,
+    borderColor: colors.red,
+    borderWidth: 1,
     borderRadius: radius.md,
     height: layout.loginButtonHeight,
     justifyContent: "center",
@@ -151,7 +161,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     ...typography.label,
-    color: colors.bg,
+    color: colors.black,
     fontWeight: "700",
   },
   error: {

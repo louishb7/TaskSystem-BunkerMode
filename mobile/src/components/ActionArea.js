@@ -138,7 +138,9 @@ const styles = StyleSheet.create({
   },
   completeButton: {
     alignItems: "center",
-    backgroundColor: colors.green,
+    backgroundColor: colors.red,
+    borderColor: colors.red,
+    borderWidth: 1,
     borderRadius: radius.md,
     height: layout.actionButtonHeight,
     justifyContent: "center",
@@ -146,7 +148,7 @@ const styles = StyleSheet.create({
   },
   completeText: {
     ...typography.label,
-    color: colors.bg,
+    color: colors.black,
     fontWeight: "700",
   },
   justifyBlock: {
@@ -154,7 +156,7 @@ const styles = StyleSheet.create({
   },
   justifyLabel: {
     ...typography.small,
-    color: colors.amber,
+    color: colors.red,
     fontWeight: "600",
     marginBottom: spacing.sm,
   },
@@ -172,8 +174,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   reasonTypeSelected: {
-    backgroundColor: colors.amber,
-    borderColor: colors.amber,
+    backgroundColor: colors.red,
+    borderColor: colors.red,
   },
   reasonTypeText: {
     ...typography.caption,
@@ -185,7 +187,7 @@ const styles = StyleSheet.create({
   },
   justifyInput: {
     backgroundColor: colors.bg,
-    borderColor: colors.amber,
+    borderColor: colors.red,
     borderRadius: radius.md,
     borderWidth: 1,
     color: colors.textPrimary,
@@ -196,7 +198,7 @@ const styles = StyleSheet.create({
   },
   justifyButton: {
     alignItems: "center",
-    backgroundColor: colors.amber,
+    backgroundColor: colors.red,
     borderRadius: radius.md,
     height: layout.actionButtonHeight,
     justifyContent: "center",
@@ -205,7 +207,7 @@ const styles = StyleSheet.create({
   },
   justifyText: {
     ...typography.label,
-    color: colors.bg,
+    color: colors.black,
     fontWeight: "700",
   },
   pressed: {

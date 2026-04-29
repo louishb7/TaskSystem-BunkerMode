@@ -61,7 +61,7 @@ export default function GeneralMissionCard({
                   style={[styles.actionButton, styles.decidedButton]}
                 >
                   {disabled ? (
-                    <ActivityIndicator color={colors.amber} />
+                    <ActivityIndicator color={colors.red} />
                   ) : (
                     <Text style={[styles.actionText, styles.decidedText]}>Confirmar remocao</Text>
                   )}
@@ -87,7 +87,7 @@ export default function GeneralMissionCard({
                 style={[styles.actionButton, isDecided ? styles.decidedButton : styles.secondaryButton]}
               >
                 {disabled ? (
-                  <ActivityIndicator color={colors.amber} />
+                  <ActivityIndicator color={colors.red} />
                 ) : (
                   <Text style={[styles.actionText, isDecided ? styles.decidedText : styles.secondaryText]}>
                     {isDecided ? "REMOVER DECIDIDO" : "MARCAR DECIDIDO"}
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     padding: spacing.cardPad,
   },
   decidedCard: {
-    borderLeftColor: colors.amber,
+    borderLeftColor: colors.red,
     borderLeftWidth: 3,
   },
   metaRow: {
@@ -215,10 +215,10 @@ const styles = StyleSheet.create({
   },
   decidedButton: {
     backgroundColor: surfaces.amberBg,
-    borderColor: colors.amber,
+    borderColor: colors.red,
   },
   decidedText: {
-    color: colors.amber,
+    color: colors.red,
   },
   removeButton: {
     backgroundColor: surfaces.redBg,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     borderColor: colors.red,
   },
   confirmRemoveText: {
-    color: colors.bg,
+    color: colors.black,
   },
   actionText: {
     ...typography.label,

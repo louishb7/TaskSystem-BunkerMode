@@ -53,8 +53,8 @@ function getDeadline(value) {
   if (date.getTime() === today.getTime()) {
     return {
       label: "HOJE",
-      color: colors.amber,
-      borderColor: colors.amber,
+      color: colors.red,
+      borderColor: colors.red,
       backgroundColor: surfaces.amberBg,
     };
   }

@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing } from "../styles/tokens";
+import { colors, radius, spacing, typography } from "../styles/tokens";
 
 function valueOrDash(value, suffix = "") {
   if (value === undefined || value === null) {
@@ -36,6 +36,8 @@ export default function ReportSummary({ report }) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.bgCard,
+    borderColor: colors.borderStrong,
+    borderWidth: 1,
     borderRadius: radius.lg,
     padding: spacing.cardPad,
   },
@@ -50,10 +52,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   label: {
+    ...typography.small,
     color: colors.textSecondary,
-    fontSize: 10,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
   },
   value: {
     color: colors.textPrimary,
