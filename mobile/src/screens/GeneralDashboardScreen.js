@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { api } from "../api/client";
 import GeneralAssetBackground from "../components/general/GeneralAssetBackground";
 import GeneralCommandHeader from "../components/general/GeneralCommandHeader";
+import GeneralDayActionPanel from "../components/general/GeneralDayActionPanel";
 import GeneralReviewDock from "../components/general/GeneralReviewDock";
 import GeneralTransitionPanel from "../components/general/GeneralTransitionPanel";
 import OperationalOrdersBoard from "../components/general/OperationalOrdersBoard";
@@ -14,7 +15,6 @@ import { generalTheme } from "../styles/generalTheme";
 import { spacing } from "../styles/tokens";
 
 const commandColors = generalTheme.colors;
-const weekDayLabels = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
 
 function getErrorMessage(result, fallback) {
   if (result?.status === 0) {
@@ -74,10 +74,6 @@ function formatWeekLabel(weekDays) {
   return `${formatShortDate(weekDays[0])} - ${formatShortDate(weekDays[6])}`;
 }
 
-function formatSelectedLabel(date) {
-  return `${weekDayLabels[date.getDay()]}, ${formatShortDate(date)}`;
-}
-
 export default function GeneralDashboardScreen({
   token,
   user,
@@ -94,6 +90,7 @@ export default function GeneralDashboardScreen({
   const [togglingId, setTogglingId] = useState(null);
   const [activatingSoldier, setActivatingSoldier] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+  const [showReviews, setShowReviews] = useState(false);
 
   useEffect(() => {
     loadAll({ initial: true });
@@ -102,9 +99,7 @@ export default function GeneralDashboardScreen({
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
   const weekLabel = formatWeekLabel(weekDays);
   const selectedDateApi = formatDateForApi(selectedDate);
-  const selectedDateLabel = formatShortDate(selectedDate);
-  const selectedOrdersLabel = formatSelectedLabel(selectedDate);
-  const todayTime = startOfDay(new Date()).getTime();
+  const todayDate = useMemo(() => startOfDay(new Date()), []);
   const hasReview = reviewMissions.length > 0;
 
   const selectedMissions = useMemo(
@@ -266,25 +261,21 @@ export default function GeneralDashboardScreen({
       <StatusNotice type="error" message={error} tone="command" />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {hasReview ? (
-          <GeneralReviewDock
-            missions={reviewMissions}
-            onLogout={onLogout}
-            onReload={() => loadAll()}
-            token={token}
-          />
-        ) : null}
-
         <WeeklyPlanningBoard
-          onCreate={openCreateForm}
           onSelectDate={(date) => setSelectedDate(startOfDay(date))}
           selectedDate={selectedDate}
-          selectedDateLabel={selectedDateLabel}
-          todayTime={todayTime}
+          todayDate={todayDate}
           weekDays={weekDays}
         />
 
-        {!hasReview ? (
+        <GeneralDayActionPanel
+          onCreate={openCreateForm}
+          onToggleReview={() => setShowReviews((current) => !current)}
+          reviewCount={reviewMissions.length}
+          reviewOpen={showReviews}
+        />
+
+        {showReviews ? (
           <GeneralReviewDock
             missions={reviewMissions}
             onLogout={onLogout}
@@ -294,7 +285,6 @@ export default function GeneralDashboardScreen({
         ) : null}
 
         <OperationalOrdersBoard
-          dateLabel={selectedOrdersLabel}
           missions={selectedMissions}
           onDelete={deleteMission}
           onEdit={openEditForm}

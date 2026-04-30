@@ -24,7 +24,7 @@ export default function GeneralTransitionPanel({ hasReview, loading, onActivate 
         style={[styles.button, hasReview && styles.buttonDeferred, loading && styles.buttonDisabled]}
       >
         {loading ? (
-          <ActivityIndicator color={hasReview ? commandColors.accentDark : commandColors.white} />
+          <ActivityIndicator color={commandColors.transitionDark} />
         ) : (
           <Text style={[styles.buttonText, hasReview && styles.buttonTextDeferred]}>
             ATIVAR SOLDADO
@@ -37,8 +37,8 @@ export default function GeneralTransitionPanel({ hasReview, loading, onActivate 
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: commandColors.panelMuted,
-    borderColor: commandColors.border,
+    backgroundColor: commandColors.transitionSoft,
+    borderColor: commandColors.transition,
     borderRadius: radius.lg,
     borderWidth: 1,
     marginTop: spacing.lg,
@@ -66,8 +66,8 @@ const styles = StyleSheet.create({
   },
   button: {
     alignItems: "center",
-    backgroundColor: commandColors.soldier,
-    borderColor: commandColors.soldier,
+    backgroundColor: commandColors.transition,
+    borderColor: commandColors.transitionDark,
     borderRadius: radius.md,
     borderWidth: 1,
     minHeight: 48,
@@ -75,18 +75,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   buttonDeferred: {
-    backgroundColor: commandColors.panel,
-    borderColor: commandColors.borderStrong,
+    backgroundColor: commandColors.transitionSoft,
+    borderColor: commandColors.transition,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   buttonText: {
     ...typography.label,
-    color: commandColors.white,
+    color: commandColors.transitionDark,
     fontWeight: "900",
   },
   buttonTextDeferred: {
-    color: commandColors.accentDark,
+    color: commandColors.transitionDark,
   },
 });

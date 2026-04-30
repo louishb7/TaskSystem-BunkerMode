@@ -25,6 +25,9 @@ export const generalTheme = {
     route: "#7F8E77",
     soldier: "#273529",
     transparent: "transparent",
+    transition: "#B68A3A",
+    transitionDark: "#6F4E1B",
+    transitionSoft: "#F1E3C2",
     white: "#FBFCF7",
   },
 };

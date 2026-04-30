@@ -11,32 +11,27 @@ function formatDayNumber(date) {
   return String(date.getDate()).padStart(2, "0");
 }
 
+function isSameCalendarDay(left, right) {
+  return (
+    left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate()
+  );
+}
+
 export default function WeeklyPlanningBoard({
-  onCreate,
   onSelectDate,
   selectedDate,
-  selectedDateLabel,
-  todayTime,
+  todayDate,
   weekDays,
 }) {
   return (
     <View style={styles.board}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.kicker}>SEMANA OPERACIONAL</Text>
-          <Text style={styles.title}>Planejar {selectedDateLabel}</Text>
-        </View>
-        <Pressable onPress={onCreate} style={styles.createButton}>
-          <Text style={styles.createText}>NOVA ORDEM — {selectedDateLabel}</Text>
-        </Pressable>
-      </View>
-
       <View style={styles.timeline}>
         <View pointerEvents="none" style={styles.routeLine} />
         {weekDays.map((date) => {
-          const dayTime = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-          const selected = dayTime === selectedDate.getTime();
-          const today = dayTime === todayTime;
+          const selected = isSameCalendarDay(date, selectedDate);
+          const today = isSameCalendarDay(date, todayDate);
           return (
             <Pressable
               key={date.toISOString()}
@@ -51,9 +46,7 @@ export default function WeeklyPlanningBoard({
                   {formatDayNumber(date)}
                 </Text>
               </View>
-              <Text style={[styles.todayLabel, today && styles.todayVisible]}>
-                HOJE
-              </Text>
+              {today ? <Text style={styles.todayLabel}>HOJE</Text> : <View style={styles.todayPlaceholder} />}
             </Pressable>
           );
         })}
@@ -68,41 +61,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingBottom: spacing.md,
   },
-  header: {
-    alignItems: "flex-start",
-    gap: spacing.md,
-    justifyContent: "space-between",
-  },
-  kicker: {
-    ...typography.small,
-    color: commandColors.muted,
-    fontWeight: "800",
-  },
-  title: {
-    color: commandColors.ink,
-    fontSize: 24,
-    fontWeight: "900",
-    marginTop: spacing.xs,
-  },
-  createButton: {
-    alignItems: "center",
-    alignSelf: "stretch",
-    backgroundColor: commandColors.soldier,
-    borderColor: commandColors.soldier,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    minHeight: 46,
-    justifyContent: "center",
-    paddingHorizontal: spacing.md,
-  },
-  createText: {
-    ...typography.label,
-    color: commandColors.white,
-    fontWeight: "900",
-  },
   timeline: {
     flexDirection: "row",
-    marginTop: spacing.md,
     minHeight: 82,
     position: "relative",
   },
@@ -159,11 +119,12 @@ const styles = StyleSheet.create({
   },
   todayLabel: {
     ...typography.small,
-    color: commandColors.transparent,
+    color: commandColors.accentDark,
     fontWeight: "900",
     marginTop: spacing.xs,
   },
-  todayVisible: {
-    color: commandColors.accentDark,
+  todayPlaceholder: {
+    height: 14,
+    marginTop: spacing.xs,
   },
 });

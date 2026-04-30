@@ -9,7 +9,6 @@ import { spacing, typography } from "../../styles/tokens";
 const commandColors = generalTheme.colors;
 
 export default function OperationalOrdersBoard({
-  dateLabel,
   missions,
   onDelete,
   onEdit,
@@ -23,13 +22,7 @@ export default function OperationalOrdersBoard({
 
   return (
     <View style={styles.board}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.kicker}>ORDENS DO DIA</Text>
-          <Text style={styles.title}>{dateLabel}</Text>
-        </View>
-        <Text style={styles.count}>{countLabel}</Text>
-      </View>
+      <Text style={styles.count}>{countLabel}</Text>
 
       {hasMissions ? (
         <View style={styles.list}>
@@ -47,7 +40,7 @@ export default function OperationalOrdersBoard({
         </View>
       ) : (
         <View style={styles.emptyWrap}>
-          <EmptyState tone="command" message={`Nenhuma ordem definida para ${dateLabel}.`} />
+          <EmptyState tone="command" message="Nenhuma ordem definida para o dia selecionado." />
         </View>
       )}
     </View>
@@ -58,27 +51,11 @@ const styles = StyleSheet.create({
   board: {
     marginTop: spacing.lg,
   },
-  header: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: spacing.md,
-  },
-  kicker: {
-    ...typography.small,
-    color: commandColors.muted,
-    fontWeight: "800",
-  },
-  title: {
-    color: commandColors.ink,
-    fontSize: 20,
-    fontWeight: "900",
-    marginTop: spacing.xs,
-  },
   count: {
     ...typography.small,
     color: commandColors.accentDark,
     fontWeight: "900",
+    marginBottom: spacing.sm,
   },
   list: {
     gap: spacing.sm,
