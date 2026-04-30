@@ -26,14 +26,25 @@ function formatShortDate(date) {
   return `${day}/${month}`;
 }
 
-function getDeadline(value) {
+const commandColors = {
+  alert: "#A33A32",
+  alertBg: "#F7E7E3",
+  border: "#C8D0C3",
+  muted: "#6F776D",
+  panel: "#F7F8F2",
+  text: "#2F4A3A",
+};
+
+function getDeadline(value, tone) {
+  const command = tone === "command";
+
   const date = parseDateOnly(value);
   if (!date) {
     return {
       label: "PERMANENTE",
-      color: colors.textMuted,
-      borderColor: colors.bgCard,
-      backgroundColor: colors.bgCard,
+      color: command ? commandColors.muted : colors.textMuted,
+      borderColor: command ? commandColors.border : colors.bgCard,
+      backgroundColor: command ? commandColors.panel : colors.bgCard,
     };
   }
 
@@ -44,40 +55,40 @@ function getDeadline(value) {
   } catch {
     return {
       label: "PERMANENTE",
-      color: colors.textMuted,
-      borderColor: colors.bgCard,
-      backgroundColor: colors.bgCard,
+      color: command ? commandColors.muted : colors.textMuted,
+      borderColor: command ? commandColors.border : colors.bgCard,
+      backgroundColor: command ? commandColors.panel : colors.bgCard,
     };
   }
 
   if (date.getTime() === today.getTime()) {
     return {
       label: "HOJE",
-      color: colors.red,
-      borderColor: colors.red,
-      backgroundColor: surfaces.amberBg,
+      color: command ? commandColors.alert : colors.red,
+      borderColor: command ? commandColors.alert : colors.red,
+      backgroundColor: command ? commandColors.alertBg : surfaces.amberBg,
     };
   }
 
   if (date.getTime() < today.getTime()) {
     return {
       label: "EXPIRADA",
-      color: colors.red,
-      borderColor: colors.red,
-      backgroundColor: surfaces.redBg,
+      color: command ? commandColors.alert : colors.red,
+      borderColor: command ? commandColors.alert : colors.red,
+      backgroundColor: command ? commandColors.alertBg : surfaces.redBg,
     };
   }
 
   return {
     label: formatShortDate(date),
-    color: colors.textSecondary,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.bgCard,
+    color: command ? commandColors.text : colors.textSecondary,
+    borderColor: command ? commandColors.border : colors.borderStrong,
+    backgroundColor: command ? commandColors.panel : colors.bgCard,
   };
 }
 
-export default function DeadlineTag({ dueDate }) {
-  const selected = getDeadline(dueDate);
+export default function DeadlineTag({ dueDate, tone }) {
+  const selected = getDeadline(dueDate, tone);
 
   return (
     <View

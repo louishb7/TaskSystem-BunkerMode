@@ -48,13 +48,13 @@ function getStatusStyle(label) {
   };
 }
 
-export default function Badge({ type, label }) {
+export default function Badge({ type, label, tone = "default" }) {
   const selected =
     type === "decided"
       ? {
-          backgroundColor: surfaces.amberBg,
-          borderColor: colors.red,
-          color: colors.red,
+          backgroundColor: tone === "command" ? "#EEF1E8" : surfaces.amberBg,
+          borderColor: tone === "command" ? "#4E6B58" : colors.red,
+          color: tone === "command" ? "#2F4A3A" : colors.red,
           label: "DECIDIDA",
         }
       : getStatusStyle(label);

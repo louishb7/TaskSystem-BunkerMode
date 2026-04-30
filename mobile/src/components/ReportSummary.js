@@ -10,7 +10,8 @@ function valueOrDash(value, suffix = "") {
   return `${value}${suffix}`;
 }
 
-export default function ReportSummary({ report }) {
+export default function ReportSummary({ report, tone = "default" }) {
+  const command = tone === "command";
   const metrics = [
     ["Taxa de conclusão", valueOrDash(report?.completion_rate, "%")],
     ["Concluídas / total", `${valueOrDash(report?.completed_missions)} / ${valueOrDash(report?.total_missions)}`],
@@ -19,14 +20,18 @@ export default function ReportSummary({ report }) {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, command && styles.commandContainer]}>
       {metrics.map(([label, value], index) => (
         <View
           key={label}
-          style={[styles.row, index < metrics.length - 1 ? styles.rowWithDivider : null]}
+          style={[
+            styles.row,
+            index < metrics.length - 1 ? styles.rowWithDivider : null,
+            command && index < metrics.length - 1 ? styles.commandRowWithDivider : null,
+          ]}
         >
-          <Text style={styles.label}>{label}</Text>
-          <Text style={styles.value}>{value}</Text>
+          <Text style={[styles.label, command && styles.commandLabel]}>{label}</Text>
+          <Text style={[styles.value, command && styles.commandValue]}>{value}</Text>
         </View>
       ))}
     </View>
@@ -41,6 +46,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.cardPad,
   },
+  commandContainer: {
+    backgroundColor: "#F7F8F2",
+    borderColor: "#C8D0C3",
+  },
   row: {
     alignItems: "center",
     flexDirection: "row",
@@ -51,13 +60,22 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderSubtle,
     borderBottomWidth: 1,
   },
+  commandRowWithDivider: {
+    borderBottomColor: "#C8D0C3",
+  },
   label: {
     ...typography.small,
     color: colors.textSecondary,
+  },
+  commandLabel: {
+    color: "#5E6A5F",
   },
   value: {
     color: colors.textPrimary,
     fontSize: 18,
     fontWeight: "700",
+  },
+  commandValue: {
+    color: "#20231F",
   },
 });
