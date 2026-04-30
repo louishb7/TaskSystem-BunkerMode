@@ -2,6 +2,9 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors, layout, spacing, typography } from "../styles/tokens";
+import { generalTheme } from "../styles/generalTheme";
+
+const commandColors = generalTheme.colors;
 
 export default function EmptyState({ tone = "default" }) {
   const command = tone === "command";
@@ -28,7 +31,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   commandSymbol: {
-    color: "#6F776D",
+    color: commandColors.muted,
   },
   title: {
     ...typography.heading,
@@ -37,7 +40,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   commandTitle: {
-    color: "#20231F",
+    color: commandColors.ink,
   },
   subtitle: {
     ...typography.missionInstruction,
@@ -47,6 +50,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   commandSubtitle: {
-    color: "#5E6A5F",
+    color: commandColors.muted,
   },
 });

@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, layout, radius, spacing, surfaces, typography } from "../styles/tokens";
+import { generalTheme } from "../styles/generalTheme";
 import Badge from "./Badge";
 import DeadlineTag from "./DeadlineTag";
 import PriorityBar from "./PriorityBar";
+
+const commandColors = generalTheme.colors;
 
 function hasPermissions(mission) {
   return mission?.permissions && typeof mission.permissions === "object";
@@ -29,6 +32,10 @@ export default function GeneralMissionCard({
   const isDecided = mission?.is_decided === true;
   const statusLabel = mission?.status_label || mission?.status_code || "";
   const command = tone === "command";
+
+  useEffect(() => {
+    setConfirmingToggle(false);
+  }, [mission?.is_decided, mission?.id]);
 
   return (
     <View
@@ -66,13 +73,18 @@ export default function GeneralMissionCard({
               <View style={styles.confirmRow}>
                 <Pressable
                   disabled={disabled}
-                  onPress={() => onToggleDecision(mission)}
-                  style={[styles.actionButton, styles.decidedButton]}
+                  onPress={() => {
+                    setConfirmingToggle(false);
+                    onToggleDecision(mission);
+                  }}
+                  style={[styles.actionButton, styles.decidedButton, command && styles.commandDecidedButton]}
                 >
                   {disabled ? (
-                    <ActivityIndicator color={colors.red} />
+                    <ActivityIndicator color={command ? commandColors.accentDark : colors.red} />
                   ) : (
-                    <Text style={[styles.actionText, styles.decidedText]}>CONFIRMAR REMOÇÃO</Text>
+                    <Text style={[styles.actionText, styles.decidedText, command && styles.commandDecidedText]}>
+                      CONFIRMAR REMOÇÃO
+                    </Text>
                   )}
                 </Pressable>
                 <Pressable
@@ -96,16 +108,18 @@ export default function GeneralMissionCard({
                 style={[
                   styles.actionButton,
                   isDecided ? styles.decidedButton : styles.secondaryButton,
+                  command && isDecided && styles.commandDecidedButton,
                   command && !isDecided && styles.commandSecondaryButton,
                 ]}
               >
                   {disabled ? (
-                    <ActivityIndicator color={colors.red} />
+                    <ActivityIndicator color={command ? commandColors.accentDark : colors.red} />
                   ) : (
                   <Text
                     style={[
                       styles.actionText,
                       isDecided ? styles.decidedText : styles.secondaryText,
+                      command && isDecided && styles.commandDecidedText,
                       command && !isDecided && styles.commandSecondaryText,
                     ]}
                   >
@@ -174,11 +188,14 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
   },
   commandCard: {
-    backgroundColor: "#F7F8F2",
-    borderColor: "#C8D0C3",
+    backgroundColor: commandColors.panel,
+    borderColor: commandColors.border,
   },
   commandDecidedCard: {
-    borderLeftColor: "#4E6B58",
+    backgroundColor: commandColors.decisionSurface,
+    borderColor: commandColors.decisionBorder,
+    borderLeftColor: commandColors.decision,
+    borderLeftWidth: 4,
   },
   metaRow: {
     alignItems: "center",
@@ -191,7 +208,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm + spacing.xs / 2,
   },
   commandTitle: {
-    color: "#20231F",
+    color: commandColors.ink,
   },
   instruction: {
     color: colors.textSecondary,
@@ -200,7 +217,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   commandInstruction: {
-    color: "#5E6A5F",
+    color: commandColors.muted,
   },
   badgeRow: {
     flexDirection: "row",
@@ -222,11 +239,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   commandStatusBadge: {
-    backgroundColor: "#EEF1E8",
-    borderColor: "#C8D0C3",
+    backgroundColor: commandColors.panelMuted,
+    borderColor: commandColors.border,
   },
   commandStatusBadgeText: {
-    color: "#5E6A5F",
+    color: commandColors.muted,
   },
   actions: {
     borderTopColor: colors.borderSubtle,
@@ -238,7 +255,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   commandActions: {
-    borderTopColor: "#C8D0C3",
+    borderTopColor: commandColors.border,
   },
   actionButton: {
     alignItems: "center",
@@ -253,20 +270,27 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
   },
   commandSecondaryButton: {
-    borderColor: "#AEB9AA",
+    borderColor: commandColors.borderStrong,
   },
   secondaryText: {
     color: colors.textSecondary,
   },
   commandSecondaryText: {
-    color: "#2F4A3A",
+    color: commandColors.accentDark,
   },
   decidedButton: {
     backgroundColor: surfaces.amberBg,
     borderColor: colors.red,
   },
+  commandDecidedButton: {
+    backgroundColor: commandColors.decisionSurface,
+    borderColor: commandColors.decisionBorder,
+  },
   decidedText: {
     color: colors.red,
+  },
+  commandDecidedText: {
+    color: commandColors.decisionText,
   },
   removeButton: {
     backgroundColor: surfaces.redBg,

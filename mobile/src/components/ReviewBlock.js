@@ -2,8 +2,11 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors, spacing, typography } from "../styles/tokens";
+import { generalTheme } from "../styles/generalTheme";
 import ReviewCard from "./ReviewCard";
 import StatusNotice from "./StatusNotice";
+
+const commandColors = generalTheme.colors;
 
 export default function ReviewBlock({ missions, onLogout, onReload, token, tone = "default" }) {
   const command = tone === "command";
@@ -22,14 +25,15 @@ export default function ReviewBlock({ missions, onLogout, onReload, token, tone 
 
   return (
     <View>
-      <Text style={styles.warning}>REVISÃO OBRIGATÓRIA</Text>
+      <Text style={[styles.warning, command && styles.commandWarning]}>FALHAS AGUARDANDO DECISÃO</Text>
       {missions.map((mission, index) => (
-        <ReviewCard
-          key={String(mission?.id ?? index)}
-          mission={mission}
-          token={token}
-          onLogout={onLogout}
-          onReload={onReload}
+          <ReviewCard
+            key={String(mission?.id ?? index)}
+            mission={mission}
+            tone={tone}
+            token={token}
+            onLogout={onLogout}
+            onReload={onReload}
         />
       ))}
     </View>
@@ -43,12 +47,15 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     marginBottom: spacing.sm,
   },
+  commandWarning: {
+    color: commandColors.alert,
+  },
   empty: {
     marginBottom: -spacing.md,
   },
   commandEmpty: {
-    backgroundColor: "#F7F8F2",
-    borderColor: "#C8D0C3",
+    backgroundColor: commandColors.panel,
+    borderColor: commandColors.border,
     borderRadius: 4,
     borderWidth: 1,
     marginBottom: 0,
@@ -57,6 +64,6 @@ const styles = StyleSheet.create({
   },
   commandEmptyText: {
     ...typography.notice,
-    color: "#5E6A5F",
+    color: commandColors.muted,
   },
 });

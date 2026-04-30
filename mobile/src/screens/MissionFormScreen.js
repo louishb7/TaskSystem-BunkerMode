@@ -20,20 +20,41 @@ function getErrorMessage(result, fallback) {
   return result?.data?.detail || fallback;
 }
 
-function initialPrazoTipo(mission) {
-  return mission?.prazo ? "data_especifica" : "amanha";
+function initialPrazoTipo(mission, initialPrazo) {
+  return mission?.prazo || initialPrazo ? "data_especifica" : "amanha";
 }
 
-export default function MissionFormScreen({ token, user, mission, onSave, onCancel, onLogout }) {
+function formatPrazoContext(prazo) {
+  if (!prazo || typeof prazo !== "string") {
+    return "";
+  }
+  const [day, month] = prazo.split("-");
+  if (!day || !month) {
+    return prazo;
+  }
+  return `${day}/${month}`;
+}
+
+export default function MissionFormScreen({
+  token,
+  user,
+  mission,
+  initialPrazo,
+  onSave,
+  onCancel,
+  onLogout,
+}) {
   const editingMission = mission !== null && mission !== undefined;
   const [titulo, setTitulo] = useState(mission?.titulo || "");
   const [instrucao, setInstrucao] = useState(mission?.instrucao || "");
-  const [prazoTipo, setPrazoTipo] = useState(initialPrazoTipo(mission));
-  const [prazo, setPrazo] = useState(mission?.prazo || "");
+  const [prazoTipo, setPrazoTipo] = useState(initialPrazoTipo(mission, initialPrazo));
+  const [prazo, setPrazo] = useState(mission?.prazo || initialPrazo || "");
   const [prioridade, setPrioridade] = useState(Number(mission?.prioridade) || 2);
   const [focusedField, setFocusedField] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const lockedInitialPrazo = Boolean(initialPrazo && !editingMission);
+  const prazoContext = formatPrazoContext(initialPrazo);
 
   function buildDeadline() {
     if (prazoTipo === "hoje") {
@@ -89,7 +110,13 @@ export default function MissionFormScreen({ token, user, mission, onSave, onCanc
     >
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.brand}>BUNKERMODE</Text>
-        <Text style={styles.title}>{editingMission ? "Editar missão" : "Nova missão"}</Text>
+        <Text style={styles.title}>{editingMission ? "Editar missão" : "Nova ordem"}</Text>
+        {lockedInitialPrazo ? (
+          <View style={styles.deadlineContext}>
+            <Text style={styles.deadlineContextLabel}>ORDEM PARA</Text>
+            <Text style={styles.deadlineContextValue}>{prazoContext}</Text>
+          </View>
+        ) : null}
 
         <TextInput
           onBlur={() => setFocusedField("")}
@@ -117,26 +144,30 @@ export default function MissionFormScreen({ token, user, mission, onSave, onCanc
           value={instrucao}
         />
 
-        <Segmented
-          options={[
-            ["hoje", "Hoje"],
-            ["amanha", "Amanhã"],
-            ["data_especifica", "Data específica"],
-          ]}
-          selected={prazoTipo}
-          onSelect={setPrazoTipo}
-        />
+        {!lockedInitialPrazo ? (
+          <>
+            <Segmented
+              options={[
+                ["hoje", "Hoje"],
+                ["amanha", "Amanhã"],
+                ["data_especifica", "Data específica"],
+              ]}
+              selected={prazoTipo}
+              onSelect={setPrazoTipo}
+            />
 
-        {prazoTipo === "data_especifica" ? (
-          <TextInput
-            onBlur={() => setFocusedField("")}
-            onChangeText={setPrazo}
-            onFocus={() => setFocusedField("prazo")}
-            placeholder="DD-MM-YYYY"
-            placeholderTextColor={colors.textMuted}
-            style={[styles.input, focusedField === "prazo" && styles.inputFocused]}
-            value={prazo}
-          />
+            {prazoTipo === "data_especifica" ? (
+              <TextInput
+                onBlur={() => setFocusedField("")}
+                onChangeText={setPrazo}
+                onFocus={() => setFocusedField("prazo")}
+                placeholder="DD-MM-YYYY"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, focusedField === "prazo" && styles.inputFocused]}
+                value={prazo}
+              />
+            ) : null}
+          </>
         ) : null}
 
         <Segmented
@@ -159,7 +190,7 @@ export default function MissionFormScreen({ token, user, mission, onSave, onCanc
           {loading ? (
             <ActivityIndicator color={colors.bg} />
           ) : (
-            <Text style={styles.submitText}>{editingMission ? "SALVAR EDIÇÃO" : "CRIAR MISSÃO"}</Text>
+            <Text style={styles.submitText}>{editingMission ? "SALVAR EDIÇÃO" : "CRIAR ORDEM"}</Text>
           )}
         </Pressable>
 
@@ -224,6 +255,26 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: colors.red,
+  },
+  deadlineContext: {
+    backgroundColor: colors.bgCard,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    marginBottom: spacing.sm + spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + spacing.xs,
+  },
+  deadlineContextLabel: {
+    ...typography.small,
+    color: colors.textMuted,
+    fontWeight: "700",
+  },
+  deadlineContextValue: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: "800",
+    marginTop: spacing.xs,
   },
   multiline: {
     minHeight: layout.justificationInputMinHeight,

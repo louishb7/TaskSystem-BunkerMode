@@ -2,6 +2,9 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors, layout, radius, spacing, surfaces, typography } from "../styles/tokens";
+import { generalTheme } from "../styles/generalTheme";
+
+const commandColors = generalTheme.colors;
 
 const typeStyles = {
   error: {
@@ -21,24 +24,38 @@ const typeStyles = {
   },
 };
 
-export default function StatusNotice({ type = "info", message }) {
+export default function StatusNotice({ type = "info", message, tone = "default" }) {
   if (!message) {
     return null;
   }
 
   const selected = typeStyles[type] || typeStyles.info;
+  const command = tone === "command";
+  const commandSelected =
+    type === "error" || type === "warning"
+      ? {
+          backgroundColor: commandColors.alertBg,
+          borderColor: commandColors.alert,
+          color: commandColors.alert,
+        }
+      : {
+          backgroundColor: commandColors.panel,
+          borderColor: commandColors.border,
+          color: commandColors.muted,
+        };
+  const visibleStyle = command ? commandSelected : selected;
 
   return (
     <View
       style={[
         styles.container,
         {
-          backgroundColor: selected.backgroundColor,
-          borderColor: selected.borderColor,
+          backgroundColor: visibleStyle.backgroundColor,
+          borderColor: visibleStyle.borderColor,
         },
       ]}
     >
-      <Text style={[styles.text, { color: selected.color }]}>{message}</Text>
+      <Text style={[styles.text, { color: visibleStyle.color }]}>{message}</Text>
     </View>
   );
 }

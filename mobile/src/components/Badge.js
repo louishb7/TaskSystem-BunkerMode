@@ -2,6 +2,9 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors, layout, radius, surfaces, typography } from "../styles/tokens";
+import { generalTheme } from "../styles/generalTheme";
+
+const commandColors = generalTheme.colors;
 
 function getStatusStyle(label) {
   const statusStyles = {
@@ -52,9 +55,9 @@ export default function Badge({ type, label, tone = "default" }) {
   const selected =
     type === "decided"
       ? {
-          backgroundColor: tone === "command" ? "#EEF1E8" : surfaces.amberBg,
-          borderColor: tone === "command" ? "#4E6B58" : colors.red,
-          color: tone === "command" ? "#2F4A3A" : colors.red,
+          backgroundColor: tone === "command" ? commandColors.decisionSurface : surfaces.amberBg,
+          borderColor: tone === "command" ? commandColors.decisionBorder : colors.red,
+          color: tone === "command" ? commandColors.decisionText : colors.red,
           label: "DECIDIDA",
         }
       : getStatusStyle(label);

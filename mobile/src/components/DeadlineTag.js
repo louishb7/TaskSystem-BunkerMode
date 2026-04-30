@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors, layout, radius, surfaces, typography } from "../styles/tokens";
+import { generalTheme } from "../styles/generalTheme";
 
 function parseDateOnly(value) {
   try {
@@ -26,14 +27,7 @@ function formatShortDate(date) {
   return `${day}/${month}`;
 }
 
-const commandColors = {
-  alert: "#A33A32",
-  alertBg: "#F7E7E3",
-  border: "#C8D0C3",
-  muted: "#6F776D",
-  panel: "#F7F8F2",
-  text: "#2F4A3A",
-};
+const commandColors = generalTheme.colors;
 
 function getDeadline(value, tone) {
   const command = tone === "command";
@@ -81,7 +75,7 @@ function getDeadline(value, tone) {
 
   return {
     label: formatShortDate(date),
-    color: command ? commandColors.text : colors.textSecondary,
+      color: command ? commandColors.accentDark : colors.textSecondary,
     borderColor: command ? commandColors.border : colors.borderStrong,
     backgroundColor: command ? commandColors.panel : colors.bgCard,
   };

@@ -1,0 +1,22 @@
+export const generalTheme = {
+  colors: {
+    accent: "#4E6B58",
+    accentDark: "#2F4A3A",
+    alert: "#A33A32",
+    alertBg: "#F7E7E3",
+    alertMuted: "#8B514B",
+    border: "#C8D0C3",
+    borderStrong: "#AEB9AA",
+    canvas: "#D8DED2",
+    decision: "#72549A",
+    decisionBorder: "#A997C2",
+    decisionSurface: "#F3EFF8",
+    decisionText: "#3F2B57",
+    ink: "#20231F",
+    muted: "#6F776D",
+    panel: "#F7F8F2",
+    panelMuted: "#EEF1E8",
+    transparent: "transparent",
+    white: "#FBFCF7",
+  },
+};

@@ -6,6 +6,14 @@ import { api } from "../../api/client";
 import ModeSwitcher from "../../components/ModeSwitcher";
 import { STATUS } from "../../utils/missionStatus";
 
+const failureReasonTypes = [
+  { value: "not_done", label: "NÃO FIZ" },
+  { value: "done_not_marked", label: "FIZ, NÃO REGISTREI" },
+  { value: "partially_done", label: "FIZ PARCIAL" },
+  { value: "external_blocker", label: "IMPEDIMENTO REAL" },
+  { value: "other", label: "OUTRO" },
+];
+
 function getErrorMessage(result, fallback) {
   if (result?.status === 0) {
     return "NÃO FOI POSSÍVEL CONECTAR À API.";
@@ -18,6 +26,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
   const [missions, setMissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState(null);
+  const [justifyingId, setJustifyingId] = useState(null);
   const [unlocking, setUnlocking] = useState(false);
   const [expandedMissionId, setExpandedMissionId] = useState(null);
   const [returnStep, setReturnStep] = useState("closed");
@@ -29,12 +38,13 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     loadMissions({ initial: true });
   }, [token]);
 
-  const pendingMissions = useMemo(
+  const actionMissions = useMemo(
     () =>
       missions.filter(
         (mission) =>
-          mission?.status_code === STATUS.PENDENTE &&
-          mission?.permissions?.can_complete === true
+          (mission?.status_code === STATUS.PENDENTE &&
+            mission?.permissions?.can_complete === true) ||
+          mission?.permissions?.can_justify === true
       ),
     [missions]
   );
@@ -103,6 +113,28 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     await loadMissions();
   }
 
+  async function justifyMission(missionId, payload) {
+    setJustifyingId(missionId);
+    setError("");
+    setNotice("");
+
+    const result = await api.submitFailureJustification(token, missionId, payload);
+    setJustifyingId(null);
+
+    if (await handleUnauthorized(result)) {
+      return;
+    }
+
+    if (!result.ok) {
+      setError(getErrorMessage(result, "NÃO FOI POSSÍVEL REGISTRAR A JUSTIFICATIVA."));
+      await loadMissions();
+      return;
+    }
+
+    setNotice("JUSTIFICATIVA REGISTRADA");
+    await loadMissions();
+  }
+
   async function returnToGeneral() {
     setUnlocking(true);
     setError("");
@@ -143,7 +175,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
       <View style={styles.scrim}>
       <View style={styles.header}>
         <Text style={styles.title}>SOLDADO</Text>
-        <Text style={styles.meta}>EXECUÇÃO APENAS / {pendingMissions.length} MISSÕES</Text>
+        <Text style={styles.meta}>EXECUÇÃO APENAS / {actionMissions.length} MISSÕES</Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -151,15 +183,17 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
 
       <FlatList
         contentContainerStyle={styles.listContent}
-        data={pendingMissions}
+        data={actionMissions}
         keyExtractor={(item, index) => String(item?.id ?? index)}
         ListEmptyComponent={<Text style={styles.text}>SEM MISSÕES PENDENTES</Text>}
         renderItem={({ item }) => (
           <MissionRow
             completing={completingId === item?.id}
             expanded={expandedMissionId === item?.id}
+            justifying={justifyingId === item?.id}
             mission={item}
             onComplete={() => completeMission(item?.id)}
+            onJustify={(payload) => justifyMission(item?.id, payload)}
             onToggle={() =>
               setExpandedMissionId((current) => (current === item?.id ? null : item?.id))
             }
@@ -245,11 +279,26 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
   );
 }
 
-function MissionRow({ completing, expanded, mission, onComplete, onToggle }) {
+function MissionRow({ completing, expanded, justifying, mission, onComplete, onJustify, onToggle }) {
+  const [failureReasonType, setFailureReasonType] = useState("not_done");
+  const [failureReason, setFailureReason] = useState("");
   const title = mission?.titulo || "MISSÃO";
   const instruction = mission?.instrucao || "";
   const shortInstruction = instruction.length > 96 ? `${instruction.slice(0, 93)}...` : instruction;
   const status = mission?.status_label || mission?.status_code || "PENDENTE";
+  const canComplete = mission?.permissions?.can_complete === true;
+  const canJustify = mission?.permissions?.can_justify === true;
+
+  function submitJustification() {
+    const trimmed = failureReason.trim();
+    if (!trimmed) {
+      return;
+    }
+    onJustify({
+      failure_reason_type: failureReasonType,
+      failure_reason: trimmed,
+    });
+  }
 
   return (
     <View style={styles.mission}>
@@ -268,15 +317,55 @@ function MissionRow({ completing, expanded, mission, onComplete, onToggle }) {
 
       {expanded ? (
         <View style={styles.detailBlock}>
-          <Text style={styles.detailLabel}>INSTRUCAO</Text>
+          <Text style={styles.detailLabel}>INSTRUÇÃO</Text>
           <Text style={styles.detailText}>{instruction || "SEM INSTRUÇÃO"}</Text>
           {mission?.is_decided ? <Text style={styles.detailText}>COMPROMISSO DECIDIDO</Text> : null}
         </View>
       ) : null}
 
-      <Pressable disabled={completing} onPress={onComplete} style={styles.button}>
-        <Text style={styles.buttonText}>{completing ? "EXECUTANDO" : "CONCLUIR"}</Text>
-      </Pressable>
+      {canJustify ? (
+        <View style={styles.justificationBlock}>
+          <Text style={styles.detailLabel}>JUSTIFICATIVA OBRIGATÓRIA</Text>
+          <View style={styles.reasonGrid}>
+            {failureReasonTypes.map((option) => {
+              const selected = option.value === failureReasonType;
+              return (
+                <Pressable
+                  disabled={justifying}
+                  key={option.value}
+                  onPress={() => setFailureReasonType(option.value)}
+                  style={[styles.reasonButton, selected && styles.reasonButtonSelected]}
+                >
+                  <Text style={[styles.reasonButtonText, selected && styles.reasonButtonTextSelected]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <TextInput
+            multiline
+            onChangeText={setFailureReason}
+            placeholder="O QUE ACONTECEU?"
+            placeholderTextColor="#777777"
+            style={styles.justificationInput}
+            value={failureReason}
+          />
+          <Pressable
+            disabled={justifying || !failureReason.trim()}
+            onPress={submitJustification}
+            style={[styles.button, (!failureReason.trim() || justifying) && styles.buttonDisabled]}
+          >
+            <Text style={styles.buttonText}>{justifying ? "REGISTRANDO" : "REGISTRAR JUSTIFICATIVA"}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {canComplete ? (
+        <Pressable disabled={completing} onPress={onComplete} style={styles.button}>
+          <Text style={styles.buttonText}>{completing ? "EXECUTANDO" : "CONCLUIR"}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -410,6 +499,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  justificationBlock: {
+    borderColor: "#3A3A3A",
+    borderRadius: 0,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 12,
+  },
+  reasonGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  reasonButton: {
+    borderColor: "#3A3A3A",
+    borderRadius: 0,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  reasonButtonSelected: {
+    backgroundColor: "#FF2A2A",
+    borderColor: "#FF2A2A",
+  },
+  reasonButtonText: {
+    color: "#A8A8A8",
+    fontFamily: mono,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  reasonButtonTextSelected: {
+    color: "#000000",
+  },
+  justificationInput: {
+    borderColor: "#FF2A2A",
+    borderRadius: 0,
+    borderWidth: 1,
+    color: "#EDEDED",
+    fontFamily: mono,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 12,
+    minHeight: 78,
+    padding: 12,
+    textAlignVertical: "top",
+  },
   error: {
     color: "#FF2A2A",
     fontFamily: mono,
@@ -443,6 +578,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 12,
     padding: 12,
+  },
+  buttonDisabled: {
+    opacity: 0.45,
   },
   buttonText: {
     color: "#000000",

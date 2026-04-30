@@ -2,30 +2,26 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors, layout, radius, spacing, typography } from "../styles/tokens";
+import { generalTheme } from "../styles/generalTheme";
 
-const commandColors = {
-  critical: "#A33A32",
-  important: "#2F4A3A",
-  standard: "#5E6A5F",
-  muted: "#8A9187",
-};
+const commandColors = generalTheme.colors;
 
 function getPriority(priority, tone) {
   const command = tone === "command";
 
   if (Number(priority) === 1) {
-    return { color: command ? commandColors.critical : colors.red, label: "CRÍTICA" };
+    return { color: command ? commandColors.alert : colors.red, label: "CRÍTICA" };
   }
 
   if (Number(priority) === 2) {
-    return { color: command ? commandColors.important : colors.textPrimary, label: "IMPORTANTE" };
+    return { color: command ? commandColors.accentDark : colors.textPrimary, label: "IMPORTANTE" };
   }
 
   if (Number(priority) === 3) {
-    return { color: command ? commandColors.standard : colors.textSecondary, label: "PADRÃO" };
+    return { color: command ? commandColors.muted : colors.textSecondary, label: "PADRÃO" };
   }
 
-  return { color: command ? commandColors.muted : colors.textMuted, label: "-" };
+  return { color: command ? commandColors.borderStrong : colors.textMuted, label: "-" };
 }
 
 export default function PriorityBar({ priority, tone }) {

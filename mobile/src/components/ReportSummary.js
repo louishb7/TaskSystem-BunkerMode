@@ -2,6 +2,9 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors, radius, spacing, typography } from "../styles/tokens";
+import { generalTheme } from "../styles/generalTheme";
+
+const commandColors = generalTheme.colors;
 
 function valueOrDash(value, suffix = "") {
   if (value === undefined || value === null) {
@@ -47,8 +50,8 @@ const styles = StyleSheet.create({
     padding: spacing.cardPad,
   },
   commandContainer: {
-    backgroundColor: "#F7F8F2",
-    borderColor: "#C8D0C3",
+    backgroundColor: commandColors.panel,
+    borderColor: commandColors.border,
   },
   row: {
     alignItems: "center",
@@ -61,14 +64,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   commandRowWithDivider: {
-    borderBottomColor: "#C8D0C3",
+    borderBottomColor: commandColors.border,
   },
   label: {
     ...typography.small,
     color: colors.textSecondary,
   },
   commandLabel: {
-    color: "#5E6A5F",
+    color: commandColors.muted,
   },
   value: {
     color: colors.textPrimary,
@@ -76,6 +79,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   commandValue: {
-    color: "#20231F",
+    color: commandColors.ink,
   },
 });
