@@ -46,6 +46,7 @@ export default function GeneralMissionCard({
         command && isDecided && styles.commandDecidedCard,
       ]}
     >
+      {command ? <View style={[styles.orderRail, isDecided && styles.orderRailDecided]} /> : null}
       <View style={styles.metaRow}>
         <PriorityBar priority={mission?.prioridade} tone={tone} />
         <DeadlineTag dueDate={mission?.prazo ?? null} tone={tone} />
@@ -188,14 +189,31 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
   },
   commandCard: {
-    backgroundColor: commandColors.panel,
+    backgroundColor: commandColors.panelSoft,
     borderColor: commandColors.border,
+    borderRadius: radius.md,
+    marginBottom: 0,
+    overflow: "hidden",
+    paddingLeft: spacing.md + spacing.xs,
   },
   commandDecidedCard: {
     backgroundColor: commandColors.decisionSurface,
     borderColor: commandColors.decisionBorder,
-    borderLeftColor: commandColors.decision,
-    borderLeftWidth: 4,
+    borderLeftColor: commandColors.decisionBorder,
+    borderLeftWidth: 1,
+  },
+  orderRail: {
+    backgroundColor: commandColors.route,
+    bottom: spacing.md,
+    left: 0,
+    opacity: 0.72,
+    position: "absolute",
+    top: spacing.md,
+    width: 3,
+  },
+  orderRailDecided: {
+    backgroundColor: commandColors.decision,
+    opacity: 0.86,
   },
   metaRow: {
     alignItems: "center",
@@ -209,6 +227,7 @@ const styles = StyleSheet.create({
   },
   commandTitle: {
     color: commandColors.ink,
+    fontSize: 18,
   },
   instruction: {
     color: colors.textSecondary,
@@ -239,7 +258,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   commandStatusBadge: {
-    backgroundColor: commandColors.panelMuted,
+    backgroundColor: commandColors.panelMutedSoft,
     borderColor: commandColors.border,
   },
   commandStatusBadgeText: {
@@ -283,7 +302,7 @@ const styles = StyleSheet.create({
     borderColor: colors.red,
   },
   commandDecidedButton: {
-    backgroundColor: commandColors.decisionSurface,
+    backgroundColor: commandColors.decisionWash,
     borderColor: commandColors.decisionBorder,
   },
   decidedText: {

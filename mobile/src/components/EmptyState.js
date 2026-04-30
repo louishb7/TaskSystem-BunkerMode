@@ -6,14 +6,18 @@ import { generalTheme } from "../styles/generalTheme";
 
 const commandColors = generalTheme.colors;
 
-export default function EmptyState({ tone = "default" }) {
+export default function EmptyState({
+  message = "O General ainda não definiu missões para hoje.",
+  title = "Sem ordens no momento",
+  tone = "default",
+}) {
   const command = tone === "command";
 
   return (
     <View style={styles.container}>
       <Text style={[styles.symbol, command && styles.commandSymbol]}>✓</Text>
-      <Text style={[styles.title, command && styles.commandTitle]}>Sem ordens no momento</Text>
-      <Text style={[styles.subtitle, command && styles.commandSubtitle]}>O General ainda não definiu missões para hoje.</Text>
+      <Text style={[styles.title, command && styles.commandTitle]}>{title}</Text>
+      <Text style={[styles.subtitle, command && styles.commandSubtitle]}>{message}</Text>
     </View>
   );
 }

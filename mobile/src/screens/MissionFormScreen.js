@@ -15,6 +15,9 @@ import { api } from "../api/client";
 import StatusNotice from "../components/StatusNotice";
 import { formatDateForApi, getTomorrow } from "../utils/dates";
 import { colors, layout, radius, spacing, typography } from "../styles/tokens";
+import { generalTheme } from "../styles/generalTheme";
+
+const commandColors = generalTheme.colors;
 
 function getErrorMessage(result, fallback) {
   return result?.data?.detail || fallback;
@@ -43,8 +46,10 @@ export default function MissionFormScreen({
   onSave,
   onCancel,
   onLogout,
+  tone = "default",
 }) {
   const editingMission = mission !== null && mission !== undefined;
+  const command = tone === "command";
   const [titulo, setTitulo] = useState(mission?.titulo || "");
   const [instrucao, setInstrucao] = useState(mission?.instrucao || "");
   const [prazoTipo, setPrazoTipo] = useState(initialPrazoTipo(mission, initialPrazo));
@@ -106,15 +111,15 @@ export default function MissionFormScreen({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.container}
+      style={[styles.container, command && styles.commandContainer]}
     >
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.brand}>BUNKERMODE</Text>
-        <Text style={styles.title}>{editingMission ? "Editar missão" : "Nova ordem"}</Text>
+        <Text style={[styles.brand, command && styles.commandBrand]}>BUNKERMODE</Text>
+        <Text style={[styles.title, command && styles.commandTitle]}>{editingMission ? "Editar missão" : "Nova ordem"}</Text>
         {lockedInitialPrazo ? (
-          <View style={styles.deadlineContext}>
-            <Text style={styles.deadlineContextLabel}>ORDEM PARA</Text>
-            <Text style={styles.deadlineContextValue}>{prazoContext}</Text>
+          <View style={[styles.deadlineContext, command && styles.commandDeadlineContext]}>
+            <Text style={[styles.deadlineContextLabel, command && styles.commandDeadlineContextLabel]}>DATA DEFINIDA</Text>
+            <Text style={[styles.deadlineContextValue, command && styles.commandDeadlineContextValue]}>{prazoContext}</Text>
           </View>
         ) : null}
 
@@ -123,8 +128,12 @@ export default function MissionFormScreen({
           onChangeText={setTitulo}
           onFocus={() => setFocusedField("titulo")}
           placeholder="Ex.: Revisar plano semanal"
-          placeholderTextColor={colors.textMuted}
-          style={[styles.input, focusedField === "titulo" && styles.inputFocused]}
+          placeholderTextColor={command ? commandColors.muted : colors.textMuted}
+          style={[
+            styles.input,
+            command && styles.commandInput,
+            focusedField === "titulo" && (command ? styles.commandInputFocused : styles.inputFocused),
+          ]}
           value={titulo}
         />
 
@@ -134,11 +143,12 @@ export default function MissionFormScreen({
           onChangeText={setInstrucao}
           onFocus={() => setFocusedField("instrucao")}
           placeholder="Descreva exatamente o que deve ser feito"
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={command ? commandColors.muted : colors.textMuted}
           style={[
             styles.input,
+            command && styles.commandInput,
             styles.multiline,
-            focusedField === "instrucao" && styles.inputFocused,
+            focusedField === "instrucao" && (command ? styles.commandInputFocused : styles.inputFocused),
           ]}
           textAlignVertical="top"
           value={instrucao}
@@ -154,6 +164,7 @@ export default function MissionFormScreen({
               ]}
               selected={prazoTipo}
               onSelect={setPrazoTipo}
+              tone={tone}
             />
 
             {prazoTipo === "data_especifica" ? (
@@ -162,8 +173,12 @@ export default function MissionFormScreen({
                 onChangeText={setPrazo}
                 onFocus={() => setFocusedField("prazo")}
                 placeholder="DD-MM-YYYY"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.input, focusedField === "prazo" && styles.inputFocused]}
+                placeholderTextColor={command ? commandColors.muted : colors.textMuted}
+                style={[
+                  styles.input,
+                  command && styles.commandInput,
+                  focusedField === "prazo" && (command ? styles.commandInputFocused : styles.inputFocused),
+                ]}
                 value={prazo}
               />
             ) : null}
@@ -178,31 +193,39 @@ export default function MissionFormScreen({
           ]}
           selected={prioridade}
           onSelect={setPrioridade}
+          tone={tone}
         />
 
-        <StatusNotice type="error" message={error} />
+        <StatusNotice type="error" message={error} tone={tone} />
 
         <Pressable
           disabled={loading}
           onPress={submit}
-          style={[styles.submit, editingMission ? styles.submitEdit : styles.submitCreate]}
+          style={[
+            styles.submit,
+            editingMission ? styles.submitEdit : styles.submitCreate,
+            command && styles.commandSubmit,
+          ]}
         >
           {loading ? (
-            <ActivityIndicator color={colors.bg} />
+            <ActivityIndicator color={command ? commandColors.white : colors.bg} />
           ) : (
-            <Text style={styles.submitText}>{editingMission ? "SALVAR EDIÇÃO" : "CRIAR ORDEM"}</Text>
+            <Text style={[styles.submitText, command && styles.commandSubmitText]}>
+              {editingMission ? "SALVAR EDIÇÃO" : command ? "REGISTRAR ORDEM" : "CRIAR ORDEM"}
+            </Text>
           )}
         </Pressable>
 
         <Pressable disabled={loading} onPress={onCancel}>
-          <Text style={styles.cancel}>CANCELAR</Text>
+          <Text style={[styles.cancel, command && styles.commandCancel]}>CANCELAR</Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-function Segmented({ options, selected, onSelect }) {
+function Segmented({ options, selected, onSelect, tone = "default" }) {
+  const command = tone === "command";
   return (
     <View style={styles.segmented}>
       {options.map(([value, label]) => {
@@ -211,9 +234,20 @@ function Segmented({ options, selected, onSelect }) {
           <Pressable
             key={String(value)}
             onPress={() => onSelect(value)}
-            style={[styles.segment, active ? styles.segmentActive : styles.segmentInactive]}
+            style={[
+              styles.segment,
+              active ? styles.segmentActive : styles.segmentInactive,
+              command && styles.commandSegment,
+              command && active && styles.commandSegmentActive,
+            ]}
           >
-            <Text style={[styles.segmentText, active ? styles.segmentTextActive : styles.segmentTextInactive]}>
+            <Text
+              style={[
+                styles.segmentText,
+                active ? styles.segmentTextActive : styles.segmentTextInactive,
+                command && (active ? styles.commandSegmentTextActive : styles.commandSegmentTextInactive),
+              ]}
+            >
               {label}
             </Text>
           </Pressable>
@@ -228,6 +262,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  commandContainer: {
+    backgroundColor: commandColors.canvas,
+  },
   content: {
     padding: spacing.screenH,
     paddingBottom: spacing.xl,
@@ -236,11 +273,17 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.textPrimary,
   },
+  commandBrand: {
+    color: commandColors.muted,
+  },
   title: {
     ...typography.title,
     color: colors.textPrimary,
     marginBottom: spacing.lg,
     marginTop: spacing.xs,
+  },
+  commandTitle: {
+    color: commandColors.ink,
   },
   input: {
     backgroundColor: colors.bgCard,
@@ -256,6 +299,14 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: colors.red,
   },
+  commandInput: {
+    backgroundColor: commandColors.panel,
+    borderColor: commandColors.borderStrong,
+    color: commandColors.ink,
+  },
+  commandInputFocused: {
+    borderColor: commandColors.accentDark,
+  },
   deadlineContext: {
     backgroundColor: colors.bgCard,
     borderColor: colors.borderStrong,
@@ -265,16 +316,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + spacing.xs,
   },
+  commandDeadlineContext: {
+    backgroundColor: commandColors.panelMuted,
+    borderColor: commandColors.border,
+  },
   deadlineContextLabel: {
     ...typography.small,
     color: colors.textMuted,
     fontWeight: "700",
+  },
+  commandDeadlineContextLabel: {
+    color: commandColors.muted,
   },
   deadlineContextValue: {
     color: colors.textPrimary,
     fontSize: 18,
     fontWeight: "800",
     marginTop: spacing.xs,
+  },
+  commandDeadlineContextValue: {
+    color: commandColors.ink,
   },
   multiline: {
     minHeight: layout.justificationInputMinHeight,
@@ -301,6 +362,13 @@ const styles = StyleSheet.create({
   segmentInactive: {
     backgroundColor: colors.bgCard,
   },
+  commandSegment: {
+    borderColor: commandColors.borderStrong,
+  },
+  commandSegmentActive: {
+    backgroundColor: commandColors.accentDark,
+    borderColor: commandColors.accentDark,
+  },
   segmentText: {
     ...typography.caption,
     fontWeight: "700",
@@ -311,6 +379,12 @@ const styles = StyleSheet.create({
   },
   segmentTextInactive: {
     color: colors.textSecondary,
+  },
+  commandSegmentTextActive: {
+    color: commandColors.white,
+  },
+  commandSegmentTextInactive: {
+    color: commandColors.muted,
   },
   submit: {
     alignItems: "center",
@@ -325,15 +399,24 @@ const styles = StyleSheet.create({
   submitEdit: {
     backgroundColor: colors.red,
   },
+  commandSubmit: {
+    backgroundColor: commandColors.soldier,
+  },
   submitText: {
     ...typography.label,
     color: colors.black,
     fontWeight: "700",
+  },
+  commandSubmitText: {
+    color: commandColors.white,
   },
   cancel: {
     color: colors.textMuted,
     fontSize: 13,
     marginTop: spacing.sm + spacing.xs,
     textAlign: "center",
+  },
+  commandCancel: {
+    color: commandColors.muted,
   },
 });
