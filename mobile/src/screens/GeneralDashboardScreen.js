@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "../api/client";
 import BrandSymbol from "../components/BrandSymbol";
@@ -95,6 +96,7 @@ export default function GeneralDashboardScreen({
   onLogout,
   onUserChange,
 }) {
+  const insets = useSafeAreaInsets();
   const [missions, setMissions] = useState([]);
   const [reviewMissions, setReviewMissions] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -106,7 +108,6 @@ export default function GeneralDashboardScreen({
   const [activatingSoldier, setActivatingSoldier] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [showReviews, setShowReviews] = useState(false);
-  const [showActionDock, setShowActionDock] = useState(false);
 
   useEffect(() => {
     loadAll({ initial: true });
@@ -135,6 +136,12 @@ export default function GeneralDashboardScreen({
     });
     return counts;
   }, [missions]);
+
+  const selectedCompletedCount = useMemo(
+    () => selectedMissions.filter((mission) => mission?.status_code === "CONCLUIDA").length,
+    [selectedMissions]
+  );
+  const selectedRemainingCount = Math.max(0, selectedMissions.length - selectedCompletedCount);
 
   async function handleUnauthorized(result) {
     if (result?.status === 401) {
@@ -176,7 +183,7 @@ export default function GeneralDashboardScreen({
     if (reviewResult.ok) {
       setReviewMissions(reviewResult.data);
     } else if (!nextError) {
-      nextError = getErrorMessage(reviewResult, "Não foi possível carregar revisões.");
+      nextError = getErrorMessage(reviewResult, "Não foi possível carregar pós-ação.");
     }
 
     setError(nextError);
@@ -223,6 +230,11 @@ export default function GeneralDashboardScreen({
   }
 
   async function toggleDecision(mission) {
+    if (!mission?.id) {
+      setError("Ordem inválida para alterar Decidida.");
+      return;
+    }
+
     setTogglingId(mission?.id);
     setError("");
     const result = await api.toggleMissionDecision(token, mission?.id);
@@ -231,9 +243,11 @@ export default function GeneralDashboardScreen({
       setTogglingId(null);
       return;
     }
+
     if (!result.ok) {
-      setError(getErrorMessage(result, "Não foi possível alternar a decisão."));
+      setError(getErrorMessage(result, "Não foi possível alterar Decidida."));
     }
+
     await loadAll();
     setTogglingId(null);
   }
@@ -306,10 +320,63 @@ export default function GeneralDashboardScreen({
 
         <StatusNotice type="error" message={error} />
 
-        <Pressable onPress={openCreateForm} style={styles.createButton}>
-          <Text style={styles.createKicker}>DIA SELECIONADO</Text>
-          <Text style={styles.createText}>NOVA ORDEM PARA A CAÇADA</Text>
-        </Pressable>
+        <TacticalPanel elevated style={styles.lionPanel}>
+          <View style={styles.lionTop}>
+            <View style={styles.lionSignal} />
+            <View style={styles.lionCopy}>
+              <Text style={styles.lionEyebrow}>LEÃO DO DIA</Text>
+              <Text style={styles.lionTitle}>{selectedDateLabel}</Text>
+            </View>
+            <View style={styles.lionCounter}>
+              <Text style={styles.lionCounterValue}>{selectedRemainingCount}</Text>
+              <Text style={styles.lionCounterLabel}>RESTAM</Text>
+            </View>
+          </View>
+          <Text style={styles.lionBrief}>
+            {selectedMissions.length === 1
+              ? "1 ordem para matar o leão do dia."
+              : `${selectedMissions.length} ordens para matar o leão do dia.`}
+          </Text>
+          <MissionProgress label="CAÇADA" missions={selectedMissions} />
+        </TacticalPanel>
+
+        <TacticalPanel style={styles.ordersPanel}>
+          <SectionHeader
+            eyebrow="ORDENS DO DIA"
+            title="Plano da caça"
+            meta={
+              selectedMissions.length === 1
+                ? "1 ordem definida para o dia selecionado."
+                : `${selectedMissions.length} ordens definidas para o dia selecionado.`
+            }
+          />
+
+          {selectedMissions.length > 0 ? (
+            <View style={styles.missionList}>
+              {selectedMissions.map((mission, index) => (
+                <MissionCard
+                  key={String(mission?.id ?? index)}
+                  mission={mission}
+                  onDelete={deleteMission}
+                  onEdit={openEditForm}
+                  onToggleDecision={toggleDecision}
+                  toggling={togglingId === mission?.id}
+                  variant="general"
+                />
+              ))}
+            </View>
+          ) : (
+            <EmptyState
+              title="Dia sem ordens"
+              message="Nenhuma ordem foi definida para o dia selecionado."
+            />
+          )}
+
+          <Pressable onPress={openCreateForm} style={styles.createButton}>
+            <Text style={styles.createKicker}>DIA SELECIONADO</Text>
+            <Text style={styles.createText}>NOVA ORDEM CONTRA O LEÃO</Text>
+          </Pressable>
+        </TacticalPanel>
 
         {showReviews ? (
           <ReviewPanel
@@ -319,42 +386,6 @@ export default function GeneralDashboardScreen({
             token={token}
           />
         ) : null}
-
-        <TacticalPanel style={styles.ordersPanel}>
-          <SectionHeader
-            eyebrow="LEÃO DO DIA"
-            title={selectedDateLabel}
-            meta={
-              selectedMissions.length === 1
-                ? "1 ordem para matar o dia"
-                : `${selectedMissions.length} ordens para matar o dia`
-            }
-          />
-
-          {selectedMissions.length > 0 ? (
-            <>
-              <MissionProgress missions={selectedMissions} />
-              <View style={styles.missionList}>
-                {selectedMissions.map((mission, index) => (
-                  <MissionCard
-                    key={String(mission?.id ?? index)}
-                    mission={mission}
-                    onDelete={deleteMission}
-                    onEdit={openEditForm}
-                    onToggleDecision={toggleDecision}
-                    toggling={togglingId === mission?.id}
-                    variant="general"
-                  />
-                ))}
-              </View>
-            </>
-          ) : (
-            <EmptyState
-              title="Dia sem ordens"
-              message="Nenhuma ordem foi definida para o dia selecionado."
-            />
-          )}
-        </TacticalPanel>
 
         <TacticalPanel style={styles.transitionPanel}>
           <SectionHeader
@@ -374,15 +405,10 @@ export default function GeneralDashboardScreen({
         </TacticalPanel>
       </ScrollView>
       <CommandActionDock
-        failureCount={reviewMissions.length}
-        onClose={() => setShowActionDock(false)}
-        onOpen={() => setShowActionDock(true)}
-        onOpenReviews={() => {
-          setShowReviews(true);
-          setShowActionDock(false);
-        }}
-        open={showActionDock}
-        reviewCount={reviewMissions.length}
+        active={showReviews}
+        bottomOffset={Math.max(insets.bottom, 20) + 72}
+        count={reviewMissions.length}
+        onPress={() => setShowReviews((value) => !value)}
       />
     </TacticalScreen>
   );
@@ -404,6 +430,60 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xxl + 80,
   },
   calendarPanel: {
+    marginBottom: theme.spacing.md,
+  },
+  lionPanel: {
+    backgroundColor: "rgba(35,30,23,0.9)",
+    borderColor: "rgba(182,138,58,0.32)",
+    marginTop: theme.spacing.md,
+  },
+  lionTop: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  lionSignal: {
+    backgroundColor: theme.colors.red,
+    height: 46,
+    width: 4,
+  },
+  lionCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  lionEyebrow: {
+    ...theme.typography.small,
+    color: theme.colors.red,
+  },
+  lionTitle: {
+    ...theme.typography.heading,
+    color: theme.colors.white,
+    fontSize: 21,
+    marginTop: 2,
+  },
+  lionCounter: {
+    alignItems: "center",
+    backgroundColor: "rgba(18,15,12,0.72)",
+    borderColor: "rgba(245,240,232,0.16)",
+    borderWidth: 1,
+    minWidth: 58,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  lionCounterValue: {
+    color: theme.colors.white,
+    fontSize: 22,
+    fontWeight: "900",
+  },
+  lionCounterLabel: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+    marginTop: -2,
+  },
+  lionBrief: {
+    ...theme.typography.body,
+    color: theme.colors.textMuted,
     marginBottom: theme.spacing.md,
   },
   createButton: {

@@ -4,18 +4,22 @@ import { StyleSheet, Text, View } from "react-native";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 import BrandSymbol from "./BrandSymbol";
 
-export default function SoldierHeader({ currentDay, missionCount }) {
+export default function SoldierHeader({ currentDay, remainingCount = 0, totalCount = 0 }) {
   return (
     <View style={styles.header}>
       <View style={styles.topline}>
-        <Text style={styles.kicker}>MODO RESTRITO</Text>
+        <Text style={styles.kicker}>MODO SOLDADO</Text>
         <BrandSymbol muted size={34} />
-        <Text style={styles.count}>{missionCount} {missionCount === 1 ? "ORDEM" : "ORDENS"}</Text>
+        <Text style={styles.count}>{remainingCount} RESTAM</Text>
       </View>
-      <Text style={styles.title}>SOLDADO</Text>
+      <Text style={styles.title}>LEÃO DO DIA</Text>
       <Text style={styles.subtitle}>{currentDay}</Text>
       <View style={styles.rule} />
-      <Text style={styles.directive}>ORDENS DO DIA. EXECUTE.</Text>
+      <Text style={styles.directive}>
+        {totalCount === 1
+          ? "1 ordem para matar o leão. Execute."
+          : `${totalCount} ordens para matar o leão. Execute.`}
+      </Text>
     </View>
   );
 }
@@ -43,7 +47,7 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.title,
     color: theme.colors.text,
-    fontSize: 38,
+    fontSize: 34,
   },
   subtitle: {
     ...theme.typography.caption,

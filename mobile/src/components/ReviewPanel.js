@@ -24,7 +24,7 @@ export default function ReviewPanel({ missions, onLogout, onReload, token }) {
     return (
       <TacticalPanel muted style={styles.emptyPanel}>
         <EmptyState
-          title="Sem revisão pendente"
+          title="Sem pós-ação pendente"
           message="Nenhuma falha aguarda decisão do General."
         />
       </TacticalPanel>
@@ -33,7 +33,7 @@ export default function ReviewPanel({ missions, onLogout, onReload, token }) {
 
   return (
     <TacticalPanel danger style={styles.panel}>
-      <Text style={styles.header}>FALHAS AGUARDANDO DECISÃO</Text>
+      <Text style={styles.header}>PÓS-AÇÃO: FALHAS AGUARDANDO DECISÃO</Text>
       <View style={styles.list}>
         {missions.map((mission, index) => (
           <ReviewItem

@@ -57,9 +57,14 @@ class RevisaoJustificativaPayload(BaseModel):
     accepted: bool
 
 
+# TODO: prioridade permanece apenas por compatibilidade com o contrato e o banco.
+# A experiência mobile não expõe mais os níveis antigos ao usuário.
+LEGACY_DEFAULT_PRIORITY = 2
+
+
 class MissaoCreatePayload(BaseModel):
     titulo: str = Field(min_length=1)
-    prioridade: int
+    prioridade: int = LEGACY_DEFAULT_PRIORITY
     prazo: str | None = None
     instrucao: str = Field(min_length=1)
     responsavel_id: int | None = None

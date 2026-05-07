@@ -22,13 +22,15 @@ function getErrorMessage(result, fallback) {
 
 function formatCurrentDay() {
   try {
-    return new Date().toLocaleDateString("pt-BR", {
-      weekday: "long",
-      day: "2-digit",
-      month: "2-digit",
-    });
+    return new Date()
+      .toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+      })
+      .toUpperCase();
   } catch {
-    return "Hoje";
+    return "HOJE";
   }
 }
 
@@ -181,8 +183,20 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
 
   return (
     <TacticalScreen denseBackground variant="soldier">
-      <View style={[styles.content, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <SoldierHeader currentDay={formatCurrentDay()} missionCount={actionMissions.length} />
+      <View
+        style={[
+          styles.content,
+          {
+            paddingBottom: Math.max(insets.bottom, 24) + theme.spacing.sm,
+            paddingTop: Math.max(insets.top, 12),
+          },
+        ]}
+      >
+        <SoldierHeader
+          currentDay={formatCurrentDay()}
+          remainingCount={actionMissions.length}
+          totalCount={missions.length || actionMissions.length}
+        />
 
         <View style={styles.notices}>
           <StatusNotice type="error" message={error} />

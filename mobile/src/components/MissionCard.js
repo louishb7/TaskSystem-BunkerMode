@@ -88,33 +88,16 @@ function formatDeadline(value) {
   return `${day}/${month}`;
 }
 
-function priorityLabel(priority) {
-  if (Number(priority) === 1) {
-    return "CRÍTICA";
-  }
-  if (Number(priority) === 2) {
-    return "IMPORTANTE";
-  }
-  if (Number(priority) === 3) {
-    return "PADRÃO";
-  }
-  return "SEM PRIORIDADE";
-}
-
 function statusText(mission) {
-  if (mission?.status_label) {
-    return mission.status_label;
-  }
-
-  const fallback = {
-    PENDENTE: "Pendente",
-    CONCLUIDA: "Concluída",
-    FALHA_PENDENTE_JUSTIFICATIVA: "Falha aguardando justificativa",
-    FALHA_JUSTIFICADA_PENDENTE_REVISAO: "Falha aguardando revisão",
-    FALHA_REVISADA: "Falha revisada",
+  const compact = {
+    PENDENTE: "PENDENTE",
+    CONCLUIDA: "EXECUTADA",
+    FALHA_PENDENTE_JUSTIFICATIVA: "FALHOU",
+    FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHOU",
+    FALHA_REVISADA: "FALHA REVISADA",
   };
 
-  return fallback[mission?.status_code] || "Pendente";
+  return compact[mission?.status_code] || mission?.status_label || "PENDENTE";
 }
 
 export default function MissionCard({
@@ -161,10 +144,19 @@ export default function MissionCard({
 
   if (soldier) {
     return (
-      <View style={[styles.card, styles.soldierCard, canJustify && styles.dangerCard]}>
+      <View
+        style={[
+          styles.card,
+          styles.soldierCard,
+          isDecided && styles.soldierDecidedCard,
+          canJustify && styles.dangerCard,
+        ]}
+      >
         <View style={styles.cardTop}>
-          <View style={styles.orderCode}>
-            <Text style={styles.orderCodeText}>ORDEM</Text>
+          <View style={[styles.orderCode, isDecided && styles.orderCodeCritical]}>
+            <Text style={[styles.orderCodeText, isDecided && styles.orderCodeCriticalText]}>
+              {isDecided ? "INEGOCIÁVEL" : "ORDEM"}
+            </Text>
           </View>
           <Text numberOfLines={1} style={styles.status}>{statusLabel}</Text>
         </View>
@@ -229,7 +221,7 @@ export default function MissionCard({
             {completing ? (
               <ActivityIndicator color={theme.colors.black} />
             ) : (
-              <Text style={styles.primaryActionText}>CONCLUIR ORDEM</Text>
+              <Text style={styles.primaryActionText}>ORDEM EXECUTADA</Text>
             )}
           </Pressable>
         ) : null}
@@ -241,8 +233,8 @@ export default function MissionCard({
     <View style={[styles.card, isDecided && styles.decidedCard]}>
       <View style={styles.cardTop}>
         <View style={styles.metaCluster}>
-          <Text style={[styles.metaTag, Number(mission?.prioridade) === 1 && styles.metaTagHot]}>
-            {priorityLabel(mission?.prioridade)}
+          <Text style={[styles.metaTag, isDecided && styles.metaTagCritical]}>
+            {isDecided ? "INEGOCIÁVEL" : "ORDEM"}
           </Text>
           <Text style={styles.metaTag}>{formatDeadline(mission?.prazo)}</Text>
         </View>
@@ -254,12 +246,14 @@ export default function MissionCard({
         <Text numberOfLines={3} style={styles.instruction}>{instruction}</Text>
       ) : null}
 
-      <View style={styles.statusRow}>
-        <Text style={[styles.decision, isDecided && styles.decisionActive]}>
-          {isDecided ? "COMPROMETIDA" : "RASCUNHO"}
-        </Text>
-        {isCompleted(mission) ? <Text style={styles.done}>CONCLUÍDA</Text> : null}
-      </View>
+      {isDecided || isCompleted(mission) ? (
+        <View style={styles.statusRow}>
+          {isDecided ? (
+            <Text style={[styles.decision, styles.decisionActive]}>CRÍTICA</Text>
+          ) : null}
+          {isCompleted(mission) ? <Text style={styles.done}>EXECUTADA</Text> : null}
+        </View>
+      ) : null}
 
       <View style={styles.actions}>
         {can(mission, "can_toggle_decided") ? (
@@ -276,7 +270,7 @@ export default function MissionCard({
                 {toggling ? (
                   <ActivityIndicator color={theme.colors.red} />
                 ) : (
-                  <Text style={styles.dangerActionText}>CONFIRMAR</Text>
+                  <Text style={styles.dangerActionText}>CONFIRMAR RETIRADA</Text>
                 )}
               </Pressable>
               <Pressable
@@ -303,7 +297,7 @@ export default function MissionCard({
                 <ActivityIndicator color={theme.colors.red} />
               ) : (
                 <Text style={[styles.secondaryActionText, isDecided && styles.committedActionText]}>
-                  {isDecided ? "RETIRAR COMPROMISSO" : "COMPROMETER"}
+                  {isDecided ? "REMOVER DECIDIDA" : "MARCAR DECIDIDA"}
                 </Text>
               )}
             </Pressable>
@@ -345,9 +339,9 @@ export default function MissionCard({
   );
 }
 
-export function MissionProgress({ missions }) {
+export function MissionProgress({ label = "PROGRESSO", missions }) {
   const completed = missions.filter(isCompleted).length;
-  return <ProgressStrip completed={completed} total={missions.length} />;
+  return <ProgressStrip completed={completed} label={label} total={missions.length} />;
 }
 
 const styles = StyleSheet.create({
@@ -364,6 +358,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceAlt,
     borderLeftColor: theme.colors.red,
     borderLeftWidth: 2,
+  },
+  soldierDecidedCard: {
+    backgroundColor: "#130A0A",
+    borderColor: "rgba(255,42,42,0.34)",
   },
   dangerCard: {
     borderColor: theme.colors.red,
@@ -384,9 +382,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
   },
+  orderCodeCritical: {
+    backgroundColor: theme.colors.redWash,
+  },
   orderCodeText: {
     ...theme.typography.small,
     color: theme.colors.red,
+  },
+  orderCodeCriticalText: {
+    color: theme.colors.white,
   },
   status: {
     ...theme.typography.small,
@@ -427,7 +431,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
   },
-  metaTagHot: {
+  metaTagCritical: {
     borderColor: theme.colors.red,
     color: theme.colors.red,
   },

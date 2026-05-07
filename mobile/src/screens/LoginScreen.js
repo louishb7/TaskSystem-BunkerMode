@@ -39,7 +39,7 @@ export default function LoginScreen({ onAuthenticated }) {
     setLoading(false);
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "Não foi possível entrar em campo."));
+      setError(getErrorMessage(result, "Não foi possível entrar no bunker."));
       return;
     }
 
@@ -56,11 +56,12 @@ export default function LoginScreen({ onAuthenticated }) {
           <View style={styles.identity}>
             <BrandSymbol size={132} />
             <Text style={styles.brand}>BUNKERMODE</Text>
-            <Text style={styles.subtitle}>O GENERAL PENSA. O SOLDADO EXECUTA.</Text>
+            <Text style={styles.subtitle}>TODO DIA EXISTE UM LEÃO.</Text>
+            <Text style={styles.support}>PLANEJE COMO GENERAL. EXECUTE COMO SOLDADO.</Text>
           </View>
 
           <TacticalPanel elevated style={styles.form}>
-            <Text style={styles.formLabel}>ACESSO OPERACIONAL</Text>
+            <Text style={styles.formLabel}>ENTRE NO BUNKER</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
@@ -93,7 +94,7 @@ export default function LoginScreen({ onAuthenticated }) {
               {loading ? (
                 <ActivityIndicator color={theme.colors.black} />
               ) : (
-                <Text style={styles.buttonText}>ENTRAR EM CAMPO</Text>
+                <Text style={styles.buttonText}>ENTRAR NO BUNKER</Text>
               )}
             </Pressable>
 
@@ -129,6 +130,12 @@ const styles = StyleSheet.create({
     ...theme.typography.label,
     color: theme.colors.red,
     marginTop: theme.spacing.sm,
+    textAlign: "center",
+  },
+  support: {
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
     textAlign: "center",
   },
   form: {

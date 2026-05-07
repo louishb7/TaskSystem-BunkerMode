@@ -52,7 +52,6 @@ export default function MissionFormScreen({
   const [instrucao, setInstrucao] = useState(mission?.instrucao || "");
   const [prazoTipo, setPrazoTipo] = useState(initialPrazoTipo(mission, initialPrazo));
   const [prazo, setPrazo] = useState(mission?.prazo || initialPrazo || "");
-  const [prioridade, setPrioridade] = useState(Number(mission?.prioridade) || 2);
   const [focusedField, setFocusedField] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -78,7 +77,6 @@ export default function MissionFormScreen({
     const payload = {
       titulo: titulo.trim(),
       instrucao: instrucao.trim(),
-      prioridade,
       prazo: buildDeadline(),
     };
 
@@ -179,16 +177,6 @@ export default function MissionFormScreen({
                 ) : null}
               </>
             ) : null}
-
-            <Segmented
-              options={[
-                [1, "Alta"],
-                [2, "Média"],
-                [3, "Baixa"],
-              ]}
-              selected={prioridade}
-              onSelect={setPrioridade}
-            />
 
             <StatusNotice type="error" message={error} />
 

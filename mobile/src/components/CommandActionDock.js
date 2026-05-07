@@ -4,144 +4,76 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
 export default function CommandActionDock({
-  failureCount = 0,
-  onClose,
-  onOpen,
-  onOpenReviews,
-  open = false,
-  reviewCount = 0,
+  active = false,
+  bottomOffset = 96,
+  count = 0,
+  onPress,
 }) {
-  const pendingCount = Math.max(reviewCount, failureCount);
-
   return (
-    <View pointerEvents="box-none" style={styles.root}>
-      {open ? (
-        <View style={styles.menu}>
-          <DockOption count={reviewCount} label="Revisões" onPress={onOpenReviews} />
-          <DockOption count={failureCount} label="Falhas" onPress={onOpenReviews} />
-          <DockOption count={pendingCount} label="Pendências" onPress={onOpenReviews} />
-          <DockOption disabled label="Relatórios" state="indisponível" />
-        </View>
-      ) : null}
-
+    <View pointerEvents="box-none" style={[styles.root, { bottom: bottomOffset }]}>
       <Pressable
-        onPress={open ? onClose : onOpen}
-        style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.fab,
+          active && styles.fabActive,
+          pressed && styles.pressed,
+        ]}
       >
-        <Text style={styles.fabLabel}>{open ? "FECHAR" : "COMANDO"}</Text>
-        <Text style={styles.fabCount}>{pendingCount}</Text>
+        <Text style={[styles.fabLabel, active && styles.fabLabelActive]}>PÓS-AÇÃO</Text>
+        {count > 0 ? (
+          <View style={styles.countBox}>
+            <Text style={styles.countText}>{count > 99 ? "99+" : count}</Text>
+          </View>
+        ) : null}
       </Pressable>
     </View>
-  );
-}
-
-function DockOption({ count, disabled = false, label, onPress, state }) {
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.option, disabled && styles.optionDisabled]}
-    >
-      <View style={styles.optionCopy}>
-        <Text style={[styles.optionLabel, disabled && styles.optionLabelDisabled]}>{label}</Text>
-        <Text style={styles.optionState}>{state || "abrir painel"}</Text>
-      </View>
-      {typeof count === "number" ? (
-        <View style={[styles.countBox, count > 0 && styles.countBoxActive]}>
-          <Text style={[styles.countText, count > 0 && styles.countTextActive]}>{count}</Text>
-        </View>
-      ) : null}
-    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     alignItems: "flex-end",
-    bottom: 20,
     position: "absolute",
     right: theme.spacing.screen,
     zIndex: 20,
   },
-  menu: {
-    backgroundColor: "rgba(18,15,12,0.96)",
-    borderColor: "rgba(245,240,232,0.18)",
-    borderWidth: 1,
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.sm,
-    padding: theme.spacing.sm,
-    width: 198,
-  },
-  option: {
+  fab: {
     alignItems: "center",
-    backgroundColor: "rgba(52,48,41,0.92)",
-    borderColor: "rgba(245,240,232,0.12)",
+    backgroundColor: "rgba(35,30,23,0.96)",
+    borderColor: "rgba(182,138,58,0.66)",
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     flexDirection: "row",
     gap: theme.spacing.sm,
-    minHeight: 44,
-    paddingHorizontal: theme.spacing.sm,
+    minHeight: 52,
+    paddingHorizontal: theme.spacing.md,
   },
-  optionDisabled: {
-    opacity: 0.45,
-  },
-  optionCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  optionLabel: {
-    ...theme.typography.label,
-    color: theme.colors.text,
-  },
-  optionLabelDisabled: {
-    color: theme.colors.textMuted,
-  },
-  optionState: {
-    ...theme.typography.small,
-    color: theme.colors.textDim,
-    marginTop: 2,
-  },
-  countBox: {
-    alignItems: "center",
-    borderColor: theme.colors.borderStrong,
-    borderWidth: 1,
-    height: 28,
-    justifyContent: "center",
-    width: 34,
-  },
-  countBoxActive: {
-    backgroundColor: theme.colors.red,
-    borderColor: theme.colors.red,
-  },
-  countText: {
-    ...theme.typography.small,
-    color: theme.colors.textMuted,
-  },
-  countTextActive: {
-    color: theme.colors.black,
-  },
-  fab: {
-    alignItems: "center",
+  fabActive: {
     backgroundColor: theme.colors.rust,
     borderColor: theme.colors.amber,
-    borderRadius: theme.radius.pill,
-    borderWidth: 1,
-    height: 62,
-    justifyContent: "center",
-    width: 62,
   },
   pressed: {
     opacity: 0.72,
   },
   fabLabel: {
-    ...theme.typography.small,
+    ...theme.typography.label,
     color: theme.colors.white,
-    fontSize: 8,
+    fontSize: 11,
   },
-  fabCount: {
-    color: theme.colors.red,
-    fontSize: 18,
-    fontWeight: "900",
-    marginTop: -1,
+  fabLabelActive: {
+    color: theme.colors.white,
+  },
+  countBox: {
+    alignItems: "center",
+    backgroundColor: theme.colors.red,
+    borderColor: theme.colors.red,
+    borderWidth: 1,
+    minWidth: 28,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 3,
+  },
+  countText: {
+    ...theme.typography.small,
+    color: theme.colors.black,
   },
 });

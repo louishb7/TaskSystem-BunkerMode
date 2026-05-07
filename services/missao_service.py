@@ -7,6 +7,9 @@ from services.exceptions import PermissaoNegadaError
 from services.mission_permissions import MissionPermissions
 
 
+LEGACY_DEFAULT_PRIORITY = 2
+
+
 class MissaoService:
     """Centraliza os casos de uso de missão da API."""
 
@@ -20,7 +23,9 @@ class MissaoService:
         responsavel_id = dados.get("responsavel_id") or getattr(usuario, "usuario_id", None)
         campos_missao = {
             "titulo": dados["titulo"],
-            "prioridade": dados["prioridade"],
+            # TODO: prioridade é compatibilidade legada do banco/API.
+            # A experiência do produto usa apenas Decidida como compromisso crítico.
+            "prioridade": dados.get("prioridade", LEGACY_DEFAULT_PRIORITY),
             "prazo": dados.get("prazo"),
             "instrucao": dados["instrucao"],
             "user_id": responsavel_id,
@@ -339,7 +344,6 @@ class MissaoService:
             key=lambda missao: (
                 0 if missao.requires_soldier_justification() else 1,
                 0 if missao.is_decided else 1,
-                missao.prioridade.value,
                 missao.due_date or date.max,
                 missao.missao_id or 0,
             ),

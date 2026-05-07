@@ -28,15 +28,20 @@ export default function BunkerBackground({ dense = false, variant = "general" })
       <ImageBackground
         imageStyle={[
           styles.textureImage,
-          soldier && styles.soldierTexture,
-          login && styles.loginTexture,
           dense && styles.textureDense,
+          login && styles.loginTexture,
+          soldier && styles.soldierTexture,
         ]}
         resizeMode="repeat"
         source={backgroundSource}
         style={styles.texture}
       />
-      <ImageBackground imageStyle={styles.noiseImage} resizeMode="repeat" source={noise} style={styles.texture} />
+      <ImageBackground
+        imageStyle={[styles.noiseImage, soldier && styles.noiseSoldier]}
+        resizeMode="repeat"
+        source={noise}
+        style={styles.texture}
+      />
       {soldier ? null : (
         <ImageBackground imageStyle={styles.gridImage} resizeMode="cover" source={grid} style={styles.texture} />
       )}
@@ -44,9 +49,13 @@ export default function BunkerBackground({ dense = false, variant = "general" })
       <View style={[styles.vignetteTop, soldier && styles.soldierVignetteTop]} />
       <View style={styles.vignetteBottom} />
       <View style={[styles.wallLight, soldier && styles.wallLightSoldier]} />
-      <View style={styles.verticalLineLeft} />
-      <View style={styles.verticalLineRight} />
-      <View style={styles.horizontalLine} />
+      {soldier ? null : (
+        <>
+          <View style={styles.verticalLineLeft} />
+          <View style={styles.verticalLineRight} />
+          <View style={styles.horizontalLine} />
+        </>
+      )}
     </View>
   );
 }
@@ -73,13 +82,16 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   soldierTexture: {
-    opacity: 0.12,
+    opacity: 0.09,
   },
   loginTexture: {
     opacity: 0.2,
   },
   noiseImage: {
     opacity: 0.08,
+  },
+  noiseSoldier: {
+    opacity: 0.035,
   },
   gridImage: {
     opacity: 0.08,

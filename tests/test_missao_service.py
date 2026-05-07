@@ -5,7 +5,7 @@ import pytest
 
 from auditoria import EventoAuditoria
 from core_exceptions import MissaoNaoEncontrada
-from missao import Missao, StatusMissao
+from missao import Missao, PrioridadeMissao, StatusMissao
 from services.auth_service import AuthService
 from services.missao_service import MissaoService
 from services.mission_permissions import MissionPermissions
@@ -69,6 +69,7 @@ class RepositorioOwnershipFake:
         )
         self.contexto = {"criada_por_id": 1, "responsavel_id": 1}
         self.missao_atualizada = None
+        self.missao_adicionada = None
         self.missao_removida_id = None
         self.auditoria = [
             EventoAuditoria(
@@ -102,6 +103,16 @@ class RepositorioOwnershipFake:
     def atualizar_missao(self, missao):
         self.missao = missao
         self.missao_atualizada = missao
+
+    def adicionar_missao(self, missao):
+        self.missao = missao
+        self.missao_adicionada = missao
+
+    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id):
+        self.contexto = {
+            "criada_por_id": criada_por_id,
+            "responsavel_id": responsavel_id,
+        }
 
     def remover_missao(self, missao_id):
         self.missao_removida_id = missao_id
@@ -156,7 +167,7 @@ def test_listar_missoes_sem_usuario_mantem_listagem_geral():
     assert [missao.titulo for missao in missoes] == ["Missão geral"]
 
 
-def test_listar_missoes_prioriza_decididas_antes_da_prioridade_numerica():
+def test_listar_missoes_prioriza_decididas_e_ignora_prioridade_numerica():
     repositorio = RepositorioListagemFake()
     repositorio.carregar_dados = lambda: [
         Missao(
@@ -423,6 +434,26 @@ def test_usuario_em_modo_soldado_nao_pode_criar_missao():
         )
 
 
+def test_criar_missao_usa_prioridade_legacy_quando_payload_nao_envia():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {
+            "titulo": "Ordem sem prioridade visível",
+            "prazo": "24-04-2026",
+            "instrucao": "Executar sem renegociar",
+            "responsavel_id": 1,
+        },
+        usuario=usuario,
+    )
+
+    assert missao.prioridade == PrioridadeMissao.MEDIA
+    assert repositorio.missao_adicionada == missao
+    assert repositorio.auditoria_registrada[-1].acao == "missao_criada"
+
+
 def test_usuario_pode_remover_apenas_missao_propria():
     repositorio = RepositorioOwnershipFake()
     service = MissaoService(repositorio)
@@ -471,6 +502,18 @@ def test_usuario_pode_alternar_decisao_sem_afetar_outros_campos():
     assert missao.is_decided is True
     assert missao.titulo == "Missão protegida"
     assert repositorio.auditoria_registrada[-1].acao == "missao_decidida"
+
+
+def test_usuario_pode_remover_decisao_de_missao_pendente():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    service.alternar_decisao(10, usuario=usuario)
+    missao = service.alternar_decisao(10, usuario=usuario)
+
+    assert missao.is_decided is False
+    assert repositorio.auditoria_registrada[-1].acao == "missao_decisao_removida"
 
 
 def test_usuario_em_modo_soldado_nao_pode_editar_missao():
