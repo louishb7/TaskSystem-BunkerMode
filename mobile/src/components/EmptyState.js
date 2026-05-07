@@ -1,23 +1,18 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, layout, spacing, typography } from "../styles/tokens";
-import { generalTheme } from "../styles/generalTheme";
-
-const commandColors = generalTheme.colors;
+import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
+import BrandSymbol from "./BrandSymbol";
 
 export default function EmptyState({
   message = "O General ainda não definiu missões para hoje.",
   title = "Sem ordens no momento",
-  tone = "default",
 }) {
-  const command = tone === "command";
-
   return (
     <View style={styles.container}>
-      <Text style={[styles.symbol, command && styles.commandSymbol]}>✓</Text>
-      <Text style={[styles.title, command && styles.commandTitle]}>{title}</Text>
-      <Text style={[styles.subtitle, command && styles.commandSubtitle]}>{message}</Text>
+      <BrandSymbol muted size={56} />
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.subtitle}>{message}</Text>
     </View>
   );
 }
@@ -25,35 +20,22 @@ export default function EmptyState({
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    backgroundColor: colors.transparent,
+    backgroundColor: theme.colors.transparent,
     justifyContent: "center",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
-  },
-  symbol: {
-    ...typography.emptySymbol,
-    color: colors.textMuted,
-  },
-  commandSymbol: {
-    color: commandColors.muted,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.xl,
   },
   title: {
-    ...typography.heading,
-    color: colors.textPrimary,
-    marginTop: spacing.md,
+    ...theme.typography.heading,
+    color: theme.colors.text,
+    marginTop: theme.spacing.md,
     textAlign: "center",
-  },
-  commandTitle: {
-    color: commandColors.ink,
   },
   subtitle: {
-    ...typography.missionInstruction,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    maxWidth: layout.emptyMaxWidth,
+    ...theme.typography.body,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.sm,
+    maxWidth: 280,
     textAlign: "center",
-  },
-  commandSubtitle: {
-    color: commandColors.muted,
   },
 });

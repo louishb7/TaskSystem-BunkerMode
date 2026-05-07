@@ -1,63 +1,48 @@
 import React from "react";
-import { ImageBackground, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { colors, radius, spacing } from "../styles/tokens";
-
-const bunkerBackground = require("../assets/bunkermode/backgrounds/bg_bunker_reference.png");
+import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
 export default function TacticalPanel({
   children,
   danger = false,
+  elevated = false,
   muted = false,
   style,
-  textured = false,
 }) {
-  const panelStyle = [
-    styles.panel,
-    danger && styles.danger,
-    muted && styles.muted,
-    style,
-  ];
-
-  if (textured) {
-    return (
-      <ImageBackground
-        imageStyle={styles.texture}
-        resizeMode="cover"
-        source={bunkerBackground}
-        style={panelStyle}
-      >
-        <View style={styles.textureShade}>{children}</View>
-      </ImageBackground>
-    );
-  }
-
-  return <View style={panelStyle}>{children}</View>;
+  return (
+    <View
+      style={[
+        styles.panel,
+        muted && styles.muted,
+        elevated && styles.elevated,
+        danger && styles.danger,
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: colors.bgCard,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.lg,
+    backgroundColor: "rgba(36,33,27,0.92)",
+    borderColor: "rgba(245,240,232,0.16)",
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     overflow: "hidden",
-    padding: spacing.cardPad,
+    padding: theme.spacing.md,
   },
   danger: {
-    borderColor: colors.red,
+    borderColor: theme.colors.red,
   },
   muted: {
-    backgroundColor: colors.black,
-    borderColor: colors.borderSubtle,
+    backgroundColor: "rgba(18,15,12,0.88)",
+    borderColor: "rgba(245,240,232,0.1)",
   },
-  texture: {
-    opacity: 0.16,
-  },
-  textureShade: {
-    backgroundColor: "rgba(0,0,0,0.72)",
-    flex: 1,
-    margin: -spacing.cardPad,
-    padding: spacing.cardPad,
+  elevated: {
+    backgroundColor: "rgba(48,43,35,0.94)",
+    borderColor: "rgba(245,240,232,0.2)",
   },
 });

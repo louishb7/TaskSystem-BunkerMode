@@ -1,0 +1,92 @@
+import React from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+
+import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
+
+export default function ModeSwitchButton({
+  disabled = false,
+  loading = false,
+  mode = "general",
+  onPress,
+}) {
+  const soldier = mode === "soldier";
+
+  return (
+    <Pressable
+      disabled={disabled || loading}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.button,
+        soldier ? styles.generalButton : styles.soldierButton,
+        (pressed || disabled || loading) && styles.pressed,
+      ]}
+    >
+      <View style={styles.copy}>
+        <Text style={[styles.kicker, soldier && styles.kickerSoldier]}>
+          {soldier ? "SAÍDA RESTRITA" : "MODO RESTRITO"}
+        </Text>
+        <Text style={[styles.label, soldier && styles.labelSoldier]}>
+          {soldier ? "RETORNAR AO COMANDO" : "ATIVAR SOLDADO"}
+        </Text>
+      </View>
+      {loading ? (
+        <ActivityIndicator color={soldier ? theme.colors.text : theme.colors.black} />
+      ) : (
+        <Text style={[styles.marker, soldier && styles.markerSoldier]}>
+          {soldier ? "VALIDAR" : "ENTRAR"}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: {
+    alignItems: "center",
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 58,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  soldierButton: {
+    backgroundColor: theme.colors.amber,
+    borderColor: theme.colors.amber,
+  },
+  generalButton: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.borderStrong,
+  },
+  pressed: {
+    opacity: 0.72,
+  },
+  copy: {
+    flex: 1,
+    gap: theme.spacing.xs,
+    minWidth: 0,
+  },
+  kicker: {
+    ...theme.typography.small,
+    color: theme.colors.amberDark,
+  },
+  kickerSoldier: {
+    color: theme.colors.textDim,
+  },
+  label: {
+    ...theme.typography.label,
+    color: theme.colors.black,
+    fontSize: 14,
+  },
+  labelSoldier: {
+    color: theme.colors.text,
+  },
+  marker: {
+    ...theme.typography.small,
+    color: theme.colors.amberDark,
+  },
+  markerSoldier: {
+    color: theme.colors.red,
+  },
+});

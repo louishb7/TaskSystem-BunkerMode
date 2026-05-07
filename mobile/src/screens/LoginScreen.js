@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,9 +11,10 @@ import {
 } from "react-native";
 
 import { api } from "../api/client";
-import { colors, layout, radius, spacing, typography } from "../styles/tokens";
-
-const logo = require("../assets/bunkermode/logo/logo_final_selected.png");
+import BrandSymbol from "../components/BrandSymbol";
+import TacticalPanel from "../components/TacticalPanel";
+import TacticalScreen from "../components/TacticalScreen";
+import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
 function getErrorMessage(result, fallback) {
   return result?.data?.detail || fallback;
@@ -49,124 +49,131 @@ export default function LoginScreen({ onAuthenticated }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.container}
+      style={styles.keyboard}
     >
-      <View style={styles.top}>
-        <Image resizeMode="contain" source={logo} style={styles.logo} />
-        <Text style={styles.brand}>BUNKERMODE</Text>
-        <Text style={styles.subtitle}>O GENERAL PENSA. O SOLDADO EXECUTA.</Text>
-      </View>
+      <TacticalScreen denseBackground variant="login">
+        <View style={styles.container}>
+          <View style={styles.identity}>
+            <BrandSymbol size={132} />
+            <Text style={styles.brand}>BUNKERMODE</Text>
+            <Text style={styles.subtitle}>O GENERAL PENSA. O SOLDADO EXECUTA.</Text>
+          </View>
 
-      <View style={styles.form}>
-        <TextInput
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          onChangeText={setUsuario}
-          onBlur={() => setFocusedField("")}
-          onFocus={() => setFocusedField("usuario")}
-          placeholder="usuário"
-          placeholderTextColor={colors.textMuted}
-          style={[styles.input, focusedField === "usuario" && styles.inputFocused]}
-          value={usuario}
-        />
-        <TextInput
-          autoCapitalize="none"
-          onBlur={() => setFocusedField("")}
-          onFocus={() => setFocusedField("senha")}
-          onChangeText={setSenha}
-          placeholder="senha"
-          placeholderTextColor={colors.textMuted}
-          secureTextEntry
-          style={[styles.input, focusedField === "senha" && styles.inputFocused]}
-          value={senha}
-        />
+          <TacticalPanel elevated style={styles.form}>
+            <Text style={styles.formLabel}>ACESSO OPERACIONAL</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              onBlur={() => setFocusedField("")}
+              onChangeText={setUsuario}
+              onFocus={() => setFocusedField("usuario")}
+              placeholder="usuário"
+              placeholderTextColor={theme.colors.textDim}
+              style={[styles.input, focusedField === "usuario" && styles.inputFocused]}
+              value={usuario}
+            />
+            <TextInput
+              autoCapitalize="none"
+              onBlur={() => setFocusedField("")}
+              onChangeText={setSenha}
+              onFocus={() => setFocusedField("senha")}
+              placeholder="senha"
+              placeholderTextColor={theme.colors.textDim}
+              secureTextEntry
+              style={[styles.input, focusedField === "senha" && styles.inputFocused]}
+              value={senha}
+            />
 
-        <Pressable
-          disabled={loading}
-          onPress={handleLogin}
-          style={({ pressed }) => [styles.button, (pressed || loading) && styles.buttonActive]}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.black} />
-          ) : (
-            <Text style={styles.buttonText}>ENTRAR EM CAMPO</Text>
-          )}
-        </Pressable>
+            <Pressable
+              disabled={loading}
+              onPress={handleLogin}
+              style={({ pressed }) => [styles.button, (pressed || loading) && styles.buttonActive]}
+            >
+              {loading ? (
+                <ActivityIndicator color={theme.colors.black} />
+              ) : (
+                <Text style={styles.buttonText}>ENTRAR EM CAMPO</Text>
+              )}
+            </Pressable>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </View>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+          </TacticalPanel>
+        </View>
+      </TacticalScreen>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboard: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    alignItems: "center",
-    backgroundColor: colors.bg,
     justifyContent: "center",
-    paddingHorizontal: spacing.screenH,
+    paddingHorizontal: theme.spacing.screen,
   },
-  top: {
+  identity: {
     alignItems: "center",
-    marginBottom: spacing.lg,
+    marginBottom: theme.spacing.lg,
   },
   brand: {
-    ...typography.label,
-    color: colors.textPrimary,
+    ...theme.typography.title,
+    color: theme.colors.text,
+    fontSize: 28,
+    marginTop: theme.spacing.sm,
     textAlign: "center",
   },
   subtitle: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: "800",
-    marginTop: spacing.sm,
+    ...theme.typography.label,
+    color: theme.colors.red,
+    marginTop: theme.spacing.sm,
     textAlign: "center",
   },
-  logo: {
-    height: 110,
-    marginBottom: spacing.md,
-    width: 110,
-  },
   form: {
-    gap: spacing.sm + spacing.xs,
-    width: layout.loginWidth,
+    gap: theme.spacing.sm,
+  },
+  formLabel: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+    marginBottom: theme.spacing.xs,
   },
   input: {
-    backgroundColor: colors.bgCard,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
+    ...theme.typography.body,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
-    color: colors.textPrimary,
-    fontSize: typography.input.fontSize,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + spacing.xs + spacing.xs / 2,
+    color: theme.colors.text,
+    minHeight: theme.layout.actionHeight,
+    paddingHorizontal: theme.spacing.md,
   },
   inputFocused: {
-    borderColor: colors.red,
+    borderColor: theme.colors.red,
   },
   button: {
     alignItems: "center",
-    backgroundColor: colors.red,
-    borderColor: colors.red,
+    backgroundColor: theme.colors.red,
+    borderColor: theme.colors.red,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
-    borderRadius: radius.md,
-    height: layout.loginButtonHeight,
+    height: theme.layout.actionHeight,
     justifyContent: "center",
-    width: layout.fullWidth,
+    marginTop: theme.spacing.xs,
+    width: "100%",
   },
   buttonActive: {
-    opacity: 0.85,
+    opacity: 0.78,
   },
   buttonText: {
-    ...typography.label,
-    color: colors.black,
-    fontWeight: "700",
+    ...theme.typography.label,
+    color: theme.colors.black,
+    fontSize: 14,
   },
   error: {
-    ...typography.notice,
-    color: colors.red,
+    ...theme.typography.caption,
+    color: theme.colors.red,
     textAlign: "center",
   },
 });

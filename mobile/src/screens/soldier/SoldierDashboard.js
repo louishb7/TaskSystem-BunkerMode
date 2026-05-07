@@ -3,22 +3,33 @@ import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-na
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "../../api/client";
-import ModeSwitcher from "../../components/ModeSwitcher";
+import BrandSymbol from "../../components/BrandSymbol";
+import EmptyState from "../../components/EmptyState";
+import MissionCard from "../../components/MissionCard";
+import ModeSwitchButton from "../../components/ModeSwitchButton";
+import SoldierHeader from "../../components/SoldierHeader";
+import StatusNotice from "../../components/StatusNotice";
+import TacticalScreen from "../../components/TacticalScreen";
+import { bunkerTheme as theme } from "../../theme/bunkermodeTheme";
 import { STATUS } from "../../utils/missionStatus";
-
-const failureReasonTypes = [
-  { value: "not_done", label: "NÃO FIZ" },
-  { value: "done_not_marked", label: "FIZ, NÃO REGISTREI" },
-  { value: "partially_done", label: "FIZ PARCIAL" },
-  { value: "external_blocker", label: "IMPEDIMENTO REAL" },
-  { value: "other", label: "OUTRO" },
-];
 
 function getErrorMessage(result, fallback) {
   if (result?.status === 0) {
-    return "NÃO FOI POSSÍVEL CONECTAR À API.";
+    return "Não foi possível conectar à API.";
   }
   return result?.data?.detail || fallback;
+}
+
+function formatCurrentDay() {
+  try {
+    return new Date().toLocaleDateString("pt-BR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+    });
+  } catch {
+    return "Hoje";
+  }
 }
 
 export default function SoldierDashboard({ token, onLogout, onUserChange }) {
@@ -28,7 +39,6 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
   const [completingId, setCompletingId] = useState(null);
   const [justifyingId, setJustifyingId] = useState(null);
   const [unlocking, setUnlocking] = useState(false);
-  const [expandedMissionId, setExpandedMissionId] = useState(null);
   const [returnStep, setReturnStep] = useState("closed");
   const [senha, setSenha] = useState("");
   const [error, setError] = useState("");
@@ -63,7 +73,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
       return false;
     }
     if (!result.ok) {
-      setError(getErrorMessage(result, "NÃO FOI POSSÍVEL RECARREGAR O USUÁRIO."));
+      setError(getErrorMessage(result, "Não foi possível recarregar o usuário."));
       return false;
     }
     await onUserChange(result.data);
@@ -83,7 +93,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "NÃO FOI POSSÍVEL CARREGAR MISSÕES."));
+      setError(getErrorMessage(result, "Não foi possível carregar missões."));
       return;
     }
 
@@ -104,12 +114,12 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "NÃO FOI POSSÍVEL CONCLUIR A MISSÃO."));
+      setError(getErrorMessage(result, "Não foi possível concluir a missão."));
       await loadMissions();
       return;
     }
 
-    setNotice("✔ EXECUTADO");
+    setNotice("EXECUTADO");
     await loadMissions();
   }
 
@@ -126,7 +136,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "NÃO FOI POSSÍVEL REGISTRAR A JUSTIFICATIVA."));
+      setError(getErrorMessage(result, "Não foi possível registrar a justificativa."));
       await loadMissions();
       return;
     }
@@ -148,7 +158,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "GENERAL NEGADO."));
+      setError(getErrorMessage(result, "General negado."));
       return;
     }
 
@@ -159,55 +169,57 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <BunkerTexture />
-        <View style={styles.scrim}>
-        <Text style={styles.title}>SOLDADO EM EXECUÇÃO</Text>
-        <Text style={styles.text}>SINCRONIZANDO</Text>
+      <TacticalScreen denseBackground variant="soldier">
+        <View style={styles.loading}>
+          <BrandSymbol size={82} />
+          <Text style={styles.loadingTitle}>SOLDADO</Text>
+          <Text style={styles.loadingText}>SINCRONIZANDO ORDENS</Text>
         </View>
-      </View>
+      </TacticalScreen>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <BunkerTexture />
-      <View style={styles.scrim}>
-      <View style={styles.header}>
-        <Text style={styles.title}>SOLDADO</Text>
-        <Text style={styles.meta}>EXECUÇÃO APENAS / {actionMissions.length} MISSÕES</Text>
-      </View>
+    <TacticalScreen denseBackground variant="soldier">
+      <View style={[styles.content, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <SoldierHeader currentDay={formatCurrentDay()} missionCount={actionMissions.length} />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+        <View style={styles.notices}>
+          <StatusNotice type="error" message={error} />
+          <StatusNotice type="info" message={notice} />
+        </View>
 
-      <FlatList
-        contentContainerStyle={styles.listContent}
-        data={actionMissions}
-        keyExtractor={(item, index) => String(item?.id ?? index)}
-        ListEmptyComponent={<Text style={styles.text}>SEM MISSÕES PENDENTES</Text>}
-        renderItem={({ item }) => (
-          <MissionRow
-            completing={completingId === item?.id}
-            expanded={expandedMissionId === item?.id}
-            justifying={justifyingId === item?.id}
-            mission={item}
-            onComplete={() => completeMission(item?.id)}
-            onJustify={(payload) => justifyMission(item?.id, payload)}
-            onToggle={() =>
-              setExpandedMissionId((current) => (current === item?.id ? null : item?.id))
-            }
-          />
-        )}
-      />
-
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <ModeSwitcher
-          disabled={unlocking}
-          mode="soldier"
-          onPress={() => setReturnStep("confirm")}
-          pending={unlocking}
+        <FlatList
+          contentContainerStyle={styles.listContent}
+          data={actionMissions}
+          keyExtractor={(item, index) => String(item?.id ?? index)}
+          ListEmptyComponent={
+            <EmptyState
+              title="Sem ordens pendentes"
+              message="Nenhuma missão operacional está disponível para execução agora."
+            />
+          }
+          renderItem={({ item }) => (
+            <MissionCard
+              completing={completingId === item?.id}
+              justifying={justifyingId === item?.id}
+              mission={item}
+              onComplete={() => completeMission(item?.id)}
+              onJustify={(payload) => justifyMission(item?.id, payload)}
+              variant="soldier"
+            />
+          )}
+          style={styles.list}
         />
+
+        <View style={styles.footer}>
+          <ModeSwitchButton
+            disabled={unlocking}
+            loading={unlocking}
+            mode="soldier"
+            onPress={() => setReturnStep("confirm")}
+          />
+        </View>
       </View>
 
       {returnStep !== "closed" ? (
@@ -223,8 +235,9 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
           <View style={styles.protocolBox}>
             {returnStep === "confirm" ? (
               <>
+                <Text style={styles.protocolKicker}>PROTOCOLO DE SAÍDA</Text>
                 <Text style={styles.protocolText}>
-                  Você está quebrando o protocolo de execução.
+                  Você está saindo do modo de execução. Confirme antes de retornar ao comando.
                 </Text>
                 <View style={styles.protocolActions}>
                   <ProtocolButton
@@ -236,6 +249,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
                     }}
                   />
                   <ProtocolButton
+                    danger
                     disabled={unlocking}
                     label="CONTINUAR"
                     onPress={() => setReturnStep("password")}
@@ -244,12 +258,12 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
               </>
             ) : (
               <>
-                <Text style={styles.protocolText}>SENHA DO GENERAL</Text>
+                <Text style={styles.protocolKicker}>SENHA DO GENERAL</Text>
                 <TextInput
                   autoCapitalize="none"
                   onChangeText={setSenha}
                   placeholder="SENHA"
-                  placeholderTextColor="#777777"
+                  placeholderTextColor={theme.colors.textDim}
                   secureTextEntry
                   style={styles.input}
                   value={senha}
@@ -264,8 +278,9 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
                     }}
                   />
                   <ProtocolButton
-                    disabled={unlocking}
-                    label={unlocking ? "AGUARDE" : "CONTINUAR"}
+                    danger
+                    disabled={unlocking || !senha}
+                    label={unlocking ? "AGUARDE" : "RETORNAR"}
                     onPress={returnToGeneral}
                   />
                 </View>
@@ -274,376 +289,122 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
           </View>
         </View>
       ) : null}
-      </View>
-    </View>
+    </TacticalScreen>
   );
 }
 
-function MissionRow({ completing, expanded, justifying, mission, onComplete, onJustify, onToggle }) {
-  const [failureReasonType, setFailureReasonType] = useState("not_done");
-  const [failureReason, setFailureReason] = useState("");
-  const title = mission?.titulo || "MISSÃO";
-  const instruction = mission?.instrucao || "";
-  const shortInstruction = instruction.length > 96 ? `${instruction.slice(0, 93)}...` : instruction;
-  const status = mission?.status_label || mission?.status_code || "PENDENTE";
-  const canComplete = mission?.permissions?.can_complete === true;
-  const canJustify = mission?.permissions?.can_justify === true;
-
-  function submitJustification() {
-    const trimmed = failureReason.trim();
-    if (!trimmed) {
-      return;
-    }
-    onJustify({
-      failure_reason_type: failureReasonType,
-      failure_reason: trimmed,
-    });
-  }
-
+function ProtocolButton({ danger = false, disabled, label, onPress }) {
   return (
-    <View style={styles.mission}>
-      <Pressable onPress={onToggle} style={styles.missionPress}>
-        <Text numberOfLines={2} style={styles.text}>
-          [ ] {title}
-        </Text>
-        {shortInstruction ? (
-          <Text numberOfLines={expanded ? undefined : 2} style={styles.summary}>
-            {shortInstruction}
-          </Text>
-        ) : null}
-        <Text style={styles.status}>STATUS: {status}</Text>
-        <Text style={styles.expandHint}>{expanded ? "RECOLHER" : "DETALHES"}</Text>
-      </Pressable>
-
-      {expanded ? (
-        <View style={styles.detailBlock}>
-          <Text style={styles.detailLabel}>INSTRUÇÃO</Text>
-          <Text style={styles.detailText}>{instruction || "SEM INSTRUÇÃO"}</Text>
-          {mission?.is_decided ? <Text style={styles.detailText}>COMPROMISSO DECIDIDO</Text> : null}
-        </View>
-      ) : null}
-
-      {canJustify ? (
-        <View style={styles.justificationBlock}>
-          <Text style={styles.detailLabel}>JUSTIFICATIVA OBRIGATÓRIA</Text>
-          <View style={styles.reasonGrid}>
-            {failureReasonTypes.map((option) => {
-              const selected = option.value === failureReasonType;
-              return (
-                <Pressable
-                  disabled={justifying}
-                  key={option.value}
-                  onPress={() => setFailureReasonType(option.value)}
-                  style={[styles.reasonButton, selected && styles.reasonButtonSelected]}
-                >
-                  <Text style={[styles.reasonButtonText, selected && styles.reasonButtonTextSelected]}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <TextInput
-            multiline
-            onChangeText={setFailureReason}
-            placeholder="O QUE ACONTECEU?"
-            placeholderTextColor="#777777"
-            style={styles.justificationInput}
-            value={failureReason}
-          />
-          <Pressable
-            disabled={justifying || !failureReason.trim()}
-            onPress={submitJustification}
-            style={[styles.button, (!failureReason.trim() || justifying) && styles.buttonDisabled]}
-          >
-            <Text style={styles.buttonText}>{justifying ? "REGISTRANDO" : "REGISTRAR JUSTIFICATIVA"}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {canComplete ? (
-        <Pressable disabled={completing} onPress={onComplete} style={styles.button}>
-          <Text style={styles.buttonText}>{completing ? "EXECUTANDO" : "CONCLUIR"}</Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
-
-function BunkerTexture() {
-  return (
-    <View pointerEvents="none" style={styles.texture}>
-      {Array.from({ length: 9 }).map((_, index) => (
-        <View
-          key={String(index)}
-          style={[
-            styles.textureLine,
-            {
-              left: `${index * 13}%`,
-              opacity: index % 3 === 0 ? 0.1 : 0.05,
-            },
-          ]}
-        />
-      ))}
-      <View style={styles.textureFrame} />
-    </View>
-  );
-}
-
-function ProtocolButton({ disabled, label, onPress }) {
-  return (
-    <Pressable disabled={disabled} onPress={onPress} style={styles.protocolButton}>
-      <Text style={styles.protocolButtonText}>{label}</Text>
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.protocolButton, danger && styles.protocolButtonDanger, disabled && styles.disabled]}
+    >
+      <Text style={[styles.protocolButtonText, danger && styles.protocolButtonTextDanger]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
-const mono = "monospace";
-
 const styles = StyleSheet.create({
-  container: {
+  loading: {
+    alignItems: "center",
     flex: 1,
-    backgroundColor: "#000000",
+    gap: theme.spacing.sm,
+    justifyContent: "center",
   },
-  texture: {
-    bottom: -24,
-    left: -24,
-    opacity: 0.9,
-    position: "absolute",
-    right: -24,
-    top: -24,
-    transform: [{ rotate: "-4deg" }],
+  loadingTitle: {
+    ...theme.typography.title,
+    color: theme.colors.text,
   },
-  textureLine: {
-    backgroundColor: "#EDEDED",
-    bottom: 0,
-    position: "absolute",
-    top: 0,
-    width: 1,
+  loadingText: {
+    ...theme.typography.small,
+    color: theme.colors.red,
   },
-  textureFrame: {
-    borderColor: "rgba(237,237,237,0.045)",
-    borderWidth: 1,
-    bottom: 36,
-    left: 28,
-    position: "absolute",
-    right: 28,
-    top: 36,
-  },
-  scrim: {
-    backgroundColor: "rgba(0,0,0,0.94)",
+  content: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: theme.spacing.md,
   },
-  header: {
-    borderBottomColor: "#3A3A3A",
-    borderBottomWidth: 1,
-    paddingBottom: 14,
+  notices: {
+    marginTop: theme.spacing.md,
   },
-  title: {
-    color: "#EDEDED",
-    fontFamily: mono,
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: 0,
-  },
-  meta: {
-    color: "#FF2A2A",
-    fontFamily: mono,
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: 8,
-  },
-  text: {
-    color: "#EDEDED",
-    fontFamily: mono,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  summary: {
-    color: "#A8A8A8",
-    fontFamily: mono,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
-  },
-  status: {
-    color: "#666666",
-    fontFamily: mono,
-    fontSize: 12,
-    marginTop: 8,
-  },
-  expandHint: {
-    color: "#777777",
-    fontFamily: mono,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  detailBlock: {
-    borderColor: "#3A3A3A",
-    borderRadius: 0,
-    borderWidth: 1,
-    marginTop: 12,
-    padding: 12,
-  },
-  detailLabel: {
-    color: "#FF2A2A",
-    fontFamily: mono,
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  detailText: {
-    color: "#EDEDED",
-    fontFamily: mono,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  justificationBlock: {
-    borderColor: "#3A3A3A",
-    borderRadius: 0,
-    borderWidth: 1,
-    marginTop: 12,
-    padding: 12,
-  },
-  reasonGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 8,
-  },
-  reasonButton: {
-    borderColor: "#3A3A3A",
-    borderRadius: 0,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-  },
-  reasonButtonSelected: {
-    backgroundColor: "#FF2A2A",
-    borderColor: "#FF2A2A",
-  },
-  reasonButtonText: {
-    color: "#A8A8A8",
-    fontFamily: mono,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  reasonButtonTextSelected: {
-    color: "#000000",
-  },
-  justificationInput: {
-    borderColor: "#FF2A2A",
-    borderRadius: 0,
-    borderWidth: 1,
-    color: "#EDEDED",
-    fontFamily: mono,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 12,
-    minHeight: 78,
-    padding: 12,
-    textAlignVertical: "top",
-  },
-  error: {
-    color: "#FF2A2A",
-    fontFamily: mono,
-    fontSize: 16,
-    marginTop: 14,
-  },
-  notice: {
-    color: "#EDEDED",
-    fontFamily: mono,
-    fontSize: 16,
-    marginTop: 14,
+  list: {
+    flex: 1,
   },
   listContent: {
-    paddingBottom: 20,
-    paddingTop: 14,
-  },
-  mission: {
-    borderBottomColor: "#2A2A2A",
-    borderBottomWidth: 1,
-    paddingBottom: 14,
-    paddingTop: 14,
-  },
-  missionPress: {
-    paddingBottom: 2,
-  },
-  button: {
-    alignItems: "center",
-    backgroundColor: "#FF2A2A",
-    borderColor: "#FF2A2A",
-    borderRadius: 0,
-    borderWidth: 1,
-    marginTop: 12,
-    padding: 12,
-  },
-  buttonDisabled: {
-    opacity: 0.45,
-  },
-  buttonText: {
-    color: "#000000",
-    fontFamily: mono,
-    fontSize: 16,
-    fontWeight: "900",
+    gap: theme.spacing.sm,
+    paddingBottom: theme.spacing.md,
+    paddingTop: theme.spacing.md,
   },
   footer: {
-    borderTopColor: "#2A2A2A",
+    borderTopColor: theme.colors.border,
     borderTopWidth: 1,
-    paddingBottom: 12,
-    paddingTop: 12,
+    paddingTop: theme.spacing.md,
   },
   overlay: {
     alignItems: "center",
-    backgroundColor: "#000000",
+    backgroundColor: "rgba(0,0,0,0.96)",
     bottom: 0,
     justifyContent: "center",
     left: 0,
-    padding: 16,
+    padding: theme.spacing.screen,
     position: "absolute",
     right: 0,
     top: 0,
   },
   protocolBox: {
-    borderColor: "#FF2A2A",
-    borderRadius: 0,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.red,
     borderWidth: 1,
-    padding: 16,
+    padding: theme.spacing.lg,
     width: "100%",
   },
+  protocolKicker: {
+    ...theme.typography.small,
+    color: theme.colors.red,
+    marginBottom: theme.spacing.sm,
+  },
   protocolText: {
-    color: "#EDEDED",
-    fontFamily: mono,
-    fontSize: 16,
-    lineHeight: 22,
+    ...theme.typography.body,
+    color: theme.colors.text,
   },
   protocolActions: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   protocolButton: {
     alignItems: "center",
-    borderColor: "#3A3A3A",
-    borderRadius: 0,
+    borderColor: theme.colors.borderStrong,
     borderWidth: 1,
     flex: 1,
-    padding: 12,
+    minHeight: theme.layout.actionHeight,
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.sm,
+  },
+  protocolButtonDanger: {
+    backgroundColor: theme.colors.redWash,
+    borderColor: theme.colors.red,
   },
   protocolButtonText: {
-    color: "#EDEDED",
-    fontFamily: mono,
-    fontSize: 16,
+    ...theme.typography.label,
+    color: theme.colors.textMuted,
+  },
+  protocolButtonTextDanger: {
+    color: theme.colors.red,
   },
   input: {
-    borderColor: "#FF2A2A",
-    borderRadius: 0,
+    ...theme.typography.body,
+    borderColor: theme.colors.red,
     borderWidth: 1,
-    color: "#EDEDED",
-    fontFamily: mono,
-    fontSize: 16,
-    marginTop: 16,
-    padding: 12,
+    color: theme.colors.text,
+    marginTop: theme.spacing.sm,
+    minHeight: theme.layout.actionHeight,
+    paddingHorizontal: theme.spacing.md,
+  },
+  disabled: {
+    opacity: 0.45,
   },
 });

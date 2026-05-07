@@ -12,12 +12,12 @@ import {
 } from "react-native";
 
 import { api } from "../api/client";
+import SectionHeader from "../components/SectionHeader";
 import StatusNotice from "../components/StatusNotice";
+import TacticalPanel from "../components/TacticalPanel";
+import TacticalScreen from "../components/TacticalScreen";
+import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 import { formatDateForApi, getTomorrow } from "../utils/dates";
-import { colors, layout, radius, spacing, typography } from "../styles/tokens";
-import { generalTheme } from "../styles/generalTheme";
-
-const commandColors = generalTheme.colors;
 
 function getErrorMessage(result, fallback) {
   return result?.data?.detail || fallback;
@@ -46,10 +46,8 @@ export default function MissionFormScreen({
   onSave,
   onCancel,
   onLogout,
-  tone = "default",
 }) {
   const editingMission = mission !== null && mission !== undefined;
-  const command = tone === "command";
   const [titulo, setTitulo] = useState(mission?.titulo || "");
   const [instrucao, setInstrucao] = useState(mission?.instrucao || "");
   const [prazoTipo, setPrazoTipo] = useState(initialPrazoTipo(mission, initialPrazo));
@@ -111,121 +109,110 @@ export default function MissionFormScreen({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={[styles.container, command && styles.commandContainer]}
+      style={styles.keyboard}
     >
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.brand, command && styles.commandBrand]}>BUNKERMODE</Text>
-        <Text style={[styles.title, command && styles.commandTitle]}>{editingMission ? "Editar missão" : "Nova ordem"}</Text>
-        {lockedInitialPrazo ? (
-          <View style={[styles.deadlineContext, command && styles.commandDeadlineContext]}>
-            <Text style={[styles.deadlineContextLabel, command && styles.commandDeadlineContextLabel]}>DATA DEFINIDA</Text>
-            <Text style={[styles.deadlineContextValue, command && styles.commandDeadlineContextValue]}>{prazoContext}</Text>
-          </View>
-        ) : null}
+      <TacticalScreen>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.brand}>BUNKERMODE</Text>
+          <SectionHeader
+            eyebrow="POSTO DE COMANDO"
+            title={editingMission ? "Editar ordem" : "Nova ordem"}
+            meta="A ordem deve dizer exatamente o que será executado."
+          />
 
-        <TextInput
-          onBlur={() => setFocusedField("")}
-          onChangeText={setTitulo}
-          onFocus={() => setFocusedField("titulo")}
-          placeholder="Ex.: Revisar plano semanal"
-          placeholderTextColor={command ? commandColors.muted : colors.textMuted}
-          style={[
-            styles.input,
-            command && styles.commandInput,
-            focusedField === "titulo" && (command ? styles.commandInputFocused : styles.inputFocused),
-          ]}
-          value={titulo}
-        />
+          <TacticalPanel elevated>
+            {lockedInitialPrazo ? (
+              <View style={styles.deadlineContext}>
+                <Text style={styles.deadlineContextLabel}>DATA DEFINIDA</Text>
+                <Text style={styles.deadlineContextValue}>{prazoContext}</Text>
+              </View>
+            ) : null}
 
-        <TextInput
-          multiline
-          onBlur={() => setFocusedField("")}
-          onChangeText={setInstrucao}
-          onFocus={() => setFocusedField("instrucao")}
-          placeholder="Descreva exatamente o que deve ser feito"
-          placeholderTextColor={command ? commandColors.muted : colors.textMuted}
-          style={[
-            styles.input,
-            command && styles.commandInput,
-            styles.multiline,
-            focusedField === "instrucao" && (command ? styles.commandInputFocused : styles.inputFocused),
-          ]}
-          textAlignVertical="top"
-          value={instrucao}
-        />
-
-        {!lockedInitialPrazo ? (
-          <>
-            <Segmented
-              options={[
-                ["hoje", "Hoje"],
-                ["amanha", "Amanhã"],
-                ["data_especifica", "Data específica"],
-              ]}
-              selected={prazoTipo}
-              onSelect={setPrazoTipo}
-              tone={tone}
+            <TextInput
+              onBlur={() => setFocusedField("")}
+              onChangeText={setTitulo}
+              onFocus={() => setFocusedField("titulo")}
+              placeholder="Ex.: Revisar plano semanal"
+              placeholderTextColor={theme.colors.textDim}
+              style={[styles.input, focusedField === "titulo" && styles.inputFocused]}
+              value={titulo}
             />
 
-            {prazoTipo === "data_especifica" ? (
-              <TextInput
-                onBlur={() => setFocusedField("")}
-                onChangeText={setPrazo}
-                onFocus={() => setFocusedField("prazo")}
-                placeholder="DD-MM-YYYY"
-                placeholderTextColor={command ? commandColors.muted : colors.textMuted}
-                style={[
-                  styles.input,
-                  command && styles.commandInput,
-                  focusedField === "prazo" && (command ? styles.commandInputFocused : styles.inputFocused),
-                ]}
-                value={prazo}
-              />
+            <TextInput
+              multiline
+              onBlur={() => setFocusedField("")}
+              onChangeText={setInstrucao}
+              onFocus={() => setFocusedField("instrucao")}
+              placeholder="Descreva exatamente o que deve ser feito"
+              placeholderTextColor={theme.colors.textDim}
+              style={[
+                styles.input,
+                styles.multiline,
+                focusedField === "instrucao" && styles.inputFocused,
+              ]}
+              textAlignVertical="top"
+              value={instrucao}
+            />
+
+            {!lockedInitialPrazo ? (
+              <>
+                <Segmented
+                  options={[
+                    ["hoje", "Hoje"],
+                    ["amanha", "Amanhã"],
+                    ["data_especifica", "Data específica"],
+                  ]}
+                  selected={prazoTipo}
+                  onSelect={setPrazoTipo}
+                />
+
+                {prazoTipo === "data_especifica" ? (
+                  <TextInput
+                    onBlur={() => setFocusedField("")}
+                    onChangeText={setPrazo}
+                    onFocus={() => setFocusedField("prazo")}
+                    placeholder="DD-MM-AAAA"
+                    placeholderTextColor={theme.colors.textDim}
+                    style={[styles.input, focusedField === "prazo" && styles.inputFocused]}
+                    value={prazo}
+                  />
+                ) : null}
+              </>
             ) : null}
-          </>
-        ) : null}
 
-        <Segmented
-          options={[
-            [1, "Alta"],
-            [2, "Média"],
-            [3, "Baixa"],
-          ]}
-          selected={prioridade}
-          onSelect={setPrioridade}
-          tone={tone}
-        />
+            <Segmented
+              options={[
+                [1, "Alta"],
+                [2, "Média"],
+                [3, "Baixa"],
+              ]}
+              selected={prioridade}
+              onSelect={setPrioridade}
+            />
 
-        <StatusNotice type="error" message={error} tone={tone} />
+            <StatusNotice type="error" message={error} />
 
-        <Pressable
-          disabled={loading}
-          onPress={submit}
-          style={[
-            styles.submit,
-            editingMission ? styles.submitEdit : styles.submitCreate,
-            command && styles.commandSubmit,
-          ]}
-        >
-          {loading ? (
-            <ActivityIndicator color={command ? commandColors.white : colors.bg} />
-          ) : (
-            <Text style={[styles.submitText, command && styles.commandSubmitText]}>
-              {editingMission ? "SALVAR EDIÇÃO" : command ? "REGISTRAR ORDEM" : "CRIAR ORDEM"}
-            </Text>
-          )}
-        </Pressable>
+            <Pressable disabled={loading} onPress={submit} style={[styles.submit, loading && styles.disabled]}>
+              {loading ? (
+                <ActivityIndicator color={theme.colors.black} />
+              ) : (
+                <Text style={styles.submitText}>
+                  {editingMission ? "SALVAR EDIÇÃO" : "REGISTRAR ORDEM"}
+                </Text>
+              )}
+            </Pressable>
 
-        <Pressable disabled={loading} onPress={onCancel}>
-          <Text style={[styles.cancel, command && styles.commandCancel]}>CANCELAR</Text>
-        </Pressable>
-      </ScrollView>
+            <Pressable disabled={loading} onPress={onCancel} style={styles.cancelButton}>
+              <Text style={styles.cancel}>CANCELAR</Text>
+            </Pressable>
+          </TacticalPanel>
+        </ScrollView>
+      </TacticalScreen>
     </KeyboardAvoidingView>
   );
 }
 
-function Segmented({ options, selected, onSelect, tone = "default" }) {
-  const command = tone === "command";
+function Segmented({ options, selected, onSelect }) {
   return (
     <View style={styles.segmented}>
       {options.map(([value, label]) => {
@@ -234,20 +221,9 @@ function Segmented({ options, selected, onSelect, tone = "default" }) {
           <Pressable
             key={String(value)}
             onPress={() => onSelect(value)}
-            style={[
-              styles.segment,
-              active ? styles.segmentActive : styles.segmentInactive,
-              command && styles.commandSegment,
-              command && active && styles.commandSegmentActive,
-            ]}
+            style={[styles.segment, active && styles.segmentActive]}
           >
-            <Text
-              style={[
-                styles.segmentText,
-                active ? styles.segmentTextActive : styles.segmentTextInactive,
-                command && (active ? styles.commandSegmentTextActive : styles.commandSegmentTextInactive),
-              ]}
-            >
+            <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
               {label}
             </Text>
           </Pressable>
@@ -258,165 +234,106 @@ function Segmented({ options, selected, onSelect, tone = "default" }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  keyboard: {
     flex: 1,
-    backgroundColor: colors.bg,
-  },
-  commandContainer: {
-    backgroundColor: commandColors.canvas,
   },
   content: {
-    padding: spacing.screenH,
-    paddingBottom: spacing.xl,
+    padding: theme.spacing.screen,
+    paddingBottom: theme.spacing.xxl,
   },
   brand: {
-    ...typography.label,
-    color: colors.textPrimary,
-  },
-  commandBrand: {
-    color: commandColors.muted,
-  },
-  title: {
-    ...typography.title,
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
-    marginTop: spacing.xs,
-  },
-  commandTitle: {
-    color: commandColors.ink,
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+    marginBottom: theme.spacing.md,
   },
   input: {
-    backgroundColor: colors.bgCard,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
+    ...theme.typography.body,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
-    color: colors.textPrimary,
-    fontSize: typography.input.fontSize,
-    marginBottom: spacing.sm + spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + spacing.xs + spacing.xs / 2,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+    minHeight: theme.layout.actionHeight,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
   inputFocused: {
-    borderColor: colors.red,
-  },
-  commandInput: {
-    backgroundColor: commandColors.panel,
-    borderColor: commandColors.borderStrong,
-    color: commandColors.ink,
-  },
-  commandInputFocused: {
-    borderColor: commandColors.accentDark,
-  },
-  deadlineContext: {
-    backgroundColor: colors.bgCard,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    marginBottom: spacing.sm + spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + spacing.xs,
-  },
-  commandDeadlineContext: {
-    backgroundColor: commandColors.panelMuted,
-    borderColor: commandColors.border,
-  },
-  deadlineContextLabel: {
-    ...typography.small,
-    color: colors.textMuted,
-    fontWeight: "700",
-  },
-  commandDeadlineContextLabel: {
-    color: commandColors.muted,
-  },
-  deadlineContextValue: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: "800",
-    marginTop: spacing.xs,
-  },
-  commandDeadlineContextValue: {
-    color: commandColors.ink,
+    borderColor: theme.colors.red,
   },
   multiline: {
-    minHeight: layout.justificationInputMinHeight,
+    minHeight: 132,
+  },
+  deadlineContext: {
+    backgroundColor: theme.colors.redWash,
+    borderColor: theme.colors.red,
+    borderWidth: 1,
+    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.md,
+  },
+  deadlineContextLabel: {
+    ...theme.typography.small,
+    color: theme.colors.red,
+  },
+  deadlineContextValue: {
+    ...theme.typography.heading,
+    color: theme.colors.text,
+    marginTop: theme.spacing.xs,
   },
   segmented: {
     flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.sm + spacing.xs,
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   segment: {
-    flex: 1,
     alignItems: "center",
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
+    flexGrow: 1,
     justifyContent: "center",
     minHeight: 40,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
   },
   segmentActive: {
-    backgroundColor: colors.red,
-    borderColor: colors.red,
-  },
-  segmentInactive: {
-    backgroundColor: colors.bgCard,
-  },
-  commandSegment: {
-    borderColor: commandColors.borderStrong,
-  },
-  commandSegmentActive: {
-    backgroundColor: commandColors.accentDark,
-    borderColor: commandColors.accentDark,
+    backgroundColor: theme.colors.red,
+    borderColor: theme.colors.red,
   },
   segmentText: {
-    ...typography.caption,
-    fontWeight: "700",
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
     textAlign: "center",
   },
   segmentTextActive: {
-    color: colors.black,
-  },
-  segmentTextInactive: {
-    color: colors.textSecondary,
-  },
-  commandSegmentTextActive: {
-    color: commandColors.white,
-  },
-  commandSegmentTextInactive: {
-    color: commandColors.muted,
+    color: theme.colors.black,
   },
   submit: {
     alignItems: "center",
-    borderRadius: radius.md,
-    height: layout.actionButtonHeight,
+    backgroundColor: theme.colors.red,
+    borderColor: theme.colors.red,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
     justifyContent: "center",
-    width: layout.fullWidth,
-  },
-  submitCreate: {
-    backgroundColor: colors.red,
-  },
-  submitEdit: {
-    backgroundColor: colors.red,
-  },
-  commandSubmit: {
-    backgroundColor: commandColors.soldier,
+    minHeight: theme.layout.actionHeight,
+    width: "100%",
   },
   submitText: {
-    ...typography.label,
-    color: colors.black,
-    fontWeight: "700",
+    ...theme.typography.label,
+    color: theme.colors.black,
+    fontSize: 14,
   },
-  commandSubmitText: {
-    color: commandColors.white,
+  cancelButton: {
+    alignItems: "center",
+    minHeight: 42,
+    justifyContent: "center",
+    marginTop: theme.spacing.sm,
   },
   cancel: {
-    color: colors.textMuted,
-    fontSize: 13,
-    marginTop: spacing.sm + spacing.xs,
-    textAlign: "center",
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
   },
-  commandCancel: {
-    color: commandColors.muted,
+  disabled: {
+    opacity: 0.55,
   },
 });

@@ -3,11 +3,12 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "./src/api/client";
+import BrandSymbol from "./src/components/BrandSymbol";
 import GeneralStack from "./src/navigation/GeneralStack";
 import SoldierStack from "./src/navigation/SoldierStack";
 import LoginScreen from "./src/screens/LoginScreen";
 import { clearSession, loadSession, saveSession, saveUser } from "./src/storage/sessionStorage";
-import { colors, spacing } from "./src/styles/tokens";
+import { bunkerTheme as theme } from "./src/theme/bunkermodeTheme";
 
 export default function App() {
   const [booting, setBooting] = useState(true);
@@ -64,7 +65,8 @@ export default function App() {
   if (booting) {
     content = (
       <View style={styles.boot}>
-        <ActivityIndicator color={colors.red} />
+        <BrandSymbol muted size={72} />
+        <ActivityIndicator color={theme.colors.red} />
       </View>
     );
   } else if (!token || !user) {
@@ -106,15 +108,16 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: theme.colors.canvas,
   },
   soldierSafeArea: {
-    backgroundColor: "#000000",
+    backgroundColor: theme.colors.canvas,
   },
   boot: {
     flex: 1,
     alignItems: "center",
+    gap: theme.spacing.md,
     justifyContent: "center",
-    padding: spacing.screenH,
+    padding: theme.spacing.screen,
   },
 });

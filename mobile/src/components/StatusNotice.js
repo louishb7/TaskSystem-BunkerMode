@@ -1,75 +1,58 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, layout, radius, spacing, surfaces, typography } from "../styles/tokens";
-import { generalTheme } from "../styles/generalTheme";
-
-const commandColors = generalTheme.colors;
+import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
 const typeStyles = {
   error: {
-    backgroundColor: surfaces.redBg,
-    borderColor: colors.red,
-    color: colors.red,
+    backgroundColor: theme.colors.redWash,
+    borderColor: theme.colors.red,
+    color: theme.colors.red,
   },
   warning: {
-    backgroundColor: surfaces.amberBg,
-    borderColor: colors.red,
-    color: colors.red,
+    backgroundColor: theme.colors.amberWash,
+    borderColor: theme.colors.amber,
+    color: theme.colors.amber,
   },
   info: {
-    backgroundColor: colors.bgCard,
-    borderColor: colors.borderStrong,
-    color: colors.textSecondary,
+    backgroundColor: "rgba(36,33,27,0.9)",
+    borderColor: "rgba(245,240,232,0.16)",
+    color: theme.colors.textMuted,
   },
 };
 
-export default function StatusNotice({ type = "info", message, tone = "default" }) {
+export default function StatusNotice({ type = "info", message }) {
   if (!message) {
     return null;
   }
 
   const selected = typeStyles[type] || typeStyles.info;
-  const command = tone === "command";
-  const commandSelected =
-    type === "error" || type === "warning"
-      ? {
-          backgroundColor: commandColors.alertBg,
-          borderColor: commandColors.alert,
-          color: commandColors.alert,
-        }
-      : {
-          backgroundColor: commandColors.panel,
-          borderColor: commandColors.border,
-          color: commandColors.muted,
-        };
-  const visibleStyle = command ? commandSelected : selected;
 
   return (
     <View
       style={[
         styles.container,
         {
-          backgroundColor: visibleStyle.backgroundColor,
-          borderColor: visibleStyle.borderColor,
+          backgroundColor: selected.backgroundColor,
+          borderColor: selected.borderColor,
         },
       ]}
     >
-      <Text style={[styles.text, { color: visibleStyle.color }]}>{message}</Text>
+      <Text style={[styles.text, { color: selected.color }]}>{message}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: layout.fullWidth,
+    width: "100%",
     borderWidth: 1,
-    borderRadius: radius.md,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + spacing.xs,
+    borderRadius: theme.radius.sm,
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
   text: {
-    ...typography.notice,
+    ...theme.typography.caption,
   },
 });

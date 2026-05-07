@@ -1,20 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { api } from "../api/client";
-import GeneralAssetBackground from "../components/general/GeneralAssetBackground";
-import GeneralCommandHeader from "../components/general/GeneralCommandHeader";
-import GeneralDayActionPanel from "../components/general/GeneralDayActionPanel";
-import GeneralReviewDock from "../components/general/GeneralReviewDock";
-import GeneralTransitionPanel from "../components/general/GeneralTransitionPanel";
-import OperationalOrdersBoard from "../components/general/OperationalOrdersBoard";
-import WeeklyPlanningBoard from "../components/general/WeeklyPlanningBoard";
+import BrandSymbol from "../components/BrandSymbol";
+import CommandActionDock from "../components/CommandActionDock";
+import DaySelector from "../components/DaySelector";
+import EmptyState from "../components/EmptyState";
+import GeneralHeader from "../components/GeneralHeader";
+import MissionCard, { MissionProgress } from "../components/MissionCard";
+import ModeSwitchButton from "../components/ModeSwitchButton";
+import ReviewPanel from "../components/ReviewPanel";
+import SectionHeader from "../components/SectionHeader";
 import StatusNotice from "../components/StatusNotice";
+import TacticalPanel from "../components/TacticalPanel";
+import TacticalScreen from "../components/TacticalScreen";
 import MissionFormScreen from "./MissionFormScreen";
-import { generalTheme } from "../styles/generalTheme";
-import { spacing } from "../styles/tokens";
-
-const commandColors = generalTheme.colors;
+import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
 function getErrorMessage(result, fallback) {
   if (result?.status === 0) {
@@ -71,7 +72,21 @@ function formatWeekLabel(weekDays) {
   if (!weekDays.length) {
     return "";
   }
-  return `${formatShortDate(weekDays[0])} - ${formatShortDate(weekDays[6])}`;
+  return `${formatShortDate(weekDays[0])} a ${formatShortDate(weekDays[6])}`;
+}
+
+function formatSelectedDate(date) {
+  try {
+    return date
+      .toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+      })
+      .toUpperCase();
+  } catch {
+    return formatShortDate(date);
+  }
 }
 
 export default function GeneralDashboardScreen({
@@ -91,6 +106,7 @@ export default function GeneralDashboardScreen({
   const [activatingSoldier, setActivatingSoldier] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [showReviews, setShowReviews] = useState(false);
+  const [showActionDock, setShowActionDock] = useState(false);
 
   useEffect(() => {
     loadAll({ initial: true });
@@ -101,11 +117,24 @@ export default function GeneralDashboardScreen({
   const selectedDateApi = formatDateForApi(selectedDate);
   const todayDate = useMemo(() => startOfDay(new Date()), []);
   const hasReview = reviewMissions.length > 0;
+  const selectedDateLabel = formatSelectedDate(selectedDate);
 
   const selectedMissions = useMemo(
     () => missions.filter((mission) => normalizePrazo(mission?.prazo) === selectedDateApi),
     [missions, selectedDateApi]
   );
+
+  const missionCountsByDate = useMemo(() => {
+    const counts = {};
+    missions.forEach((mission) => {
+      const key = normalizePrazo(mission?.prazo);
+      if (!key) {
+        return;
+      }
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [missions]);
 
   async function handleUnauthorized(result) {
     if (result?.status === 401) {
@@ -229,7 +258,6 @@ export default function GeneralDashboardScreen({
         user={user}
         mission={formMission}
         initialPrazo={formMission ? undefined : selectedDateApi}
-        tone={formMission ? "default" : "command"}
         onCancel={() => {
           setShowForm(false);
           setFormMission(null);
@@ -242,41 +270,49 @@ export default function GeneralDashboardScreen({
 
   if (initialLoading) {
     return (
-      <View style={styles.loading}>
-        <GeneralAssetBackground />
-        <ActivityIndicator color={commandColors.accentDark} />
-      </View>
+      <TacticalScreen variant="general">
+        <View style={styles.loading}>
+          <BrandSymbol muted size={82} />
+          <ActivityIndicator color={theme.colors.red} />
+          <Text style={styles.loadingText}>SINCRONIZANDO COMANDO</Text>
+        </View>
+      </TacticalScreen>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <GeneralAssetBackground />
-      <GeneralCommandHeader
+    <TacticalScreen variant="general">
+      <GeneralHeader
         generalName={user?.nome_general || user?.usuario || "General"}
         onLogout={onLogout}
         weekLabel={weekLabel}
       />
 
-      <StatusNotice type="error" message={error} tone="command" />
-
       <ScrollView contentContainerStyle={styles.content}>
-        <WeeklyPlanningBoard
-          onSelectDate={(date) => setSelectedDate(startOfDay(date))}
-          selectedDate={selectedDate}
-          todayDate={todayDate}
-          weekDays={weekDays}
-        />
+        <TacticalPanel elevated style={styles.calendarPanel}>
+          <SectionHeader
+            eyebrow="QUADRO OPERACIONAL"
+            title="A semana na parede"
+            meta="Cada marca é um dia de caça. Escolha onde o General dará ordens."
+          />
+          <DaySelector
+            missionCountsByDate={missionCountsByDate}
+            onSelectDate={(date) => setSelectedDate(startOfDay(date))}
+            selectedDate={selectedDate}
+            todayDate={todayDate}
+            weekDays={weekDays}
+          />
+        </TacticalPanel>
 
-        <GeneralDayActionPanel
-          onCreate={openCreateForm}
-          onToggleReview={() => setShowReviews((current) => !current)}
-          reviewCount={reviewMissions.length}
-          reviewOpen={showReviews}
-        />
+        <StatusNotice type="error" message={error} />
+
+        <Pressable onPress={openCreateForm} style={styles.createButton}>
+          <Text style={styles.createKicker}>DIA SELECIONADO</Text>
+          <Text style={styles.createText}>NOVA ORDEM PARA A CAÇADA</Text>
+        </Pressable>
 
         {showReviews ? (
-          <GeneralReviewDock
+          <ReviewPanel
             missions={reviewMissions}
             onLogout={onLogout}
             onReload={() => loadAll()}
@@ -284,37 +320,120 @@ export default function GeneralDashboardScreen({
           />
         ) : null}
 
-        <OperationalOrdersBoard
-          missions={selectedMissions}
-          onDelete={deleteMission}
-          onEdit={openEditForm}
-          onToggleDecision={toggleDecision}
-          togglingId={togglingId}
-        />
+        <TacticalPanel style={styles.ordersPanel}>
+          <SectionHeader
+            eyebrow="LEÃO DO DIA"
+            title={selectedDateLabel}
+            meta={
+              selectedMissions.length === 1
+                ? "1 ordem para matar o dia"
+                : `${selectedMissions.length} ordens para matar o dia`
+            }
+          />
 
-        <GeneralTransitionPanel
-          hasReview={hasReview}
-          loading={activatingSoldier}
-          onActivate={activateSoldier}
-        />
+          {selectedMissions.length > 0 ? (
+            <>
+              <MissionProgress missions={selectedMissions} />
+              <View style={styles.missionList}>
+                {selectedMissions.map((mission, index) => (
+                  <MissionCard
+                    key={String(mission?.id ?? index)}
+                    mission={mission}
+                    onDelete={deleteMission}
+                    onEdit={openEditForm}
+                    onToggleDecision={toggleDecision}
+                    toggling={togglingId === mission?.id}
+                    variant="general"
+                  />
+                ))}
+              </View>
+            </>
+          ) : (
+            <EmptyState
+              title="Dia sem ordens"
+              message="Nenhuma ordem foi definida para o dia selecionado."
+            />
+          )}
+        </TacticalPanel>
+
+        <TacticalPanel style={styles.transitionPanel}>
+          <SectionHeader
+            eyebrow="TRANSIÇÃO DE MODO"
+            title="Entregar ordens ao Soldado"
+            meta={
+              hasReview
+                ? "Há revisão pendente. Decida quando entrar no protocolo de execução."
+                : "Ative somente quando o plano estiver pronto para ser executado."
+            }
+          />
+          <ModeSwitchButton
+            loading={activatingSoldier}
+            mode="general"
+            onPress={activateSoldier}
+          />
+        </TacticalPanel>
       </ScrollView>
-    </View>
+      <CommandActionDock
+        failureCount={reviewMissions.length}
+        onClose={() => setShowActionDock(false)}
+        onOpen={() => setShowActionDock(true)}
+        onOpenReviews={() => {
+          setShowReviews(true);
+          setShowActionDock(false);
+        }}
+        open={showActionDock}
+        reviewCount={reviewMissions.length}
+      />
+    </TacticalScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: commandColors.canvas,
-    flex: 1,
-  },
   loading: {
     alignItems: "center",
-    backgroundColor: commandColors.canvas,
     flex: 1,
+    gap: theme.spacing.md,
     justifyContent: "center",
   },
+  loadingText: {
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
+  },
   content: {
-    padding: spacing.screenH,
-    paddingBottom: spacing.xl,
+    padding: theme.spacing.screen,
+    paddingBottom: theme.spacing.xxl + 80,
+  },
+  calendarPanel: {
+    marginBottom: theme.spacing.md,
+  },
+  createButton: {
+    backgroundColor: "rgba(91,53,36,0.82)",
+    borderColor: theme.colors.amber,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    marginTop: theme.spacing.md,
+    minHeight: 54,
+    paddingHorizontal: theme.spacing.md,
+  },
+  createKicker: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+  },
+  createText: {
+    ...theme.typography.label,
+    color: theme.colors.text,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  ordersPanel: {
+    marginTop: theme.spacing.md,
+  },
+  missionList: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  transitionPanel: {
+    marginTop: theme.spacing.md,
   },
 });
