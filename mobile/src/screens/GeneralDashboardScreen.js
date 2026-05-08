@@ -7,14 +7,13 @@ import BrandSymbol from "../components/BrandSymbol";
 import CommandActionDock from "../components/CommandActionDock";
 import DaySelector from "../components/DaySelector";
 import EmptyState from "../components/EmptyState";
-import GeneralHeader from "../components/GeneralHeader";
 import MissionCard, { MissionProgress } from "../components/MissionCard";
 import ModeSwitchButton from "../components/ModeSwitchButton";
-import ReviewPanel from "../components/ReviewPanel";
 import SectionHeader from "../components/SectionHeader";
 import StatusNotice from "../components/StatusNotice";
 import TacticalPanel from "../components/TacticalPanel";
 import TacticalScreen from "../components/TacticalScreen";
+import GeneralReviewScreen from "./GeneralReviewScreen";
 import MissionFormScreen from "./MissionFormScreen";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
@@ -107,7 +106,8 @@ export default function GeneralDashboardScreen({
   const [togglingId, setTogglingId] = useState(null);
   const [activatingSoldier, setActivatingSoldier] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
-  const [showReviews, setShowReviews] = useState(false);
+  const [activeScreen, setActiveScreen] = useState("home");
+  const [commandDockHeight, setCommandDockHeight] = useState(112);
 
   useEffect(() => {
     loadAll({ initial: true });
@@ -119,6 +119,7 @@ export default function GeneralDashboardScreen({
   const todayDate = useMemo(() => startOfDay(new Date()), []);
   const hasReview = reviewMissions.length > 0;
   const selectedDateLabel = formatSelectedDate(selectedDate);
+  const generalName = user?.nome_general || user?.usuario || "General";
 
   const selectedMissions = useMemo(
     () => missions.filter((mission) => normalizePrazo(mission?.prazo) === selectedDateApi),
@@ -294,15 +295,48 @@ export default function GeneralDashboardScreen({
     );
   }
 
+  const commandDock = (
+    <CommandActionDock
+      active={activeScreen === "reviews"}
+      bottomInset={insets.bottom}
+      count={reviewMissions.length}
+      generalName={generalName}
+      onLayout={(event) => {
+        const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+        setCommandDockHeight((currentHeight) => (
+          currentHeight === nextHeight ? currentHeight : nextHeight
+        ));
+      }}
+      onLogout={onLogout}
+      onReviewPress={() => setActiveScreen("reviews")}
+      weekLabel={weekLabel}
+    />
+  );
+
+  if (activeScreen === "reviews") {
+    return (
+      <>
+        <GeneralReviewScreen
+          bottomPadding={commandDockHeight}
+          missions={reviewMissions}
+          onBack={() => setActiveScreen("home")}
+          onLogout={onLogout}
+          onReload={() => loadAll()}
+          token={token}
+        />
+        {commandDock}
+      </>
+    );
+  }
+
   return (
     <TacticalScreen variant="general">
-      <GeneralHeader
-        generalName={user?.nome_general || user?.usuario || "General"}
-        onLogout={onLogout}
-        weekLabel={weekLabel}
-      />
-
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: commandDockHeight + theme.spacing.xl },
+        ]}
+      >
         <TacticalPanel elevated style={styles.calendarPanel}>
           <SectionHeader
             eyebrow="QUADRO OPERACIONAL"
@@ -373,19 +407,9 @@ export default function GeneralDashboardScreen({
           )}
 
           <Pressable onPress={openCreateForm} style={styles.createButton}>
-            <Text style={styles.createKicker}>DIA SELECIONADO</Text>
-            <Text style={styles.createText}>NOVA ORDEM CONTRA O LEÃO</Text>
+            <Text style={styles.createText}>CRIAR NOVA ORDEM</Text>
           </Pressable>
         </TacticalPanel>
-
-        {showReviews ? (
-          <ReviewPanel
-            missions={reviewMissions}
-            onLogout={onLogout}
-            onReload={() => loadAll()}
-            token={token}
-          />
-        ) : null}
 
         <TacticalPanel style={styles.transitionPanel}>
           <SectionHeader
@@ -404,12 +428,7 @@ export default function GeneralDashboardScreen({
           />
         </TacticalPanel>
       </ScrollView>
-      <CommandActionDock
-        active={showReviews}
-        bottomOffset={Math.max(insets.bottom, 20) + 72}
-        count={reviewMissions.length}
-        onPress={() => setShowReviews((value) => !value)}
-      />
+      {commandDock}
     </TacticalScreen>
   );
 }
@@ -427,14 +446,13 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: theme.spacing.screen,
-    paddingBottom: theme.spacing.xxl + 80,
   },
   calendarPanel: {
     marginBottom: theme.spacing.md,
   },
   lionPanel: {
-    backgroundColor: "rgba(35,30,23,0.9)",
-    borderColor: "rgba(182,138,58,0.32)",
+    backgroundColor: "rgba(23,23,23,0.94)",
+    borderColor: theme.colors.borderStrong,
     marginTop: theme.spacing.md,
   },
   lionTop: {
@@ -464,8 +482,8 @@ const styles = StyleSheet.create({
   },
   lionCounter: {
     alignItems: "center",
-    backgroundColor: "rgba(18,15,12,0.72)",
-    borderColor: "rgba(245,240,232,0.16)",
+    backgroundColor: theme.colors.surfaceDeep,
+    borderColor: theme.colors.border,
     borderWidth: 1,
     minWidth: 58,
     paddingHorizontal: theme.spacing.sm,
@@ -487,8 +505,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   createButton: {
-    backgroundColor: "rgba(91,53,36,0.82)",
-    borderColor: theme.colors.amber,
+    alignItems: "center",
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     justifyContent: "center",
@@ -496,15 +515,10 @@ const styles = StyleSheet.create({
     minHeight: 54,
     paddingHorizontal: theme.spacing.md,
   },
-  createKicker: {
-    ...theme.typography.small,
-    color: theme.colors.textDim,
-  },
   createText: {
     ...theme.typography.label,
     color: theme.colors.text,
     fontSize: 14,
-    marginTop: 2,
   },
   ordersPanel: {
     marginTop: theme.spacing.md,

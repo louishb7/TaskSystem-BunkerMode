@@ -107,6 +107,7 @@ export default function MissionCard({
   onComplete,
   onDelete,
   onEdit,
+  onInputFocus,
   onJustify,
   onToggleDecision,
   toggling = false,
@@ -152,7 +153,7 @@ export default function MissionCard({
           canJustify && styles.dangerCard,
         ]}
       >
-        <View style={styles.cardTop}>
+        <View style={styles.soldierCardTop}>
           <View style={[styles.orderCode, isDecided && styles.orderCodeCritical]}>
             <Text style={[styles.orderCodeText, isDecided && styles.orderCodeCriticalText]}>
               {isDecided ? "INEGOCIÁVEL" : "ORDEM"}
@@ -189,6 +190,7 @@ export default function MissionCard({
             <TextInput
               multiline
               onChangeText={setFailureReason}
+              onFocus={onInputFocus}
               placeholder="REGISTRE O MOTIVO"
               placeholderTextColor={theme.colors.textDim}
               style={styles.justificationInput}
@@ -231,14 +233,12 @@ export default function MissionCard({
 
   return (
     <View style={[styles.card, isDecided && styles.decidedCard]}>
-      <View style={styles.cardTop}>
-        <View style={styles.metaCluster}>
-          <Text style={[styles.metaTag, isDecided && styles.metaTagCritical]}>
-            {isDecided ? "INEGOCIÁVEL" : "ORDEM"}
-          </Text>
-          <Text style={styles.metaTag}>{formatDeadline(mission?.prazo)}</Text>
-        </View>
-        <Text numberOfLines={1} style={styles.status}>{statusLabel}</Text>
+      <View style={styles.badgeRow}>
+        <Text style={[styles.metaTag, isDecided && styles.metaTagCritical]}>
+          {isDecided ? "DECIDIDA" : "ORDEM"}
+        </Text>
+        <Text style={styles.metaTag}>{formatDeadline(mission?.prazo)}</Text>
+        <Text style={styles.metaTag}>{statusLabel}</Text>
       </View>
 
       <Text style={styles.title}>{title}</Text>
@@ -246,12 +246,9 @@ export default function MissionCard({
         <Text numberOfLines={3} style={styles.instruction}>{instruction}</Text>
       ) : null}
 
-      {isDecided || isCompleted(mission) ? (
+      {isCompleted(mission) ? (
         <View style={styles.statusRow}>
-          {isDecided ? (
-            <Text style={[styles.decision, styles.decisionActive]}>CRÍTICA</Text>
-          ) : null}
-          {isCompleted(mission) ? <Text style={styles.done}>EXECUTADA</Text> : null}
+          <Text style={styles.done}>EXECUTADA</Text>
         </View>
       ) : null}
 
@@ -346,8 +343,8 @@ export function MissionProgress({ label = "PROGRESSO", missions }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(37,42,42,0.82)",
-    borderColor: "rgba(245,240,232,0.16)",
+    backgroundColor: "rgba(23,23,23,0.94)",
+    borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     minHeight: theme.layout.missionMinHeight,
@@ -355,23 +352,23 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
   },
   soldierCard: {
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surface,
     borderLeftColor: theme.colors.red,
     borderLeftWidth: 2,
   },
   soldierDecidedCard: {
-    backgroundColor: "#130A0A",
-    borderColor: "rgba(255,42,42,0.34)",
+    backgroundColor: theme.colors.surfaceDeep,
+    borderColor: theme.colors.red,
   },
   dangerCard: {
     borderColor: theme.colors.red,
   },
   decidedCard: {
-    borderColor: "rgba(182,138,58,0.5)",
+    borderColor: theme.colors.borderStrong,
     borderLeftColor: theme.colors.red,
     borderLeftWidth: 3,
   },
-  cardTop: {
+  soldierCardTop: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
@@ -409,23 +406,22 @@ const styles = StyleSheet.create({
     ...theme.typography.heading,
     color: theme.colors.white,
     fontSize: 18,
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   instruction: {
     ...theme.typography.body,
     color: theme.colors.textMuted,
     marginTop: theme.spacing.sm,
   },
-  metaCluster: {
+  badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: theme.spacing.sm,
-    maxWidth: "68%",
   },
   metaTag: {
     ...theme.typography.small,
-    backgroundColor: "rgba(18,15,12,0.42)",
-    borderColor: "rgba(245,240,232,0.16)",
+    backgroundColor: theme.colors.surfaceDeep,
+    borderColor: theme.colors.border,
     borderWidth: 1,
     color: theme.colors.textMuted,
     paddingHorizontal: theme.spacing.sm,
@@ -442,25 +438,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     marginTop: theme.spacing.md,
   },
-  decision: {
-    ...theme.typography.small,
-    backgroundColor: "rgba(18,15,12,0.3)",
-    borderColor: "rgba(245,240,232,0.14)",
-    borderWidth: 1,
-    color: theme.colors.textDim,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-  },
-  decisionActive: {
-    borderColor: theme.colors.red,
-    color: theme.colors.red,
-  },
   done: {
     ...theme.typography.small,
     color: theme.colors.text,
   },
   actions: {
-    borderTopColor: "rgba(245,240,232,0.12)",
+    borderTopColor: theme.colors.border,
     borderTopWidth: 1,
     flexDirection: "row",
     flexWrap: "wrap",
@@ -490,7 +473,7 @@ const styles = StyleSheet.create({
   secondaryAction: {
     alignItems: "center",
     backgroundColor: theme.colors.transparent,
-    borderColor: "rgba(245,240,232,0.18)",
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     justifyContent: "center",
@@ -526,7 +509,7 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   justification: {
-    borderTopColor: "rgba(245,240,232,0.12)",
+    borderTopColor: theme.colors.border,
     borderTopWidth: 1,
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,

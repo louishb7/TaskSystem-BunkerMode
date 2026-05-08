@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     ...theme.typography.small,
-    color: theme.colors.amber,
+    color: theme.colors.textDim,
     marginBottom: theme.spacing.xs,
   },
   title: {

@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   item: {
-    backgroundColor: "rgba(18,15,12,0.44)",
+    backgroundColor: theme.colors.surfaceDeep,
     borderColor: theme.colors.red,
     borderWidth: 1,
     padding: theme.spacing.md,
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
   reasonBox: {
-    borderTopColor: "rgba(245,240,232,0.12)",
+    borderTopColor: theme.colors.border,
     borderTopWidth: 1,
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,

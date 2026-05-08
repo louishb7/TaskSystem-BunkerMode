@@ -1,18 +1,18 @@
 import React, { useState } from "react";
 
 export const FAILURE_REASON_OPTIONS = Object.freeze([
-  { value: "not_done", label: "Não fiz" },
-  { value: "done_not_marked", label: "Fiz, mas esqueci de marcar" },
-  { value: "partially_done", label: "Fiz parcialmente" },
-  { value: "external_blocker", label: "Imprevisto real" },
-  { value: "other", label: "Outro motivo" },
+  { value: "not_done", label: "NÃO FIZ" },
+  { value: "done_not_marked", label: "FIZ, NÃO REGISTREI" },
+  { value: "partially_done", label: "FIZ PARCIAL" },
+  { value: "external_blocker", label: "IMPEDIMENTO REAL" },
+  { value: "other", label: "OUTRO" },
 ]);
 
 export default function FailureJustificationForm({
-  mission,
   loading = false,
+  mission,
   onSubmit,
-  submitLabel = "Enviar justificativa",
+  submitLabel = "REGISTRAR JUSTIFICATIVA",
 }) {
   const [reasonType, setReasonType] = useState("not_done");
   const [reason, setReason] = useState("");
@@ -22,13 +22,8 @@ export default function FailureJustificationForm({
     event.preventDefault();
     const trimmedReason = reason.trim();
 
-    if (!reasonType) {
-      setError("Selecione o tipo da justificativa.");
-      return;
-    }
-
     if (!trimmedReason) {
-      setError("Explique o motivo da falha antes de seguir.");
+      setError("Registre o motivo da falha.");
       return;
     }
 
@@ -40,22 +35,25 @@ export default function FailureJustificationForm({
 
     if (result?.error) {
       setError(result.error);
+      return;
     }
+
+    setReason("");
   }
 
   return (
     <form className="failure-justification-form" onSubmit={handleSubmit}>
       <fieldset disabled={loading}>
-        <legend>Tipo da justificativa</legend>
+        <legend>JUSTIFICATIVA OBRIGATÓRIA</legend>
         <div className="failure-reason-options">
           {FAILURE_REASON_OPTIONS.map((option) => (
             <label key={option.value} className="reason-option">
               <input
-                type="radio"
-                name={`failure-reason-type-${mission.id}`}
-                value={option.value}
                 checked={reasonType === option.value}
+                name={`failure-reason-type-${mission.id}`}
                 onChange={(event) => setReasonType(event.target.value)}
+                type="radio"
+                value={option.value}
               />
               <span>{option.label}</span>
             </label>
@@ -64,21 +62,21 @@ export default function FailureJustificationForm({
       </fieldset>
 
       <label>
-        Justificativa
+        Motivo
         <textarea
-          name={`failure-reason-${mission.id}`}
-          rows="3"
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder="Registre o que aconteceu"
           disabled={loading}
+          name={`failure-reason-${mission.id}`}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="REGISTRE O MOTIVO"
+          rows="4"
+          value={reason}
         />
       </label>
 
       {error && <p className="feedback error">{error}</p>}
 
-      <button className="button primary" type="submit" disabled={loading}>
-        {loading ? "Enviando..." : submitLabel}
+      <button className="button danger" disabled={loading || !reason.trim()} type="submit">
+        {loading ? "AGUARDE" : submitLabel}
       </button>
     </form>
   );

@@ -1,10 +1,7 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,10 +9,10 @@ import {
 } from "react-native";
 
 import { api } from "../api/client";
+import KeyboardAwareScreen from "../components/KeyboardAwareScreen";
 import SectionHeader from "../components/SectionHeader";
 import StatusNotice from "../components/StatusNotice";
 import TacticalPanel from "../components/TacticalPanel";
-import TacticalScreen from "../components/TacticalScreen";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 import { formatDateForApi, getTomorrow } from "../utils/dates";
 
@@ -55,6 +52,9 @@ export default function MissionFormScreen({
   const [focusedField, setFocusedField] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const tituloRef = useRef(null);
+  const instrucaoRef = useRef(null);
+  const prazoRef = useRef(null);
   const lockedInitialPrazo = Boolean(initialPrazo && !editingMission);
   const prazoContext = formatPrazoContext(initialPrazo);
 
@@ -105,12 +105,14 @@ export default function MissionFormScreen({
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.keyboard}
+    <KeyboardAwareScreen
+      bottomPadding={theme.spacing.xxl}
+      contentContainerStyle={styles.content}
+      extraScrollHeight={132}
+      keyboardBottomPadding={260}
     >
-      <TacticalScreen>
-        <ScrollView contentContainerStyle={styles.content}>
+      {({ scrollToFocusedInput }) => (
+        <>
           <Text style={styles.brand}>BUNKERMODE</Text>
           <SectionHeader
             eyebrow="POSTO DE COMANDO"
@@ -129,9 +131,13 @@ export default function MissionFormScreen({
             <TextInput
               onBlur={() => setFocusedField("")}
               onChangeText={setTitulo}
-              onFocus={() => setFocusedField("titulo")}
+              onFocus={() => {
+                setFocusedField("titulo");
+                scrollToFocusedInput(tituloRef);
+              }}
               placeholder="Ex.: Revisar plano semanal"
               placeholderTextColor={theme.colors.textDim}
+              ref={tituloRef}
               style={[styles.input, focusedField === "titulo" && styles.inputFocused]}
               value={titulo}
             />
@@ -140,9 +146,13 @@ export default function MissionFormScreen({
               multiline
               onBlur={() => setFocusedField("")}
               onChangeText={setInstrucao}
-              onFocus={() => setFocusedField("instrucao")}
+              onFocus={() => {
+                setFocusedField("instrucao");
+                scrollToFocusedInput(instrucaoRef);
+              }}
               placeholder="Descreva exatamente o que deve ser feito"
               placeholderTextColor={theme.colors.textDim}
+              ref={instrucaoRef}
               style={[
                 styles.input,
                 styles.multiline,
@@ -168,9 +178,13 @@ export default function MissionFormScreen({
                   <TextInput
                     onBlur={() => setFocusedField("")}
                     onChangeText={setPrazo}
-                    onFocus={() => setFocusedField("prazo")}
+                    onFocus={() => {
+                      setFocusedField("prazo");
+                      scrollToFocusedInput(prazoRef);
+                    }}
                     placeholder="DD-MM-AAAA"
                     placeholderTextColor={theme.colors.textDim}
+                    ref={prazoRef}
                     style={[styles.input, focusedField === "prazo" && styles.inputFocused]}
                     value={prazo}
                   />
@@ -194,9 +208,9 @@ export default function MissionFormScreen({
               <Text style={styles.cancel}>CANCELAR</Text>
             </Pressable>
           </TacticalPanel>
-        </ScrollView>
-      </TacticalScreen>
-    </KeyboardAvoidingView>
+        </>
+      )}
+    </KeyboardAwareScreen>
   );
 }
 
@@ -222,12 +236,9 @@ function Segmented({ options, selected, onSelect }) {
 }
 
 const styles = StyleSheet.create({
-  keyboard: {
-    flex: 1,
-  },
   content: {
+    flexGrow: 1,
     padding: theme.spacing.screen,
-    paddingBottom: theme.spacing.xxl,
   },
   brand: {
     ...theme.typography.small,

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 
-export default function AuthScreen({ onLogin, onRegister, status, loading }) {
+import dualitySymbol from "../assets/bunkermode/branding/duality_symbol.png";
+
+export default function AuthScreen({ loading, onLogin, onRegister, status }) {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({
     usuario: "",
@@ -19,6 +21,7 @@ export default function AuthScreen({ onLogin, onRegister, status, loading }) {
 
   function submit(event) {
     event.preventDefault();
+
     if (isLogin) {
       onLogin({ email: form.email.trim(), senha: form.senha });
       return;
@@ -33,69 +36,48 @@ export default function AuthScreen({ onLogin, onRegister, status, loading }) {
 
   return (
     <main className="auth-page">
-      <section className="auth-brand">
-        <div className="auth-brand-mark">
-          <p className="eyebrow">BunkerMode</p>
-          <span className="auth-status-dot" />
-        </div>
-        <h1>Disciplina operacional para o que já precisa acontecer.</h1>
-        <p>
-          Entre no bunker para definir ordens claras, sustentar compromissos e operar
-          um plano de execução com prioridade visível.
-        </p>
-        <div className="auth-principles" aria-label="Princípios do produto">
-          <div>
-            <span>Clareza</span>
-            <strong>ordens objetivas</strong>
-          </div>
-          <div>
-            <span>Foco</span>
-            <strong>menos ruído, mais execução</strong>
-          </div>
-          <div>
-            <span>Peso</span>
-            <strong>decisões ganham presença</strong>
-          </div>
-        </div>
+      <section className="auth-identity">
+        <span className="brand-symbol xl">
+          <img src={dualitySymbol} alt="Símbolo General e Soldado" />
+        </span>
+        <h1>BUNKERMODE</h1>
+        <p className="auth-lion">TODO DIA EXISTE UM LEÃO.</p>
+        <p className="auth-support">PLANEJE COMO GENERAL. EXECUTE COMO SOLDADO.</p>
       </section>
 
-      <section className="auth-card" aria-label="Autenticação">
+      <section className="auth-card panel" aria-label="Autenticação">
         <div className="segmented-control">
           <button
-            type="button"
             className={isLogin ? "active" : ""}
+            type="button"
             onClick={() => setMode("login")}
           >
-            Entrar
+            ENTRAR
           </button>
           <button
-            type="button"
             className={!isLogin ? "active" : ""}
+            type="button"
             onClick={() => setMode("register")}
           >
-            Criar conta
+            CRIAR CONTA
           </button>
         </div>
 
         <form className="form-stack" onSubmit={submit}>
           <div className="auth-form-heading">
-            <h2>{isLogin ? "Entrar" : "Criar conta"}</h2>
-            <p className="muted">
-              {isLogin
-                ? "Acesse o plano atual e retome a execução."
-                : "Abra seu acesso para começar a operar as próximas missões."}
-            </p>
+            <p className="section-kicker">ENTRE NO BUNKER</p>
+            <h2>{isLogin ? "Acesso ao posto" : "Novo acesso"}</h2>
           </div>
 
           {!isLogin && (
             <label>
               Usuário
               <input
-                name="usuario"
-                value={form.usuario}
-                onChange={updateField}
                 autoComplete="username"
-                placeholder="Seu usuário"
+                name="usuario"
+                onChange={updateField}
+                placeholder="usuário"
+                value={form.usuario}
               />
             </label>
           )}
@@ -103,32 +85,31 @@ export default function AuthScreen({ onLogin, onRegister, status, loading }) {
           <label>
             E-mail
             <input
-              name="email"
-              value={form.email}
-              onChange={updateField}
               autoComplete="email"
-              placeholder="seu@email.com"
+              name="email"
+              onChange={updateField}
+              placeholder="usuario@email.com"
+              type="email"
+              value={form.email}
             />
           </label>
 
           <label>
             Senha
             <input
+              autoComplete={isLogin ? "current-password" : "new-password"}
               name="senha"
+              onChange={updateField}
+              placeholder="senha"
               type="password"
               value={form.senha}
-              onChange={updateField}
-              autoComplete={isLogin ? "current-password" : "new-password"}
-              placeholder="Sua senha"
             />
           </label>
 
-          {status.message && (
-            <p className={`feedback ${status.type}`}>{status.message}</p>
-          )}
+          {status.message && <p className={`feedback ${status.type}`}>{status.message}</p>}
 
-          <button className="button primary" type="submit" disabled={loading}>
-            {loading ? "Processando..." : isLogin ? "Entrar" : "Criar conta"}
+          <button className="button danger full" disabled={loading} type="submit">
+            {loading ? "AGUARDE" : isLogin ? "ENTRAR NO BUNKER" : "CRIAR ACESSO"}
           </button>
         </form>
       </section>

@@ -22,9 +22,7 @@ export default function ModeSwitchButton({
       ]}
     >
       <View style={styles.copy}>
-        <Text style={[styles.kicker, soldier && styles.kickerSoldier]}>
-          {soldier ? "SAÍDA RESTRITA" : "MODO RESTRITO"}
-        </Text>
+        {!soldier ? <Text style={styles.kicker}>MODO RESTRITO</Text> : null}
         <Text style={[styles.label, soldier && styles.labelSoldier]}>
           {soldier ? "RETORNAR AO COMANDO" : "ATIVAR SOLDADO"}
         </Text>
@@ -56,7 +54,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.amber,
   },
   generalButton: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.surfaceRaised,
     borderColor: theme.colors.borderStrong,
   },
   pressed: {
@@ -70,9 +68,6 @@ const styles = StyleSheet.create({
   kicker: {
     ...theme.typography.small,
     color: theme.colors.amberDark,
-  },
-  kickerSoldier: {
-    color: theme.colors.textDim,
   },
   label: {
     ...theme.typography.label,

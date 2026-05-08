@@ -86,8 +86,8 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   boardPlate: {
-    backgroundColor: "rgba(18,15,12,0.34)",
-    borderColor: "rgba(245,240,232,0.08)",
+    backgroundColor: "rgba(17,17,17,0.58)",
+    borderColor: theme.colors.borderSoft,
     borderWidth: 1,
     bottom: 10,
     left: 0,
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     top: 28,
   },
   line: {
-    backgroundColor: "rgba(182,138,58,0.38)",
+    backgroundColor: theme.colors.borderStrong,
     height: 1,
     left: 20,
     position: "absolute",
@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
   },
   node: {
     alignItems: "center",
-    backgroundColor: "rgba(37,42,42,0.88)",
-    borderColor: "rgba(245,240,232,0.18)",
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.none,
     borderWidth: 1,
     height: 38,
@@ -126,15 +126,15 @@ const styles = StyleSheet.create({
     width: 38,
   },
   nodeWithMission: {
-    borderColor: theme.colors.amber,
+    borderColor: theme.colors.textMuted,
   },
   nodeToday: {
     borderColor: theme.colors.red,
     borderWidth: 2,
   },
   nodeSelected: {
-    backgroundColor: theme.colors.rust,
-    borderColor: theme.colors.amber,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.red,
   },
   number: {
     ...theme.typography.label,
@@ -160,12 +160,12 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
   countDot: {
-    backgroundColor: "rgba(245,240,232,0.16)",
+    backgroundColor: theme.colors.borderStrong,
     height: 5,
     width: 5,
   },
   countDotActive: {
-    backgroundColor: theme.colors.amber,
+    backgroundColor: theme.colors.textMuted,
   },
   count: {
     ...theme.typography.small,

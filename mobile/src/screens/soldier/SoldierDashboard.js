@@ -1,5 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "../../api/client";
@@ -36,6 +46,7 @@ function formatCurrentDay() {
 
 export default function SoldierDashboard({ token, onLogout, onUserChange }) {
   const insets = useSafeAreaInsets();
+  const listRef = useRef(null);
   const [missions, setMissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState(null);
@@ -45,10 +56,23 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
   const [senha, setSenha] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   useEffect(() => {
     loadMissions({ initial: true });
   }, [token]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSubscription = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
+    const hideSubscription = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const actionMissions = useMemo(
     () =>
@@ -182,128 +206,148 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
   }
 
   return (
-    <TacticalScreen denseBackground variant="soldier">
-      <View
-        style={[
-          styles.content,
-          {
-            paddingBottom: Math.max(insets.bottom, 24) + theme.spacing.sm,
-            paddingTop: Math.max(insets.top, 12),
-          },
-        ]}
-      >
-        <SoldierHeader
-          currentDay={formatCurrentDay()}
-          remainingCount={actionMissions.length}
-          totalCount={missions.length || actionMissions.length}
-        />
-
-        <View style={styles.notices}>
-          <StatusNotice type="error" message={error} />
-          <StatusNotice type="info" message={notice} />
-        </View>
-
-        <FlatList
-          contentContainerStyle={styles.listContent}
-          data={actionMissions}
-          keyExtractor={(item, index) => String(item?.id ?? index)}
-          ListEmptyComponent={
-            <EmptyState
-              title="Sem ordens pendentes"
-              message="Nenhuma missão operacional está disponível para execução agora."
-            />
-          }
-          renderItem={({ item }) => (
-            <MissionCard
-              completing={completingId === item?.id}
-              justifying={justifyingId === item?.id}
-              mission={item}
-              onComplete={() => completeMission(item?.id)}
-              onJustify={(payload) => justifyMission(item?.id, payload)}
-              variant="soldier"
-            />
-          )}
-          style={styles.list}
-        />
-
-        <View style={styles.footer}>
-          <ModeSwitchButton
-            disabled={unlocking}
-            loading={unlocking}
-            mode="soldier"
-            onPress={() => setReturnStep("confirm")}
-          />
-        </View>
-      </View>
-
-      {returnStep !== "closed" ? (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={styles.keyboard}
+    >
+      <TacticalScreen denseBackground variant="soldier">
         <View
           style={[
-            styles.overlay,
+            styles.content,
             {
               paddingBottom: Math.max(insets.bottom, 16),
-              paddingTop: Math.max(insets.top, 16),
+              paddingTop: theme.spacing.md,
             },
           ]}
         >
-          <View style={styles.protocolBox}>
-            {returnStep === "confirm" ? (
-              <>
-                <Text style={styles.protocolKicker}>PROTOCOLO DE SAÍDA</Text>
-                <Text style={styles.protocolText}>
-                  Você está saindo do modo de execução. Confirme antes de retornar ao comando.
-                </Text>
-                <View style={styles.protocolActions}>
-                  <ProtocolButton
-                    disabled={unlocking}
-                    label="CANCELAR"
-                    onPress={() => {
-                      setSenha("");
-                      setReturnStep("closed");
-                    }}
-                  />
-                  <ProtocolButton
-                    danger
-                    disabled={unlocking}
-                    label="CONTINUAR"
-                    onPress={() => setReturnStep("password")}
-                  />
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={styles.protocolKicker}>SENHA DO GENERAL</Text>
-                <TextInput
-                  autoCapitalize="none"
-                  onChangeText={setSenha}
-                  placeholder="SENHA"
-                  placeholderTextColor={theme.colors.textDim}
-                  secureTextEntry
-                  style={styles.input}
-                  value={senha}
-                />
-                <View style={styles.protocolActions}>
-                  <ProtocolButton
-                    disabled={unlocking}
-                    label="CANCELAR"
-                    onPress={() => {
-                      setSenha("");
-                      setReturnStep("closed");
-                    }}
-                  />
-                  <ProtocolButton
-                    danger
-                    disabled={unlocking || !senha}
-                    label={unlocking ? "AGUARDE" : "RETORNAR"}
-                    onPress={returnToGeneral}
-                  />
-                </View>
-              </>
+          <SoldierHeader
+            currentDay={formatCurrentDay()}
+            remainingCount={actionMissions.length}
+            totalCount={missions.length || actionMissions.length}
+          />
+
+          <View style={styles.notices}>
+            <StatusNotice type="error" message={error} />
+            <StatusNotice type="info" message={notice} />
+          </View>
+
+          <FlatList
+            contentContainerStyle={[
+              styles.listContent,
+              keyboardOpen && styles.listContentKeyboard,
+            ]}
+            data={actionMissions}
+            keyboardShouldPersistTaps="handled"
+            keyExtractor={(item, index) => String(item?.id ?? index)}
+            ListEmptyComponent={
+              <EmptyState
+                title="Sem ordens pendentes"
+                message="Nenhuma missão operacional está disponível para execução agora."
+              />
+            }
+            onScrollToIndexFailed={() => {}}
+            ref={listRef}
+            renderItem={({ item, index }) => (
+              <MissionCard
+                completing={completingId === item?.id}
+                justifying={justifyingId === item?.id}
+                mission={item}
+                onComplete={() => completeMission(item?.id)}
+                onInputFocus={() => {
+                  setTimeout(() => {
+                    listRef.current?.scrollToIndex?.({
+                      animated: true,
+                      index,
+                      viewPosition: 0.16,
+                    });
+                  }, 120);
+                }}
+                onJustify={(payload) => justifyMission(item?.id, payload)}
+                variant="soldier"
+              />
             )}
+            style={styles.list}
+          />
+
+          <View style={styles.footer}>
+            <ModeSwitchButton
+              disabled={unlocking}
+              loading={unlocking}
+              mode="soldier"
+              onPress={() => setReturnStep("confirm")}
+            />
           </View>
         </View>
-      ) : null}
-    </TacticalScreen>
+
+        {returnStep !== "closed" ? (
+          <View
+            style={[
+              styles.overlay,
+              {
+                paddingBottom: Math.max(insets.bottom, 16) + (keyboardOpen ? 96 : 0),
+                paddingTop: theme.spacing.md,
+              },
+            ]}
+          >
+            <View style={styles.protocolBox}>
+              {returnStep === "confirm" ? (
+                <>
+                  <Text style={styles.protocolKicker}>PROTOCOLO DE SAÍDA</Text>
+                  <Text style={styles.protocolText}>
+                    Você está saindo do modo de execução. Confirme antes de retornar ao comando.
+                  </Text>
+                  <View style={styles.protocolActions}>
+                    <ProtocolButton
+                      disabled={unlocking}
+                      label="CANCELAR"
+                      onPress={() => {
+                        setSenha("");
+                        setReturnStep("closed");
+                      }}
+                    />
+                    <ProtocolButton
+                      danger
+                      disabled={unlocking}
+                      label="CONTINUAR"
+                      onPress={() => setReturnStep("password")}
+                    />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.protocolKicker}>SENHA DO GENERAL</Text>
+                  <TextInput
+                    autoCapitalize="none"
+                    onChangeText={setSenha}
+                    placeholder="SENHA"
+                    placeholderTextColor={theme.colors.textDim}
+                    secureTextEntry
+                    style={styles.input}
+                    value={senha}
+                  />
+                  <View style={styles.protocolActions}>
+                    <ProtocolButton
+                      disabled={unlocking}
+                      label="CANCELAR"
+                      onPress={() => {
+                        setSenha("");
+                        setReturnStep("closed");
+                      }}
+                    />
+                    <ProtocolButton
+                      danger
+                      disabled={unlocking || !senha}
+                      label={unlocking ? "AGUARDE" : "RETORNAR"}
+                      onPress={returnToGeneral}
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        ) : null}
+      </TacticalScreen>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -336,6 +380,9 @@ const styles = StyleSheet.create({
     ...theme.typography.small,
     color: theme.colors.red,
   },
+  keyboard: {
+    flex: 1,
+  },
   content: {
     flex: 1,
     paddingHorizontal: theme.spacing.screen,
@@ -352,14 +399,20 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.md,
     paddingTop: theme.spacing.md,
   },
+  listContentKeyboard: {
+    paddingBottom: 180,
+  },
   footer: {
+    backgroundColor: "rgba(23,23,23,0.94)",
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
     borderTopColor: theme.colors.border,
-    borderTopWidth: 1,
-    paddingTop: theme.spacing.md,
+    padding: theme.spacing.sm,
   },
   overlay: {
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.96)",
+    backgroundColor: "rgba(0,0,0,0.92)",
     bottom: 0,
     justifyContent: "center",
     left: 0,

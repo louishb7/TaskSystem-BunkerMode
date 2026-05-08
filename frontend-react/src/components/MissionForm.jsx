@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
+
 import { formatDateForApi, getTomorrow } from "../utils/date.js";
-import { isCompleted, STATUS_MISSAO } from "../utils/missionStatus.js";
 
 const emptyForm = {
   titulo: "",
   instrucao: "",
-  prioridade: "1",
   prazoTipo: "hoje",
   prazo: "",
 };
@@ -14,46 +13,66 @@ function getUserId(user) {
   return user?.usuario_id ?? user?.id;
 }
 
+function initialPrazoTipo(mission, initialPrazo) {
+  return mission?.prazo || initialPrazo ? "data_especifica" : "amanha";
+}
+
+function formatPrazoContext(prazo) {
+  if (!prazo || typeof prazo !== "string") {
+    return "";
+  }
+
+  const [day, month] = prazo.split("-");
+  if (!day || !month) {
+    return prazo;
+  }
+
+  return `${day}/${month}`;
+}
+
 export default function MissionForm({
-  editingMission,
   currentUser,
+  editingMission,
+  initialPrazo,
   loading,
-  status,
+  onCancel,
   onCreate,
   onUpdate,
-  onCancelEdit,
+  status,
 }) {
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState({
+    ...emptyForm,
+    prazoTipo: initialPrazo ? "data_especifica" : emptyForm.prazoTipo,
+    prazo: initialPrazo || "",
+  });
+
+  const isEditing = Boolean(editingMission);
+  const lockedInitialPrazo = Boolean(initialPrazo && !isEditing);
+  const prazoContext = formatPrazoContext(initialPrazo);
 
   useEffect(() => {
     if (!editingMission) {
-      setForm(emptyForm);
+      setForm({
+        ...emptyForm,
+        prazoTipo: initialPrazo ? "data_especifica" : emptyForm.prazoTipo,
+        prazo: initialPrazo || "",
+      });
       return;
     }
 
     setForm({
       titulo: editingMission.titulo || "",
       instrucao: editingMission.instrucao || "",
-      prioridade: String(editingMission.prioridade || 1),
-      prazoTipo: editingMission.prazo ? "data_especifica" : "hoje",
-      prazo: editingMission.prazo || "",
+      prazoTipo: initialPrazoTipo(editingMission, initialPrazo),
+      prazo: editingMission.prazo || initialPrazo || "",
     });
-  }, [editingMission]);
+  }, [editingMission, initialPrazo]);
 
   function updateField(event) {
     setForm((current) => ({
       ...current,
       [event.target.name]: event.target.value,
     }));
-  }
-
-  function buildPayload() {
-    return {
-      titulo: form.titulo.trim(),
-      instrucao: form.instrucao.trim(),
-      prioridade: Number(form.prioridade),
-      prazo: buildDeadline(),
-    };
   }
 
   function buildDeadline() {
@@ -70,59 +89,46 @@ export default function MissionForm({
 
   function submit(event) {
     event.preventDefault();
-    const payload = buildPayload();
+    const payload = {
+      titulo: form.titulo.trim(),
+      instrucao: form.instrucao.trim(),
+      prazo: buildDeadline(),
+    };
 
-    if (!editingMission) {
-      payload.responsavel_id = getUserId(currentUser);
-      onCreate(payload);
+    if (isEditing) {
+      onUpdate(editingMission.id, payload);
       return;
     }
 
-    onUpdate(editingMission.id, payload);
+    payload.responsavel_id = getUserId(currentUser);
+    onCreate(payload);
   }
-
-  function reopenMission() {
-    if (!editingMission) {
-      return;
-    }
-
-    onUpdate(editingMission.id, {
-      ...buildPayload(),
-      status: STATUS_MISSAO.PENDENTE,
-    });
-  }
-
-  function clearForm() {
-    setForm(emptyForm);
-    if (editingMission) {
-      onCancelEdit();
-    }
-  }
-
-  const isEditing = Boolean(editingMission);
 
   return (
-    <section className={`panel mission-form ${isEditing ? "editing" : ""}`}>
-      <div className="section-heading general-heading">
+    <section className="panel mission-form">
+      <div className="section-heading compact">
         <div>
-          <p className="section-kicker">Posto do General</p>
-          <h2>{isEditing ? "Ajustar ordem ativa" : "Definir nova ordem"}</h2>
-          <p className="muted form-lead">
-            {isEditing
-              ? `Missão ${editingMission.id} em revisão. Mantenha a instrução precisa e executável.`
-              : "Escreva uma ordem clara, com prazo e prioridade suficientes para guiar a execução sem renegociação."}
-          </p>
+          <p className="section-kicker">POSTO DE COMANDO</p>
+          <h2>{isEditing ? "Editar ordem" : "Nova ordem"}</h2>
+          <p className="muted">A ordem deve dizer exatamente o que será executado.</p>
         </div>
       </div>
 
       <form className="form-stack" onSubmit={submit}>
+        {lockedInitialPrazo && (
+          <div className="deadline-context">
+            <span>DATA DEFINIDA</span>
+            <strong>{prazoContext}</strong>
+          </div>
+        )}
+
         <label>
           Título
           <input
             name="titulo"
-            value={form.titulo}
             onChange={updateField}
             placeholder="Ex.: Revisar plano semanal"
+            value={form.titulo}
           />
         </label>
 
@@ -130,60 +136,54 @@ export default function MissionForm({
           Instrução
           <textarea
             name="instrucao"
-            rows="5"
-            value={form.instrucao}
             onChange={updateField}
             placeholder="Descreva exatamente o que deve ser feito"
+            rows="5"
+            value={form.instrucao}
           />
         </label>
 
-        <div className="form-grid">
-          <label>
-            Prazo
-            <select name="prazoTipo" value={form.prazoTipo} onChange={updateField}>
-              <option value="hoje">Hoje</option>
-              <option value="amanha">Amanhã</option>
-              <option value="data_especifica">Data específica</option>
-            </select>
-          </label>
+        {!lockedInitialPrazo && (
+          <>
+            <div className="segmented-control deadline-control">
+              {[
+                ["hoje", "Hoje"],
+                ["amanha", "Amanhã"],
+                ["data_especifica", "Data específica"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  className={form.prazoTipo === value ? "active" : ""}
+                  type="button"
+                  onClick={() => setForm((current) => ({ ...current, prazoTipo: value }))}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-          {form.prazoTipo === "data_especifica" && (
-            <label>
-              Data
-              <input
-                name="prazo"
-                value={form.prazo}
-                onChange={updateField}
-                placeholder="DD-MM-YYYY"
-              />
-            </label>
-          )}
-
-          <label>
-            Prioridade
-            <select name="prioridade" value={form.prioridade} onChange={updateField}>
-              <option value="1">Alta</option>
-              <option value="2">Média</option>
-              <option value="3">Baixa</option>
-            </select>
-          </label>
-        </div>
-
-        {status.message && (
-          <p className={`feedback ${status.type}`}>{status.message}</p>
+            {form.prazoTipo === "data_especifica" && (
+              <label>
+                Data
+                <input
+                  name="prazo"
+                  onChange={updateField}
+                  placeholder="DD-MM-AAAA"
+                  value={form.prazo}
+                />
+              </label>
+            )}
+          </>
         )}
 
+        {status.message && <p className={`feedback ${status.type}`}>{status.message}</p>}
+
         <div className="actions-row">
-          <button className="button primary" type="submit" disabled={loading}>
-            {loading ? "Salvando..." : isEditing ? "Salvar edição" : "Criar missão"}
+          <button className="button danger" disabled={loading} type="submit">
+            {loading ? "AGUARDE" : isEditing ? "SALVAR EDIÇÃO" : "REGISTRAR ORDEM"}
           </button>
-          {isEditing && isCompleted(editingMission) && (
-            <button className="button secondary" type="button" onClick={reopenMission} disabled={loading}>
-              Reabrir missão
-            </button>
-          )}
-          <button className="button secondary ghost-button" type="button" onClick={clearForm}>
-            {isEditing ? "Cancelar edição" : "Limpar"}
+          <button className="button secondary" type="button" onClick={onCancel} disabled={loading}>
+            CANCELAR
           </button>
         </div>
       </form>

@@ -63,7 +63,7 @@ export default function BunkerBackground({ dense = false, variant = "general" })
 const styles = StyleSheet.create({
   root: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.generalCanvas,
+    backgroundColor: theme.colors.canvas,
     overflow: "hidden",
   },
   soldierRoot: {
@@ -76,25 +76,25 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   textureImage: {
-    opacity: 0.46,
+    opacity: 0.18,
   },
   textureDense: {
-    opacity: 0.6,
+    opacity: 0.22,
   },
   soldierTexture: {
-    opacity: 0.09,
+    opacity: 0.06,
   },
   loginTexture: {
-    opacity: 0.2,
+    opacity: 0.12,
   },
   noiseImage: {
-    opacity: 0.08,
-  },
-  noiseSoldier: {
     opacity: 0.035,
   },
+  noiseSoldier: {
+    opacity: 0.02,
+  },
   gridImage: {
-    opacity: 0.08,
+    opacity: 0.035,
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
@@ -107,19 +107,19 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.loginScrim,
   },
   vignetteTop: {
-    backgroundColor: "rgba(91,53,36,0.22)",
+    backgroundColor: "rgba(237,237,237,0.035)",
     height: 120,
     left: 0,
-    opacity: 0.8,
+    opacity: 0.7,
     position: "absolute",
     right: 0,
     top: 0,
   },
   soldierVignetteTop: {
-    backgroundColor: "rgba(255,42,42,0.05)",
+    backgroundColor: "rgba(229,57,53,0.03)",
   },
   vignetteBottom: {
-    backgroundColor: "rgba(182,138,58,0.08)",
+    backgroundColor: "rgba(0,0,0,0.32)",
     bottom: 0,
     height: 160,
     left: 0,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   wallLight: {
-    backgroundColor: "rgba(245,240,232,0.05)",
+    backgroundColor: "rgba(237,237,237,0.035)",
     height: 180,
     left: -60,
     position: "absolute",
@@ -136,10 +136,10 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "-5deg" }],
   },
   wallLightSoldier: {
-    backgroundColor: "rgba(255,42,42,0.025)",
+    backgroundColor: "rgba(229,57,53,0.025)",
   },
   verticalLineLeft: {
-    backgroundColor: "rgba(245,240,232,0.08)",
+    backgroundColor: "rgba(237,237,237,0.045)",
     bottom: 0,
     left: 18,
     position: "absolute",
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     width: 1,
   },
   verticalLineRight: {
-    backgroundColor: "rgba(245,240,232,0.08)",
+    backgroundColor: "rgba(237,237,237,0.045)",
     bottom: 0,
     position: "absolute",
     right: 18,
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     width: 1,
   },
   horizontalLine: {
-    backgroundColor: "rgba(245,240,232,0.08)",
+    backgroundColor: "rgba(237,237,237,0.045)",
     height: 1,
     left: 0,
     position: "absolute",

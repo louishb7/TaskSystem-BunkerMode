@@ -1,7 +1,6 @@
 import React from "react";
-import { formatDateTime } from "../utils/date.js";
 
-const REVIEW_STATUS = "FALHA_JUSTIFICADA_PENDENTE_REVISAO";
+import { formatDateTime } from "../utils/date.js";
 
 const FAILURE_REASON_LABELS = Object.freeze({
   not_done: "Não fez",
@@ -12,87 +11,69 @@ const FAILURE_REASON_LABELS = Object.freeze({
 });
 
 function getFailureReasonLabel(type) {
-  return FAILURE_REASON_LABELS[type] || "Outro motivo";
+  return FAILURE_REASON_LABELS[type] || "Tipo não informado";
 }
 
 export default function GeneralReviewPanel({
-  missions,
   loadingMissionId,
+  missions,
   onReview,
 }) {
-  const reviewMissions = missions.filter(
-    (mission) =>
-      mission.status_code === REVIEW_STATUS || mission.permissions?.can_review === true
-  );
+  if (!missions.length) {
+    return (
+      <section className="panel review-empty">
+        <div className="empty-state flat">
+          <h3>Sem pós-ação pendente</h3>
+          <p>Nenhuma falha aguarda decisão do General.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section className="review-panel" aria-label="Falhas aguardando análise do General">
-      <div className="review-panel-header">
-        <div>
-          <p className="section-kicker">Revisão do General</p>
-          <h3>Justificativas aguardando decisão</h3>
-          <p className="muted review-copy">
-            O Soldado já respondeu. Agora o General decide se a justificativa sustenta a falha.
-          </p>
-        </div>
-      </div>
-
-      {!reviewMissions.length && (
-        <div className="review-empty-state">
-          <p>Sem falhas para revisar.</p>
-        </div>
-      )}
-
+    <section className="panel review-panel" aria-label="Falhas aguardando decisão do General">
+      <p className="section-kicker danger">PÓS-AÇÃO: FALHAS AGUARDANDO DECISÃO</p>
       <div className="review-list">
-        {reviewMissions.map((mission) => (
-          <article
-            key={`review-${mission.id}`}
-            className={`review-card ${mission.is_decided ? "decided-review" : ""}`}
-          >
-            <div className="review-card-header">
-              <div>
-                <h4>{mission.titulo}</h4>
-                <p className="muted">
-                  Prazo: {mission.prazo || "Sem prazo definido"} · Falhou em{" "}
-                  {formatDateTime(mission.failed_at)}
-                </p>
+        {missions.map((mission) => {
+          const failedAt = mission?.failed_at
+            ? `Falhou em ${formatDateTime(mission.failed_at)}`
+            : "";
+
+          return (
+            <article key={mission.id} className="review-card">
+              <p className="section-kicker danger">REVISÃO</p>
+              <h3>{mission.titulo || "Sem título"}</h3>
+              <p className="muted">
+                Prazo: {mission.prazo || "Sem prazo"}{failedAt ? ` / ${failedAt}` : ""}
+              </p>
+
+              <div className="review-reason">
+                <span>JUSTIFICATIVA DO SOLDADO</span>
+                <strong>{getFailureReasonLabel(mission.failure_reason_type)}</strong>
+                <p>{mission.failure_reason || "Justificativa não registrada."}</p>
               </div>
-              {mission.is_decided && (
-                <span className="status-badge decided">Decisão do General</span>
-              )}
-            </div>
-            <div className="review-reason">
-              <span>Ordem</span>
-              <p>{mission.instrucao}</p>
-            </div>
-            <div className="review-reason">
-              <span>Tipo da justificativa</span>
-              <p>{getFailureReasonLabel(mission.failure_reason_type)}</p>
-            </div>
-            <div className="review-reason">
-              <span>Justificativa registrada</span>
-              <p>{mission.failure_reason || "Sem justificativa registrada."}</p>
-            </div>
-            <div className="actions-row">
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() => onReview(mission.id, true)}
-                disabled={loadingMissionId === mission.id}
-              >
-                ✅ Justificado
-              </button>
-              <button
-                className="button danger"
-                type="button"
-                onClick={() => onReview(mission.id, false)}
-                disabled={loadingMissionId === mission.id}
-              >
-                ❌ Não justificado
-              </button>
-            </div>
-          </article>
-        ))}
+
+              <div className="actions-row">
+                <button
+                  className="button secondary"
+                  disabled={loadingMissionId === mission.id}
+                  type="button"
+                  onClick={() => onReview(mission.id, true)}
+                >
+                  {loadingMissionId === mission.id ? "AGUARDE" : "ACEITAR"}
+                </button>
+                <button
+                  className="button danger"
+                  disabled={loadingMissionId === mission.id}
+                  type="button"
+                  onClick={() => onReview(mission.id, false)}
+                >
+                  {loadingMissionId === mission.id ? "AGUARDE" : "REJEITAR"}
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

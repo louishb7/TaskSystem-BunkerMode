@@ -1,8 +1,6 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -12,8 +10,8 @@ import {
 
 import { api } from "../api/client";
 import BrandSymbol from "../components/BrandSymbol";
+import KeyboardAwareScreen from "../components/KeyboardAwareScreen";
 import TacticalPanel from "../components/TacticalPanel";
-import TacticalScreen from "../components/TacticalScreen";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
 function getErrorMessage(result, fallback) {
@@ -26,6 +24,8 @@ export default function LoginScreen({ onAuthenticated }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [focusedField, setFocusedField] = useState("");
+  const usuarioRef = useRef(null);
+  const senhaRef = useRef(null);
 
   async function handleLogin() {
     if (!usuario.trim() || !senha) {
@@ -47,14 +47,17 @@ export default function LoginScreen({ onAuthenticated }) {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.keyboard}
+    <KeyboardAwareScreen
+      bottomPadding={theme.spacing.xxl}
+      contentContainerStyle={styles.container}
+      denseBackground
+      keyboardBottomPadding={240}
+      variant="login"
     >
-      <TacticalScreen denseBackground variant="login">
-        <View style={styles.container}>
+      {({ scrollToFocusedInput }) => (
+        <>
           <View style={styles.identity}>
-            <BrandSymbol size={132} />
+            <BrandSymbol size={118} />
             <Text style={styles.brand}>BUNKERMODE</Text>
             <Text style={styles.subtitle}>TODO DIA EXISTE UM LEÃO.</Text>
             <Text style={styles.support}>PLANEJE COMO GENERAL. EXECUTE COMO SOLDADO.</Text>
@@ -68,9 +71,13 @@ export default function LoginScreen({ onAuthenticated }) {
               keyboardType="email-address"
               onBlur={() => setFocusedField("")}
               onChangeText={setUsuario}
-              onFocus={() => setFocusedField("usuario")}
+              onFocus={() => {
+                setFocusedField("usuario");
+                scrollToFocusedInput(usuarioRef);
+              }}
               placeholder="usuário"
               placeholderTextColor={theme.colors.textDim}
+              ref={usuarioRef}
               style={[styles.input, focusedField === "usuario" && styles.inputFocused]}
               value={usuario}
             />
@@ -78,9 +85,13 @@ export default function LoginScreen({ onAuthenticated }) {
               autoCapitalize="none"
               onBlur={() => setFocusedField("")}
               onChangeText={setSenha}
-              onFocus={() => setFocusedField("senha")}
+              onFocus={() => {
+                setFocusedField("senha");
+                scrollToFocusedInput(senhaRef);
+              }}
               placeholder="senha"
               placeholderTextColor={theme.colors.textDim}
+              ref={senhaRef}
               secureTextEntry
               style={[styles.input, focusedField === "senha" && styles.inputFocused]}
               value={senha}
@@ -100,20 +111,18 @@ export default function LoginScreen({ onAuthenticated }) {
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </TacticalPanel>
-        </View>
-      </TacticalScreen>
-    </KeyboardAvoidingView>
+        </>
+      )}
+    </KeyboardAwareScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboard: {
-    flex: 1,
-  },
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: theme.spacing.screen,
+    paddingTop: theme.spacing.xl,
   },
   identity: {
     alignItems: "center",

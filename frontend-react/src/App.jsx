@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
+
 import { api } from "./api/client.js";
+import dualitySymbol from "./assets/bunkermode/branding/duality_symbol.png";
 import AuthScreen from "./components/AuthScreen.jsx";
-import FailureJustificationForm from "./components/FailureJustificationForm.jsx";
 import GeneralReviewPanel from "./components/GeneralReviewPanel.jsx";
+import MissionCard, { MissionProgress } from "./components/MissionCard.jsx";
 import MissionForm from "./components/MissionForm.jsx";
-import MissionList from "./components/MissionList.jsx";
-import MissionToolbar from "./components/MissionToolbar.jsx";
-import WeeklyReportPanel from "./components/WeeklyReportPanel.jsx";
-import { formatDateTime } from "./utils/date.js";
-import { isCompleted } from "./utils/missionStatus.js";
+import { formatDateForApi } from "./utils/date.js";
+import { isCompleted, STATUS_MISSAO } from "./utils/missionStatus.js";
 
 const TOKEN_KEY = "bunkermode_token";
 const USER_KEY = "bunkermode_usuario";
@@ -30,73 +29,152 @@ function readStoredUser() {
   }
 }
 
-function filterMissions(missions, filters) {
-  const search = filters.search.trim().toLowerCase();
-  let filtered = [...missions];
-
-  if (search) {
-    filtered = filtered.filter((mission) => {
-      const content = `${mission.titulo} ${mission.instrucao}`.toLowerCase();
-      return content.includes(search);
-    });
+function getErrorMessage(result, fallback) {
+  if (result?.status === 0) {
+    return "Não foi possível conectar à API.";
   }
-
-    if (filters.status === "pendente") {
-    filtered = filtered.filter((mission) => !isCompleted(mission));
-  }
-
-  if (filters.status === "concluida") {
-    filtered = filtered.filter(isCompleted);
-  }
-
-  if (filters.decided === "decididas") {
-    filtered = filtered.filter((mission) => mission.is_decided);
-  }
-
-  if (filters.decided === "nao_decididas") {
-    filtered = filtered.filter((mission) => !mission.is_decided);
-  }
-
-  filtered.sort((a, b) => {
-    const aNeedsJustification = Boolean(a.permissions?.can_justify);
-    const bNeedsJustification = Boolean(b.permissions?.can_justify);
-    if (aNeedsJustification !== bNeedsJustification) {
-      return aNeedsJustification ? -1 : 1;
-    }
-
-    if (a.is_decided !== b.is_decided) {
-      return a.is_decided ? -1 : 1;
-    }
-
-    if (filters.sort === "titulo") {
-      return a.titulo.localeCompare(b.titulo, "pt-BR");
-    }
-
-    if (filters.sort === "prazo") {
-      return String(a.prazo || "").localeCompare(String(b.prazo || ""), "pt-BR");
-    }
-
-    return Number(a.prioridade) - Number(b.prioridade);
-  });
-
-  return filtered;
+  return result?.data?.detail || fallback;
 }
 
-function withDisplayIds(missions) {
-  return missions.map((mission, index) => ({
-    ...mission,
-    displayId: index + 1,
-  }));
+function startOfDay(value) {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
-function mergeMissionsById(...missionLists) {
-  const missionsById = new Map();
+function addDays(value, amount) {
+  const next = new Date(value);
+  next.setDate(next.getDate() + amount);
+  return next;
+}
 
-  missionLists.flat().forEach((mission) => {
-    missionsById.set(mission.id, mission);
-  });
+function getWeekDays(referenceDate) {
+  const base = startOfDay(referenceDate);
+  const mondayOffset = base.getDay() === 0 ? -6 : 1 - base.getDay();
+  const monday = addDays(base, mondayOffset);
+  return Array.from({ length: 7 }, (_, index) => addDays(monday, index));
+}
 
-  return [...missionsById.values()];
+function formatShortDate(date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${day}/${month}`;
+}
+
+function normalizePrazo(value) {
+  if (!value || typeof value !== "string") {
+    return "";
+  }
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    return value;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+    const [year, month, day] = value.slice(0, 10).split("-");
+    return `${day}-${month}-${year}`;
+  }
+
+  return value;
+}
+
+function formatWeekLabel(weekDays) {
+  if (!weekDays.length) {
+    return "";
+  }
+  return `${formatShortDate(weekDays[0])} a ${formatShortDate(weekDays[6])}`;
+}
+
+function formatSelectedDate(date) {
+  try {
+    return date
+      .toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+      })
+      .toUpperCase();
+  } catch {
+    return formatShortDate(date);
+  }
+}
+
+function formatCurrentDay() {
+  try {
+    return new Date()
+      .toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+      })
+      .toUpperCase();
+  } catch {
+    return "HOJE";
+  }
+}
+
+function canCompleteInSoldier(mission) {
+  return (
+    mission?.status_code === STATUS_MISSAO.PENDENTE &&
+    mission?.permissions?.can_complete === true
+  );
+}
+
+function canJustifyInSoldier(mission) {
+  return mission?.permissions?.can_justify === true;
+}
+
+function BrandSymbol({ muted = false, size = "md" }) {
+  return (
+    <span className={`brand-symbol ${muted ? "muted" : ""} ${size}`}>
+      <img src={dualitySymbol} alt="Símbolo General e Soldado" />
+    </span>
+  );
+}
+
+function StatusNotice({ status }) {
+  if (!status?.message) {
+    return null;
+  }
+
+  return <p className={`feedback ${status.type}`}>{status.message}</p>;
+}
+
+function TacticalShell({ children, mode = "general" }) {
+  return <main className={`tactical-shell ${mode}`}>{children}</main>;
+}
+
+function DaySelector({
+  missionCountsByDate,
+  onSelectDate,
+  selectedDate,
+  todayDate,
+  weekDays,
+}) {
+  const labels = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+
+  return (
+    <div className="week-board" aria-label="Semana operacional">
+      {weekDays.map((date) => {
+        const apiDate = formatDateForApi(date);
+        const selected = date.getTime() === selectedDate.getTime();
+        const today = date.getTime() === todayDate.getTime();
+        const count = missionCountsByDate[apiDate] || 0;
+
+        return (
+          <button
+            key={date.toISOString()}
+            className={`day-node ${selected ? "selected" : ""} ${today ? "today" : ""}`}
+            type="button"
+            onClick={() => onSelectDate(date)}
+          >
+            <span className="day-week">{labels[date.getDay()]}</span>
+            <span className="day-number">{String(date.getDate()).padStart(2, "0")}</span>
+            <span className="day-today">{today ? "HOJE" : "\u00A0"}</span>
+            <span className="day-count">{count > 0 ? count : "-"}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function App() {
@@ -104,125 +182,84 @@ export default function App() {
   const [user, setUser] = useState(readStoredUser);
   const [missions, setMissions] = useState([]);
   const [reviewMissions, setReviewMissions] = useState([]);
-  const [weeklyReport, setWeeklyReport] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+  const [activeScreen, setActiveScreen] = useState("home");
+  const [formOpen, setFormOpen] = useState(false);
   const [editingMission, setEditingMission] = useState(null);
-  const [filters, setFilters] = useState({
-    search: "",
-    status: "todas",
-    decided: "todas",
-    sort: "prioridade",
-  });
-  const [authModeLoading, setAuthModeLoading] = useState(false);
+  const [booting, setBooting] = useState(Boolean(token));
   const [missionLoading, setMissionLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [reviewLoadingId, setReviewLoadingId] = useState(null);
   const [decisionLoadingId, setDecisionLoadingId] = useState(null);
-  const [generalNameLoading, setGeneralNameLoading] = useState(false);
-  const [generalNameDraft, setGeneralNameDraft] = useState("");
-  const [profileReady, setProfileReady] = useState(() => !Boolean(localStorage.getItem(TOKEN_KEY)));
-  const [generalModalDismissed, setGeneralModalDismissed] = useState(false);
-  const [showSoldierConfirm, setShowSoldierConfirm] = useState(false);
-  const [showUnlockGeneral, setShowUnlockGeneral] = useState(false);
-  const [sessionModeLoading, setSessionModeLoading] = useState(false);
-  const [unlockPassword, setUnlockPassword] = useState("");
-  const [showPendingJustifications, setShowPendingJustifications] = useState(false);
+  const [completeLoadingId, setCompleteLoadingId] = useState(null);
   const [justificationLoadingId, setJustificationLoadingId] = useState(null);
-  const [verdictLoadingId, setVerdictLoadingId] = useState(null);
-  const [reviewLoading, setReviewLoading] = useState(false);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [showWeeklyReport, setShowWeeklyReport] = useState(false);
+  const [modeLoading, setModeLoading] = useState(false);
+  const [showSoldierConfirm, setShowSoldierConfirm] = useState(false);
+  const [returnStep, setReturnStep] = useState("closed");
+  const [unlockPassword, setUnlockPassword] = useState("");
   const [authStatus, setAuthStatus] = useState(emptyStatus);
-  const [missionStatus, setMissionStatus] = useState(emptyStatus);
+  const [status, setStatus] = useState(emptyStatus);
   const [formStatus, setFormStatus] = useState(emptyStatus);
-  const [generalStatus, setGeneralStatus] = useState(emptyStatus);
-  const [sessionStatus, setSessionStatus] = useState(emptyStatus);
+  const [authLoading, setAuthLoading] = useState(false);
 
   const authenticated = Boolean(token && user);
   const activeMode = user?.active_mode || "general";
   const soldierMode = activeMode === "soldier";
-  const generalNameRequired =
-    authenticated && profileReady && !soldierMode && !user?.nome_general && !generalModalDismissed;
+  const generalName = user?.nome_general || user?.usuario || "General";
+  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
+  const todayDate = useMemo(() => startOfDay(new Date()), []);
+  const weekLabel = formatWeekLabel(weekDays);
+  const selectedDateApi = formatDateForApi(selectedDate);
+  const selectedDateLabel = formatSelectedDate(selectedDate);
 
-  const visibleMissions = useMemo(
-    () => filterMissions(missions, filters),
-    [missions, filters]
-  );
-  const criticalSoldierJustifications = useMemo(
-    () =>
-      soldierMode
-        ? missions.filter(
-            (mission) =>
-              mission.requires_immediate_justification === true &&
-              mission.permissions?.can_justify === true
-          )
-        : [],
-    [missions, soldierMode]
-  );
-  const commonSoldierJustifications = useMemo(
-    () =>
-      soldierMode
-        ? missions.filter(
-            (mission) =>
-              mission.has_pending_non_blocking_justification === true &&
-              mission.permissions?.can_justify === true
-          )
-        : [],
-    [missions, soldierMode]
-  );
-  const soldierBlocked = criticalSoldierJustifications.length > 0;
-  const boardMissions = useMemo(
-    () => (
-      soldierMode
-        ? visibleMissions.filter((mission) => mission.permissions?.can_complete)
-        : visibleMissions
-    ),
-    [soldierMode, visibleMissions]
+  const selectedMissions = useMemo(
+    () => missions.filter((mission) => normalizePrazo(mission?.prazo) === selectedDateApi),
+    [missions, selectedDateApi]
   );
 
-  const totals = useMemo(() => {
-    const completed = missions.filter(isCompleted).length;
-    return {
-      all: missions.length,
-      pending: missions.length - completed,
-      completed,
-    };
+  const actionMissions = useMemo(
+    () => missions.filter((mission) => canCompleteInSoldier(mission) || canJustifyInSoldier(mission)),
+    [missions]
+  );
+
+  const missionCountsByDate = useMemo(() => {
+    return missions.reduce((counts, mission) => {
+      const key = normalizePrazo(mission?.prazo);
+      if (!key) {
+        return counts;
+      }
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
   }, [missions]);
 
+  const selectedCompletedCount = useMemo(
+    () => selectedMissions.filter(isCompleted).length,
+    [selectedMissions]
+  );
+  const selectedRemainingCount = Math.max(0, selectedMissions.length - selectedCompletedCount);
+
   useEffect(() => {
-    if (authenticated) {
-      setProfileReady(false);
-      loadCurrentUser();
-      loadMissions();
-      loadReviewMissions();
-      if (!soldierMode && showWeeklyReport) {
-        loadWeeklyReport();
-      }
+    if (!token) {
+      setBooting(false);
+      return;
     }
-  }, [authenticated]);
+
+    restoreSession();
+  }, [token]);
 
   useEffect(() => {
     if (!authenticated) {
       return;
     }
+
     if (soldierMode) {
-      setReviewMissions([]);
-      setShowWeeklyReport(false);
+      loadSoldierBoard();
       return;
     }
-    loadReviewMissions();
-    if (showWeeklyReport) {
-      loadWeeklyReport();
-    }
-  }, [authenticated, soldierMode, showWeeklyReport]);
 
-  useEffect(() => {
-    setGeneralNameDraft(user?.nome_general || "");
-  }, [user?.nome_general]);
-
-  useEffect(() => {
-    if (user?.nome_general) {
-      setGeneralModalDismissed(false);
-    }
-  }, [user?.nome_general]);
+    loadGeneralBoard();
+  }, [authenticated, soldierMode]);
 
   function persistUser(nextUser) {
     localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
@@ -236,23 +273,19 @@ export default function App() {
     setUser(null);
     setMissions([]);
     setReviewMissions([]);
-    setWeeklyReport(null);
-    setShowWeeklyReport(false);
+    setActiveScreen("home");
+    setFormOpen(false);
     setEditingMission(null);
-    setMissionStatus(emptyStatus);
+    setStatus(emptyStatus);
     setFormStatus(emptyStatus);
-    setGeneralStatus(emptyStatus);
-    setSessionStatus(emptyStatus);
-    setProfileReady(true);
-    setGeneralModalDismissed(false);
-    setShowSoldierConfirm(false);
-    setShowUnlockGeneral(false);
+    setAuthStatus(emptyStatus);
+    setReturnStep("closed");
     setUnlockPassword("");
-    setShowPendingJustifications(false);
+    setBooting(false);
   }
 
   function handleUnauthorized(result) {
-    if (result.status === 401) {
+    if (result?.status === 401) {
       clearSession();
       setAuthStatus({ type: "error", message: "Sessão expirada. Faça login novamente." });
       return true;
@@ -260,50 +293,98 @@ export default function App() {
     return false;
   }
 
-  async function login(payload) {
-    if (!payload.email || !payload.senha) {
-      setAuthStatus({ type: "error", message: "Preencha email e senha." });
+  async function restoreSession() {
+    setBooting(true);
+    const result = await api.getCurrentUser(token);
+    setBooting(false);
+
+    if (handleUnauthorized(result)) {
       return;
     }
 
-    setAuthModeLoading(true);
-    setAuthStatus({ type: "warning", message: "Autenticando..." });
+    if (!result.ok) {
+      setStatus({ type: "error", message: getErrorMessage(result, "Não foi possível recarregar o usuário.") });
+      return;
+    }
+
+    persistUser(result.data);
+  }
+
+  async function login(payload) {
+    if (!payload.email || !payload.senha) {
+      setAuthStatus({ type: "error", message: "Preencha usuário e senha." });
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthStatus(emptyStatus);
     const result = await api.login(payload);
-    setAuthModeLoading(false);
+    setAuthLoading(false);
 
     if (!result.ok) {
-      setAuthStatus({ type: "error", message: `Erro ao entrar: ${result.data.detail}` });
+      setAuthStatus({ type: "error", message: getErrorMessage(result, "Não foi possível entrar no bunker.") });
       return;
     }
 
     localStorage.setItem(TOKEN_KEY, result.data.access_token);
     setToken(result.data.access_token);
     persistUser(result.data.usuario);
-    setProfileReady(true);
-    setGeneralModalDismissed(false);
-    setAuthStatus(emptyStatus);
   }
 
   async function register(payload) {
     if (!payload.usuario || !payload.email || !payload.senha) {
-      setAuthStatus({ type: "error", message: "Preencha usuário, email e senha." });
+      setAuthStatus({ type: "error", message: "Preencha usuário, e-mail e senha." });
       return;
     }
 
-    setAuthModeLoading(true);
-    setAuthStatus({ type: "warning", message: "Criando conta..." });
+    setAuthLoading(true);
+    setAuthStatus(emptyStatus);
     const result = await api.register(payload);
-    setAuthModeLoading(false);
+    setAuthLoading(false);
 
     if (!result.ok) {
-      setAuthStatus({ type: "error", message: `Erro ao criar conta: ${result.data.detail}` });
+      setAuthStatus({ type: "error", message: getErrorMessage(result, "Não foi possível criar a conta.") });
       return;
     }
 
-    setAuthStatus({ type: "success", message: "Conta criada. Faça login para entrar." });
+    setAuthStatus({ type: "success", message: "Conta criada. Entre no bunker para continuar." });
   }
 
-  async function loadMissions(successMessage = "") {
+  async function loadGeneralBoard(successMessage = "") {
+    if (!token) {
+      return;
+    }
+
+    setMissionLoading(true);
+    const [missionsResult, reviewResult] = await Promise.all([
+      api.listMissions(token),
+      api.listReviewMissions(token),
+    ]);
+    setMissionLoading(false);
+
+    if (handleUnauthorized(missionsResult) || handleUnauthorized(reviewResult)) {
+      return;
+    }
+
+    if (!missionsResult.ok) {
+      setStatus({ type: "error", message: getErrorMessage(missionsResult, "Não foi possível carregar ordens.") });
+      return;
+    }
+
+    setMissions(missionsResult.data);
+
+    if (reviewResult.ok) {
+      setReviewMissions(reviewResult.data);
+    } else {
+      setReviewMissions([]);
+      setStatus({ type: "error", message: getErrorMessage(reviewResult, "Não foi possível carregar pós-ação.") });
+      return;
+    }
+
+    setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
+  }
+
+  async function loadSoldierBoard(successMessage = "") {
     if (!token) {
       return;
     }
@@ -317,213 +398,87 @@ export default function App() {
     }
 
     if (!result.ok) {
-      setMissionStatus({ type: "error", message: `Erro ao carregar missões: ${result.data.detail}` });
+      setStatus({ type: "error", message: getErrorMessage(result, "Não foi possível carregar ordens.") });
       return;
     }
 
-    setMissions(withDisplayIds(result.data));
-    setMissionStatus({
-      type: successMessage ? "success" : "muted",
-      message: successMessage || `${result.data.length} missão(ões) carregada(s).`,
-    });
+    setMissions(result.data);
+    setReviewMissions([]);
+    setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
   }
 
-  async function loadReviewMissions() {
-    if (!token || soldierMode) {
-      return;
-    }
-
-    setReviewLoading(true);
-    const result = await api.listReviewMissions(token);
-    setReviewLoading(false);
-
-    if (handleUnauthorized(result)) {
-      return;
-    }
-
-    if (!result.ok) {
-      setMissionStatus({
-        type: "error",
-        message: `Erro ao carregar revisão do General: ${result.data.detail}`,
-      });
-      return;
-    }
-
-    setReviewMissions(result.data);
-  }
-
-  async function loadWeeklyReport() {
-    if (!token || soldierMode) {
-      return;
-    }
-
-    setReportLoading(true);
-    const [operationalResult, reviewResult, historicalResult] = await Promise.all([
-      api.listOperationalMissions(token),
-      api.listReviewMissions(token),
-      api.listHistoricalMissions(token),
-    ]);
-    setReportLoading(false);
-
-    if (
-      handleUnauthorized(operationalResult) ||
-      handleUnauthorized(reviewResult) ||
-      handleUnauthorized(historicalResult)
-    ) {
-      return;
-    }
-
-    const failedResult = [operationalResult, reviewResult, historicalResult].find(
-      (result) => !result.ok
-    );
-    if (failedResult) {
-      setMissionStatus({
-        type: "error",
-        message: `Erro ao carregar revisão semanal: ${failedResult.data.detail}`,
-      });
-      return;
-    }
-
-    setWeeklyReport({
-      generated_at: new Date().toISOString(),
-      missions: mergeMissionsById(
-        operationalResult.data,
-        reviewResult.data,
-        historicalResult.data
-      ),
-    });
-  }
-
-  async function loadCurrentUser() {
+  async function reloadCurrentUser() {
     const result = await api.getCurrentUser(token);
 
     if (handleUnauthorized(result)) {
-      return;
+      return null;
     }
 
     if (!result.ok) {
-      setProfileReady(true);
-      return;
+      setStatus({ type: "error", message: getErrorMessage(result, "Não foi possível recarregar o usuário.") });
+      return null;
     }
 
     persistUser(result.data);
-    setProfileReady(true);
-  }
-
-  async function saveGeneralName(event) {
-    event.preventDefault();
-    const trimmedName = generalNameDraft.trim();
-
-    if (!trimmedName) {
-      setGeneralStatus({ type: "error", message: "Informe o nome do General." });
-      return;
-    }
-
-    setGeneralNameLoading(true);
-    setGeneralStatus({ type: "warning", message: "Registrando o nome do General..." });
-    const result = await api.saveGeneralName(token, { nome_general: trimmedName });
-    setGeneralNameLoading(false);
-
-    if (handleUnauthorized(result)) {
-      return;
-    }
-
-    if (!result.ok) {
-      setGeneralStatus({
-        type: "error",
-        message:
-          result.status === 404
-            ? "A rota para salvar o nome de guerra não está disponível nesta API ativa. Atualize ou reinicie o backend."
-            : `Erro ao salvar o nome do General: ${result.data.detail}`,
-      });
-      return;
-    }
-
-    persistUser(result.data);
-    setGeneralStatus(emptyStatus);
-    setMissionStatus({
-      type: "success",
-      message: `General ${result.data.nome_general} pronto para operar.`,
-    });
+    return result.data;
   }
 
   async function activateSoldierMode() {
-    setSessionModeLoading(true);
-    setSessionStatus({ type: "warning", message: "Ativando o modo Soldado..." });
+    setModeLoading(true);
+    setStatus(emptyStatus);
     const result = await api.setSessionMode(token, { mode: "soldier" });
-    setSessionModeLoading(false);
+    setModeLoading(false);
 
     if (handleUnauthorized(result)) {
       return;
     }
 
     if (!result.ok) {
-      setSessionStatus({
-        type: "error",
-        message: `Erro ao ativar o Soldado: ${result.data.detail}`,
-      });
+      setStatus({ type: "error", message: getErrorMessage(result, "Não foi possível ativar o Soldado.") });
       return;
     }
 
-    persistUser(result.data);
-    setEditingMission(null);
     setShowSoldierConfirm(false);
-    setSessionStatus({
-      type: "success",
-      message: "Modo Soldado ativo. Planejamento bloqueado até nova liberação.",
-    });
-    await loadMissions();
+    setFormOpen(false);
+    setEditingMission(null);
+    await reloadCurrentUser();
   }
 
-  async function unlockGeneral(event) {
+  async function returnToGeneral(event) {
     event.preventDefault();
+
     if (!unlockPassword.trim()) {
-      setSessionStatus({ type: "error", message: "Informe a senha para liberar o General." });
+      setStatus({ type: "error", message: "Informe a senha para retornar ao comando." });
       return;
     }
 
-    setSessionModeLoading(true);
-    setSessionStatus({ type: "warning", message: "Validando senha do General..." });
+    setModeLoading(true);
+    setStatus(emptyStatus);
     const result = await api.unlockGeneral(token, { senha: unlockPassword });
-    setSessionModeLoading(false);
+    setModeLoading(false);
 
     if (handleUnauthorized(result)) {
       return;
     }
 
     if (!result.ok) {
-      setSessionStatus({
-        type: "error",
-        message:
-          result.status === 401
-            ? "Senha incorreta. O modo Soldado permanece ativo."
-            : `Erro ao liberar o General: ${result.data.detail}`,
-      });
+      setStatus({ type: "error", message: getErrorMessage(result, "General negado.") });
       return;
     }
 
-    persistUser(result.data);
     setUnlockPassword("");
-    setShowUnlockGeneral(false);
-    setSessionStatus({
-      type: "success",
-      message: "General liberado. Planejamento reativado.",
-    });
-    await loadMissions();
-    await loadReviewMissions();
-    if (showWeeklyReport) {
-      await loadWeeklyReport();
-    }
+    setReturnStep("closed");
+    await reloadCurrentUser();
   }
 
   async function createMission(payload) {
     if (!payload.titulo || !payload.instrucao) {
-      setFormStatus({ type: "error", message: "Preencha título e instrução." });
+      setFormStatus({ type: "error", message: "Informe título e instrução." });
       return;
     }
 
     setFormLoading(true);
-    setFormStatus({ type: "warning", message: "Criando missão..." });
+    setFormStatus(emptyStatus);
     const result = await api.createMission(token, payload);
     setFormLoading(false);
 
@@ -532,25 +487,23 @@ export default function App() {
     }
 
     if (!result.ok) {
-      setFormStatus({ type: "error", message: `Erro ao criar missão: ${result.data.detail}` });
+      setFormStatus({ type: "error", message: getErrorMessage(result, "Não foi possível registrar a ordem.") });
       return;
     }
 
-    setFormStatus({ type: "success", message: "Missão criada com sucesso." });
-    await loadMissions("Missão criada e lista atualizada.");
-    if (showWeeklyReport) {
-      await loadWeeklyReport();
-    }
+    setFormOpen(false);
+    setEditingMission(null);
+    await loadGeneralBoard("Ordem registrada.");
   }
 
   async function updateMission(missionId, payload) {
     if (!payload.titulo || !payload.instrucao) {
-      setFormStatus({ type: "error", message: "Preencha título e instrução." });
+      setFormStatus({ type: "error", message: "Informe título e instrução." });
       return;
     }
 
     setFormLoading(true);
-    setFormStatus({ type: "warning", message: "Salvando edição..." });
+    setFormStatus(emptyStatus);
     const result = await api.updateMission(token, missionId, payload);
     setFormLoading(false);
 
@@ -559,40 +512,24 @@ export default function App() {
     }
 
     if (!result.ok) {
-      setFormStatus({ type: "error", message: `Erro ao editar missão: ${result.data.detail}` });
+      setFormStatus({ type: "error", message: getErrorMessage(result, "Não foi possível salvar a ordem.") });
       return;
     }
 
+    setFormOpen(false);
     setEditingMission(null);
-    setFormStatus({ type: "success", message: "Missão atualizada com sucesso." });
-    await loadMissions("Missão atualizada.");
-    await loadReviewMissions();
-    if (showWeeklyReport) {
-      await loadWeeklyReport();
-    }
+    await loadGeneralBoard("Ordem atualizada.");
   }
 
-  async function completeMission(missionId) {
-    const result = await api.completeMission(token, missionId);
-
-    if (handleUnauthorized(result)) {
+  async function toggleMissionDecision(mission) {
+    if (!mission?.id) {
+      setStatus({ type: "error", message: "Ordem inválida para alterar Decidida." });
       return;
     }
 
-    if (!result.ok) {
-      setMissionStatus({ type: "error", message: `Erro ao concluir missão: ${result.data.detail}` });
-      return;
-    }
-
-    await loadMissions("Missão concluída.");
-    if (showWeeklyReport) {
-      await loadWeeklyReport();
-    }
-  }
-
-  async function toggleMissionDecision(missionId) {
-    setDecisionLoadingId(missionId);
-    const result = await api.toggleMissionDecision(token, missionId);
+    setDecisionLoadingId(mission.id);
+    setStatus(emptyStatus);
+    const result = await api.toggleMissionDecision(token, mission.id);
     setDecisionLoadingId(null);
 
     if (handleUnauthorized(result)) {
@@ -600,62 +537,61 @@ export default function App() {
     }
 
     if (!result.ok) {
-      setMissionStatus({
-        type: "error",
-        message: `Erro ao atualizar decisão: ${result.data.detail}`,
-      });
+      setStatus({ type: "error", message: getErrorMessage(result, "Não foi possível alterar Decidida.") });
       return;
     }
 
-    setMissionStatus({
-      type: "success",
-      message: result.data.is_decided
-        ? "Missão marcada como decidida."
-        : "Missão voltou ao estado normal.",
-    });
-    await loadMissions();
-    if (showWeeklyReport) {
-      await loadWeeklyReport();
-    }
+    await loadGeneralBoard();
   }
 
-  async function deleteMission(missionId) {
-    const confirmed = window.confirm(`Deseja apagar a missão ${missionId}?`);
+  async function deleteMission(mission) {
+    const confirmed = window.confirm("Remover esta ordem do quadro?");
     if (!confirmed) {
       return;
     }
 
-    const result = await api.deleteMission(token, missionId);
+    setStatus(emptyStatus);
+    const result = await api.deleteMission(token, mission.id);
 
     if (handleUnauthorized(result)) {
       return;
     }
 
     if (!result.ok) {
-      setMissionStatus({ type: "error", message: `Erro ao apagar missão: ${result.data.detail}` });
+      setStatus({ type: "error", message: getErrorMessage(result, "Não foi possível remover a ordem.") });
       return;
     }
 
-    if (editingMission?.id === missionId) {
+    if (editingMission?.id === mission.id) {
       setEditingMission(null);
+      setFormOpen(false);
     }
 
-    await loadMissions("Missão apagada.");
-    await loadReviewMissions();
-    if (showWeeklyReport) {
-      await loadWeeklyReport();
+    await loadGeneralBoard("Ordem removida.");
+  }
+
+  async function completeMission(mission) {
+    setCompleteLoadingId(mission.id);
+    setStatus(emptyStatus);
+    const result = await api.completeMission(token, mission.id);
+    setCompleteLoadingId(null);
+
+    if (handleUnauthorized(result)) {
+      return;
     }
+
+    if (!result.ok) {
+      setStatus({ type: "error", message: getErrorMessage(result, "Não foi possível concluir a ordem.") });
+      await loadSoldierBoard();
+      return;
+    }
+
+    await loadSoldierBoard("EXECUTADO");
   }
 
   async function submitFailureJustification(missionId, payload) {
-    const targetMission = missions.find(
-      (mission) => mission.id === missionId && mission.permissions?.can_justify
-    );
-    if (!targetMission) {
-      return { error: "Missão indisponível para justificativa." };
-    }
-
     setJustificationLoadingId(missionId);
+    setStatus(emptyStatus);
     const result = await api.submitFailureJustification(token, missionId, payload);
     setJustificationLoadingId(null);
 
@@ -664,547 +600,402 @@ export default function App() {
     }
 
     if (!result.ok) {
-      setMissionStatus({
-        type: "error",
-        message: `Erro ao registrar justificativa: ${result.data.detail}`,
-      });
-      return { error: result.data.detail || "Erro ao registrar justificativa." };
+      const message = getErrorMessage(result, "Não foi possível registrar a justificativa.");
+      setStatus({ type: "error", message });
+      await loadSoldierBoard();
+      return { error: message };
     }
 
-    await loadMissions("Justificativa registrada. A missão saiu das pendências do Soldado.");
+    await loadSoldierBoard("JUSTIFICATIVA REGISTRADA");
     return { ok: true };
   }
 
   async function submitGeneralReview(missionId, accepted) {
-    setVerdictLoadingId(missionId);
+    setReviewLoadingId(missionId);
+    setStatus(emptyStatus);
     const result = await api.submitGeneralReview(token, missionId, { accepted });
-    setVerdictLoadingId(null);
+    setReviewLoadingId(null);
 
     if (handleUnauthorized(result)) {
       return;
     }
 
     if (!result.ok) {
-      setMissionStatus({
-        type: "error",
-        message: `Erro ao registrar julgamento: ${result.data.detail}`,
-      });
+      setStatus({ type: "error", message: getErrorMessage(result, "Não foi possível revisar a falha.") });
       return;
     }
 
-    await loadMissions(
-      accepted
-        ? "General aceitou a justificativa da falha."
-        : "General rejeitou a justificativa da falha."
-    );
-    await loadReviewMissions();
-    if (showWeeklyReport) {
-      await loadWeeklyReport();
-    }
+    await loadGeneralBoard();
   }
 
-  async function loadHistory(missionId) {
-    const targetMission = missions.find((mission) => mission.id === missionId);
-    if (!targetMission) {
-      return;
-    }
+  function openCreateForm() {
+    setEditingMission(null);
+    setFormStatus(emptyStatus);
+    setFormOpen(true);
+  }
 
-    if (targetMission.historyOpen && !targetMission.historyLoading) {
-      setMissions((current) =>
-        current.map((mission) =>
-          mission.id === missionId
-            ? { ...mission, historyOpen: false, historyError: "" }
-            : mission
-        )
-      );
-      return;
-    }
+  function openEditForm(mission) {
+    setEditingMission(mission);
+    setFormStatus(emptyStatus);
+    setFormOpen(true);
+  }
 
-    if (targetMission.history && targetMission.history.length) {
-      setMissions((current) =>
-        current.map((mission) =>
-          mission.id === missionId
-            ? { ...mission, historyOpen: true, historyError: "" }
-            : mission
-        )
-      );
-      return;
-    }
-
-    setMissions((current) =>
-      current.map((mission) =>
-        mission.id === missionId
-          ? {
-              ...mission,
-              historyOpen: true,
-              historyLoading: true,
-              historyError: "",
-            }
-          : mission
-      )
-    );
-
-    const result = await api.getMissionHistory(token, missionId);
-
-    if (handleUnauthorized(result)) {
-      return;
-    }
-
-    if (!result.ok) {
-      setMissions((current) =>
-        current.map((mission) =>
-          mission.id === missionId
-            ? {
-                ...mission,
-                historyOpen: true,
-                historyLoading: false,
-                historyError: `Não foi possível carregar o histórico: ${result.data.detail}`,
-              }
-            : mission
-        )
-      );
-      return;
-    }
-
-    setMissions((current) =>
-      current.map((mission) =>
-        mission.id === missionId
-          ? {
-              ...mission,
-              history: result.data,
-              historyOpen: true,
-              historyLoading: false,
-              historyError: "",
-            }
-          : mission
-      )
+  if (booting) {
+    return (
+      <TacticalShell mode="general">
+        <section className="boot-state">
+          <BrandSymbol muted size="lg" />
+          <p>SINCRONIZANDO COMANDO</p>
+        </section>
+      </TacticalShell>
     );
   }
 
   if (!authenticated) {
     return (
       <AuthScreen
+        loading={authLoading}
         onLogin={login}
         onRegister={register}
         status={authStatus}
-        loading={authModeLoading}
       />
     );
   }
 
-  return (
-    <main className="app-shell">
-      <header className="app-header">
-        <div className="app-header-main">
-          <div className="app-brand-block">
-            <p className="eyebrow">BunkerMode</p>
-            <h1 className={soldierMode ? "soldier-heading" : ""}>
-              {soldierMode ? "Em campo!" : `General ${user.nome_general || "em definição"}`}
-            </h1>
-            <p className={`app-header-copy ${soldierMode ? "soldier-copy" : ""}`}>
-              {soldierMode
-                ? "O General já decidiu. Cumpra."
-                : "Defina ordens, acompanhe pendências e mantenha a execução sob controle."}
-            </p>
-          </div>
-        </div>
+  if (soldierMode) {
+    return (
+      <TacticalShell mode="soldier">
+        <section className="soldier-layout">
+          <header className="soldier-header">
+            <div className="soldier-topline">
+              <span>MODO SOLDADO</span>
+              <BrandSymbol muted size="sm" />
+              <span>{actionMissions.length} RESTAM</span>
+            </div>
+            <h1>LEÃO DO DIA</h1>
+            <p>{formatCurrentDay()}</p>
+            <div className="soldier-rule" />
+            <strong>
+              {missions.length === 1
+                ? "1 ordem para matar o leão. Execute."
+                : `${missions.length || actionMissions.length} ordens para matar o leão. Execute.`}
+            </strong>
+          </header>
 
-        <div className="app-header-side">
-          <span className={`mode-pill ${soldierMode ? "soldier" : "general"}`}>
-            {soldierMode ? "Modo Soldado ativo" : "Modo General ativo"}
-          </span>
-          <p className="operator-line">
-            Conta ativa: <strong>{user.usuario}</strong>
-          </p>
-          {soldierMode ? (
-            <button
-              className="button secondary subtle-button"
-              type="button"
-              onClick={() => {
-                setSessionStatus(emptyStatus);
-                setShowUnlockGeneral(true);
-              }}
-            >
-              Liberar General
-            </button>
+          <StatusNotice status={status} />
+
+          {missionLoading ? (
+            <div className="empty-state loading-state">
+              <h3>Sincronizando ordens</h3>
+              <p>O Soldado aguarda o quadro operacional.</p>
+            </div>
+          ) : actionMissions.length > 0 ? (
+            <div className="mission-list soldier-list">
+              {actionMissions.map((mission) => (
+                <MissionCard
+                  key={mission.id}
+                  completing={completeLoadingId === mission.id}
+                  justifying={justificationLoadingId === mission.id}
+                  mission={mission}
+                  onComplete={() => completeMission(mission)}
+                  onJustify={submitFailureJustification}
+                  variant="soldier"
+                />
+              ))}
+            </div>
           ) : (
-            <button
-              className="button primary subtle-button"
-              type="button"
-              onClick={() => {
-                setSessionStatus(emptyStatus);
-                setShowSoldierConfirm(true);
-              }}
-            >
-              Ativar Soldado
-            </button>
+            <div className="empty-state">
+              <h3>Sem ordens pendentes</h3>
+              <p>Nenhuma missão operacional está disponível para execução agora.</p>
+            </div>
           )}
-          {!soldierMode && (
+
+          <footer className="soldier-footer">
             <button
-              className="button secondary subtle-button"
+              className="mode-switch return-command"
               type="button"
-              onClick={async () => {
-                const nextValue = !showWeeklyReport;
-                setShowWeeklyReport(nextValue);
-                if (nextValue) {
-                  await loadWeeklyReport();
-                }
-              }}
+              onClick={() => setReturnStep("confirm")}
+              disabled={modeLoading}
             >
-              {showWeeklyReport ? "Voltar ao quadro" : "Ver relatório semanal"}
+              <span>RETORNAR AO COMANDO</span>
+              <strong>VALIDAR</strong>
             </button>
-          )}
-          <button className="button secondary subtle-button" type="button" onClick={clearSession}>
-            Encerrar sessão
-          </button>
-        </div>
-      </header>
+          </footer>
+        </section>
 
-      <section className="workspace">
-        <section className="mission-column">
-          <section className="panel mission-area">
-            {showWeeklyReport && !soldierMode ? (
-              <WeeklyReportPanel
-                report={weeklyReport}
-                loading={reportLoading || reviewLoading}
-                onRefresh={() => {
-                  loadReviewMissions();
-                  loadWeeklyReport();
-                }}
-              />
-            ) : (
-              <>
-                <div className="section-heading mission-heading">
-                  <div>
-                    <p className="section-kicker">Quadro operacional</p>
-                    <h2>Ordens em curso</h2>
-                    {soldierMode && (
-                      <p className="muted section-mode-copy">
-                        Planejamento indisponível. Nesta tela, o Soldado só executa.
-                      </p>
-                    )}
-                  </div>
-                  <div className="inline-summary" aria-label="Resumo operacional">
-                    <div className="inline-summary-item">
-                      <span>Total</span>
-                      <strong>{totals.all}</strong>
-                    </div>
-                    <div className="inline-summary-item pending">
-                      <span>Pendentes</span>
-                      <strong>{totals.pending}</strong>
-                    </div>
-                    <div className="inline-summary-item success">
-                      <span>Concluídas</span>
-                      <strong>{totals.completed}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {!soldierBlocked && (
-                  <MissionToolbar
-                    filters={filters}
-                    onChange={setFilters}
-                    onRefresh={() => loadMissions()}
-                    loading={missionLoading}
-                    planningLocked={soldierMode}
-                  />
-                )}
-
-                {missionStatus.message && (
-                  <p className={`feedback ${missionStatus.type}`}>{missionStatus.message}</p>
-                )}
-                {sessionStatus.message && (
-                  <p className={`feedback ${sessionStatus.type}`}>{sessionStatus.message}</p>
-                )}
-
-                {soldierMode && soldierBlocked && (
-                  <section className="review-panel soldier-blocking-panel" aria-label="Justificativa obrigatória">
-                    <div className="review-panel-header">
-                      <div>
-                        <p className="section-kicker">Justificativa obrigatória</p>
-                        <h3>Você se comprometeu com esta missão</h3>
-                        <p className="muted review-copy">
-                          Registre o que aconteceu para liberar o fluxo de execução.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="review-list">
-                      {criticalSoldierJustifications.map((mission) => (
-                        <article key={`critical-${mission.id}`} className="review-card soldier-critical-card">
-                          <div className="review-card-header">
-                            <div>
-                              <h4>{mission.titulo}</h4>
-                              <p className="muted">
-                                Prazo vencido: {mission.prazo || "Sem prazo definido"} · Falhou em{" "}
-                                {formatDateTime(mission.failed_at)}
-                              </p>
-                            </div>
-                            <span className="status-badge decided">Decidido</span>
-                          </div>
-                          <div className="review-reason">
-                            <span>Ordem</span>
-                            <p>{mission.instrucao}</p>
-                          </div>
-                          <FailureJustificationForm
-                            mission={mission}
-                            loading={justificationLoadingId === mission.id}
-                            onSubmit={submitFailureJustification}
-                            submitLabel="Registrar e continuar"
-                          />
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {soldierMode && !soldierBlocked && (
-                  <div className="pending-action-row">
+        {returnStep !== "closed" && (
+          <div className="modal-backdrop" role="presentation">
+            <section className="modal-card" role="dialog" aria-modal="true">
+              {returnStep === "confirm" ? (
+                <>
+                  <p className="section-kicker danger">PROTOCOLO DE SAÍDA</p>
+                  <h2>Retornar ao comando</h2>
+                  <p className="muted">
+                    Você está saindo do modo de execução. Confirme antes de voltar ao Posto de Comando.
+                  </p>
+                  <div className="actions-row">
                     <button
                       className="button secondary"
                       type="button"
-                      onClick={() => setShowPendingJustifications((current) => !current)}
-                      disabled={commonSoldierJustifications.length === 0}
+                      onClick={() => {
+                        setUnlockPassword("");
+                        setReturnStep("closed");
+                      }}
                     >
-                      Pendências ({commonSoldierJustifications.length})
+                      CANCELAR
+                    </button>
+                    <button
+                      className="button danger"
+                      type="button"
+                      onClick={() => setReturnStep("password")}
+                    >
+                      CONTINUAR
                     </button>
                   </div>
-                )}
+                </>
+              ) : (
+                <form className="form-stack" onSubmit={returnToGeneral}>
+                  <p className="section-kicker danger">SENHA DO GENERAL</p>
+                  <label>
+                    Senha
+                    <input
+                      autoComplete="current-password"
+                      name="senha"
+                      onChange={(event) => setUnlockPassword(event.target.value)}
+                      placeholder="Senha"
+                      type="password"
+                      value={unlockPassword}
+                    />
+                  </label>
+                  <div className="actions-row">
+                    <button
+                      className="button secondary"
+                      type="button"
+                      onClick={() => {
+                        setUnlockPassword("");
+                        setReturnStep("closed");
+                      }}
+                    >
+                      CANCELAR
+                    </button>
+                    <button className="button danger" type="submit" disabled={modeLoading}>
+                      {modeLoading ? "AGUARDE" : "RETORNAR"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </section>
+          </div>
+        )}
+      </TacticalShell>
+    );
+  }
 
-                {soldierMode &&
-                  !soldierBlocked &&
-                  showPendingJustifications &&
-                  commonSoldierJustifications.length > 0 && (
-                    <section className="review-panel soldier-pending-panel" aria-label="Pendências de justificativa">
-                      <div className="review-panel-header">
-                        <div>
-                          <p className="section-kicker">Pendências</p>
-                          <h3>Missões vencidas aguardando justificativa</h3>
-                          <p className="muted review-copy">
-                            Essas falhas não bloqueiam a execução de hoje, mas precisam ser registradas.
-                          </p>
-                        </div>
-                      </div>
+  if (activeScreen === "reviews") {
+    return (
+      <TacticalShell mode="general">
+        <section className="review-screen">
+          <button className="button secondary back-command" type="button" onClick={() => setActiveScreen("home")}>
+            VOLTAR AO COMANDO
+          </button>
+          <section className="panel review-screen-header">
+            <p className="section-kicker danger">PÓS-AÇÃO</p>
+            <h1>Falhas aguardando decisão</h1>
+            <p className="muted">
+              Revise os registros do Soldado e decida com base nos dados da execução.
+            </p>
+          </section>
+          <StatusNotice status={status} />
+          <GeneralReviewPanel
+            loadingMissionId={reviewLoadingId}
+            missions={reviewMissions}
+            onReview={submitGeneralReview}
+          />
+        </section>
+      </TacticalShell>
+    );
+  }
 
-                      <div className="review-list">
-                        {commonSoldierJustifications.map((mission) => (
-                          <article key={`pending-${mission.id}`} className="review-card soldier-pending-card">
-                            <div className="review-card-header">
-                              <div>
-                                <h4>{mission.titulo}</h4>
-                                <p className="muted">
-                                  Prazo vencido: {mission.prazo || "Sem prazo definido"} · Falhou em{" "}
-                                  {formatDateTime(mission.failed_at)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="review-reason">
-                              <span>Ordem</span>
-                              <p>{mission.instrucao}</p>
-                            </div>
-                            <FailureJustificationForm
-                              mission={mission}
-                              loading={justificationLoadingId === mission.id}
-                              onSubmit={submitFailureJustification}
-                            />
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-                  )}
+  return (
+    <TacticalShell mode="general">
+      <section className="general-layout">
+        <aside className="command-rail panel">
+          <div className="command-identity">
+            <BrandSymbol muted size="sm" />
+            <div>
+              <p className="section-kicker">POSTO DE COMANDO</p>
+              <h2>{generalName}</h2>
+            </div>
+          </div>
+          <p className="rail-week">{weekLabel}</p>
+          <div className="rail-actions">
+            <button className="button secondary" type="button" onClick={() => setActiveScreen("reviews")}>
+              PÓS-AÇÃO
+              {reviewMissions.length > 0 && <span className="count-badge">{reviewMissions.length}</span>}
+            </button>
+            <button className="button secondary" type="button" onClick={clearSession}>
+              SAIR
+            </button>
+          </div>
+        </aside>
 
-                {!soldierMode && (
-                  <GeneralReviewPanel
-                    missions={reviewMissions}
-                    loadingMissionId={verdictLoadingId}
-                    onReview={submitGeneralReview}
+        <section className="general-board">
+          <section className="panel tactical-panel elevated">
+            <div className="section-heading">
+              <div>
+                <p className="section-kicker">SEMANA OPERACIONAL</p>
+                <h1>A semana na parede</h1>
+                <p className="muted">
+                  Cada marca é um dia de caça. Escolha onde o General dará ordens.
+                </p>
+              </div>
+            </div>
+            <DaySelector
+              missionCountsByDate={missionCountsByDate}
+              onSelectDate={(date) => setSelectedDate(startOfDay(date))}
+              selectedDate={selectedDate}
+              todayDate={todayDate}
+              weekDays={weekDays}
+            />
+          </section>
+
+          <StatusNotice status={status} />
+
+          <section className="board-grid">
+            <article className="panel lion-panel">
+              <div className="lion-top">
+                <span className="lion-signal" />
+                <div>
+                  <p className="section-kicker danger">LEÃO DO DIA</p>
+                  <h2>{selectedDateLabel}</h2>
+                </div>
+                <div className="lion-counter">
+                  <strong>{selectedRemainingCount}</strong>
+                  <span>RESTAM</span>
+                </div>
+              </div>
+              <p className="muted">
+                {selectedMissions.length === 1
+                  ? "1 ordem para matar o leão do dia."
+                  : `${selectedMissions.length} ordens para matar o leão do dia.`}
+              </p>
+              <MissionProgress label="CAÇADA" missions={selectedMissions} />
+            </article>
+
+            <article className="panel transition-panel">
+              <p className="section-kicker">TRANSIÇÃO DE MODO</p>
+              <h2>Entregar ordens ao Soldado</h2>
+              <p className="muted">
+                {reviewMissions.length > 0
+                  ? "Há revisão pendente. Decida quando entrar no protocolo de execução."
+                  : "Ative somente quando o plano estiver pronto para ser executado."}
+              </p>
+              <button
+                className="mode-switch activate-soldier"
+                type="button"
+                onClick={() => setShowSoldierConfirm(true)}
+                disabled={modeLoading}
+              >
+                <span>MODO RESTRITO</span>
+                <strong>ATIVAR SOLDADO</strong>
+              </button>
+            </article>
+          </section>
+
+          <section className="panel orders-panel">
+            <div className="section-heading compact">
+              <div>
+                <p className="section-kicker">ORDENS DO DIA</p>
+                <h2>Plano da caça</h2>
+                <p className="muted">
+                  {selectedMissions.length === 1
+                    ? "1 ordem definida para o dia selecionado."
+                    : `${selectedMissions.length} ordens definidas para o dia selecionado.`}
+                </p>
+              </div>
+              <button className="button secondary create-order" type="button" onClick={openCreateForm}>
+                CRIAR NOVA ORDEM
+              </button>
+            </div>
+
+            {missionLoading ? (
+              <div className="empty-state loading-state">
+                <h3>Sincronizando comando</h3>
+                <p>Carregando ordens do dia selecionado.</p>
+              </div>
+            ) : selectedMissions.length > 0 ? (
+              <div className="mission-list">
+                {selectedMissions.map((mission) => (
+                  <MissionCard
+                    key={mission.id}
+                    mission={mission}
+                    onDelete={() => deleteMission(mission)}
+                    onEdit={() => openEditForm(mission)}
+                    onToggleDecision={() => toggleMissionDecision(mission)}
+                    toggling={decisionLoadingId === mission.id}
+                    variant="general"
                   />
-                )}
-
-                {!soldierBlocked && (
-                  <MissionList
-                    missions={boardMissions}
-                    loading={missionLoading}
-                    onEdit={setEditingMission}
-                    onComplete={completeMission}
-                    onDelete={deleteMission}
-                    onHistory={loadHistory}
-                    onToggleDecision={toggleMissionDecision}
-                    togglingDecisionId={decisionLoadingId}
-                    planningLocked={soldierMode}
-                    canExecute={soldierMode}
-                  />
-                )}
-              </>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <h3>Dia sem ordens</h3>
+                <p>Nenhuma ordem foi definida para o dia selecionado.</p>
+              </div>
             )}
           </section>
         </section>
 
-        <aside className="general-column">
-          {soldierMode ? (
-            <section className="panel soldier-lock-panel">
-              <div className="section-heading general-heading">
-                <div>
-                  <p className="section-kicker">Posto do General</p>
-                  <h2>Planejamento bloqueado</h2>
-                  <p className="muted form-lead">
-                    O General fica indisponível enquanto o modo Soldado estiver ativo.
-                    Para editar, criar ou reorganizar ordens, libere o General com a senha.
-                  </p>
-                </div>
-              </div>
-            </section>
+        <aside className="general-side">
+          {formOpen ? (
+            <MissionForm
+              currentUser={user}
+              editingMission={editingMission}
+              initialPrazo={editingMission ? undefined : selectedDateApi}
+              loading={formLoading}
+              onCancel={() => {
+                setFormOpen(false);
+                setEditingMission(null);
+                setFormStatus(emptyStatus);
+              }}
+              onCreate={createMission}
+              onUpdate={updateMission}
+              status={formStatus}
+            />
           ) : (
-            <>
-              <MissionForm
-                editingMission={editingMission}
-                currentUser={user}
-                loading={formLoading}
-                status={formStatus}
-                onCreate={createMission}
-                onUpdate={updateMission}
-                onCancelEdit={() => setEditingMission(null)}
-              />
-            </>
+            <section className="panel command-console">
+              <p className="section-kicker">COMANDO</p>
+              <h2>Próxima ação</h2>
+              <p className="muted">
+                Escolha um dia, revise o Leão do Dia e registre apenas ordens que devem ser executadas.
+              </p>
+              <button className="button secondary create-order" type="button" onClick={openCreateForm}>
+                CRIAR NOVA ORDEM
+              </button>
+            </section>
           )}
         </aside>
       </section>
 
-      {generalNameRequired && (
-        <div className="modal-backdrop" role="presentation">
-          <section
-            className="modal-card general-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="general-modal-title"
-          >
-            <button
-              className="modal-close"
-              type="button"
-              aria-label="Fechar configuração do General"
-              onClick={() => setGeneralModalDismissed(true)}
-            >
-              ×
-            </button>
-            <p className="section-kicker">Identidade do General</p>
-            <h2 id="general-modal-title">Defina o nome do seu General</h2>
-            <p className="muted">
-              Antes de continuar, nomeie a sua camada de comando. Esse nome é obrigatório
-              e fica separado da conta autenticada.
-            </p>
-
-            <form className="form-stack" onSubmit={saveGeneralName}>
-              <label>
-                Nome de guerra
-                <input
-                  name="nome_general"
-                  value={generalNameDraft}
-                  onChange={(event) => setGeneralNameDraft(event.target.value)}
-                  placeholder="Digite o nome de guerra"
-                  autoFocus
-                />
-              </label>
-
-              {generalStatus.message && (
-                <p className={`feedback ${generalStatus.type}`}>{generalStatus.message}</p>
-              )}
-
-              <button className="button primary" type="submit" disabled={generalNameLoading}>
-                {generalNameLoading ? "Salvando..." : "Confirmar General"}
-              </button>
-            </form>
-          </section>
-        </div>
-      )}
-
       {showSoldierConfirm && (
         <div className="modal-backdrop" role="presentation">
-          <section className="modal-card general-modal" role="dialog" aria-modal="true">
-            <button
-              className="modal-close"
-              type="button"
-              aria-label="Fechar confirmação do modo Soldado"
-              onClick={() => setShowSoldierConfirm(false)}
-            >
-              ×
-            </button>
-            <p className="section-kicker">Modo Soldado</p>
+          <section className="modal-card" role="dialog" aria-modal="true">
+            <p className="section-kicker danger">MODO SOLDADO</p>
             <h2>Entrar em execução</h2>
             <p className="muted">
-              Você está entrando em modo de execução. Planejamento, edição e exclusão de
-              missões ficarão indisponíveis até a liberação do General.
+              O General já decidiu. Ao entrar, o Soldado executa sem editar, apagar ou renegociar ordens.
             </p>
             <div className="actions-row">
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() => setShowSoldierConfirm(false)}
-              >
-                Cancelar
+              <button className="button secondary" type="button" onClick={() => setShowSoldierConfirm(false)}>
+                CANCELAR
               </button>
-              <button
-                className="button primary"
-                type="button"
-                onClick={activateSoldierMode}
-                disabled={sessionModeLoading}
-              >
-                {sessionModeLoading ? "Ativando..." : "Confirmar"}
+              <button className="button danger" type="button" onClick={activateSoldierMode} disabled={modeLoading}>
+                {modeLoading ? "ATIVANDO" : "ATIVAR SOLDADO"}
               </button>
             </div>
           </section>
         </div>
       )}
-
-      {showUnlockGeneral && (
-        <div className="modal-backdrop" role="presentation">
-          <section className="modal-card general-modal" role="dialog" aria-modal="true">
-            <button
-              className="modal-close"
-              type="button"
-              aria-label="Fechar liberação do General"
-              onClick={() => {
-                setShowUnlockGeneral(false);
-                setUnlockPassword("");
-              }}
-            >
-              ×
-            </button>
-            <p className="section-kicker">Liberar General</p>
-            <h2>Senha necessária para voltar ao planejamento</h2>
-            <p className="muted">
-              O modo Soldado permanece ativo até a senha correta ser validada.
-            </p>
-            <form className="form-stack" onSubmit={unlockGeneral}>
-              <label>
-                Senha
-                <input
-                  type="password"
-                  name="senha"
-                  value={unlockPassword}
-                  onChange={(event) => setUnlockPassword(event.target.value)}
-                  autoComplete="current-password"
-                  placeholder="Digite sua senha"
-                />
-              </label>
-              <div className="actions-row">
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => {
-                    setShowUnlockGeneral(false);
-                    setUnlockPassword("");
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button className="button primary" type="submit" disabled={sessionModeLoading}>
-                  {sessionModeLoading ? "Validando..." : "Liberar General"}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
-    </main>
+    </TacticalShell>
   );
 }

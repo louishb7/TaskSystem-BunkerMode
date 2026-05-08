@@ -27,8 +27,8 @@ export default function TacticalPanel({
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: "rgba(36,33,27,0.92)",
-    borderColor: "rgba(245,240,232,0.16)",
+    backgroundColor: "rgba(23,23,23,0.94)",
+    borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     overflow: "hidden",
@@ -38,11 +38,11 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.red,
   },
   muted: {
-    backgroundColor: "rgba(18,15,12,0.88)",
-    borderColor: "rgba(245,240,232,0.1)",
+    backgroundColor: "rgba(17,17,17,0.90)",
+    borderColor: theme.colors.borderSoft,
   },
   elevated: {
-    backgroundColor: "rgba(48,43,35,0.94)",
-    borderColor: "rgba(245,240,232,0.2)",
+    backgroundColor: "rgba(32,32,32,0.96)",
+    borderColor: theme.colors.borderStrong,
   },
 });

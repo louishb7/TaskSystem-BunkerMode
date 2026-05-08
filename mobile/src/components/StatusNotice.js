@@ -15,8 +15,8 @@ const typeStyles = {
     color: theme.colors.amber,
   },
   info: {
-    backgroundColor: "rgba(36,33,27,0.9)",
-    borderColor: "rgba(245,240,232,0.16)",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     color: theme.colors.textMuted,
   },
 };

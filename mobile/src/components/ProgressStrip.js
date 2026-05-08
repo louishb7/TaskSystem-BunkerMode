@@ -38,8 +38,8 @@ const styles = StyleSheet.create({
     color: theme.colors.red,
   },
   track: {
-    backgroundColor: "rgba(18,15,12,0.72)",
-    borderColor: "rgba(245,240,232,0.14)",
+    backgroundColor: theme.colors.surfaceDeep,
+    borderColor: theme.colors.border,
     borderWidth: 1,
     height: 8,
     overflow: "hidden",
