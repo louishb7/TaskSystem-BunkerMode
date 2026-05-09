@@ -23,7 +23,7 @@ class MissaoService:
         responsavel_id = dados.get("responsavel_id") or getattr(usuario, "usuario_id", None)
         campos_missao = {
             "titulo": dados["titulo"],
-            # TODO: prioridade é compatibilidade legada do banco/API.
+            # Compatibilidade legada do banco/API.
             # A experiência do produto usa apenas Decidida como compromisso crítico.
             "prioridade": dados.get("prioridade", LEGACY_DEFAULT_PRIORITY),
             "prazo": dados.get("prazo"),

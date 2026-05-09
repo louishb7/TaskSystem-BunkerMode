@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import dualitySymbol from "../assets/bunkermode/branding/duality_symbol.png";
+import BrandSymbol from "./BrandSymbol.jsx";
 
 export default function AuthScreen({ loading, onLogin, onRegister, status }) {
   const [mode, setMode] = useState("login");
@@ -37,9 +37,7 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
   return (
     <main className="auth-page">
       <section className="auth-identity">
-        <span className="brand-symbol xl">
-          <img src={dualitySymbol} alt="Símbolo General e Soldado" />
-        </span>
+        <BrandSymbol size="xl" />
         <h1>BUNKERMODE</h1>
         <p className="auth-lion">TODO DIA EXISTE UM LEÃO.</p>
         <p className="auth-support">PLANEJE COMO GENERAL. EXECUTE COMO SOLDADO.</p>

@@ -913,6 +913,24 @@ def test_criar_missao_retorna_contrato_completo():
     assert_mission_contract(resposta)
 
 
+def test_criar_missao_sem_prioridade_visivel_preserva_fallback_legacy():
+    _, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
+
+    resposta = criar_missao(
+        MissaoCreatePayload(
+            titulo="Criar ordem sem prioridade",
+            prazo="30-04-2099",
+            instrucao="Executar sem campo visível de prioridade",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    assert_mission_contract(resposta)
+    assert resposta["prioridade"] == 2
+
+
 def test_concluir_missao_retorna_contrato_completo():
     _, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
     criar_missao(

@@ -57,8 +57,8 @@ class RevisaoJustificativaPayload(BaseModel):
     accepted: bool
 
 
-# TODO: prioridade permanece apenas por compatibilidade com o contrato e o banco.
-# A experiência mobile não expõe mais os níveis antigos ao usuário.
+# Compatibilidade legada: prioridade permanece no contrato e no banco.
+# A experiência do produto não expõe mais os níveis antigos ao usuário.
 LEGACY_DEFAULT_PRIORITY = 2
 
 

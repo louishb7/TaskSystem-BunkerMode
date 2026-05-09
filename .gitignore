@@ -33,13 +33,17 @@ yarn-error.log*
 node_modules/
 frontend-react/node_modules/
 frontend-react/dist/
+frontend-react/dist-test/
+.expo/
 mobile/.expo/
 mobile/dist-test/
+dist-test/
 
 # Temp
 *.tmp
 *.swp
 .DS_Store
+tmp/
 
 # Build
 dist/
@@ -50,3 +54,5 @@ frontend-react/.vite/
 *.zip
 *_temp.png
 *_draft.png
+*_export.png
+*_generated.png

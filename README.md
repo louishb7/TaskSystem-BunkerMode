@@ -42,6 +42,8 @@ O atalho `python -m api` continua disponível e usa o mesmo entrypoint.
 ## Documentação
 - `/docs`
 - `/redoc`
+- `docs/PROJECT_STATE.md`
+- `docs/NEXT_STEPS.md`
 
 ## Endpoints úteis para integração
 - `GET /api/v2/health`

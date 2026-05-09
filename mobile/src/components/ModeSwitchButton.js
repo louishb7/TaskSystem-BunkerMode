@@ -22,7 +22,7 @@ export default function ModeSwitchButton({
       ]}
     >
       <View style={styles.copy}>
-        {!soldier ? <Text style={styles.kicker}>MODO RESTRITO</Text> : null}
+        {!soldier ? <Text style={styles.kicker}>MODO SOLDADO</Text> : null}
         <Text style={[styles.label, soldier && styles.labelSoldier]}>
           {soldier ? "RETORNAR AO COMANDO" : "ATIVAR SOLDADO"}
         </Text>

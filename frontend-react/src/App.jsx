@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import { api } from "./api/client.js";
-import dualitySymbol from "./assets/bunkermode/branding/duality_symbol.png";
 import AuthScreen from "./components/AuthScreen.jsx";
+import BrandSymbol from "./components/BrandSymbol.jsx";
 import GeneralReviewPanel from "./components/GeneralReviewPanel.jsx";
 import MissionCard, { MissionProgress } from "./components/MissionCard.jsx";
 import MissionForm from "./components/MissionForm.jsx";
@@ -120,14 +120,6 @@ function canCompleteInSoldier(mission) {
 
 function canJustifyInSoldier(mission) {
   return mission?.permissions?.can_justify === true;
-}
-
-function BrandSymbol({ muted = false, size = "md" }) {
-  return (
-    <span className={`brand-symbol ${muted ? "muted" : ""} ${size}`}>
-      <img src={dualitySymbol} alt="Símbolo General e Soldado" />
-    </span>
-  );
 }
 
 function StatusNotice({ status }) {
@@ -896,7 +888,7 @@ export default function App() {
                 onClick={() => setShowSoldierConfirm(true)}
                 disabled={modeLoading}
               >
-                <span>MODO RESTRITO</span>
+                <span>MODO SOLDADO</span>
                 <strong>ATIVAR SOLDADO</strong>
               </button>
             </article>
