@@ -17,6 +17,7 @@ import {
 } from "../../calendar/calendarUtils.js";
 import ActivateSoldierDialog from "../components/ActivateSoldierDialog.jsx";
 import CommandRail from "../components/CommandRail.jsx";
+import ModeTransitionPanel from "../components/ModeTransitionPanel.jsx";
 import OrdersPanel from "../components/OrdersPanel.jsx";
 import TacticalSidePanel from "../components/TacticalSidePanel.jsx";
 import WeekPanel from "../components/WeekPanel.jsx";
@@ -120,13 +121,9 @@ export default function GeneralCommandPage({
       <section className="general-layout">
         <CommandRail
           generalName={generalName}
-          loadingSoldier={modeLoading}
-          onActivateSoldier={() => setShowSoldierConfirm(true)}
-          onCreateOrder={openCreateForm}
           onLogout={onLogout}
           onOpenReview={onOpenReview}
           reviewCount={board.reviewMissions.length}
-          weekLabel={weekLabel}
         />
 
         <section className="general-board">
@@ -175,6 +172,11 @@ export default function GeneralCommandPage({
             remainingCount={remainingCount}
             selectedDateLabel={selectedDateLabel}
             selectedMissions={selectedMissions}
+          />
+          <ModeTransitionPanel
+            loading={modeLoading}
+            onActivateSoldier={() => setShowSoldierConfirm(true)}
+            reviewCount={board.reviewMissions.length}
           />
         </aside>
       </section>

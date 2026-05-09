@@ -22,6 +22,7 @@ export default function SoldierExecutionPage({
     const todayApi = getDateApiValue(new Date());
     return dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === todayApi);
   }, [dailyMissions]);
+  const remainingOrders = actionMissions.length;
 
   async function submitReturn(event) {
     event.preventDefault();
@@ -52,7 +53,7 @@ export default function SoldierExecutionPage({
         <header className="soldier-header">
           <div className="soldier-topline">
             <span>MODO SOLDADO</span>
-            <span>{actionMissions.length} RESTAM</span>
+            <span>{remainingOrders} RESTAM</span>
           </div>
           <div className="soldier-briefing">
             <LionEmblem compact />
@@ -61,9 +62,11 @@ export default function SoldierExecutionPage({
               <p>{formatCurrentDay()}</p>
               <div className="soldier-rule" />
               <strong>
-                {todayMissions.length === 1
-                  ? "1 ordem para matar o leão. Execute."
-                  : `${todayMissions.length || missions.length || actionMissions.length} ordens para matar o leão. Execute.`}
+                {remainingOrders === 0
+                  ? "Caçada concluída. Aguarde o retorno ao comando."
+                  : remainingOrders === 1
+                    ? "1 ordem restante para matar o leão. Execute."
+                    : `${remainingOrders} ordens restantes para matar o leão. Execute.`}
               </strong>
             </div>
           </div>
@@ -96,8 +99,8 @@ export default function SoldierExecutionPage({
           </div>
         ) : (
           <EmptyState
-            title="Sem ordens pendentes"
-            message="Nenhuma missão operacional está disponível para execução agora."
+            title="Caçada concluída"
+            message="Nenhuma ordem resta para execução agora."
           />
         )}
 

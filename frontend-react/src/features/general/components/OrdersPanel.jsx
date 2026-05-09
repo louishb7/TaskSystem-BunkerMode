@@ -24,7 +24,7 @@ export default function OrdersPanel({
               : `${selectedMissions.length} ordens definidas para o dia selecionado.`}
           </p>
         </div>
-        <button className="button secondary create-order" type="button" onClick={onCreateOrder}>
+        <button className="button fire create-order" type="button" onClick={onCreateOrder}>
           CRIAR NOVA ORDEM
         </button>
       </div>
@@ -49,10 +49,13 @@ export default function OrdersPanel({
           ))}
         </div>
       ) : (
-        <EmptyState
-          title="Dia sem ordens"
-          message="Nenhuma ordem foi definida para o dia selecionado."
-        />
+        <div className="empty-state action-empty">
+          <h3>Dia sem ordens</h3>
+          <p>Nenhuma ordem foi definida para o dia selecionado.</p>
+          <button className="button fire compact" type="button" onClick={onCreateOrder}>
+            CRIAR NOVA ORDEM
+          </button>
+        </div>
       )}
     </section>
   );
