@@ -20,9 +20,9 @@ export default function ReviewPage({
         </button>
         <section className="panel review-screen-header">
           <p className="section-kicker fire">RELATÓRIO</p>
-          <h1>Falhas aguardando decisão</h1>
+          <h1>Leitura da execução</h1>
           <p className="muted">
-            Revise os registros do Soldado e decida com base nos dados da execução.
+            Revise o período, identifique falhas reais e decida apenas o que exige comando.
           </p>
         </section>
         <StatusNotice status={status} />
