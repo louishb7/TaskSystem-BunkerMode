@@ -14,8 +14,8 @@ body::before {
   inset: 0;
   z-index: -3;
   background:
-    radial-gradient(circle at 18% 12%, rgba(183, 131, 61, 0.1), transparent 28%),
-    radial-gradient(circle at 82% 8%, rgba(229, 57, 53, 0.08), transparent 26%),
+    radial-gradient(circle at 18% 12%, rgba(255, 138, 42, 0.12), transparent 28%),
+    radial-gradient(circle at 82% 8%, rgba(155, 92, 255, 0.07), transparent 26%),
     linear-gradient(115deg, rgba(0, 0, 0, 0.74), rgba(14, 14, 14, 0.92) 54%, rgba(0, 0, 0, 0.8)),
     url("./assets/bunkermode/backgrounds/general/bg_general_concrete.png");
   background-repeat: repeat;
@@ -126,6 +126,11 @@ h3 {
   color: var(--red);
 }
 
+.section-kicker.fire,
+.fire {
+  color: var(--fire);
+}
+
 .brand-symbol {
   display: inline-grid;
   place-items: center;
@@ -205,6 +210,18 @@ h3 {
 .button.danger.ghost {
   background: var(--red-wash);
   color: var(--red);
+}
+
+.button.fire {
+  border-color: var(--fire-border);
+  background: var(--fire);
+  color: var(--black);
+  box-shadow: 0 0 22px rgba(255, 138, 42, 0.14);
+}
+
+.button.fire:hover:not(:disabled) {
+  border-color: var(--fire);
+  box-shadow: 0 0 32px rgba(255, 138, 42, 0.22);
 }
 
 .button.decision {
@@ -439,18 +456,19 @@ h3 {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 50% 0%, rgba(229, 57, 53, 0.12), transparent 32%),
+    radial-gradient(circle at 50% 0%, rgba(255, 138, 42, 0.16), transparent 32%),
+    radial-gradient(circle at 80% 14%, rgba(155, 92, 255, 0.06), transparent 28%),
     linear-gradient(rgba(14, 14, 14, 0.84), rgba(14, 14, 14, 0.92)),
     url("./assets/bunkermode/backgrounds/soldier/bg_soldier_tactical.png");
   background-repeat: repeat;
-  background-size: auto, auto, 230px 210px;
+  background-size: auto, auto, auto, 230px 210px;
 }
 
 .general-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(300px, 340px);
+  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(340px, 380px);
   align-items: start;
-  width: min(1480px, 100%);
+  width: min(1540px, 100%);
   margin: 0 auto;
   gap: 18px;
 }
@@ -556,16 +574,16 @@ h3 {
   transition: border-color var(--motion-fast), background var(--motion-fast), transform var(--motion-fast);
 }
 
-.day-node.selected,
 .day-node.today {
-  border-color: var(--red);
+  border-color: rgba(255, 138, 42, 0.4);
 }
 
 .day-node.selected {
+  border-color: var(--fire);
   background:
-    linear-gradient(180deg, var(--red-wash), transparent 76%),
+    linear-gradient(180deg, var(--fire-wash), transparent 76%),
     var(--surface-raised);
-  box-shadow: inset 0 -2px 0 var(--red);
+  box-shadow: inset 0 -2px 0 var(--fire), 0 0 24px rgba(255, 138, 42, 0.08);
 }
 
 .day-node:hover {
@@ -587,7 +605,7 @@ h3 {
 }
 
 .day-today {
-  color: var(--red);
+  color: var(--fire);
 }
 
 .day-count {
@@ -603,9 +621,9 @@ h3 {
 
 .lion-panel {
   min-height: 190px;
-  border-color: rgba(229, 57, 53, 0.34);
+  border-color: var(--fire-border);
   background:
-    linear-gradient(110deg, rgba(229, 57, 53, 0.12), transparent 42%),
+    linear-gradient(110deg, var(--fire-wash), transparent 42%),
     linear-gradient(180deg, rgba(237, 237, 237, 0.04), transparent 100px),
     rgba(23, 23, 23, 0.95);
 }
@@ -626,7 +644,8 @@ h3 {
 .lion-signal {
   width: 4px;
   height: 54px;
-  background: var(--red);
+  background: var(--fire);
+  box-shadow: 0 0 18px rgba(255, 138, 42, 0.34);
 }
 
 .lion-counter {
@@ -665,7 +684,7 @@ h3 {
 }
 
 .mission-progress strong {
-  color: var(--red);
+  color: var(--fire);
 }
 
 .progress-track {
@@ -678,7 +697,8 @@ h3 {
 .progress-track span {
   display: block;
   height: 100%;
-  background: var(--red);
+  background: linear-gradient(90deg, var(--fire-dark), var(--fire));
+  box-shadow: 0 0 18px rgba(255, 138, 42, 0.34);
 }
 
 .progress-meta {
@@ -764,7 +784,7 @@ h3 {
 }
 
 .mission-card.soldier-card {
-  border-left: 2px solid var(--red);
+  border-left: 2px solid var(--fire);
 }
 
 .mission-card.soldier-card.decided {
@@ -855,6 +875,173 @@ h3 {
 .deadline-context strong {
   font-size: 1.15rem;
   text-transform: uppercase;
+}
+
+.tactical-side-panel {
+  display: grid;
+  gap: 14px;
+  border-color: rgba(255, 138, 42, 0.24);
+  background:
+    radial-gradient(circle at 80% 8%, rgba(255, 138, 42, 0.2), transparent 30%),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.04), transparent 120px),
+    rgba(16, 16, 16, 0.96);
+}
+
+.lion-emblem-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px;
+  align-items: center;
+  gap: 14px;
+  min-height: 150px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+}
+
+.lion-emblem-copy h2 {
+  margin-bottom: 8px;
+}
+
+.lion-emblem-copy p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.lion-emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  justify-self: end;
+  filter: drop-shadow(0 0 24px rgba(255, 138, 42, 0.24));
+}
+
+.lion-emblem-ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--fire-border);
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(from 6deg, rgba(255, 138, 42, 0.92) 0 7deg, transparent 7deg 16deg),
+    radial-gradient(circle, transparent 56%, rgba(255, 138, 42, 0.12) 57% 68%, transparent 69%);
+  clip-path: polygon(50% 0, 60% 17%, 78% 10%, 80% 30%, 98% 38%, 84% 53%, 92% 72%, 72% 75%, 62% 94%, 50% 78%, 38% 94%, 28% 75%, 8% 72%, 16% 53%, 2% 38%, 20% 30%, 22% 10%, 40% 17%);
+}
+
+.lion-emblem-core {
+  position: relative;
+  display: block;
+  width: 58px;
+  height: 64px;
+  border: 1px solid rgba(255, 138, 42, 0.7);
+  background:
+    linear-gradient(145deg, rgba(255, 138, 42, 0.18), rgba(17, 17, 17, 0.94) 58%),
+    var(--surface-deep);
+  clip-path: polygon(50% 0, 88% 26%, 78% 76%, 50% 100%, 22% 76%, 12% 26%);
+}
+
+.lion-emblem-eye {
+  position: absolute;
+  top: 28px;
+  width: 8px;
+  height: 3px;
+  background: var(--fire);
+  box-shadow: 0 0 12px rgba(255, 138, 42, 0.62);
+}
+
+.lion-emblem-eye.left {
+  left: 18px;
+  transform: rotate(12deg);
+}
+
+.lion-emblem-eye.right {
+  right: 18px;
+  transform: rotate(-12deg);
+}
+
+.lion-emblem-mark {
+  position: absolute;
+  left: 50%;
+  bottom: 13px;
+  width: 16px;
+  height: 18px;
+  border-right: 1px solid var(--fire);
+  border-bottom: 1px solid var(--fire);
+  transform: translateX(-50%) rotate(45deg);
+  opacity: 0.85;
+}
+
+.side-block {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border-soft);
+  background: rgba(10, 10, 10, 0.36);
+  padding: 12px;
+}
+
+.mission-focus-block span,
+.decided-summary span,
+.side-metrics span {
+  color: var(--text-dim);
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.mission-focus-block strong {
+  color: var(--text);
+  font-size: 0.98rem;
+  text-transform: uppercase;
+}
+
+.mission-focus-block p,
+.decided-summary p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.side-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.side-metrics div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border-soft);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 10px;
+}
+
+.side-metrics strong {
+  color: var(--fire);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.decided-summary {
+  border-color: var(--purple-border);
+  background:
+    linear-gradient(90deg, var(--purple-wash), transparent),
+    rgba(10, 10, 10, 0.42);
+}
+
+.decided-summary strong {
+  color: var(--neon-purple);
+  font-size: 1.7rem;
+  line-height: 1;
+  text-shadow: 0 0 18px rgba(155, 92, 255, 0.28);
+}
+
+.side-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.report-shortcut {
+  justify-content: space-between;
 }
 
 .command-console {
@@ -971,8 +1158,11 @@ h3 {
 }
 
 .soldier-header {
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 20px;
+  border: 1px solid rgba(255, 138, 42, 0.2);
+  background:
+    linear-gradient(90deg, rgba(255, 138, 42, 0.12), transparent 48%),
+    rgba(11, 11, 11, 0.58);
+  padding: 20px;
 }
 
 .soldier-topline {
@@ -984,7 +1174,7 @@ h3 {
 }
 
 .soldier-topline span {
-  color: var(--red);
+  color: var(--fire);
   font-size: 0.68rem;
   font-weight: 900;
 }
@@ -995,6 +1185,7 @@ h3 {
 
 .soldier-header h1 {
   font-size: clamp(2.5rem, 7vw, 4.6rem);
+  text-shadow: 0 0 30px rgba(255, 138, 42, 0.12);
 }
 
 .soldier-header p {
@@ -1006,7 +1197,8 @@ h3 {
   width: 82px;
   height: 2px;
   margin: 14px 0 10px;
-  background: var(--red);
+  background: var(--fire);
+  box-shadow: 0 0 18px rgba(255, 138, 42, 0.42);
 }
 
 .soldier-header strong {
@@ -1016,9 +1208,9 @@ h3 {
 }
 
 .soldier-progress-panel {
-  border-color: rgba(229, 57, 53, 0.3);
+  border-color: rgba(255, 138, 42, 0.3);
   background:
-    linear-gradient(90deg, rgba(229, 57, 53, 0.1), transparent 50%),
+    linear-gradient(90deg, rgba(255, 138, 42, 0.12), transparent 50%),
     rgba(17, 17, 17, 0.9);
   padding: 14px;
 }
@@ -1112,6 +1304,14 @@ h3 {
 
   .week-board {
     padding: 8px;
+  }
+
+  .lion-emblem-card {
+    grid-template-columns: 1fr;
+  }
+
+  .lion-emblem {
+    justify-self: start;
   }
 
   .day-node {

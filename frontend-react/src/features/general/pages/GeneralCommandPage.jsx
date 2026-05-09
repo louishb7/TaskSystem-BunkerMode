@@ -16,11 +16,10 @@ import {
   startOfDay,
 } from "../../calendar/calendarUtils.js";
 import ActivateSoldierDialog from "../components/ActivateSoldierDialog.jsx";
-import CommandConsole from "../components/CommandConsole.jsx";
 import CommandRail from "../components/CommandRail.jsx";
-import LionPanel from "../components/LionPanel.jsx";
 import ModeTransitionPanel from "../components/ModeTransitionPanel.jsx";
 import OrdersPanel from "../components/OrdersPanel.jsx";
+import TacticalSidePanel from "../components/TacticalSidePanel.jsx";
 import WeekPanel from "../components/WeekPanel.jsx";
 
 export default function GeneralCommandPage({
@@ -130,12 +129,6 @@ export default function GeneralCommandPage({
 
           <StatusNotice status={board.status} />
 
-          <LionPanel
-            remainingCount={remainingCount}
-            selectedDateLabel={selectedDateLabel}
-            selectedMissions={selectedMissions}
-          />
-
           <OrdersPanel
             decisionLoadingId={board.decisionLoadingId}
             loading={board.missionLoading}
@@ -148,7 +141,7 @@ export default function GeneralCommandPage({
         </section>
 
         <aside className="general-side">
-          {formOpen ? (
+          {formOpen && (
             <MissionForm
               currentUser={user}
               editingMission={editingMission}
@@ -163,9 +156,15 @@ export default function GeneralCommandPage({
               onUpdate={updateMission}
               status={board.formStatus}
             />
-          ) : (
-            <CommandConsole onCreateOrder={openCreateForm} />
           )}
+          <TacticalSidePanel
+            onCreateOrder={openCreateForm}
+            onOpenReview={onOpenReview}
+            remainingCount={remainingCount}
+            reviewCount={board.reviewMissions.length}
+            selectedDateLabel={selectedDateLabel}
+            selectedMissions={selectedMissions}
+          />
           <ModeTransitionPanel
             loading={modeLoading}
             onActivateSoldier={() => setShowSoldierConfirm(true)}

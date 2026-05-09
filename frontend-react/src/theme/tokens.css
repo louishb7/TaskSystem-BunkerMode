@@ -16,6 +16,10 @@
   --amber: #b7833d;
   --amber-dark: #5c421b;
   --amber-wash: rgba(183, 131, 61, 0.12);
+  --fire: #ff8a2a;
+  --fire-dark: #7a3514;
+  --fire-wash: rgba(255, 138, 42, 0.14);
+  --fire-border: rgba(255, 138, 42, 0.46);
   --neon-purple: #9b5cff;
   --purple-dark: #2a123f;
   --purple-wash: rgba(155, 92, 255, 0.14);

@@ -12,7 +12,7 @@ export default function LionPanel({
       <div className="lion-top">
         <span className="lion-signal" />
         <div>
-          <p className="section-kicker danger">LEÃO DO DIA</p>
+          <p className="section-kicker fire">LEÃO DO DIA</p>
           <h2>{selectedDateLabel}</h2>
         </div>
         <div className="lion-counter">

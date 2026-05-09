@@ -117,7 +117,7 @@ export default function MissionCard({
 
         {canComplete && (
           <button
-            className="button danger full"
+            className="button fire full"
             disabled={completing}
             type="button"
             onClick={onComplete}
