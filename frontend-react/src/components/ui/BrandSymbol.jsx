@@ -1,4 +1,6 @@
-import dualitySymbol from "../assets/bunkermode/branding/duality_symbol.png";
+import React from "react";
+
+import dualitySymbol from "../../assets/bunkermode/branding/duality_symbol.png";
 
 export default function BrandSymbol({ muted = false, size = "md" }) {
   return (

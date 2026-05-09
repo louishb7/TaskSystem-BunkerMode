@@ -1,0 +1,15 @@
+export const colors = Object.freeze({
+  canvas: "#0e0e0e",
+  loginCanvas: "#0a0a0a",
+  surface: "#171717",
+  surfaceRaised: "#202020",
+  surfaceDeep: "#111111",
+  text: "#ededed",
+  textMuted: "#9a9a9a",
+  textDim: "#666666",
+  red: "#e53935",
+  redDark: "#7a1515",
+  amber: "#b7833d",
+  amberDark: "#5c421b",
+  black: "#000000",
+});

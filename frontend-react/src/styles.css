@@ -2,35 +2,6 @@
   box-sizing: border-box;
 }
 
-:root {
-  --canvas: #0e0e0e;
-  --login-canvas: #0a0a0a;
-  --surface: #171717;
-  --surface-raised: #202020;
-  --surface-deep: #111111;
-  --border: rgba(237, 237, 237, 0.1);
-  --border-strong: rgba(237, 237, 237, 0.18);
-  --border-soft: rgba(237, 237, 237, 0.08);
-  --text: #ededed;
-  --text-muted: #9a9a9a;
-  --text-dim: #666666;
-  --red: #e53935;
-  --red-dark: #7a1515;
-  --red-wash: rgba(229, 57, 53, 0.12);
-  --amber: #b7833d;
-  --amber-dark: #5c421b;
-  --amber-wash: rgba(183, 131, 61, 0.12);
-  --black: #000000;
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --shadow: 0 24px 72px rgba(0, 0, 0, 0.42);
-  color: var(--text);
-  background: var(--canvas);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  line-height: 1.45;
-}
-
 body {
   min-width: 320px;
   margin: 0;
@@ -43,10 +14,9 @@ body::before {
   inset: 0;
   z-index: -3;
   background:
-    linear-gradient(rgba(14, 14, 14, 0.78), rgba(14, 14, 14, 0.78)),
+    linear-gradient(rgba(14, 14, 14, 0.8), rgba(14, 14, 14, 0.8)),
     url("./assets/bunkermode/backgrounds/general/bg_general_concrete.png");
   background-repeat: repeat;
-  opacity: 1;
 }
 
 body::after {
@@ -59,7 +29,7 @@ body::after {
     linear-gradient(0deg, rgba(0, 0, 0, 0.34), transparent 220px),
     url("./assets/bunkermode/effects/noise_texture.png");
   background-size: auto, auto, 360px 360px;
-  opacity: 0.46;
+  opacity: 0.42;
   pointer-events: none;
 }
 
@@ -138,6 +108,19 @@ h3 {
   color: var(--text-muted);
 }
 
+.section-kicker {
+  margin-bottom: 7px;
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.section-kicker.danger,
+.danger {
+  color: var(--red);
+}
+
 .brand-symbol {
   display: inline-grid;
   place-items: center;
@@ -190,7 +173,7 @@ h3 {
   font-weight: 900;
   padding: 10px 14px;
   text-transform: uppercase;
-  transition: opacity 140ms ease, transform 140ms ease, border-color 140ms ease;
+  transition: opacity var(--motion-fast), transform var(--motion-fast), border-color var(--motion-fast);
 }
 
 .button:hover:not(:disabled),
@@ -264,19 +247,6 @@ h3 {
   align-items: flex-start;
 }
 
-.section-kicker {
-  margin-bottom: 7px;
-  color: var(--text-dim);
-  font-size: 0.7rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.section-kicker.danger,
-.danger {
-  color: var(--red);
-}
-
 .feedback {
   width: 100%;
   border: 1px solid var(--border);
@@ -305,19 +275,39 @@ h3 {
   color: var(--amber);
 }
 
-.boot-state {
+.boot-state,
+.boot-fallback {
   display: grid;
   place-items: center;
   align-content: center;
   min-height: 100vh;
   gap: 14px;
+  padding: 24px;
 }
 
-.boot-state p {
+.boot-state p,
+.boot-fallback p {
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 900;
+  text-align: center;
   text-transform: uppercase;
+}
+
+.boot-fallback {
+  width: min(900px, 100%);
+  margin: 0 auto;
+  place-items: stretch;
+}
+
+.boot-fallback pre {
+  max-height: 42vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  background: var(--surface-deep);
+  color: var(--text-muted);
+  padding: 14px;
+  white-space: pre-wrap;
 }
 
 .auth-page {
@@ -424,7 +414,7 @@ h3 {
 
 .general-layout {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(300px, 340px);
   align-items: start;
   width: min(1480px, 100%);
   margin: 0 auto;
@@ -486,10 +476,10 @@ h3 {
   display: grid;
   grid-template-columns: repeat(7, minmax(74px, 1fr));
   gap: 8px;
-  padding: 12px;
   border: 1px solid var(--border-soft);
   background: rgba(17, 17, 17, 0.58);
   overflow-x: auto;
+  padding: 12px;
 }
 
 .day-node {
@@ -713,9 +703,9 @@ h3 {
 }
 
 .mission-instruction {
+  max-width: 78ch;
   margin: 0;
   color: var(--text-muted);
-  max-width: 78ch;
 }
 
 .mission-actions {

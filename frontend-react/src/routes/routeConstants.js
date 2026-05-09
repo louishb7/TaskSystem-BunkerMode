@@ -1,0 +1,4 @@
+export const APP_ROUTES = Object.freeze({
+  GENERAL_HOME: "general.home",
+  REVIEW: "general.review",
+});

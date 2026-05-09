@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import BrandSymbol from "./BrandSymbol.jsx";
+import BrandSymbol from "../../../components/ui/BrandSymbol.jsx";
 
 export default function AuthScreen({ loading, onLogin, onRegister, status }) {
   const [mode, setMode] = useState("login");

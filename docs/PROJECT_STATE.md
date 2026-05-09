@@ -8,7 +8,7 @@ BunkerMode está organizado em três superfícies ativas:
 
 - Backend FastAPI na raiz, com rotas em `api/`, regras em `services/`, persistência em `repositorio_postgres.py` e modelos de domínio em `missao.py` e `usuario.py`.
 - Mobile React Native + Expo em `mobile/`, hoje a experiência principal do produto.
-- Web React + Vite em `frontend-react/`, espelhando a linguagem e os fluxos centrais do mobile.
+- Web React + Vite em `frontend-react/`, agora tratada como plataforma principal para uso diário e evolução manual.
 
 Fluxo esperado: General cria ordens, o sistema preserva a decisão, Soldado executa sem renegociar, falhas geram justificativa e o General revisa no Pós-Ação.
 
@@ -34,7 +34,8 @@ Fluxo esperado: General cria ordens, o sistema preserva a decisão, Soldado exec
 - App Vite em `frontend-react/`.
 - Usa o mesmo contrato de API e valida `status_code`, `status_label` e `permissions`.
 - Espelha os conceitos principais do mobile: Posto de Comando, Semana Operacional, Leão do Dia, Ordens do Dia, Decidida, Modo Soldado e Pós-Ação.
-- Não tem lint configurado no `package.json`; o check disponível hoje é build.
+- Está organizado por `app/`, `features/`, `services/`, `api/`, `theme/`, `types/` e componentes globais.
+- Não tem lint configurado no `package.json`; o check disponível hoje é `npm run check`, que executa build.
 
 ## Linguagem do produto
 

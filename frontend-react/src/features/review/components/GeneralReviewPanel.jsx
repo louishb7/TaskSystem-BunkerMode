@@ -1,6 +1,6 @@
 import React from "react";
 
-import { formatDateTime } from "../utils/date.js";
+import { formatDateTime } from "../../../utils/date.js";
 
 const FAILURE_REASON_LABELS = Object.freeze({
   not_done: "Não fez",

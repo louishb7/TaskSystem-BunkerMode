@@ -44,6 +44,9 @@ O atalho `python -m api` continua disponível e usa o mesmo entrypoint.
 - `/redoc`
 - `docs/PROJECT_STATE.md`
 - `docs/NEXT_STEPS.md`
+- `docs/FRONTEND_ARCHITECTURE.md`
+- `docs/WEB_STRUCTURE.md`
+- `docs/RUNNING_THE_PROJECT.md`
 
 ## Endpoints úteis para integração
 - `GET /api/v2/health`
@@ -75,6 +78,12 @@ Para alterar:
 
 ```bash
 VITE_API_URL=http://127.0.0.1:8000/api/v2 npm run dev
+```
+
+Check web disponível:
+
+```bash
+npm run check
 ```
 
 Fluxos disponíveis:

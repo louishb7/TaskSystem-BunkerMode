@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-import { isCompleted } from "../utils/missionStatus.js";
+import { isCompleted } from "../../../utils/missionStatus.js";
 import FailureJustificationForm from "./FailureJustificationForm.jsx";
 
 function can(mission, key) {
