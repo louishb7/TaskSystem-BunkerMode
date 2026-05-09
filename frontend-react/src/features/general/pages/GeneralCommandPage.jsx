@@ -4,11 +4,11 @@ import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
 import { emptyStatus } from "../../../constants/uiState.js";
 import { formatDateForApi } from "../../../utils/date.js";
+import { isCompleted } from "../../../utils/missionStatus.js";
 import { countCompletedMissions } from "../../missions/missionSelectors.js";
 import MissionForm from "../../missions/components/MissionForm.jsx";
 import {
   addDays,
-  buildMissionCountsByDate,
   formatSelectedDate,
   formatWeekLabel,
   getWeekDays,
@@ -17,7 +17,6 @@ import {
 } from "../../calendar/calendarUtils.js";
 import ActivateSoldierDialog from "../components/ActivateSoldierDialog.jsx";
 import CommandRail from "../components/CommandRail.jsx";
-import ModeTransitionPanel from "../components/ModeTransitionPanel.jsx";
 import OrdersPanel from "../components/OrdersPanel.jsx";
 import TacticalSidePanel from "../components/TacticalSidePanel.jsx";
 import WeekPanel from "../components/WeekPanel.jsx";
@@ -41,8 +40,20 @@ export default function GeneralCommandPage({
   const todayDate = useMemo(() => startOfDay(new Date()), []);
   const selectedDateApi = formatDateForApi(selectedDate);
   const selectedDateLabel = formatSelectedDate(selectedDate);
-  const missionCountsByDate = useMemo(
-    () => buildMissionCountsByDate(board.dailyMissions),
+  const missionStatsByDate = useMemo(
+    () => board.dailyMissions.reduce((stats, mission) => {
+      const key = normalizeMissionDate(mission?.prazo);
+      if (!key) {
+        return stats;
+      }
+
+      const current = stats[key] || { completed: 0, total: 0 };
+      stats[key] = {
+        completed: current.completed + (isCompleted(mission) ? 1 : 0),
+        total: current.total + 1,
+      };
+      return stats;
+    }, {}),
     [board.dailyMissions]
   );
   const selectedMissions = useMemo(
@@ -109,6 +120,9 @@ export default function GeneralCommandPage({
       <section className="general-layout">
         <CommandRail
           generalName={generalName}
+          loadingSoldier={modeLoading}
+          onActivateSoldier={() => setShowSoldierConfirm(true)}
+          onCreateOrder={openCreateForm}
           onLogout={onLogout}
           onOpenReview={onOpenReview}
           reviewCount={board.reviewMissions.length}
@@ -117,7 +131,7 @@ export default function GeneralCommandPage({
 
         <section className="general-board">
           <WeekPanel
-            missionCountsByDate={missionCountsByDate}
+            missionStatsByDate={missionStatsByDate}
             onNextWeek={() => setSelectedDate((current) => addDays(current, 7))}
             onPreviousWeek={() => setSelectedDate((current) => addDays(current, -7))}
             onSelectDate={(date) => setSelectedDate(startOfDay(date))}
@@ -158,17 +172,9 @@ export default function GeneralCommandPage({
             />
           )}
           <TacticalSidePanel
-            onCreateOrder={openCreateForm}
-            onOpenReview={onOpenReview}
             remainingCount={remainingCount}
-            reviewCount={board.reviewMissions.length}
             selectedDateLabel={selectedDateLabel}
             selectedMissions={selectedMissions}
-          />
-          <ModeTransitionPanel
-            loading={modeLoading}
-            onActivateSoldier={() => setShowSoldierConfirm(true)}
-            reviewCount={board.reviewMissions.length}
           />
         </aside>
       </section>

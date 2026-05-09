@@ -75,17 +75,6 @@ export function formatCurrentDay() {
   }
 }
 
-export function buildMissionCountsByDate(missions) {
-  return missions.reduce((counts, mission) => {
-    const key = normalizeMissionDate(mission?.prazo);
-    if (!key) {
-      return counts;
-    }
-    counts[key] = (counts[key] || 0) + 1;
-    return counts;
-  }, {});
-}
-
 export function getDateApiValue(date) {
   return formatDateForApi(date);
 }

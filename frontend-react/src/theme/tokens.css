@@ -20,6 +20,9 @@
   --fire-dark: #7a3514;
   --fire-wash: rgba(255, 138, 42, 0.14);
   --fire-border: rgba(255, 138, 42, 0.46);
+  --success: #67c587;
+  --success-wash: rgba(103, 197, 135, 0.14);
+  --success-border: rgba(103, 197, 135, 0.4);
   --neon-purple: #9b5cff;
   --purple-dark: #2a123f;
   --purple-wash: rgba(155, 92, 255, 0.14);

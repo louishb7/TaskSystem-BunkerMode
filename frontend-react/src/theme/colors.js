@@ -14,6 +14,8 @@ export const colors = Object.freeze({
   fire: "#FF8A2A",
   fireDark: "#7A3514",
   fireWash: "rgba(255, 138, 42, 0.14)",
+  success: "#67C587",
+  successWash: "rgba(103, 197, 135, 0.14)",
   neonPurple: "#9B5CFF",
   purpleDark: "#2A123F",
   purpleWash: "rgba(155, 92, 255, 0.14)",

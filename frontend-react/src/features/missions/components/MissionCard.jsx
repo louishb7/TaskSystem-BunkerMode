@@ -206,9 +206,10 @@ export function MissionProgress({ label = "PROGRESSO", missions }) {
   const completed = missions.filter(isCompleted).length;
   const remaining = Math.max(0, total - completed);
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const complete = total > 0 && completed === total;
 
   return (
-    <div className="mission-progress">
+    <div className={`mission-progress ${complete ? "complete" : ""}`}>
       <div>
         <span>{label}</span>
         <strong>{percent}%</strong>

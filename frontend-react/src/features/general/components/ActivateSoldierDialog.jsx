@@ -8,7 +8,7 @@ export default function ActivateSoldierDialog({
   return (
     <div className="modal-backdrop" role="presentation">
       <section className="modal-card" role="dialog" aria-modal="true">
-        <p className="section-kicker danger">MODO SOLDADO</p>
+        <p className="section-kicker fire">ATIVAR SOLDADO</p>
         <h2>Entrar em execução</h2>
         <p className="muted">
           O General já decidiu. Ao entrar, o Soldado executa sem editar, apagar ou renegociar ordens.
@@ -17,7 +17,7 @@ export default function ActivateSoldierDialog({
           <button className="button secondary" type="button" onClick={onCancel}>
             CANCELAR
           </button>
-          <button className="button danger" type="button" onClick={onConfirm} disabled={loading}>
+          <button className="button fire" type="button" onClick={onConfirm} disabled={loading}>
             {loading ? "ATIVANDO" : "ATIVAR SOLDADO"}
           </button>
         </div>

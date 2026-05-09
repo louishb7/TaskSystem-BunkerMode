@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 
-import BrandSymbol from "../../../components/ui/BrandSymbol.jsx";
 import EmptyState from "../../../components/ui/EmptyState.jsx";
+import LionEmblem from "../../../components/ui/LionEmblem.jsx";
 import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
 import { formatCurrentDay, getDateApiValue, normalizeMissionDate } from "../../calendar/calendarUtils.js";
@@ -52,17 +52,21 @@ export default function SoldierExecutionPage({
         <header className="soldier-header">
           <div className="soldier-topline">
             <span>MODO SOLDADO</span>
-            <BrandSymbol muted size="sm" />
             <span>{actionMissions.length} RESTAM</span>
           </div>
-          <h1>LEÃO DO DIA</h1>
-          <p>{formatCurrentDay()}</p>
-          <div className="soldier-rule" />
-          <strong>
-            {todayMissions.length === 1
-              ? "1 ordem para matar o leão. Execute."
-              : `${todayMissions.length || missions.length || actionMissions.length} ordens para matar o leão. Execute.`}
-          </strong>
+          <div className="soldier-briefing">
+            <LionEmblem compact />
+            <div>
+              <h1>LEÃO DO DIA</h1>
+              <p>{formatCurrentDay()}</p>
+              <div className="soldier-rule" />
+              <strong>
+                {todayMissions.length === 1
+                  ? "1 ordem para matar o leão. Execute."
+                  : `${todayMissions.length || missions.length || actionMissions.length} ordens para matar o leão. Execute.`}
+              </strong>
+            </div>
+          </div>
         </header>
 
         <section className="panel soldier-progress-panel" aria-label="Progresso da caçada do dia">

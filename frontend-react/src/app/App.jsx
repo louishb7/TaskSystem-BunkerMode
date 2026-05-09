@@ -104,6 +104,7 @@ export default function App() {
   if (activeRoute === APP_ROUTES.REVIEW) {
     return (
       <ReviewPage
+        allMissions={board.dailyMissions}
         loadingMissionId={board.reviewLoadingId}
         missions={board.reviewMissions}
         onBack={() => setActiveRoute(APP_ROUTES.GENERAL_HOME)}

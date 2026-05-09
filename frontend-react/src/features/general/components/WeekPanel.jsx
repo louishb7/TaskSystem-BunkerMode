@@ -3,7 +3,7 @@ import React from "react";
 import DaySelector from "../../calendar/components/DaySelector.jsx";
 
 export default function WeekPanel({
-  missionCountsByDate,
+  missionStatsByDate,
   onNextWeek,
   onPreviousWeek,
   onSelectDate,
@@ -16,7 +16,7 @@ export default function WeekPanel({
     <section className="panel tactical-panel elevated">
       <div className="section-heading">
         <div>
-          <p className="section-kicker">SEMANA OPERACIONAL</p>
+          <p className="section-kicker fire">SEMANA OPERACIONAL</p>
           <h1>A semana na parede</h1>
           <p className="muted">
             Cada marca é um dia de caça. Escolha onde o General dará ordens.
@@ -33,7 +33,7 @@ export default function WeekPanel({
         </button>
       </div>
       <DaySelector
-        missionCountsByDate={missionCountsByDate}
+        missionStatsByDate={missionStatsByDate}
         onSelectDate={onSelectDate}
         selectedDate={selectedDate}
         todayDate={todayDate}
