@@ -5,6 +5,20 @@ import { emptyStatus } from "../../../constants/uiState.js";
 import { api } from "../../../services/bunkermodeApi.js";
 import { getActionMissions } from "../missionSelectors.js";
 
+function mergeMissionLists(...missionLists) {
+  const missionsById = new Map();
+
+  missionLists.flat().forEach((mission) => {
+    if (!mission?.id) {
+      return;
+    }
+
+    missionsById.set(mission.id, mission);
+  });
+
+  return Array.from(missionsById.values());
+}
+
 export function useMissionBoard({
   activeMode,
   authenticated,
@@ -13,6 +27,8 @@ export function useMissionBoard({
 }) {
   const [missions, setMissions] = useState([]);
   const [reviewMissions, setReviewMissions] = useState([]);
+  const [historicalMissions, setHistoricalMissions] = useState([]);
+  const [registeredOutcomeMissions, setRegisteredOutcomeMissions] = useState([]);
   const [missionLoading, setMissionLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [reviewLoadingId, setReviewLoadingId] = useState(null);
@@ -23,11 +39,17 @@ export function useMissionBoard({
   const [formStatus, setFormStatus] = useState(emptyStatus);
 
   const actionMissions = useMemo(() => getActionMissions(missions), [missions]);
+  const dailyMissions = useMemo(
+    () => mergeMissionLists(missions, reviewMissions, historicalMissions, registeredOutcomeMissions),
+    [historicalMissions, missions, registeredOutcomeMissions, reviewMissions]
+  );
 
   useEffect(() => {
     if (!authenticated) {
       setMissions([]);
       setReviewMissions([]);
+      setHistoricalMissions([]);
+      setRegisteredOutcomeMissions([]);
       setStatus(emptyStatus);
       setFormStatus(emptyStatus);
       return;
@@ -47,13 +69,14 @@ export function useMissionBoard({
     }
 
     setMissionLoading(true);
-    const [missionsResult, reviewResult] = await Promise.all([
+    const [missionsResult, reviewResult, historicalResult] = await Promise.all([
       api.listMissions(token),
       api.listReviewMissions(token),
+      api.listHistoricalMissions(token),
     ]);
     setMissionLoading(false);
 
-    if (onUnauthorized(missionsResult) || onUnauthorized(reviewResult)) {
+    if (onUnauthorized(missionsResult) || onUnauthorized(reviewResult) || onUnauthorized(historicalResult)) {
       return;
     }
 
@@ -73,11 +96,23 @@ export function useMissionBoard({
       setReviewMissions([]);
       setStatus({
         type: "error",
-        message: getErrorMessage(reviewResult, "Não foi possível carregar pós-ação."),
+        message: getErrorMessage(reviewResult, "Não foi possível carregar relatório."),
       });
       return;
     }
 
+    if (historicalResult.ok) {
+      setHistoricalMissions(historicalResult.data);
+    } else {
+      setHistoricalMissions([]);
+      setStatus({
+        type: "error",
+        message: getErrorMessage(historicalResult, "Não foi possível carregar histórico."),
+      });
+      return;
+    }
+
+    setRegisteredOutcomeMissions([]);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
   }
 
@@ -233,6 +268,7 @@ export function useMissionBoard({
     }
 
     await loadSoldierBoard("EXECUTADO");
+    setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]));
     return true;
   }
 
@@ -254,6 +290,7 @@ export function useMissionBoard({
     }
 
     await loadSoldierBoard("JUSTIFICATIVA REGISTRADA");
+    setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]));
     return { ok: true };
   }
 
@@ -284,6 +321,7 @@ export function useMissionBoard({
     completeLoadingId,
     completeMission,
     createMission,
+    dailyMissions,
     decisionLoadingId,
     deleteMission,
     formLoading,

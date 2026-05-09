@@ -1,22 +1,27 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import BrandSymbol from "../../../components/ui/BrandSymbol.jsx";
 import EmptyState from "../../../components/ui/EmptyState.jsx";
 import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
-import { formatCurrentDay } from "../../calendar/calendarUtils.js";
-import MissionCard from "../../missions/components/MissionCard.jsx";
+import { formatCurrentDay, getDateApiValue, normalizeMissionDate } from "../../calendar/calendarUtils.js";
+import MissionCard, { MissionProgress } from "../../missions/components/MissionCard.jsx";
 import ReturnToCommandDialog from "../components/ReturnToCommandDialog.jsx";
 
 export default function SoldierExecutionPage({
   actionMissions,
   board,
+  dailyMissions,
   missions,
   onReturnToCommand,
 }) {
   const [returnStep, setReturnStep] = useState("closed");
   const [unlockPassword, setUnlockPassword] = useState("");
   const [returnLoading, setReturnLoading] = useState(false);
+  const todayMissions = useMemo(() => {
+    const todayApi = getDateApiValue(new Date());
+    return dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === todayApi);
+  }, [dailyMissions]);
 
   async function submitReturn(event) {
     event.preventDefault();
@@ -54,11 +59,15 @@ export default function SoldierExecutionPage({
           <p>{formatCurrentDay()}</p>
           <div className="soldier-rule" />
           <strong>
-            {missions.length === 1
+            {todayMissions.length === 1
               ? "1 ordem para matar o leão. Execute."
-              : `${missions.length || actionMissions.length} ordens para matar o leão. Execute.`}
+              : `${todayMissions.length || missions.length || actionMissions.length} ordens para matar o leão. Execute.`}
           </strong>
         </header>
+
+        <section className="panel soldier-progress-panel" aria-label="Progresso da caçada do dia">
+          <MissionProgress label="CAÇADA" missions={todayMissions.length > 0 ? todayMissions : missions} />
+        </section>
 
         <StatusNotice status={board.status} />
 

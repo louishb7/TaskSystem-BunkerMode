@@ -23,7 +23,7 @@ export default function GeneralReviewPanel({
     return (
       <section className="panel review-empty">
         <div className="empty-state flat">
-          <h3>Sem pós-ação pendente</h3>
+          <h3>Sem relatório pendente</h3>
           <p>Nenhuma falha aguarda decisão do General.</p>
         </div>
       </section>
@@ -32,7 +32,7 @@ export default function GeneralReviewPanel({
 
   return (
     <section className="panel review-panel" aria-label="Falhas aguardando decisão do General">
-      <p className="section-kicker danger">PÓS-AÇÃO: FALHAS AGUARDANDO DECISÃO</p>
+      <p className="section-kicker danger">RELATÓRIO DE FALHAS</p>
       <div className="review-list">
         {missions.map((mission) => {
           const failedAt = mission?.failed_at

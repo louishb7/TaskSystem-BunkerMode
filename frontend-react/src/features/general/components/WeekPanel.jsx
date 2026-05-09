@@ -4,9 +4,12 @@ import DaySelector from "../../calendar/components/DaySelector.jsx";
 
 export default function WeekPanel({
   missionCountsByDate,
+  onNextWeek,
+  onPreviousWeek,
   onSelectDate,
   selectedDate,
   todayDate,
+  weekLabel,
   weekDays,
 }) {
   return (
@@ -19,6 +22,15 @@ export default function WeekPanel({
             Cada marca é um dia de caça. Escolha onde o General dará ordens.
           </p>
         </div>
+      </div>
+      <div className="week-navigation" aria-label="Navegação de semanas">
+        <button className="button secondary compact week-nav-button" type="button" onClick={onPreviousWeek}>
+          SEMANA ANTERIOR
+        </button>
+        <strong>{weekLabel}</strong>
+        <button className="button secondary compact week-nav-button" type="button" onClick={onNextWeek}>
+          PRÓXIMA SEMANA
+        </button>
       </div>
       <DaySelector
         missionCountsByDate={missionCountsByDate}

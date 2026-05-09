@@ -21,7 +21,7 @@ export default function CommandRail({
       <p className="rail-week">{weekLabel}</p>
       <div className="rail-actions">
         <button className="button secondary" type="button" onClick={onOpenReview}>
-          PÓS-AÇÃO
+          RELATÓRIO
           {reviewCount > 0 && <span className="count-badge">{reviewCount}</span>}
         </button>
         <button className="button secondary" type="button" onClick={onLogout}>

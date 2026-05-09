@@ -7,6 +7,7 @@ import { formatDateForApi } from "../../../utils/date.js";
 import { countCompletedMissions } from "../../missions/missionSelectors.js";
 import MissionForm from "../../missions/components/MissionForm.jsx";
 import {
+  addDays,
   buildMissionCountsByDate,
   formatSelectedDate,
   formatWeekLabel,
@@ -42,12 +43,12 @@ export default function GeneralCommandPage({
   const selectedDateApi = formatDateForApi(selectedDate);
   const selectedDateLabel = formatSelectedDate(selectedDate);
   const missionCountsByDate = useMemo(
-    () => buildMissionCountsByDate(board.missions),
-    [board.missions]
+    () => buildMissionCountsByDate(board.dailyMissions),
+    [board.dailyMissions]
   );
   const selectedMissions = useMemo(
-    () => board.missions.filter((mission) => normalizeMissionDate(mission?.prazo) === selectedDateApi),
-    [board.missions, selectedDateApi]
+    () => board.dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === selectedDateApi),
+    [board.dailyMissions, selectedDateApi]
   );
   const completedCount = countCompletedMissions(selectedMissions);
   const remainingCount = Math.max(0, selectedMissions.length - completedCount);
@@ -118,26 +119,22 @@ export default function GeneralCommandPage({
         <section className="general-board">
           <WeekPanel
             missionCountsByDate={missionCountsByDate}
+            onNextWeek={() => setSelectedDate((current) => addDays(current, 7))}
+            onPreviousWeek={() => setSelectedDate((current) => addDays(current, -7))}
             onSelectDate={(date) => setSelectedDate(startOfDay(date))}
             selectedDate={selectedDate}
             todayDate={todayDate}
+            weekLabel={weekLabel}
             weekDays={weekDays}
           />
 
           <StatusNotice status={board.status} />
 
-          <section className="board-grid">
-            <LionPanel
-              remainingCount={remainingCount}
-              selectedDateLabel={selectedDateLabel}
-              selectedMissions={selectedMissions}
-            />
-            <ModeTransitionPanel
-              loading={modeLoading}
-              onActivateSoldier={() => setShowSoldierConfirm(true)}
-              reviewCount={board.reviewMissions.length}
-            />
-          </section>
+          <LionPanel
+            remainingCount={remainingCount}
+            selectedDateLabel={selectedDateLabel}
+            selectedMissions={selectedMissions}
+          />
 
           <OrdersPanel
             decisionLoadingId={board.decisionLoadingId}
@@ -169,6 +166,11 @@ export default function GeneralCommandPage({
           ) : (
             <CommandConsole onCreateOrder={openCreateForm} />
           )}
+          <ModeTransitionPanel
+            loading={modeLoading}
+            onActivateSoldier={() => setShowSoldierConfirm(true)}
+            reviewCount={board.reviewMissions.length}
+          />
         </aside>
       </section>
 

@@ -169,7 +169,7 @@ export default function MissionCard({
             </>
           ) : (
             <button
-              className={`button compact ${isDecided ? "danger ghost" : "secondary"}`}
+              className={`button compact ${isDecided ? "decision ghost" : "secondary"}`}
               disabled={disabled}
               type="button"
               onClick={() => {
@@ -204,6 +204,7 @@ export default function MissionCard({
 export function MissionProgress({ label = "PROGRESSO", missions }) {
   const total = missions.length;
   const completed = missions.filter(isCompleted).length;
+  const remaining = Math.max(0, total - completed);
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
@@ -214,6 +215,14 @@ export function MissionProgress({ label = "PROGRESSO", missions }) {
       </div>
       <div className="progress-track">
         <span style={{ width: `${percent}%` }} />
+      </div>
+      <div className="progress-meta">
+        <span>
+          {completed}/{total} EXECUTADAS
+        </span>
+        <span>
+          {remaining === 1 ? "1 RESTA" : `${remaining} RESTAM`}
+        </span>
       </div>
     </div>
   );

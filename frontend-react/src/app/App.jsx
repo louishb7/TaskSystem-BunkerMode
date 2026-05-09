@@ -94,6 +94,7 @@ export default function App() {
       <SoldierExecutionPage
         actionMissions={board.actionMissions}
         board={board}
+        dailyMissions={board.dailyMissions}
         missions={board.missions}
         onReturnToCommand={returnToCommand}
       />

@@ -18,7 +18,7 @@ export default function ReviewPage({
           VOLTAR AO COMANDO
         </button>
         <section className="panel review-screen-header">
-          <p className="section-kicker danger">PÓS-AÇÃO</p>
+          <p className="section-kicker danger">RELATÓRIO</p>
           <h1>Falhas aguardando decisão</h1>
           <p className="muted">
             Revise os registros do Soldado e decida com base nos dados da execução.
