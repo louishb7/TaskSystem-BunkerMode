@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-import { isCompleted } from "../../../utils/missionStatus.js";
+import { isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js";
 import FailureJustificationForm from "./FailureJustificationForm.jsx";
 
 function can(mission, key) {
@@ -59,6 +59,10 @@ function formatDeadline(value) {
 }
 
 function statusText(mission) {
+  if (isDoneNotMarked(mission)) {
+    return "EXECUTADA FORA DO APLICATIVO";
+  }
+
   const compact = {
     PENDENTE: "PENDENTE",
     CONCLUIDA: "EXECUTADA",
@@ -90,6 +94,7 @@ export default function MissionCard({
   const disabled = toggling || completing || justifying;
   const canComplete = can(mission, "can_complete");
   const canJustify = can(mission, "can_justify");
+  const requiresJustification = isDecided;
 
   useEffect(() => {
     setConfirmingToggle(false);
@@ -112,6 +117,8 @@ export default function MissionCard({
             loading={justifying}
             mission={mission}
             onSubmit={onJustify}
+            required={requiresJustification}
+            submitLabel={requiresJustification ? "REGISTRAR JUSTIFICATIVA" : "REGISTRAR FALHA"}
           />
         )}
 

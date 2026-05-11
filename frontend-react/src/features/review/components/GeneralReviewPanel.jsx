@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 
 import { formatDateTime, parseApiDate } from "../../../utils/date.js";
-import { STATUS_MISSAO, isCompleted } from "../../../utils/missionStatus.js";
+import { STATUS_MISSAO, isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js";
 import { getWeekDays, normalizeMissionDate } from "../../calendar/calendarUtils.js";
 
 const FAILURE_REASON_LABELS = Object.freeze({
@@ -17,7 +17,7 @@ function getFailureReasonLabel(type) {
 }
 
 function isFailureMission(mission) {
-  return String(mission?.status_code || "").startsWith("FALHA");
+  return String(mission?.status_code || "").startsWith("FALHA") && !isDoneNotMarked(mission);
 }
 
 function isPendingMission(mission) {

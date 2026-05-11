@@ -395,6 +395,18 @@ h3 {
   text-align: center;
 }
 
+.auth-identity .brand-symbol {
+  border-color: rgba(237, 237, 237, 0.16);
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.auth-identity .brand-symbol img {
+  opacity: 1;
+  mix-blend-mode: normal;
+}
+
 .auth-identity h1 {
   margin: 10px 0 8px;
   font-size: clamp(2.2rem, 5vw, 4.8rem);

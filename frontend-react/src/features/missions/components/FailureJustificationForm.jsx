@@ -8,10 +8,19 @@ export const FAILURE_REASON_OPTIONS = Object.freeze([
   { value: "other", label: "OUTRO" },
 ]);
 
+const FALLBACK_REASON_BY_TYPE = Object.freeze({
+  not_done: "Não fiz.",
+  done_not_marked: "Fiz fora do aplicativo, mas não registrei no prazo.",
+  partially_done: "Fiz parcialmente.",
+  external_blocker: "Houve impedimento real.",
+  other: "Outro motivo informado pelas opções.",
+});
+
 export default function FailureJustificationForm({
   loading = false,
   mission,
   onSubmit,
+  required = true,
   submitLabel = "REGISTRAR JUSTIFICATIVA",
 }) {
   const [reasonType, setReasonType] = useState("not_done");
@@ -21,16 +30,12 @@ export default function FailureJustificationForm({
   async function handleSubmit(event) {
     event.preventDefault();
     const trimmedReason = reason.trim();
-
-    if (!trimmedReason) {
-      setError("Registre o motivo da falha.");
-      return;
-    }
+    const submittedReason = trimmedReason || FALLBACK_REASON_BY_TYPE[reasonType];
 
     setError("");
     const result = await onSubmit(mission.id, {
       failure_reason_type: reasonType,
-      failure_reason: trimmedReason,
+      failure_reason: submittedReason,
     });
 
     if (result?.error) {
@@ -44,7 +49,7 @@ export default function FailureJustificationForm({
   return (
     <form className="failure-justification-form" onSubmit={handleSubmit}>
       <fieldset disabled={loading}>
-        <legend>JUSTIFICATIVA OBRIGATÓRIA</legend>
+        <legend>{required ? "JUSTIFICATIVA OBRIGATÓRIA" : "REGISTRO DA FALHA"}</legend>
         <div className="failure-reason-options">
           {FAILURE_REASON_OPTIONS.map((option) => (
             <label key={option.value} className="reason-option">
@@ -62,12 +67,12 @@ export default function FailureJustificationForm({
       </fieldset>
 
       <label>
-        Motivo
+        Motivo opcional
         <textarea
           disabled={loading}
           name={`failure-reason-${mission.id}`}
           onChange={(event) => setReason(event.target.value)}
-          placeholder="REGISTRE O MOTIVO"
+          placeholder="REGISTRE O MOTIVO SE NECESSÁRIO"
           rows="4"
           value={reason}
         />
@@ -75,7 +80,7 @@ export default function FailureJustificationForm({
 
       {error && <p className="feedback error">{error}</p>}
 
-      <button className="button danger" disabled={loading || !reason.trim()} type="submit">
+      <button className="button danger" disabled={loading} type="submit">
         {loading ? "AGUARDE" : submitLabel}
       </button>
     </form>

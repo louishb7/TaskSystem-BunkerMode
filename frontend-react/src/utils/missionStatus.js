@@ -18,6 +18,10 @@ function getMissionStatusCode(mission) {
   return mission?.status_code || "";
 }
 
+export function isDoneNotMarked(mission) {
+  return mission?.failure_reason_type === "done_not_marked";
+}
+
 export function getStatusLabel(status) {
   return STATUS_LABELS[status] || status;
 }
@@ -35,7 +39,7 @@ export function isRevisavel(mission) {
 }
 
 export function isCompleted(mission) {
-  return getMissionStatusCode(mission) === STATUS_MISSAO.CONCLUIDA;
+  return getMissionStatusCode(mission) === STATUS_MISSAO.CONCLUIDA || isDoneNotMarked(mission);
 }
 
 export function isReviewedFailure(mission) {

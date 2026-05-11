@@ -14,6 +14,7 @@ from usuario import Usuario
 class AuthService:
     """Gerencia cadastro e autenticação de usuários."""
 
+    SESSION_TTL_SECONDS = 60 * 60 * 24 * 30
     TIMEZONE_CHANGE_COOLDOWN = timedelta(days=30)
     # Suspensão temporária para a fase de testes: o retorno ao General
     # não deve ser bloqueado por horário enquanto a alternância mobile é validada.
@@ -50,7 +51,10 @@ class AuthService:
         if not usuario.ativo:
             raise AutenticacaoError("Usuário inativo.")
 
-        token = generate_token({"sub": usuario.usuario_id, "email": usuario.email})
+        token = generate_token(
+            {"sub": usuario.usuario_id, "email": usuario.email},
+            expires_in=self.SESSION_TTL_SECONDS,
+        )
         return {"access_token": token, "token_type": "bearer", "usuario": usuario}
 
     def obter_usuario_por_token(self, token: str) -> Usuario:
