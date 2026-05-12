@@ -115,6 +115,9 @@ export default function GeneralDashboardScreen({
   const [missions, setMissions] = useState([]);
   const [reviewMissions, setReviewMissions] = useState([]);
   const [historicalMissions, setHistoricalMissions] = useState([]);
+  const [dailyProgressMissions, setDailyProgressMissions] = useState([]);
+  const [reviewState, setReviewState] = useState(null);
+  const [weeklyReviews, setWeeklyReviews] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -141,9 +144,10 @@ export default function GeneralDashboardScreen({
     [reviewMissions]
   );
   const hasReview = visibleReviewMissions.length > 0;
+  const reviewCount = visibleReviewMissions.length + (reviewState?.pending ? 1 : 0);
   const dailyMissions = useMemo(
-    () => mergeMissionLists(missions, reviewMissions, historicalMissions),
-    [historicalMissions, missions, reviewMissions]
+    () => mergeMissionLists(missions, dailyProgressMissions, reviewMissions, historicalMissions),
+    [dailyProgressMissions, historicalMissions, missions, reviewMissions]
   );
 
   const selectedMissions = useMemo(
@@ -189,16 +193,24 @@ export default function GeneralDashboardScreen({
       setRefreshing(true);
     }
 
-    const [missionsResult, reviewResult, historicalResult] = await Promise.all([
+    const [
+      missionsResult,
+      reviewResult,
+      historicalResult,
+      reviewStateResult,
+      weeklyReviewsResult,
+    ] = await Promise.all([
       api.listMissions(token),
       api.listReviewMissions(token),
       api.listHistoricalMissions(token),
+      api.getReviewState(token),
+      api.listWeeklyReviews(token),
     ]);
 
     setInitialLoading(false);
     setRefreshing(false);
 
-    for (const result of [missionsResult, reviewResult, historicalResult]) {
+    for (const result of [missionsResult, reviewResult, historicalResult, reviewStateResult, weeklyReviewsResult]) {
       if (await handleUnauthorized(result)) {
         return;
       }
@@ -224,7 +236,37 @@ export default function GeneralDashboardScreen({
       nextError = getErrorMessage(historicalResult, "Não foi possível carregar histórico.");
     }
 
+    if (reviewStateResult.ok) {
+      setReviewState(reviewStateResult.data);
+    } else if (!nextError) {
+      nextError = getErrorMessage(reviewStateResult, "Não foi possível carregar a revisão semanal.");
+    }
+
+    if (weeklyReviewsResult.ok) {
+      setWeeklyReviews(Array.isArray(weeklyReviewsResult.data) ? weeklyReviewsResult.data : []);
+    } else if (!nextError) {
+      nextError = getErrorMessage(weeklyReviewsResult, "Não foi possível carregar o histórico de revisões.");
+    }
+
+    setDailyProgressMissions([]);
     setError(nextError);
+  }
+
+  async function closeWeeklyReview(payload) {
+    setError("");
+    const result = await api.closeWeeklyReview(token, payload);
+
+    if (await handleUnauthorized(result)) {
+      return false;
+    }
+    if (!result.ok) {
+      setError(getErrorMessage(result, "Não foi possível fechar a revisão do General."));
+      await loadAll();
+      return false;
+    }
+
+    await loadAll();
+    return true;
   }
 
   async function activateSoldier() {
@@ -336,7 +378,7 @@ export default function GeneralDashboardScreen({
     <CommandActionDock
       active={activeScreen === "reviews"}
       bottomInset={insets.bottom}
-      count={visibleReviewMissions.length}
+      count={reviewCount}
       generalName={generalName}
       onLayout={(event) => {
         const nextHeight = Math.ceil(event.nativeEvent.layout.height);
@@ -360,7 +402,10 @@ export default function GeneralDashboardScreen({
           onBack={() => setActiveScreen("home")}
           onLogout={onLogout}
           onReload={() => loadAll()}
+          onCloseReview={closeWeeklyReview}
+          reviewState={reviewState}
           token={token}
+          weeklyReviews={weeklyReviews}
         />
         {commandDock}
       </>
@@ -485,6 +530,8 @@ export default function GeneralDashboardScreen({
             meta={
               hasReview
                 ? "Há revisão pendente. Decida quando entrar no protocolo de execução."
+                : reviewState?.pending
+                  ? "Há revisão semanal pendente. Feche o ciclo antes de abrir nova semana."
                 : "Ative somente quando o plano estiver pronto para ser executado."
             }
           />

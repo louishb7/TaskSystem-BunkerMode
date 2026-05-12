@@ -12,9 +12,12 @@ export default function GeneralReviewScreen({
   bottomPadding,
   missions,
   onBack,
+  onCloseReview,
   onLogout,
   onReload,
+  reviewState,
   token,
+  weeklyReviews,
 }) {
   return (
     <TacticalScreen variant="general">
@@ -40,9 +43,12 @@ export default function GeneralReviewScreen({
         <ReviewPanel
           allMissions={allMissions}
           missions={missions}
+          onCloseReview={onCloseReview}
           onLogout={onLogout}
           onReload={onReload}
+          reviewState={reviewState}
           token={token}
+          weeklyReviews={weeklyReviews}
         />
       </ScrollView>
     </TacticalScreen>

@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from api.schemas import (
+    FecharRevisaoPayload,
     FailureJustificationPayload,
     GeneralVerdictPayload,
     LimparRelatorioFalhasPayload,
@@ -30,6 +31,7 @@ from services.exceptions import (
 )
 from services.missao_service import MissaoService
 from services.relatorio_service import RelatorioService
+from services.revisao_service import RevisaoService
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -44,6 +46,10 @@ def get_missao_service() -> MissaoService:
 
 def get_relatorio_service() -> RelatorioService:
     return RelatorioService(RepositorioPostgres(get_connection_string()))
+
+
+def get_revisao_service() -> RevisaoService:
+    return RevisaoService(RepositorioPostgres(get_connection_string()))
 
 
 def get_current_user(
@@ -261,6 +267,17 @@ def listar_missoes_operacionais(
     missao_service: MissaoService = Depends(get_missao_service),
 ):
     return _listar_missoes_operacionais(usuario=usuario, missao_service=missao_service)
+
+
+@router.get("/missoes/dia-operacional")
+def listar_missoes_do_dia_operacional(
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    return missao_service.to_response_list(
+        missao_service.listar_missoes_do_dia_operacional(usuario=usuario),
+        usuario=usuario,
+    )
 
 
 @router.get("/missoes/revisao")
@@ -488,6 +505,40 @@ def limpar_relatorio_falhas(
         _raise_http_from_domain_error(erro)
 
     return missao_service.to_response_list(missoes, usuario=usuario)
+
+
+@router.get("/revisoes/estado")
+def obter_estado_revisao(
+    usuario=Depends(get_current_user),
+    revisao_service: RevisaoService = Depends(get_revisao_service),
+):
+    try:
+        return revisao_service.obter_estado(usuario)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.get("/revisoes")
+def listar_revisoes(
+    usuario=Depends(get_current_user),
+    revisao_service: RevisaoService = Depends(get_revisao_service),
+):
+    try:
+        return revisao_service.listar_revisoes(usuario)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.post("/revisoes/fechar", status_code=status.HTTP_201_CREATED)
+def fechar_revisao(
+    payload: FecharRevisaoPayload,
+    usuario=Depends(get_current_user),
+    revisao_service: RevisaoService = Depends(get_revisao_service),
+):
+    try:
+        return revisao_service.fechar_revisao(usuario, observacao=payload.observacao)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
 
 
 def _parse_query_date(raw_value: str | None):

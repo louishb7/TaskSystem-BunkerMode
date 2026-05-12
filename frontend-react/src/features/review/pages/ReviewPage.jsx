@@ -10,8 +10,11 @@ export default function ReviewPage({
   missions,
   onBack,
   onClearFailures,
+  onCloseReview,
   onReview,
+  reviewState,
   status,
+  weeklyReviews,
 }) {
   return (
     <TacticalShell mode="general">
@@ -32,7 +35,10 @@ export default function ReviewPage({
           loadingMissionId={loadingMissionId}
           missions={missions}
           onClearFailures={onClearFailures}
+          onCloseReview={onCloseReview}
           onReview={onReview}
+          reviewState={reviewState}
+          weeklyReviews={weeklyReviews}
         />
       </section>
     </TacticalShell>

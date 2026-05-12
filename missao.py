@@ -186,7 +186,6 @@ class Missao:
         return (
             self.completed_at is None
             and self.is_pending()
-            and not self.esta_vencida(referencia=reference_date)
         )
 
     def pode_ser_concluida(self, referencia=None):
@@ -260,7 +259,7 @@ class Missao:
         if self.is_completed():
             raise ValueError("Esta missão já está concluída.")
         if not self.can_be_completed(reference_date=referencia):
-            raise ValueError("Missão vencida exige justificativa antes de seguir.")
+            raise ValueError("Missão não pode ser concluída neste estado.")
         self.status = StatusMissao.CONCLUIDA
         self.completed_at = self._validar_datetime(instante, "Data de conclusão inválida.", default_now=True)
         self.failed_at = None

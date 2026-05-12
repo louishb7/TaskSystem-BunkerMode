@@ -16,9 +16,13 @@ from api.routes import (
     listar_missoes,
     listar_missoes_operacionais,
     listar_missoes_em_revisao,
+    listar_missoes_do_dia_operacional,
     login,
     limpar_relatorio_falhas,
     obter_relatorio_semanal,
+    obter_estado_revisao,
+    listar_revisoes,
+    fechar_revisao,
     registrar_justificativa_falha,
     registrar_usuario,
     revisar_justificativa,
@@ -35,11 +39,13 @@ from api.schemas import (
     RevisaoJustificativaPayload,
     SoldierExcusePayload,
     TimezonePayload,
+    FecharRevisaoPayload,
 )
 from missao import Missao, StatusMissao
 from services.auth_service import AuthService
 from services.missao_service import MissaoService
 from services.relatorio_service import RelatorioService
+from services.revisao_service import RevisaoService
 
 
 DATA_TESTE = datetime(2026, 4, 24, 10, 0, 0)
@@ -51,6 +57,7 @@ class RepositorioV2Fake:
         self.usuarios = []
         self.contextos = {}
         self.auditoria = []
+        self.revisoes = []
         self.proximo_missao_id = 1
         self.proximo_usuario_id = 1
         self.proximo_evento_id = 1
@@ -148,6 +155,23 @@ class RepositorioV2Fake:
     def listar_auditoria_por_missao(self, missao_id):
         return [evento for evento in self.auditoria if evento.missao_id == missao_id]
 
+    def buscar_revisao_por_periodo(self, usuario_id, start_date, end_date):
+        for revisao in self.revisoes:
+            if (
+                revisao.usuario_id == usuario_id
+                and revisao.start_date == start_date
+                and revisao.end_date == end_date
+            ):
+                return revisao
+        return None
+
+    def listar_revisoes_semanais(self, usuario_id):
+        return [revisao for revisao in self.revisoes if revisao.usuario_id == usuario_id]
+
+    def salvar_revisao_semanal(self, revisao):
+        revisao.atualizar_revisao_id(len(self.revisoes) + 1)
+        self.revisoes.append(revisao)
+
 
 def preparar_ambiente():
     repo = RepositorioV2Fake()
@@ -161,7 +185,6 @@ def preparar_ambiente():
         now_provider=lambda: DATA_TESTE,
     )
     relatorios = RelatorioService(repo)
-
     usuario = registrar_usuario(
         RegistroPayload(usuario="Henrique", email="henrique@email.com", senha="segredo123"),
         auth_service=auth,
@@ -257,7 +280,7 @@ def test_api_rejeita_timezone_invalido():
     assert "Fuso horário inválido" in erro.value.detail
 
 
-def test_soldado_nao_pode_concluir_missao_vencida():
+def test_soldado_pode_concluir_missao_vencida_como_execucao_atrasada():
     repo, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
     criar_missao(
         MissaoCreatePayload(
@@ -273,17 +296,11 @@ def test_soldado_nao_pode_concluir_missao_vencida():
     usuario.definir_modo("soldier")
     auth.alterar_modo(usuario.usuario_id, "soldier")
 
-    try:
-        missoes.concluir_missao(1, usuario=usuario)
-    except ValueError as erro:
-        assert "fora do prazo" in str(erro)
-    else:
-        raise AssertionError("A conclusão da missão vencida deveria falhar.")
+    missao = missoes.concluir_missao(1, usuario=usuario)
 
-    resposta = listar_missoes(usuario=usuario, missao_service=missoes)
-    assert resposta[0]["status"] == "Falha aguardando justificativa"
-    assert resposta[0]["failure_reason"] is None
-    assert_mission_contract(resposta[0])
+    assert missao.status == StatusMissao.CONCLUIDA
+    assert missao.completed_at is not None
+    assert listar_missoes(usuario=usuario, missao_service=missoes) == []
 
 
 def test_api_retorna_403_quando_soldado_tenta_criar_missao():
@@ -324,11 +341,6 @@ def test_soldado_pode_justificar_e_general_revisar():
     )
     usuario.definir_modo("soldier")
     auth.alterar_modo(usuario.usuario_id, "soldier")
-
-    try:
-        missoes.concluir_missao(1, usuario=usuario)
-    except ValueError:
-        pass
 
     justificativa = justificar_missao(
         1,
@@ -381,11 +393,6 @@ def test_rota_justification_persiste_tipo_e_texto_da_justificativa():
     usuario.definir_modo("soldier")
     auth.alterar_modo(usuario.usuario_id, "soldier")
 
-    try:
-        concluir_missao(1, usuario=usuario, missao_service=missoes)
-    except HTTPException:
-        pass
-
     resposta = registrar_justificativa_falha(
         1,
         FailureJustificationPayload(
@@ -421,14 +428,6 @@ def test_fluxo_lifecycle_expirada_justificada_revisada_reflete_no_relatorio():
 
     usuario.definir_modo("soldier")
     auth.alterar_modo(usuario.usuario_id, "soldier")
-    try:
-        concluir_missao(1, usuario=usuario, missao_service=missoes)
-    except HTTPException as erro:
-        assert erro.status_code == 400
-        assert "fora do prazo" in erro.detail
-    else:
-        raise AssertionError("Missão expirada não deveria permitir conclusão.")
-
     justificativa = justificar_missao(
         1,
         SoldierExcusePayload(reason="Perdi a janela por bloqueio externo."),
@@ -493,6 +492,7 @@ def test_listagem_operacional_nao_retorna_concluidas_ou_falhas_revisadas():
             failed_at=datetime(2026, 4, 23, 10, 0, 0),
             failure_reason="Falhou.",
             general_verdict="accepted",
+            is_decided=True,
             user_id=usuario.usuario_id,
         ),
     ]
@@ -532,6 +532,7 @@ def test_missoes_operacionais_repete_a_mesma_listagem_de_missoes():
             failed_at=datetime(2026, 4, 23, 10, 0, 0),
             failure_reason="Falhou.",
             general_verdict="accepted",
+            is_decided=True,
             user_id=usuario.usuario_id,
         ),
     ]
@@ -607,6 +608,37 @@ def test_listagem_soldado_retorna_apenas_executaveis_ou_justificaveis():
     assert resposta[0]["permissions"]["can_complete"] is False
     assert resposta[1]["permissions"]["can_complete"] is True
     assert resposta[1]["permissions"]["can_edit"] is False
+
+
+def test_dia_operacional_preserva_progresso_quatro_ordens_duas_executadas():
+    repo, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    repo.missoes = []
+    repo.contextos = {}
+    for indice in range(1, 5):
+        missao = Missao(
+            missao_id=indice,
+            titulo=f"Ordem {indice}",
+            prioridade=1,
+            prazo="24-04-2026",
+            status=StatusMissao.PENDENTE,
+            user_id=usuario.usuario_id,
+        )
+        if indice <= 2:
+            missao.concluir(instante=datetime(2026, 4, 24, 10 + indice, 0, 0))
+        repo.missoes.append(missao)
+        repo.contextos[indice] = {
+            "criada_por_id": usuario_dict["id"],
+            "responsavel_id": usuario_dict["id"],
+        }
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    operacionais = listar_missoes(usuario=usuario, missao_service=missoes)
+    dia = listar_missoes_do_dia_operacional(usuario=usuario, missao_service=missoes)
+
+    assert len(operacionais) == 2
+    assert len(dia) == 4
+    assert sum(1 for missao in dia if missao["status_code"] == "CONCLUIDA") == 2
 
 
 def test_api_retorna_400_para_revisao_em_estado_invalido():
@@ -726,6 +758,7 @@ def test_historico_de_missoes_retorna_apenas_finalizadas():
             failed_at=datetime(2026, 4, 23, 10, 0, 0),
             failure_reason="Falhou.",
             general_verdict="accepted",
+            is_decided=True,
             user_id=usuario.usuario_id,
         ),
         Missao(
@@ -746,7 +779,7 @@ def test_historico_de_missoes_retorna_apenas_finalizadas():
 
     resposta = listar_missoes_historicas(usuario=usuario, missao_service=missoes)
 
-    assert [missao["id"] for missao in resposta] == [1, 2]
+    assert [missao["id"] for missao in resposta] == [2, 1]
     assert all(assert_mission_contract(missao) is None for missao in resposta)
     assert all(missao["permissions"]["can_view_history"] is True for missao in resposta)
     assert all(missao["permissions"]["can_delete"] is False for missao in resposta)
@@ -996,7 +1029,7 @@ def test_relatorio_semanal_retorna_403_em_modo_soldado():
 
 
 def test_limpar_relatorio_falhas_persiste_no_backend():
-    repo, _, missoes, _, _, usuario = preparar_ambiente()
+    repo, _, missoes, relatorios, _, usuario = preparar_ambiente()
     missao = Missao(
         missao_id=1,
         titulo="Falha informativa",
@@ -1022,6 +1055,89 @@ def test_limpar_relatorio_falhas_persiste_no_backend():
 
     assert resposta[0]["status_code"] == "FALHA_REVISADA"
     assert repo.buscar_por_id(1).general_verdict == "accepted"
+
+    relatorio = obter_relatorio_semanal(
+        start_date="2026-04-24",
+        end_date="2026-04-24",
+        usuario=usuario,
+        relatorio_service=relatorios,
+    )
+    historico = listar_missoes_historicas(usuario=usuario, missao_service=missoes)
+
+    assert relatorio["failed_missions"] == 0
+    assert relatorio["failure_reasons"] == []
+    assert historico == []
+
+
+def test_revisao_general_estado_fechamento_e_historico_persistem():
+    repo, _, _, _, _, usuario = preparar_ambiente()
+    revisoes = RevisaoService(repo, now_provider=lambda: datetime(2026, 4, 28, 10, 0, 0))
+    repo.missoes = [
+        Missao(
+            missao_id=1,
+            titulo="Executada",
+            prioridade=1,
+            prazo="21-04-2026",
+            status=StatusMissao.CONCLUIDA,
+            completed_at=datetime(2026, 4, 21, 10, 0, 0),
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Pendente",
+            prioridade=1,
+            prazo="22-04-2026",
+            status=StatusMissao.PENDENTE,
+            user_id=usuario.usuario_id,
+        ),
+        Missao(
+            missao_id=3,
+            titulo="Decidida quebrada",
+            prioridade=1,
+            prazo="23-04-2026",
+            status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+            failed_at=datetime(2026, 4, 23, 10, 0, 0),
+            failure_reason="Não executei.",
+            is_decided=True,
+            user_id=usuario.usuario_id,
+        ),
+    ]
+    repo.contextos = {
+        1: {"criada_por_id": usuario.usuario_id, "responsavel_id": usuario.usuario_id},
+        2: {"criada_por_id": usuario.usuario_id, "responsavel_id": usuario.usuario_id},
+        3: {"criada_por_id": usuario.usuario_id, "responsavel_id": usuario.usuario_id},
+    }
+
+    estado = obter_estado_revisao(usuario=usuario, revisao_service=revisoes)
+    fechada = fechar_revisao(
+        FecharRevisaoPayload(observacao="Revisão fechada."),
+        usuario=usuario,
+        revisao_service=revisoes,
+    )
+    historico = listar_revisoes(usuario=usuario, revisao_service=revisoes)
+    estado_final = obter_estado_revisao(usuario=usuario, revisao_service=revisoes)
+
+    assert estado["pending"] is True
+    assert estado["reading"]["pending_missions"] == 1
+    assert fechada["reviewed_at"]
+    assert fechada["pending_missions"] == 1
+    assert fechada["failed_missions"] == 1
+    assert historico == [fechada]
+    assert estado_final["pending"] is False
+
+
+def test_revisao_general_bloqueada_no_modo_soldado():
+    _, auth, _, _, _, usuario = preparar_ambiente()
+    revisoes = RevisaoService(RepositorioV2Fake())
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    try:
+        obter_estado_revisao(usuario=usuario, revisao_service=revisoes)
+    except HTTPException as erro:
+        assert erro.status_code == 403
+    else:
+        raise AssertionError("Revisão do General deveria retornar 403 no modo Soldado.")
 
 
 def test_relatorio_semanal_retorna_400_para_intervalo_invertido():

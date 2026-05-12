@@ -5,6 +5,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 from auditoria import EventoAuditoria
 from missao import Missao
+from revisao import RevisaoSemanal
 from usuario import Usuario
 
 
@@ -151,6 +152,22 @@ class RepositorioPostgres:
                 acao TEXT NOT NULL,
                 detalhes TEXT NOT NULL,
                 criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS revisoes_semanais (
+                revisao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                reviewed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                resumo_operacional TEXT NOT NULL,
+                completed_missions INTEGER NOT NULL DEFAULT 0,
+                pending_missions INTEGER NOT NULL DEFAULT 0,
+                failed_missions INTEGER NOT NULL DEFAULT 0,
+                committed_missions_failed INTEGER NOT NULL DEFAULT 0,
+                observacao TEXT NULL,
+                UNIQUE (usuario_id, start_date, end_date)
             );
             """,
         ]
@@ -311,6 +328,34 @@ class RepositorioPostgres:
             acao=acao,
             detalhes=detalhes,
             criado_em=criado_em,
+        )
+
+    def _reconstruir_revisao(self, linha: tuple) -> RevisaoSemanal:
+        (
+            revisao_id,
+            usuario_id,
+            start_date,
+            end_date,
+            reviewed_at,
+            resumo_operacional,
+            completed_missions,
+            pending_missions,
+            failed_missions,
+            committed_missions_failed,
+            observacao,
+        ) = linha
+        return RevisaoSemanal(
+            revisao_id=revisao_id,
+            usuario_id=usuario_id,
+            start_date=start_date,
+            end_date=end_date,
+            reviewed_at=reviewed_at,
+            resumo_operacional=resumo_operacional,
+            completed_missions=completed_missions,
+            pending_missions=pending_missions,
+            failed_missions=failed_missions,
+            committed_missions_failed=committed_missions_failed,
+            observacao=observacao,
         )
 
     def carregar_dados(self) -> list[Missao]:
@@ -822,3 +867,102 @@ class RepositorioPostgres:
                 "Erro ao listar auditoria da missão no banco de dados."
             ) from erro
         return [self._reconstruir_evento(linha) for linha in linhas]
+
+    def buscar_revisao_por_periodo(
+        self,
+        usuario_id: int,
+        start_date,
+        end_date,
+    ) -> RevisaoSemanal | None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT revisao_id, usuario_id, start_date, end_date, reviewed_at,
+                               resumo_operacional, completed_missions, pending_missions,
+                               failed_missions, committed_missions_failed, observacao
+                        FROM revisoes_semanais
+                        WHERE usuario_id = %s AND start_date = %s AND end_date = %s;
+                        """,
+                        (usuario_id, start_date, end_date),
+                    )
+                    linha = cursor.fetchone()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao buscar revisão semanal no banco de dados."
+            ) from erro
+        return None if linha is None else self._reconstruir_revisao(linha)
+
+    def listar_revisoes_semanais(self, usuario_id: int) -> list[RevisaoSemanal]:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT revisao_id, usuario_id, start_date, end_date, reviewed_at,
+                               resumo_operacional, completed_missions, pending_missions,
+                               failed_missions, committed_missions_failed, observacao
+                        FROM revisoes_semanais
+                        WHERE usuario_id = %s
+                        ORDER BY start_date DESC, revisao_id DESC;
+                        """,
+                        (usuario_id,),
+                    )
+                    linhas = cursor.fetchall()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao listar revisões semanais no banco de dados."
+            ) from erro
+        return [self._reconstruir_revisao(linha) for linha in linhas]
+
+    def salvar_revisao_semanal(self, revisao: RevisaoSemanal) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO revisoes_semanais (
+                            usuario_id, start_date, end_date, reviewed_at,
+                            resumo_operacional, completed_missions, pending_missions,
+                            failed_missions, committed_missions_failed, observacao
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (usuario_id, start_date, end_date)
+                        DO UPDATE SET reviewed_at = EXCLUDED.reviewed_at,
+                                      resumo_operacional = EXCLUDED.resumo_operacional,
+                                      completed_missions = EXCLUDED.completed_missions,
+                                      pending_missions = EXCLUDED.pending_missions,
+                                      failed_missions = EXCLUDED.failed_missions,
+                                      committed_missions_failed = EXCLUDED.committed_missions_failed,
+                                      observacao = EXCLUDED.observacao
+                        RETURNING revisao_id;
+                        """,
+                        (
+                            revisao.usuario_id,
+                            revisao.start_date,
+                            revisao.end_date,
+                            revisao.reviewed_at,
+                            revisao.resumo_operacional,
+                            revisao.completed_missions,
+                            revisao.pending_missions,
+                            revisao.failed_missions,
+                            revisao.committed_missions_failed,
+                            revisao.observacao,
+                        ),
+                    )
+                    revisao.atualizar_revisao_id(cursor.fetchone()[0])
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao salvar revisão semanal no banco de dados."
+            ) from erro

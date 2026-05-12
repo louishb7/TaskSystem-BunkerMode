@@ -164,11 +164,13 @@ export default function MissionCard({
         ]}
       >
         <View style={styles.soldierCardTop}>
-          <View style={[styles.orderCode, isDecided && styles.orderCodeCritical]}>
-            <Text style={[styles.orderCodeText, isDecided && styles.orderCodeCriticalText]}>
-              {isDecided ? "INEGOCIÁVEL" : "ORDEM"}
-            </Text>
-          </View>
+          {isDecided ? (
+            <View style={[styles.orderCode, styles.orderCodeCritical]}>
+              <Text style={[styles.orderCodeText, styles.orderCodeCriticalText]}>
+                INEGOCIÁVEL
+              </Text>
+            </View>
+          ) : null}
           <Text numberOfLines={1} style={styles.status}>{statusLabel}</Text>
         </View>
 
@@ -237,7 +239,7 @@ export default function MissionCard({
             {completing ? (
               <ActivityIndicator color={theme.colors.black} />
             ) : (
-              <Text style={styles.primaryActionText}>ORDEM EXECUTADA</Text>
+              <Text style={styles.primaryActionText}>EXECUTADA</Text>
             )}
           </Pressable>
         ) : null}

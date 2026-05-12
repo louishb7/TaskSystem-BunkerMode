@@ -63,6 +63,7 @@ export default function GeneralCommandPage({
   );
   const completedCount = countCompletedMissions(selectedMissions);
   const remainingCount = Math.max(0, selectedMissions.length - completedCount);
+  const reviewCount = board.reviewMissions.length + (board.reviewState?.pending ? 1 : 0);
 
   function openCreateForm() {
     setEditingMission(null);
@@ -123,7 +124,7 @@ export default function GeneralCommandPage({
           generalName={generalName}
           onLogout={onLogout}
           onOpenReview={onOpenReview}
-          reviewCount={board.reviewMissions.length}
+          reviewCount={reviewCount}
         />
 
         <section className="general-board">
@@ -176,7 +177,7 @@ export default function GeneralCommandPage({
           <ModeTransitionPanel
             loading={modeLoading}
             onActivateSoldier={() => setShowSoldierConfirm(true)}
-            reviewCount={board.reviewMissions.length}
+            reviewCount={reviewCount}
           />
         </aside>
       </section>

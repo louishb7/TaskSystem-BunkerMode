@@ -127,7 +127,7 @@ export default function MissionCard({
             type="button"
             onClick={onComplete}
           >
-            {completing ? "AGUARDE" : "ORDEM EXECUTADA"}
+            {completing ? "AGUARDE" : "EXECUTADA"}
           </button>
         )}
       </article>

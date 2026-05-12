@@ -1244,7 +1244,7 @@ h3 {
 
 .review-metrics {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1363,6 +1363,45 @@ h3 {
   border-top: 1px solid var(--border);
   padding-top: 10px;
   font-size: 0.84rem;
+}
+
+.weekly-review-panel,
+.weekly-review-history {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(255, 138, 42, 0.18);
+  background: rgba(0, 0, 0, 0.16);
+  padding: 14px;
+}
+
+.weekly-review-summary {
+  border-color: rgba(255, 62, 62, 0.28);
+}
+
+.weekly-review-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.review-close-form {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border-soft);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 12px;
+}
+
+.review-close-form .button {
+  justify-self: start;
+}
+
+.weekly-review-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.compact-card {
+  border-color: var(--border-soft);
 }
 
 .failure-justification-form {
@@ -1568,6 +1607,10 @@ h3 {
   }
 
   .review-content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .weekly-review-lists {
     grid-template-columns: 1fr;
   }
 }

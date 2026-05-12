@@ -101,6 +101,9 @@ export const api = {
   listOperationalMissions(token) {
     return requestMissionList("/missoes/operacionais", { token });
   },
+  listDailyMissions(token) {
+    return requestMissionList("/missoes/dia-operacional", { token });
+  },
   completeMission(token, missionId) {
     return requestMission(`/missoes/${missionId}/concluir`, {
       token,
@@ -169,6 +172,15 @@ export const api = {
       method: "POST",
       body: payload,
     });
+  },
+  getReviewState(token) {
+    return request("/revisoes/estado", { token });
+  },
+  listWeeklyReviews(token) {
+    return request("/revisoes", { token });
+  },
+  closeWeeklyReview(token, payload) {
+    return request("/revisoes/fechar", { token, method: "POST", body: payload });
   },
   deleteMission(token, missionId) {
     return request(`/missoes/${missionId}`, { token, method: "DELETE" });

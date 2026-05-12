@@ -182,7 +182,7 @@ def test_concluir_missao_define_completed_at(missao_base):
     assert missao_base.failure_reason is None
 
 
-def test_nao_permitir_concluir_missao_vencida():
+def test_permitir_concluir_missao_vencida_como_execucao_atrasada():
     missao = Missao(
         missao_id=1,
         titulo="Treinar",
@@ -191,8 +191,13 @@ def test_nao_permitir_concluir_missao_vencida():
         instrucao="Treinar pesado",
     )
 
-    with pytest.raises(ValueError, match="Missão vencida exige justificativa"):
-        missao.concluir(referencia=datetime(2026, 4, 24).date())
+    missao.concluir(
+        instante=datetime(2026, 4, 24, 10, 0, 0),
+        referencia=datetime(2026, 4, 24).date(),
+    )
+
+    assert missao.status == StatusMissao.CONCLUIDA
+    assert missao.completed_at == datetime(2026, 4, 24, 10, 0, 0)
 
 
 def test_marcar_como_falha_move_para_fluxo_de_justificativa(missao_base):

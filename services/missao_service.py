@@ -54,7 +54,6 @@ class MissaoService:
 
     def listar_missoes(self, usuario=None) -> list[Missao]:
         missoes = self._carregar_missoes_do_usuario(usuario)
-        self._reconciliar_falhas(usuario, missoes)
         missoes = self.sort_missions_for_board(missoes)
 
         if usuario is not None and getattr(usuario, "active_mode", "general") == "soldier":
@@ -65,9 +64,12 @@ class MissaoService:
     def listar_missoes_historicas(self, usuario=None) -> list[Missao]:
         self._garantir_modo_general(usuario)
         missoes = self._carregar_missoes_do_usuario(usuario)
-        self._reconciliar_falhas(usuario, missoes)
         return self.sort_missions_for_board(
-            [missao for missao in missoes if missao.is_finalized()]
+            [
+                missao
+                for missao in missoes
+                if missao.is_finalized() and not self._falha_informativa_limpa(missao)
+            ]
         )
 
     def listar_missoes_para_revisao(self, usuario=None) -> list[Missao]:
@@ -77,6 +79,17 @@ class MissaoService:
             for missao in self.sort_missions_for_board(self._carregar_missoes_do_usuario(usuario))
             if missao.requires_general_review()
         ]
+
+    def listar_missoes_do_dia_operacional(self, usuario=None) -> list[Missao]:
+        missoes = self._carregar_missoes_do_usuario(usuario)
+        hoje = self._today()
+        return self.sort_missions_for_board(
+            [
+                missao
+                for missao in missoes
+                if self._pertence_ao_dia_operacional(missao, hoje)
+            ]
+        )
 
     def editar_missao(self, missao_id: int, dados: dict, usuario=None) -> Missao:
         self._garantir_modo_general(usuario)
@@ -114,11 +127,8 @@ class MissaoService:
         if missao.user_id is not None and usuario is not None and missao.user_id != usuario.usuario_id:
             raise MissaoNaoEncontrada(f"Missão {missao_id} não encontrada")
 
-        self._marcar_falha_se_vencida(missao, usuario)
         if not missao.can_be_completed(reference_date=self._today()):
-            raise ValueError(
-                "Missão fora do prazo. A conclusão foi bloqueada e a missão exige justificativa."
-            )
+            raise ValueError("Missão não pode ser concluída neste estado.")
 
         missao.concluir(instante=self._now(), referencia=self._today())
         self.repositorio.atualizar_missao(missao)
@@ -169,7 +179,8 @@ class MissaoService:
     ) -> Missao:
         self._garantir_modo_soldado(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
-        self._marcar_falha_se_vencida(missao, usuario)
+        if missao.is_pending():
+            missao.marcar_como_falha(self._now())
         missao.registrar_justificativa_soldado(motivo, tipo=tipo)
         self.repositorio.atualizar_missao(missao)
 
@@ -384,6 +395,21 @@ class MissaoService:
             return False
         data_falha = operational_date_for(missao.failed_at)
         return start_date <= data_falha <= end_date
+
+    def _falha_informativa_limpa(self, missao: Missao) -> bool:
+        return (
+            missao.is_failed_reviewed()
+            and not missao.is_decided
+            and missao.general_verdict == "accepted"
+        )
+
+    def _pertence_ao_dia_operacional(self, missao: Missao, dia: date) -> bool:
+        if missao.due_date == dia:
+            return True
+        data_evento = missao.completed_at or missao.failed_at
+        if data_evento is None:
+            return False
+        return operational_date_for(data_evento) == dia
 
     def sort_missions_for_board(self, missoes: list[Missao]) -> list[Missao]:
         return sorted(

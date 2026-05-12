@@ -17,7 +17,15 @@ function getFailureReasonLabel(type) {
 }
 
 function isFailureMission(mission) {
-  return String(mission?.status_code || "").startsWith("FALHA") && !isDoneNotMarked(mission);
+  return String(mission?.status_code || "").startsWith("FALHA")
+    && !isDoneNotMarked(mission)
+    && !isClearedInformativeFailure(mission);
+}
+
+function isClearedInformativeFailure(mission) {
+  return mission?.status_code === STATUS_MISSAO.FALHA_REVISADA
+    && mission?.is_decided !== true
+    && mission?.general_verdict === "accepted";
 }
 
 function isVisibleFailureRecord(mission) {
@@ -66,15 +74,39 @@ function formatReportDate(date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatOperationalDate(value) {
+  if (!value || typeof value !== "string") {
+    return "data indisponível";
+  }
+
+  const [year, month, day] = value.slice(0, 10).split("-");
+  if (!year || !month || !day) {
+    return value;
+  }
+  return `${day}/${month}/${year}`;
+}
+
+function formatOperationalPeriod(period) {
+  if (!period?.start_date || !period?.end_date) {
+    return "Período indisponível";
+  }
+  return `${formatOperationalDate(period.start_date)} a ${formatOperationalDate(period.end_date)}`;
+}
+
 export default function GeneralReviewPanel({
   allMissions = [],
   loadingMissionId,
   missions,
   onClearFailures,
+  onCloseReview,
   onReview,
+  reviewState,
+  weeklyReviews = [],
 }) {
   const [period, setPeriod] = useState("week");
   const [failuresOpen, setFailuresOpen] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewClosing, setReviewClosing] = useState(false);
   const today = useMemo(() => {
     const value = new Date();
     value.setHours(0, 0, 0, 0);
@@ -172,6 +204,25 @@ export default function GeneralReviewPanel({
     }
   }
 
+  async function closeWeeklyReview() {
+    setReviewClosing(true);
+    const closed = await onCloseReview?.({ observacao: reviewNote.trim() || null });
+    setReviewClosing(false);
+    if (closed) {
+      setReviewNote("");
+    }
+  }
+
+  const weeklyReport = reviewState?.reading?.report || {};
+  const weeklyPending = reviewState?.reading?.pending_missions || 0;
+  const weeklyTotal = (weeklyReport.total_missions || 0) + weeklyPending;
+  const weeklyFailures = Array.isArray(reviewState?.reading?.failures) ? reviewState.reading.failures : [];
+  const brokenDecided = Array.isArray(reviewState?.reading?.broken_decided) ? reviewState.reading.broken_decided : [];
+  const operationalHistory = Array.isArray(reviewState?.reading?.operational_history)
+    ? reviewState.reading.operational_history
+    : [];
+  const hasWeeklyReview = Boolean(reviewState?.pending || reviewState?.review);
+
   return (
     <section className="panel review-panel" aria-label="Leitura da execução do General">
       <div className="review-toolbar">
@@ -189,6 +240,110 @@ export default function GeneralReviewPanel({
           </button>
         </div>
       </div>
+
+      {hasWeeklyReview && (
+        <div className="weekly-review-panel">
+          <div className="review-summary weekly-review-summary">
+            <div>
+              <p className={`section-kicker ${reviewState?.pending ? "danger" : "fire"}`}>
+                {reviewState?.pending ? "REVISÃO DO GENERAL PENDENTE" : "REVISÃO DO GENERAL FECHADA"}
+              </p>
+              <h3>Semana operacional anterior</h3>
+              <p className="muted">{formatOperationalPeriod(reviewState?.period)}</p>
+              <p className="review-info-note">
+                A revisão fecha o ciclo com os dados reais da semana. Não altera ordens nem recalcula histórico.
+              </p>
+            </div>
+            <strong>{weeklyTotal}</strong>
+          </div>
+
+          <div className="review-metrics weekly-review-metrics">
+            <div>
+              <span>EXECUTADAS</span>
+              <strong>{weeklyReport.completed_missions || 0}</strong>
+            </div>
+            <div>
+              <span>PENDENTES</span>
+              <strong>{weeklyPending}</strong>
+            </div>
+            <div>
+              <span>FALHAS</span>
+              <strong>{weeklyReport.failed_missions || 0}</strong>
+            </div>
+            <div>
+              <span>DECIDIDAS QUEBRADAS</span>
+              <strong>{weeklyReport.committed_missions_failed || 0}</strong>
+            </div>
+          </div>
+
+          {reviewState?.pending && (
+            <div className="review-close-form">
+              <label className="field-label" htmlFor="weekly-review-note">
+                Observação do General
+              </label>
+              <textarea
+                id="weekly-review-note"
+                maxLength={600}
+                onChange={(event) => setReviewNote(event.target.value)}
+                placeholder="Registro opcional sobre a leitura operacional."
+                rows={3}
+                value={reviewNote}
+              />
+              <button
+                className="button primary"
+                disabled={reviewClosing}
+                type="button"
+                onClick={closeWeeklyReview}
+              >
+                {reviewClosing ? "FECHANDO" : "FECHAR REVISÃO"}
+              </button>
+            </div>
+          )}
+
+          {!reviewState?.pending && reviewState?.review && (
+            <p className="muted">
+              Fechada em {formatDateTime(reviewState.review.reviewed_at)}.
+            </p>
+          )}
+
+          <div className="weekly-review-lists">
+            <div className="review-list compact">
+              <p className="section-kicker danger">FALHAS DA SEMANA</p>
+              {weeklyFailures.length > 0 ? weeklyFailures.slice(0, 4).map((mission) => (
+                <article key={mission.id} className="review-card compact-card">
+                  <h3>{mission.titulo || "Sem título"}</h3>
+                  <p className="muted">{mission.failure_reason || "Justificativa não registrada."}</p>
+                </article>
+              )) : (
+                <p className="muted">Nenhuma falha contabilizada na semana.</p>
+              )}
+            </div>
+            <div className="review-list compact">
+              <p className="section-kicker fire">HISTÓRICO OPERACIONAL</p>
+              {operationalHistory.length > 0 ? operationalHistory.slice(0, 5).map((mission) => (
+                <article key={mission.id} className="review-card compact-card">
+                  <h3>{mission.titulo || "Sem título"}</h3>
+                  <p className="muted">{mission.status_label || mission.status_code || "Estado não informado"}</p>
+                </article>
+              )) : (
+                <p className="muted">Sem histórico operacional no período.</p>
+              )}
+            </div>
+          </div>
+
+          {brokenDecided.length > 0 && (
+            <div className="review-list compact">
+              <p className="section-kicker danger">DECIDIDAS QUEBRADAS</p>
+              {brokenDecided.slice(0, 3).map((mission) => (
+                <article key={mission.id} className="review-card compact-card">
+                  <h3>{mission.titulo || "Sem título"}</h3>
+                  <p className="muted">{mission.failure_reason || "Sem justificativa registrada."}</p>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="review-content-grid">
         <div className="review-main">
@@ -217,10 +372,6 @@ export default function GeneralReviewPanel({
             <div>
               <span>FALHAS</span>
               <strong>{failures.length}</strong>
-            </div>
-            <div className="review-metric-decision">
-              <span>DECIDIDAS FALHADAS</span>
-              <strong>{decidedFailures.length}</strong>
             </div>
           </div>
 
@@ -319,6 +470,24 @@ export default function GeneralReviewPanel({
             )
           )}
         </div>
+      </div>
+
+      <div className="weekly-review-history">
+        <p className="section-kicker fire">HISTÓRICO DE REVISÕES</p>
+        {weeklyReviews.length > 0 ? (
+          <div className="review-list compact">
+            {weeklyReviews.slice(0, 6).map((review) => (
+              <article key={review.id} className="review-card compact-card">
+                <h3>{formatOperationalDate(review.reviewed_at)}</h3>
+                <p className="muted">{formatOperationalDate(review.start_date)} a {formatOperationalDate(review.end_date)}</p>
+                <p>{review.resumo_operacional}</p>
+                {review.observacao && <p className="review-info-note">{review.observacao}</p>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">Nenhuma revisão semanal foi fechada ainda.</p>
+        )}
       </div>
     </section>
   );

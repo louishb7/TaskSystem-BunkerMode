@@ -49,6 +49,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
   const insets = useSafeAreaInsets();
   const listRef = useRef(null);
   const [missions, setMissions] = useState([]);
+  const [dailyMissions, setDailyMissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState(null);
   const [justifyingId, setJustifyingId] = useState(null);
@@ -112,10 +113,13 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
       setLoading(true);
     }
 
-    const result = await api.listOperationalMissions(token);
+    const [result, dailyResult] = await Promise.all([
+      api.listOperationalMissions(token),
+      api.listDailyMissions(token),
+    ]);
     setLoading(false);
 
-    if (await handleUnauthorized(result)) {
+    if (await handleUnauthorized(result) || await handleUnauthorized(dailyResult)) {
       return;
     }
 
@@ -125,6 +129,13 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     }
 
     setMissions(result.data);
+    if (!dailyResult.ok) {
+      setDailyMissions(result.data);
+      setError(getErrorMessage(dailyResult, "Não foi possível carregar a caçada do dia."));
+      return;
+    }
+
+    setDailyMissions(dailyResult.data);
     setError("");
   }
 
@@ -224,11 +235,11 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
           <SoldierHeader
             currentDay={formatCurrentDay()}
             remainingCount={actionMissions.length}
-            totalCount={missions.length || actionMissions.length}
+            totalCount={dailyMissions.length || missions.length || actionMissions.length}
           />
 
           <TacticalPanel style={styles.progressPanel}>
-            <MissionProgress label="CAÇADA" missions={missions.length ? missions : actionMissions} />
+            <MissionProgress label="CAÇADA" missions={dailyMissions.length ? dailyMissions : missions} />
           </TacticalPanel>
 
           <View style={styles.notices}>

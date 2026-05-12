@@ -109,8 +109,11 @@ export default function App() {
         missions={board.reviewMissions}
         onBack={() => setActiveRoute(APP_ROUTES.GENERAL_HOME)}
         onClearFailures={board.clearFailureReport}
+        onCloseReview={board.closeWeeklyReview}
         onReview={board.submitGeneralReview}
+        reviewState={board.reviewState}
         status={board.status}
+        weeklyReviews={board.weeklyReviews}
       />
     );
   }

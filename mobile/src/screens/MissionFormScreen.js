@@ -69,8 +69,8 @@ export default function MissionFormScreen({
   }
 
   async function submit() {
-    if (!titulo.trim() || !instrucao.trim()) {
-      setError("Informe título e instrução.");
+    if (!titulo.trim()) {
+      setError("Informe o título da ordem.");
       return;
     }
 
@@ -150,7 +150,7 @@ export default function MissionFormScreen({
                 setFocusedField("instrucao");
                 scrollToFocusedInput(instrucaoRef);
               }}
-              placeholder="Descreva exatamente o que deve ser feito"
+              placeholder="Detalhe apenas se a ordem precisar de contexto"
               placeholderTextColor={theme.colors.textDim}
               ref={instrucaoRef}
               style={[

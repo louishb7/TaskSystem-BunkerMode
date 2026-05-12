@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { api } from "../api/client";
 import { formatDateTime } from "../utils/dates";
@@ -60,7 +60,15 @@ function formatRangeDate(date) {
 }
 
 function isFailureMission(mission) {
-  return String(mission?.status_code || "").startsWith("FALHA") && !isDoneNotMarked(mission);
+  return String(mission?.status_code || "").startsWith("FALHA")
+    && !isDoneNotMarked(mission)
+    && !isClearedInformativeFailure(mission);
+}
+
+function isClearedInformativeFailure(mission) {
+  return mission?.status_code === STATUS.FALHA_REVISADA
+    && mission?.is_decided !== true
+    && mission?.general_verdict === "accepted";
 }
 
 function isPendingMission(mission) {
@@ -78,9 +86,38 @@ function uniqueMissions(missions) {
   });
 }
 
-export default function ReviewPanel({ allMissions = [], missions = [], onLogout, onReload, token }) {
+function formatOperationalDate(value) {
+  if (!value || typeof value !== "string") {
+    return "data indisponível";
+  }
+  const [year, month, day] = value.slice(0, 10).split("-");
+  if (!year || !month || !day) {
+    return value;
+  }
+  return `${day}/${month}/${year}`;
+}
+
+function formatOperationalPeriod(period) {
+  if (!period?.start_date || !period?.end_date) {
+    return "Período indisponível";
+  }
+  return `${formatOperationalDate(period.start_date)} a ${formatOperationalDate(period.end_date)}`;
+}
+
+export default function ReviewPanel({
+  allMissions = [],
+  missions = [],
+  onCloseReview,
+  onLogout,
+  onReload,
+  reviewState,
+  token,
+  weeklyReviews = [],
+}) {
   const [period, setPeriod] = useState("week");
   const [failuresOpen, setFailuresOpen] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
+  const [closingReview, setClosingReview] = useState(false);
   const today = useMemo(() => startOfDay(new Date()), []);
   const range = useMemo(() => {
     if (period === "month") {
@@ -120,13 +157,18 @@ export default function ReviewPanel({ allMissions = [], missions = [], onLogout,
   const total = scopedMissions.length;
   const completed = scopedMissions.filter(isCompleted).length;
   const pending = scopedMissions.filter(isPendingMission).length;
-  const decided = scopedMissions.filter((mission) => mission?.is_decided === true).length;
   const failures = scopedMissions.filter(isFailureMission);
   const decidedFailures = failures.filter((mission) => mission?.is_decided === true);
   const failuresForList = uniqueMissions([...scopedReviewMissions, ...failures]);
   const pendingDecisionCount = scopedReviewMissions.filter((mission) => mission?.is_decided === true).length;
   const huntRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   const remaining = Math.max(0, total - completed);
+  const weeklyReport = reviewState?.reading?.report || {};
+  const weeklyPending = reviewState?.reading?.pending_missions || 0;
+  const weeklyTotal = (weeklyReport.total_missions || 0) + weeklyPending;
+  const weeklyFailures = Array.isArray(reviewState?.reading?.failures) ? reviewState.reading.failures : [];
+  const brokenDecided = Array.isArray(reviewState?.reading?.broken_decided) ? reviewState.reading.broken_decided : [];
+  const hasWeeklyReview = Boolean(reviewState?.pending || reviewState?.review);
   const executionReading = (() => {
     if (total === 0) {
       return "Sem ordens no período carregado. O relatório fica limpo até haver execução registrada.";
@@ -147,8 +189,92 @@ export default function ReviewPanel({ allMissions = [], missions = [], onLogout,
     return "Todas as ordens carregadas para o período foram executadas sem falha registrada.";
   })();
 
+  async function closeReview() {
+    setClosingReview(true);
+    const closed = await onCloseReview?.({ observacao: reviewNote.trim() || null });
+    setClosingReview(false);
+    if (closed) {
+      setReviewNote("");
+    }
+  }
+
   return (
     <View style={styles.stack}>
+      {hasWeeklyReview ? (
+        <TacticalPanel danger={reviewState?.pending} fire={!reviewState?.pending} style={styles.weeklyPanel}>
+          <Text style={[styles.kicker, reviewState?.pending && styles.dangerText]}>
+            {reviewState?.pending ? "REVISÃO DO GENERAL PENDENTE" : "REVISÃO DO GENERAL FECHADA"}
+          </Text>
+          <Text style={styles.title}>Semana operacional anterior</Text>
+          <Text style={styles.meta}>{formatOperationalPeriod(reviewState?.period)}</Text>
+          <Text style={styles.reading}>
+            Leitura fria da semana. Fecha o ciclo sem alterar ordens nem recalcular histórico.
+          </Text>
+
+          <View style={styles.metrics}>
+            <Metric label="ORDENS" value={weeklyTotal} />
+            <Metric label="EXECUTADAS" value={weeklyReport.completed_missions || 0} />
+            <Metric label="PENDENTES" value={weeklyPending} />
+            <Metric label="FALHAS" value={weeklyReport.failed_missions || 0} purple />
+          </View>
+
+          <Text style={styles.meta}>
+            Decididas quebradas: {weeklyReport.committed_missions_failed || 0}
+          </Text>
+
+          {reviewState?.pending ? (
+            <View style={styles.closeBox}>
+              <Text style={styles.reasonLabel}>OBSERVAÇÃO DO GENERAL</Text>
+              <TextInput
+                multiline
+                onChangeText={setReviewNote}
+                placeholder="Registro opcional sobre a leitura operacional."
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.noteInput}
+                value={reviewNote}
+              />
+              <Pressable
+                disabled={closingReview}
+                onPress={closeReview}
+                style={[styles.openButton, styles.closeButton, closingReview && styles.disabled]}
+              >
+                {closingReview ? (
+                  <ActivityIndicator color={theme.colors.black} />
+                ) : (
+                  <Text style={styles.closeButtonText}>FECHAR REVISÃO</Text>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <Text style={styles.meta}>Fechada em {formatDateTime(reviewState?.review?.reviewed_at)}.</Text>
+          )}
+
+          <View style={styles.list}>
+            <Text style={[styles.failureKicker, styles.dangerText]}>FALHAS DA SEMANA</Text>
+            {weeklyFailures.length > 0 ? weeklyFailures.slice(0, 3).map((mission, index) => (
+              <View key={String(mission?.id ?? index)} style={styles.itemCompact}>
+                <Text style={styles.itemTitle}>{mission?.titulo || "Sem título"}</Text>
+                <Text style={styles.itemMeta}>{mission?.failure_reason || "Justificativa não registrada."}</Text>
+              </View>
+            )) : (
+              <Text style={styles.meta}>Nenhuma falha contabilizada na semana.</Text>
+            )}
+          </View>
+
+          {brokenDecided.length > 0 ? (
+            <View style={styles.list}>
+              <Text style={[styles.failureKicker, styles.dangerText]}>DECIDIDAS QUEBRADAS</Text>
+              {brokenDecided.slice(0, 3).map((mission, index) => (
+                <View key={String(mission?.id ?? index)} style={styles.itemCompact}>
+                  <Text style={styles.itemTitle}>{mission?.titulo || "Sem título"}</Text>
+                  <Text style={styles.itemMeta}>{mission?.failure_reason || "Sem justificativa registrada."}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </TacticalPanel>
+      ) : null}
+
       <TacticalPanel fire style={styles.summaryPanel}>
         <View style={styles.toolbar}>
           <View style={styles.toolbarCopy}>
@@ -171,8 +297,7 @@ export default function ReviewPanel({ allMissions = [], missions = [], onLogout,
           <Metric label="ORDENS" value={total} />
           <Metric label="EXECUTADAS" value={completed} />
           <Metric label="PENDENTES" value={pending} />
-          <Metric label="DECIDIDAS" value={decided} purple />
-          <Metric label="DECIDIDAS FALHADAS" value={decidedFailures.length} purple />
+          <Metric label="FALHAS" value={failures.length} purple />
         </View>
       </TacticalPanel>
 
@@ -212,6 +337,26 @@ export default function ReviewPanel({ allMissions = [], missions = [], onLogout,
             />
           )
         ) : null}
+      </TacticalPanel>
+
+      <TacticalPanel style={styles.historyPanel}>
+        <Text style={styles.kicker}>HISTÓRICO DE REVISÕES</Text>
+        {weeklyReviews.length > 0 ? (
+          <View style={styles.list}>
+            {weeklyReviews.slice(0, 5).map((review) => (
+              <View key={String(review.id)} style={styles.itemCompact}>
+                <Text style={styles.itemTitle}>{formatOperationalDate(review.reviewed_at)}</Text>
+                <Text style={styles.itemMeta}>
+                  {formatOperationalDate(review.start_date)} a {formatOperationalDate(review.end_date)}
+                </Text>
+                <Text style={styles.reason}>{review.resumo_operacional}</Text>
+                {review.observacao ? <Text style={styles.infoNote}>{review.observacao}</Text> : null}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.meta}>Nenhuma revisão semanal foi fechada ainda.</Text>
+        )}
       </TacticalPanel>
     </View>
   );
@@ -312,6 +457,9 @@ const styles = StyleSheet.create({
   stack: {
     gap: theme.spacing.md,
   },
+  weeklyPanel: {
+    gap: theme.spacing.md,
+  },
   summaryPanel: {
     gap: theme.spacing.md,
   },
@@ -327,6 +475,9 @@ const styles = StyleSheet.create({
   kicker: {
     ...theme.typography.small,
     color: theme.colors.fire,
+  },
+  dangerText: {
+    color: theme.colors.red,
   },
   title: {
     ...theme.typography.heading,
@@ -412,6 +563,9 @@ const styles = StyleSheet.create({
   failurePanel: {
     gap: theme.spacing.sm,
   },
+  historyPanel: {
+    gap: theme.spacing.sm,
+  },
   failureKicker: {
     ...theme.typography.small,
     color: theme.colors.red,
@@ -442,9 +596,41 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
     marginTop: theme.spacing.sm,
   },
+  closeBox: {
+    backgroundColor: "rgba(0,0,0,0.22)",
+    borderColor: theme.colors.borderSoft,
+    borderWidth: 1,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+  },
+  noteInput: {
+    ...theme.typography.body,
+    backgroundColor: theme.colors.surfaceDeep,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    color: theme.colors.text,
+    minHeight: 92,
+    padding: theme.spacing.sm,
+    textAlignVertical: "top",
+  },
+  closeButton: {
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
+  },
+  closeButtonText: {
+    ...theme.typography.label,
+    color: theme.colors.black,
+  },
   item: {
     backgroundColor: theme.colors.surfaceDeep,
     borderColor: theme.colors.red,
+    borderWidth: 1,
+    padding: theme.spacing.md,
+  },
+  itemCompact: {
+    backgroundColor: theme.colors.surfaceDeep,
+    borderColor: theme.colors.borderSoft,
     borderWidth: 1,
     padding: theme.spacing.md,
   },

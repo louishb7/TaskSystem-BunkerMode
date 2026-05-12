@@ -28,7 +28,10 @@ export function useMissionBoard({
   const [missions, setMissions] = useState([]);
   const [reviewMissions, setReviewMissions] = useState([]);
   const [historicalMissions, setHistoricalMissions] = useState([]);
+  const [dailyProgressMissions, setDailyProgressMissions] = useState([]);
   const [registeredOutcomeMissions, setRegisteredOutcomeMissions] = useState([]);
+  const [reviewState, setReviewState] = useState(null);
+  const [weeklyReviews, setWeeklyReviews] = useState([]);
   const [missionLoading, setMissionLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [reviewLoadingId, setReviewLoadingId] = useState(null);
@@ -40,8 +43,14 @@ export function useMissionBoard({
 
   const actionMissions = useMemo(() => getActionMissions(missions), [missions]);
   const dailyMissions = useMemo(
-    () => mergeMissionLists(missions, reviewMissions, historicalMissions, registeredOutcomeMissions),
-    [historicalMissions, missions, registeredOutcomeMissions, reviewMissions]
+    () => mergeMissionLists(
+      missions,
+      dailyProgressMissions,
+      reviewMissions,
+      historicalMissions,
+      registeredOutcomeMissions
+    ),
+    [dailyProgressMissions, historicalMissions, missions, registeredOutcomeMissions, reviewMissions]
   );
 
   useEffect(() => {
@@ -49,7 +58,10 @@ export function useMissionBoard({
       setMissions([]);
       setReviewMissions([]);
       setHistoricalMissions([]);
+      setDailyProgressMissions([]);
       setRegisteredOutcomeMissions([]);
+      setReviewState(null);
+      setWeeklyReviews([]);
       setStatus(emptyStatus);
       setFormStatus(emptyStatus);
       return;
@@ -69,14 +81,22 @@ export function useMissionBoard({
     }
 
     setMissionLoading(true);
-    const [missionsResult, reviewResult, historicalResult] = await Promise.all([
+    const [missionsResult, reviewResult, historicalResult, reviewStateResult, weeklyReviewsResult] = await Promise.all([
       api.listMissions(token),
       api.listReviewMissions(token),
       api.listHistoricalMissions(token),
+      api.getReviewState(token),
+      api.listWeeklyReviews(token),
     ]);
     setMissionLoading(false);
 
-    if (onUnauthorized(missionsResult) || onUnauthorized(reviewResult) || onUnauthorized(historicalResult)) {
+    if (
+      onUnauthorized(missionsResult)
+      || onUnauthorized(reviewResult)
+      || onUnauthorized(historicalResult)
+      || onUnauthorized(reviewStateResult)
+      || onUnauthorized(weeklyReviewsResult)
+    ) {
       return;
     }
 
@@ -112,6 +132,29 @@ export function useMissionBoard({
       return;
     }
 
+    if (reviewStateResult.ok) {
+      setReviewState(reviewStateResult.data);
+    } else {
+      setReviewState(null);
+      setStatus({
+        type: "error",
+        message: getErrorMessage(reviewStateResult, "Não foi possível carregar a revisão semanal."),
+      });
+      return;
+    }
+
+    if (weeklyReviewsResult.ok) {
+      setWeeklyReviews(Array.isArray(weeklyReviewsResult.data) ? weeklyReviewsResult.data : []);
+    } else {
+      setWeeklyReviews([]);
+      setStatus({
+        type: "error",
+        message: getErrorMessage(weeklyReviewsResult, "Não foi possível carregar o histórico de revisões."),
+      });
+      return;
+    }
+
+    setDailyProgressMissions([]);
     setRegisteredOutcomeMissions([]);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
   }
@@ -122,10 +165,13 @@ export function useMissionBoard({
     }
 
     setMissionLoading(true);
-    const result = await api.listOperationalMissions(token);
+    const [result, dailyResult] = await Promise.all([
+      api.listOperationalMissions(token),
+      api.listDailyMissions(token),
+    ]);
     setMissionLoading(false);
 
-    if (onUnauthorized(result)) {
+    if (onUnauthorized(result) || onUnauthorized(dailyResult)) {
       return;
     }
 
@@ -138,7 +184,20 @@ export function useMissionBoard({
     }
 
     setMissions(result.data);
+    if (dailyResult.ok) {
+      setDailyProgressMissions(dailyResult.data);
+    } else {
+      setDailyProgressMissions(result.data);
+      setStatus({
+        type: "error",
+        message: getErrorMessage(dailyResult, "Não foi possível carregar a caçada do dia."),
+      });
+      return;
+    }
     setReviewMissions([]);
+    setHistoricalMissions([]);
+    setReviewState(null);
+    setWeeklyReviews([]);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
   }
 
@@ -337,9 +396,31 @@ export function useMissionBoard({
     return true;
   }
 
+  async function closeWeeklyReview(payload) {
+    setStatus(emptyStatus);
+    const result = await api.closeWeeklyReview(token, payload);
+
+    if (onUnauthorized(result)) {
+      return false;
+    }
+
+    if (!result.ok) {
+      setStatus({
+        type: "error",
+        message: getErrorMessage(result, "Não foi possível fechar a revisão do General."),
+      });
+      await loadGeneralBoard();
+      return false;
+    }
+
+    await loadGeneralBoard("Revisão do General fechada.");
+    return true;
+  }
+
   return {
     actionMissions,
     clearFailureReport,
+    closeWeeklyReview,
     completeLoadingId,
     completeMission,
     createMission,
@@ -354,6 +435,7 @@ export function useMissionBoard({
     missions,
     reviewLoadingId,
     reviewMissions,
+    reviewState,
     setFormStatus,
     setStatus,
     status,
@@ -361,5 +443,6 @@ export function useMissionBoard({
     submitGeneralReview,
     toggleMissionDecision,
     updateMission,
+    weeklyReviews,
   };
 }
