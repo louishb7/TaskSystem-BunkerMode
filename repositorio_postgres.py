@@ -97,6 +97,10 @@ class RepositorioPostgres:
             """,
             """
             ALTER TABLE IF EXISTS missoes
+            ALTER COLUMN instrucao DROP NOT NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
             ADD COLUMN IF NOT EXISTS is_decided BOOLEAN NOT NULL DEFAULT FALSE;
             """,
             """

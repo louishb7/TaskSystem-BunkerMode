@@ -143,8 +143,8 @@ export function useMissionBoard({
   }
 
   async function createMission(payload) {
-    if (!payload.titulo || !payload.instrucao) {
-      setFormStatus({ type: "error", message: "Informe título e instrução." });
+    if (!payload.titulo) {
+      setFormStatus({ type: "error", message: "Informe o título da ordem." });
       return false;
     }
 
@@ -170,8 +170,8 @@ export function useMissionBoard({
   }
 
   async function updateMission(missionId, payload) {
-    if (!payload.titulo || !payload.instrucao) {
-      setFormStatus({ type: "error", message: "Informe título e instrução." });
+    if (!payload.titulo) {
+      setFormStatus({ type: "error", message: "Informe o título da ordem." });
       return false;
     }
 
@@ -316,8 +316,30 @@ export function useMissionBoard({
     return true;
   }
 
+  async function clearFailureReport(payload) {
+    setStatus(emptyStatus);
+    const result = await api.clearFailureReport(token, payload);
+
+    if (onUnauthorized(result)) {
+      return false;
+    }
+
+    if (!result.ok) {
+      setStatus({
+        type: "error",
+        message: getErrorMessage(result, "Não foi possível limpar o relatório de falhas."),
+      });
+      await loadGeneralBoard();
+      return false;
+    }
+
+    await loadGeneralBoard("Relatório de falhas limpo.");
+    return true;
+  }
+
   return {
     actionMissions,
+    clearFailureReport,
     completeLoadingId,
     completeMission,
     createMission,

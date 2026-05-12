@@ -107,6 +107,13 @@ export const api = {
       body: payload,
     });
   },
+  clearFailureReport(token, payload) {
+    return requestMissionList("/relatorios/falhas/limpar", {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
   deleteMission(token, missionId) {
     return request(`/missoes/${missionId}`, { token, method: "DELETE" });
   },

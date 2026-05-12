@@ -17,6 +17,7 @@ from api.routes import (
     listar_missoes_operacionais,
     listar_missoes_em_revisao,
     login,
+    limpar_relatorio_falhas,
     obter_relatorio_semanal,
     registrar_justificativa_falha,
     registrar_usuario,
@@ -24,6 +25,7 @@ from api.routes import (
 )
 from api.schemas import (
     FailureJustificationPayload,
+    LimparRelatorioFalhasPayload,
     LoginPayload,
     MissaoCreatePayload,
     MissaoUpdatePayload,
@@ -913,6 +915,24 @@ def test_criar_missao_retorna_contrato_completo():
     assert_mission_contract(resposta)
 
 
+def test_criar_missao_permite_payload_sem_instrucao():
+    _, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
+
+    resposta = criar_missao(
+        MissaoCreatePayload(
+            titulo="Treinar",
+            prazo="30-04-2099",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    assert_mission_contract(resposta)
+    assert resposta["titulo"] == "Treinar"
+    assert resposta["instrucao"] is None
+
+
 def test_criar_missao_sem_prioridade_visivel_preserva_fallback_legacy():
     _, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
 
@@ -973,6 +993,35 @@ def test_relatorio_semanal_retorna_403_em_modo_soldado():
         assert erro.status_code == 403
     else:
         raise AssertionError("Relatório semanal em modo Soldier deveria retornar 403.")
+
+
+def test_limpar_relatorio_falhas_persiste_no_backend():
+    repo, _, missoes, _, _, usuario = preparar_ambiente()
+    missao = Missao(
+        missao_id=1,
+        titulo="Falha informativa",
+        prioridade=1,
+        prazo="24-04-2026",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        failure_reason="Não executei.",
+        user_id=usuario.usuario_id,
+    )
+    repo.missoes.append(missao)
+    repo.salvar_contexto_missao(1, usuario.usuario_id, usuario.usuario_id)
+
+    resposta = limpar_relatorio_falhas(
+        LimparRelatorioFalhasPayload(
+            start_date="2026-04-24",
+            end_date="2026-04-24",
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    assert resposta[0]["status_code"] == "FALHA_REVISADA"
+    assert repo.buscar_por_id(1).general_verdict == "accepted"
 
 
 def test_relatorio_semanal_retorna_400_para_intervalo_invertido():

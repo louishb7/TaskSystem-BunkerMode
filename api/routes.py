@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from api.schemas import (
     FailureJustificationPayload,
     GeneralVerdictPayload,
+    LimparRelatorioFalhasPayload,
     LoginPayload,
     MissaoCreatePayload,
     MissaoUpdatePayload,
@@ -467,6 +468,26 @@ def obter_relatorio_semanal(
         return relatorio_service.get_weekly_report_for_user(usuario, inicio, fim)
     except (PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
+
+
+@router.post("/relatorios/falhas/limpar")
+def limpar_relatorio_falhas(
+    payload: LimparRelatorioFalhasPayload,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        inicio = _parse_query_date(payload.start_date)
+        fim = _parse_query_date(payload.end_date)
+        missoes = missao_service.limpar_relatorio_falhas(
+            usuario=usuario,
+            start_date=inicio,
+            end_date=fim,
+        )
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+    return missao_service.to_response_list(missoes, usuario=usuario)
 
 
 def _parse_query_date(raw_value: str | None):

@@ -9,6 +9,7 @@ export default function ReviewPage({
   loadingMissionId,
   missions,
   onBack,
+  onClearFailures,
   onReview,
   status,
 }) {
@@ -30,6 +31,7 @@ export default function ReviewPage({
           allMissions={allMissions}
           loadingMissionId={loadingMissionId}
           missions={missions}
+          onClearFailures={onClearFailures}
           onReview={onReview}
         />
       </section>

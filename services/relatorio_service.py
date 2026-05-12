@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta
 
 from missao import StatusMissao
 from services.exceptions import PermissaoNegadaError
+from services.operational_day import operational_date_for
 
 
 class RelatorioService:
@@ -64,7 +65,7 @@ class RelatorioService:
         data_evento = missao.completed_at or missao.failed_at
         if data_evento is None:
             return False
-        return inicio <= data_evento.date() <= fim
+        return inicio <= operational_date_for(data_evento) <= fim
 
     def _resolve_intervalo(self, start_date: date | None, end_date: date | None) -> tuple[date, date]:
         if (start_date is None) != (end_date is None):

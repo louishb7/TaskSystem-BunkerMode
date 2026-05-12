@@ -66,7 +66,7 @@ class MissaoCreatePayload(BaseModel):
     titulo: str = Field(min_length=1)
     prioridade: int = LEGACY_DEFAULT_PRIORITY
     prazo: str | None = None
-    instrucao: str = Field(min_length=1)
+    instrucao: str | None = None
     responsavel_id: int | None = None
 
 
@@ -74,5 +74,10 @@ class MissaoUpdatePayload(BaseModel):
     titulo: str | None = Field(default=None, min_length=1)
     prioridade: int | None = None
     prazo: str | None = None
-    instrucao: str | None = Field(default=None, min_length=1)
+    instrucao: str | None = None
     status: str | None = None
+
+
+class LimparRelatorioFalhasPayload(BaseModel):
+    start_date: str | None = None
+    end_date: str | None = None

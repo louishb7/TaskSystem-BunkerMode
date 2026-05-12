@@ -108,6 +108,7 @@ export default function App() {
         loadingMissionId={board.reviewLoadingId}
         missions={board.reviewMissions}
         onBack={() => setActiveRoute(APP_ROUTES.GENERAL_HOME)}
+        onClearFailures={board.clearFailureReport}
         onReview={board.submitGeneralReview}
         status={board.status}
       />

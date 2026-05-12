@@ -20,6 +20,13 @@ function isFailureMission(mission) {
   return String(mission?.status_code || "").startsWith("FALHA") && !isDoneNotMarked(mission);
 }
 
+function isVisibleFailureRecord(mission) {
+  return [
+    STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA,
+    STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+  ].includes(mission?.status_code) && !isDoneNotMarked(mission);
+}
+
 function isPendingMission(mission) {
   return mission?.status_code === STATUS_MISSAO.PENDENTE;
 }
@@ -52,15 +59,22 @@ function uniqueMissions(missions) {
   });
 }
 
+function formatReportDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function GeneralReviewPanel({
   allMissions = [],
   loadingMissionId,
   missions,
+  onClearFailures,
   onReview,
 }) {
   const [period, setPeriod] = useState("week");
   const [failuresOpen, setFailuresOpen] = useState(false);
-  const [hiddenFailureIds, setHiddenFailureIds] = useState(() => new Set());
   const today = useMemo(() => {
     const value = new Date();
     value.setHours(0, 0, 0, 0);
@@ -106,12 +120,14 @@ export default function GeneralReviewPanel({
   const total = scopedMissions.length;
   const completed = scopedMissions.filter(isCompleted).length;
   const pending = scopedMissions.filter(isPendingMission).length;
-  const decided = scopedMissions.filter((mission) => mission?.is_decided === true).length;
   const failures = scopedMissions.filter(isFailureMission);
   const decidedFailures = failures.filter((mission) => mission?.is_decided === true);
   const reviewMissionIds = new Set(missions.map((mission) => mission.id));
-  const failuresForList = uniqueMissions([...scopedReviewMissions, ...failures]);
-  const visibleFailuresForList = failuresForList.filter((mission) => !hiddenFailureIds.has(mission.id));
+  const visibleFailuresForList = uniqueMissions([...scopedReviewMissions, ...failures])
+    .filter(isVisibleFailureRecord);
+  const hasClearableFailure = visibleFailuresForList.some(
+    (mission) => mission?.is_decided !== true && mission?.failure_reason
+  );
   const visiblePendingDecisionCount = visibleFailuresForList.filter(
     (mission) => mission?.is_decided === true && reviewMissionIds.has(mission.id)
   ).length;
@@ -137,22 +153,23 @@ export default function GeneralReviewPanel({
     return "Todas as ordens carregadas para o período foram executadas sem falha registrada.";
   })();
 
-  function clearFailureReport() {
-    if (!visibleFailuresForList.length) {
+  async function clearFailureReport() {
+    if (!hasClearableFailure) {
       return;
     }
 
-    const confirmed = window.confirm("Limpar a visualização local do relatório de falhas?");
+    const confirmed = window.confirm("Limpar registros informativos de falha deste período?");
     if (!confirmed) {
       return;
     }
 
-    setHiddenFailureIds((current) => {
-      const next = new Set(current);
-      visibleFailuresForList.forEach((mission) => next.add(mission.id));
-      return next;
+    const cleared = await onClearFailures?.({
+      start_date: formatReportDate(range.start),
+      end_date: formatReportDate(range.end),
     });
-    setFailuresOpen(false);
+    if (cleared) {
+      setFailuresOpen(false);
+    }
   }
 
   return (
@@ -198,8 +215,8 @@ export default function GeneralReviewPanel({
               <strong>{pending}</strong>
             </div>
             <div>
-              <span>DECIDIDAS</span>
-              <strong>{decided}</strong>
+              <span>FALHAS</span>
+              <strong>{failures.length}</strong>
             </div>
             <div className="review-metric-decision">
               <span>DECIDIDAS FALHADAS</span>
@@ -233,7 +250,7 @@ export default function GeneralReviewPanel({
             </button>
             <button
               className="button danger ghost compact"
-              disabled={!visibleFailuresForList.length}
+              disabled={!hasClearableFailure}
               type="button"
               onClick={clearFailureReport}
             >

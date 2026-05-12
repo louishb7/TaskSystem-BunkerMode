@@ -133,11 +133,11 @@ export default function MissionForm({
         </label>
 
         <label>
-          Instrução
+          Instrução opcional
           <textarea
             name="instrucao"
             onChange={updateField}
-            placeholder="Descreva exatamente o que deve ser feito"
+            placeholder="Detalhe apenas se a ordem precisar de contexto"
             rows="5"
             value={form.instrucao}
           />

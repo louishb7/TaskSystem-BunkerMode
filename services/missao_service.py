@@ -5,6 +5,7 @@ from core_exceptions import MissaoNaoEncontrada
 from missao import Missao, StatusMissao
 from services.exceptions import PermissaoNegadaError
 from services.mission_permissions import MissionPermissions
+from services.operational_day import operational_date_for
 
 
 LEGACY_DEFAULT_PRIORITY = 2
@@ -27,7 +28,7 @@ class MissaoService:
             # A experiência do produto usa apenas Decidida como compromisso crítico.
             "prioridade": dados.get("prioridade", LEGACY_DEFAULT_PRIORITY),
             "prazo": dados.get("prazo"),
-            "instrucao": dados["instrucao"],
+            "instrucao": dados.get("instrucao"),
             "user_id": responsavel_id,
         }
         if dados.get("status") is not None:
@@ -214,6 +215,37 @@ class MissaoService:
 
         return missao
 
+    def limpar_relatorio_falhas(
+        self,
+        usuario=None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list[Missao]:
+        self._garantir_modo_general(usuario)
+        if (start_date is None) != (end_date is None):
+            raise ValueError("Informe start_date e end_date juntos para limpar o relatório.")
+        if start_date and end_date and end_date < start_date:
+            raise ValueError("Intervalo do relatório inválido.")
+
+        limpas = []
+        for missao in self._carregar_missoes_do_usuario(usuario):
+            if not self._pode_limpar_falha_do_relatorio(missao, start_date, end_date):
+                continue
+
+            missao.registrar_veredito_general("accepted")
+            self.repositorio.atualizar_missao(missao)
+            limpas.append(missao)
+
+            if usuario is not None:
+                self._registrar_auditoria(
+                    missao_id=missao.missao_id,
+                    usuario_id=usuario.usuario_id,
+                    acao="relatorio_falha_limpo",
+                    detalhes=f"Falha informativa da missão '{missao.titulo}' removida do relatório.",
+                )
+
+        return limpas
+
     def registrar_veredito_general(self, missao_id: int, veredito: str, usuario=None) -> Missao:
         return self.revisar_justificativa(
             missao_id,
@@ -338,6 +370,21 @@ class MissaoService:
             )
         missao.atualizar_status(novo_status)
 
+    def _pode_limpar_falha_do_relatorio(
+        self,
+        missao: Missao,
+        start_date: date | None,
+        end_date: date | None,
+    ) -> bool:
+        if missao.is_decided or not missao.requires_general_review() or not missao.failure_reason:
+            return False
+        if start_date is None or end_date is None:
+            return True
+        if missao.failed_at is None:
+            return False
+        data_falha = operational_date_for(missao.failed_at)
+        return start_date <= data_falha <= end_date
+
     def sort_missions_for_board(self, missoes: list[Missao]) -> list[Missao]:
         return sorted(
             missoes,
@@ -378,7 +425,7 @@ class MissaoService:
             )
 
     def _today(self) -> date:
-        return self._today_provider()
+        return operational_date_for(self._now())
 
     def _now(self) -> datetime:
         return self._now_provider()

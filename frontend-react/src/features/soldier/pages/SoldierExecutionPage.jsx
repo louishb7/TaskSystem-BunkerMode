@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 
 import EmptyState from "../../../components/ui/EmptyState.jsx";
 import LionEmblem from "../../../components/ui/LionEmblem.jsx";
 import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
-import { formatCurrentDay, getDateApiValue, normalizeMissionDate } from "../../calendar/calendarUtils.js";
+import { formatCurrentDay } from "../../calendar/calendarUtils.js";
 import MissionCard, { MissionProgress } from "../../missions/components/MissionCard.jsx";
 import ReturnToCommandDialog from "../components/ReturnToCommandDialog.jsx";
 
@@ -18,10 +18,6 @@ export default function SoldierExecutionPage({
   const [returnStep, setReturnStep] = useState("closed");
   const [unlockPassword, setUnlockPassword] = useState("");
   const [returnLoading, setReturnLoading] = useState(false);
-  const todayMissions = useMemo(() => {
-    const todayApi = getDateApiValue(new Date());
-    return dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === todayApi);
-  }, [dailyMissions]);
   const remainingOrders = actionMissions.length;
 
   async function submitReturn(event) {
@@ -73,7 +69,7 @@ export default function SoldierExecutionPage({
         </header>
 
         <section className="panel soldier-progress-panel" aria-label="Progresso da caçada do dia">
-          <MissionProgress label="CAÇADA" missions={todayMissions.length > 0 ? todayMissions : missions} />
+          <MissionProgress label="CAÇADA" missions={dailyMissions.length > 0 ? dailyMissions : missions} />
         </section>
 
         <StatusNotice status={board.status} />

@@ -513,9 +513,11 @@ class Missao:
         return titulo
 
     def _validar_instrucao(self, instrucao):
+        if instrucao is None:
+            return None
         if not isinstance(instrucao, str):
             raise ValueError("Instrução da missão deve ser um texto.")
         instrucao = instrucao.strip()
         if not instrucao:
-            raise ValueError("Instrução da missão é obrigatória.")
+            return None
         return instrucao

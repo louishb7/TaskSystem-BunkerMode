@@ -398,6 +398,48 @@ def test_soldado_nao_pode_concluir_missao_vencida_e_envia_para_fluxo_de_falha():
     assert repositorio.missao.failure_reason is None
 
 
+def test_missao_pendente_so_falha_apos_quatro_da_manha():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.atualizar_prazo("24-04-2026")
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+    service_0359 = MissaoService(
+        repositorio,
+        today_provider=lambda: date(2026, 4, 25),
+        now_provider=lambda: datetime(2026, 4, 25, 3, 59, 0),
+    )
+
+    missoes = service_0359.listar_missoes(usuario=usuario)
+
+    assert [missao.missao_id for missao in missoes] == [10]
+    assert repositorio.missao.status == StatusMissao.PENDENTE
+
+    service_0401 = MissaoService(
+        repositorio,
+        today_provider=lambda: date(2026, 4, 25),
+        now_provider=lambda: datetime(2026, 4, 25, 4, 1, 0),
+    )
+    service_0401.listar_missoes(usuario=usuario)
+
+    assert repositorio.missao.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA
+    assert repositorio.missao.failed_at == datetime(2026, 4, 25, 4, 1, 0)
+
+
+def test_soldado_conclui_missao_do_dia_anterior_antes_das_quatro():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.atualizar_prazo("24-04-2026")
+    usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
+    service = MissaoService(
+        repositorio,
+        today_provider=lambda: date(2026, 4, 25),
+        now_provider=lambda: datetime(2026, 4, 25, 1, 0, 0),
+    )
+
+    missao = service.concluir_missao(10, usuario=usuario)
+
+    assert missao.status == StatusMissao.CONCLUIDA
+    assert missao.completed_at == datetime(2026, 4, 25, 1, 0, 0)
+
+
 def test_usuario_nao_pode_concluir_missao_de_outro_usuario():
     repositorio = RepositorioOwnershipFake()
     service = MissaoService(repositorio)
@@ -452,6 +494,25 @@ def test_criar_missao_usa_prioridade_legacy_quando_payload_nao_envia():
     assert missao.prioridade == PrioridadeMissao.MEDIA
     assert repositorio.missao_adicionada == missao
     assert repositorio.auditoria_registrada[-1].acao == "missao_criada"
+
+
+def test_criar_missao_permite_apenas_titulo_sem_instrucao():
+    repositorio = RepositorioOwnershipFake()
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {
+            "titulo": "Treinar",
+            "prazo": "24-04-2026",
+            "responsavel_id": 1,
+        },
+        usuario=usuario,
+    )
+
+    assert missao.titulo == "Treinar"
+    assert missao.instrucao is None
+    assert repositorio.missao_adicionada == missao
 
 
 def test_usuario_pode_remover_apenas_missao_propria():
@@ -953,6 +1014,90 @@ def test_relatorio_semanal_usa_datas_reais_de_execucao_e_falha():
     assert relatorio["total_missions"] == 1
     assert relatorio["completed_missions"] == 1
     assert relatorio["failed_missions"] == 0
+
+
+def test_relatorio_conta_madrugada_no_dia_operacional_anterior():
+    missoes = [
+        Missao(
+            missao_id=1,
+            titulo="Concluída de madrugada",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.CONCLUIDA,
+            completed_at=datetime(2026, 4, 25, 1, 0, 0),
+            user_id=1,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Falha após virada operacional",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
+            failed_at=datetime(2026, 4, 25, 4, 1, 0),
+            user_id=1,
+        ),
+    ]
+    service = RelatorioService(RepositorioRelatorioFake(missoes))
+
+    relatorio_dia_24 = service.get_weekly_report(
+        1,
+        start_date=date(2026, 4, 24),
+        end_date=date(2026, 4, 24),
+    )
+    relatorio_dia_25 = service.get_weekly_report(
+        1,
+        start_date=date(2026, 4, 25),
+        end_date=date(2026, 4, 25),
+    )
+
+    assert relatorio_dia_24["completed_missions"] == 1
+    assert relatorio_dia_24["failed_missions"] == 0
+    assert relatorio_dia_25["completed_missions"] == 0
+    assert relatorio_dia_25["failed_missions"] == 1
+
+
+def test_limpar_relatorio_falhas_persiste_registros_informativos_sem_limpar_decididas():
+    informativa = Missao(
+        missao_id=1,
+        titulo="Falha informativa",
+        prioridade=1,
+        prazo="24-04-2026",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        failure_reason="Não executei.",
+        user_id=1,
+    )
+    decidida = Missao(
+        missao_id=2,
+        titulo="Falha Decidida",
+        prioridade=1,
+        prazo="24-04-2026",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        failure_reason="Não executei.",
+        is_decided=True,
+        user_id=1,
+    )
+    repositorio = RepositorioOwnershipFake()
+    repositorio.carregar_dados_por_responsavel = lambda responsavel_id: [informativa, decidida]
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    limpas = service.limpar_relatorio_falhas(
+        usuario=usuario,
+        start_date=date(2026, 4, 24),
+        end_date=date(2026, 4, 24),
+    )
+
+    assert [missao.missao_id for missao in limpas] == [1]
+    assert informativa.status == StatusMissao.FALHA_REVISADA
+    assert informativa.general_verdict == "accepted"
+    assert decidida.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert repositorio.missao_atualizada is informativa
 
 
 def test_relatorio_semanal_valida_intervalo_invertido_e_parcial():

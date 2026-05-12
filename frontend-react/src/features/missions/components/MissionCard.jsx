@@ -104,9 +104,7 @@ export default function MissionCard({
     return (
       <article className={`mission-card soldier-card ${isDecided ? "decided" : ""} ${canJustify ? "danger" : ""}`}>
         <div className="mission-badge-row">
-          <span className={`meta-tag ${isDecided ? "critical" : ""}`}>
-            {isDecided ? "INEGOCIÁVEL" : "ORDEM"}
-          </span>
+          {isDecided && <span className="meta-tag critical">INEGOCIÁVEL</span>}
           <span className="meta-tag">{statusText(mission)}</span>
         </div>
         <h3>{title}</h3>

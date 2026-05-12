@@ -63,7 +63,20 @@ def test_titulo_invalido(titulo_invalido):
         )
 
 
-@pytest.mark.parametrize("instrucao_invalida", ["", "   ", None, 123])
+@pytest.mark.parametrize("instrucao_opcional", ["", "   ", None])
+def test_instrucao_opcional(instrucao_opcional):
+    missao = Missao(
+        missao_id=1,
+        titulo="Teste",
+        prioridade=1,
+        prazo="10-04-2026",
+        instrucao=instrucao_opcional,
+    )
+
+    assert missao.instrucao is None
+
+
+@pytest.mark.parametrize("instrucao_invalida", [123])
 def test_instrucao_invalida(instrucao_invalida):
     with pytest.raises(ValueError):
         Missao(
