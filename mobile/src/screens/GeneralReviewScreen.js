@@ -8,6 +8,7 @@ import TacticalScreen from "../components/TacticalScreen";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
 export default function GeneralReviewScreen({
+  allMissions,
   bottomPadding,
   missions,
   onBack,
@@ -29,13 +30,15 @@ export default function GeneralReviewScreen({
 
         <TacticalPanel elevated style={styles.headerPanel}>
           <SectionHeader
-            eyebrow="PÓS-AÇÃO"
-            title="Falhas aguardando decisão"
-            meta="Revise os registros do Soldado e decida com base nos dados da execução."
+            eyebrow="RELATÓRIO"
+            tone="fire"
+            title="Leitura da execução"
+            meta="Revise o período, identifique falhas reais e decida apenas o que exige comando."
           />
         </TacticalPanel>
 
         <ReviewPanel
+          allMissions={allMissions}
           missions={missions}
           onLogout={onLogout}
           onReload={onReload}

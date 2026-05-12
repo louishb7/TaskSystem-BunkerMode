@@ -10,8 +10,12 @@ function hasStatus(mission) {
   return Boolean(mission && mission.status_code);
 }
 
+export function isDoneNotMarked(mission) {
+  return mission?.failure_reason_type === "done_not_marked";
+}
+
 export function isCompleted(mission) {
-  return hasStatus(mission) && mission.status_code === STATUS.CONCLUIDA;
+  return (hasStatus(mission) && mission.status_code === STATUS.CONCLUIDA) || isDoneNotMarked(mission);
 }
 
 export function isFailedWaitingJustification(mission) {

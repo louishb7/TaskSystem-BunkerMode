@@ -94,7 +94,7 @@ export default function MissionCard({
   const disabled = toggling || completing || justifying;
   const canComplete = can(mission, "can_complete");
   const canJustify = can(mission, "can_justify");
-  const requiresJustification = isDecided;
+  const requiresJustification = mission?.requires_immediate_justification === true || (canJustify && isDecided);
 
   useEffect(() => {
     setConfirmingToggle(false);

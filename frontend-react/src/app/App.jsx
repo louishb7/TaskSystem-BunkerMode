@@ -70,7 +70,7 @@ export default function App() {
     }
 
     await auth.reloadCurrentUser();
-    setActiveRoute(APP_ROUTES.GENERAL_HOME);
+    setActiveRoute(board.hasRegisteredOutcomes ? APP_ROUTES.REVIEW : APP_ROUTES.GENERAL_HOME);
     return true;
   }
 

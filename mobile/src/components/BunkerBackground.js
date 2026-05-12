@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.loginScrim,
   },
   vignetteTop: {
-    backgroundColor: "rgba(237,237,237,0.035)",
+    backgroundColor: "rgba(255,138,42,0.035)",
     height: 120,
     left: 0,
     opacity: 0.7,
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     top: 0,
   },
   soldierVignetteTop: {
-    backgroundColor: "rgba(229,57,53,0.03)",
+    backgroundColor: "rgba(255,138,42,0.03)",
   },
   vignetteBottom: {
     backgroundColor: "rgba(0,0,0,0.32)",
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   wallLight: {
-    backgroundColor: "rgba(237,237,237,0.035)",
+    backgroundColor: "rgba(255,138,42,0.045)",
     height: 180,
     left: -60,
     position: "absolute",
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "-5deg" }],
   },
   wallLightSoldier: {
-    backgroundColor: "rgba(229,57,53,0.025)",
+    backgroundColor: "rgba(255,138,42,0.025)",
   },
   verticalLineLeft: {
     backgroundColor: "rgba(237,237,237,0.045)",

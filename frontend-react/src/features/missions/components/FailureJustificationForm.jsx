@@ -30,6 +30,12 @@ export default function FailureJustificationForm({
   async function handleSubmit(event) {
     event.preventDefault();
     const trimmedReason = reason.trim();
+
+    if (required && !trimmedReason) {
+      setError("Informe o motivo da falha Decidida.");
+      return;
+    }
+
     const submittedReason = trimmedReason || FALLBACK_REASON_BY_TYPE[reasonType];
 
     setError("");
@@ -44,10 +50,11 @@ export default function FailureJustificationForm({
     }
 
     setReason("");
+    setError("");
   }
 
   return (
-    <form className="failure-justification-form" onSubmit={handleSubmit}>
+    <form className="failure-justification-form" noValidate onSubmit={handleSubmit}>
       <fieldset disabled={loading}>
         <legend>{required ? "JUSTIFICATIVA OBRIGATÓRIA" : "REGISTRO DA FALHA"}</legend>
         <div className="failure-reason-options">
@@ -67,12 +74,13 @@ export default function FailureJustificationForm({
       </fieldset>
 
       <label>
-        Motivo opcional
+        {required ? "Motivo obrigatório" : "Motivo opcional"}
         <textarea
           disabled={loading}
           name={`failure-reason-${mission.id}`}
           onChange={(event) => setReason(event.target.value)}
-          placeholder="REGISTRE O MOTIVO SE NECESSÁRIO"
+          placeholder={required ? "REGISTRE O MOTIVO DA FALHA" : "REGISTRE O MOTIVO SE NECESSÁRIO"}
+          aria-required={required}
           rows="4"
           value={reason}
         />

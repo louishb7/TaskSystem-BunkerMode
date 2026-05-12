@@ -25,6 +25,7 @@ function formatApiDate(date) {
 }
 
 export default function DaySelector({
+  missionStatsByDate = null,
   missionCountsByDate = {},
   onSelectDate,
   selectedDate,
@@ -38,7 +39,10 @@ export default function DaySelector({
       {weekDays.map((date) => {
         const selected = isSameCalendarDay(date, selectedDate);
         const today = isSameCalendarDay(date, todayDate);
-        const count = missionCountsByDate[formatApiDate(date)] || 0;
+        const rawStats = missionStatsByDate?.[formatApiDate(date)];
+        const total = rawStats?.total ?? missionCountsByDate[formatApiDate(date)] ?? 0;
+        const completed = rawStats?.completed ?? 0;
+        const complete = total > 0 && completed === total;
 
         return (
           <Pressable
@@ -52,12 +56,13 @@ export default function DaySelector({
             <View
               style={[
                 styles.node,
-                count > 0 && styles.nodeWithMission,
+                total > 0 && styles.nodeWithMission,
+                complete && styles.nodeComplete,
                 today && styles.nodeToday,
                 selected && styles.nodeSelected,
               ]}
             >
-              <Text style={[styles.number, selected && styles.numberSelected]}>
+              <Text style={[styles.number, complete && styles.numberComplete, selected && styles.numberSelected]}>
                 {formatDayNumber(date)}
               </Text>
             </View>
@@ -65,9 +70,9 @@ export default function DaySelector({
               {today ? "HOJE" : " "}
             </Text>
             <View style={styles.countRow}>
-              <View style={[styles.countDot, count > 0 && styles.countDotActive]} />
-              <Text style={[styles.count, count > 0 && styles.countActive]}>
-                {count > 0 ? `${count}` : "-"}
+              <View style={[styles.countDot, total > 0 && styles.countDotActive, complete && styles.countDotComplete]} />
+              <Text style={[styles.count, total > 0 && styles.countActive, complete && styles.countComplete]}>
+                {total > 0 ? `${completed}/${total}` : "-"}
               </Text>
             </View>
           </Pressable>
@@ -128,13 +133,17 @@ const styles = StyleSheet.create({
   nodeWithMission: {
     borderColor: theme.colors.textMuted,
   },
+  nodeComplete: {
+    backgroundColor: theme.colors.successWash,
+    borderColor: theme.colors.successBorder,
+  },
   nodeToday: {
-    borderColor: theme.colors.red,
+    borderColor: theme.colors.fireBorder,
     borderWidth: 2,
   },
   nodeSelected: {
-    backgroundColor: theme.colors.surfaceRaised,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fireWash,
+    borderColor: theme.colors.fire,
   },
   number: {
     ...theme.typography.label,
@@ -144,9 +153,12 @@ const styles = StyleSheet.create({
   numberSelected: {
     color: theme.colors.white,
   },
+  numberComplete: {
+    color: theme.colors.white,
+  },
   today: {
     ...theme.typography.small,
-    color: theme.colors.red,
+    color: theme.colors.fire,
     marginTop: theme.spacing.xs,
   },
   hiddenToday: {
@@ -165,7 +177,10 @@ const styles = StyleSheet.create({
     width: 5,
   },
   countDotActive: {
-    backgroundColor: theme.colors.textMuted,
+    backgroundColor: theme.colors.fire,
+  },
+  countDotComplete: {
+    backgroundColor: theme.colors.success,
   },
   count: {
     ...theme.typography.small,
@@ -174,5 +189,8 @@ const styles = StyleSheet.create({
   },
   countActive: {
     color: theme.colors.textMuted,
+  },
+  countComplete: {
+    color: theme.colors.success,
   },
 });

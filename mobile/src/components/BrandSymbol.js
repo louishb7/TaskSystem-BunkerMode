@@ -6,6 +6,8 @@ import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 const dualitySymbol = require("../assets/bunkermode/branding/duality_symbol.png");
 
 export default function BrandSymbol({ muted = false, size = 64, style }) {
+  const imageSize = Math.max(1, size - 8);
+
   return (
     <View
       style={[
@@ -13,17 +15,19 @@ export default function BrandSymbol({ muted = false, size = 64, style }) {
         muted && styles.muted,
         {
           height: size,
+          borderRadius: size / 2,
           width: size,
         },
         style,
       ]}
     >
       <Image
-        resizeMode="cover"
+        resizeMode="contain"
         source={dualitySymbol}
         style={{
-          height: size,
-          width: size,
+          borderRadius: imageSize / 2,
+          height: imageSize,
+          width: imageSize,
         }}
       />
     </View>
@@ -33,12 +37,13 @@ export default function BrandSymbol({ muted = false, size = 64, style }) {
 const styles = StyleSheet.create({
   frame: {
     alignItems: "center",
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.borderStrong,
-    borderRadius: theme.radius.sm,
+    backgroundColor: "rgba(0,0,0,0.18)",
+    borderColor: "rgba(255,138,42,0.18)",
     borderWidth: 1,
     justifyContent: "center",
     overflow: "hidden",
+    padding: 4,
+    ...theme.shadow.fire,
   },
   muted: {
     opacity: 0.7,

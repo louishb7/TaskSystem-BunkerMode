@@ -2,33 +2,40 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
-import BrandSymbol from "./BrandSymbol";
+import LionEmblem from "./LionEmblem";
 
 export default function SoldierHeader({ currentDay, remainingCount = 0, totalCount = 0 }) {
   return (
     <View style={styles.header}>
       <View style={styles.topline}>
         <Text style={styles.kicker}>MODO SOLDADO</Text>
-        <BrandSymbol muted size={34} />
         <Text style={styles.count}>{remainingCount} RESTAM</Text>
       </View>
-      <Text style={styles.title}>LEÃO DO DIA</Text>
-      <Text style={styles.subtitle}>{currentDay}</Text>
-      <View style={styles.rule} />
-      <Text style={styles.directive}>
-        {totalCount === 1
-          ? "1 ordem para matar o leão. Execute."
-          : `${totalCount} ordens para matar o leão. Execute.`}
-      </Text>
+      <View style={styles.briefing}>
+        <LionEmblem compact />
+        <View style={styles.copy}>
+          <Text style={styles.title}>LEÃO DO DIA</Text>
+          <Text style={styles.subtitle}>{currentDay}</Text>
+          <View style={styles.rule} />
+          <Text style={styles.directive}>
+            {remainingCount === 0
+              ? "Caçada concluída. Aguarde o retorno ao comando."
+              : remainingCount === 1
+                ? "1 ordem restante para matar o leão. Execute."
+                : `${remainingCount} ordens restantes para matar o leão. Execute.`}
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    borderBottomColor: theme.colors.border,
-    borderBottomWidth: 1,
-    paddingBottom: theme.spacing.lg,
+    backgroundColor: "rgba(11,11,11,0.58)",
+    borderColor: "rgba(255,138,42,0.20)",
+    borderWidth: 1,
+    padding: theme.spacing.md,
   },
   topline: {
     alignItems: "center",
@@ -38,7 +45,7 @@ const styles = StyleSheet.create({
   },
   kicker: {
     ...theme.typography.small,
-    color: theme.colors.red,
+    color: theme.colors.fire,
   },
   count: {
     ...theme.typography.small,
@@ -47,7 +54,7 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.title,
     color: theme.colors.text,
-    fontSize: 34,
+    fontSize: 30,
   },
   subtitle: {
     ...theme.typography.caption,
@@ -56,7 +63,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   rule: {
-    backgroundColor: theme.colors.red,
+    backgroundColor: theme.colors.fire,
     height: 2,
     marginTop: theme.spacing.md,
     width: 82,
@@ -65,5 +72,14 @@ const styles = StyleSheet.create({
     ...theme.typography.small,
     color: theme.colors.text,
     marginTop: theme.spacing.sm,
+  },
+  briefing: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: theme.spacing.md,
+  },
+  copy: {
+    flex: 1,
+    minWidth: 0,
   },
 });

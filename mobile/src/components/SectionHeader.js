@@ -3,11 +3,11 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
-export default function SectionHeader({ action, eyebrow, meta, title }) {
+export default function SectionHeader({ action, eyebrow, meta, title, tone = "default" }) {
   return (
     <View style={styles.container}>
       <View style={styles.copy}>
-        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+        {eyebrow ? <Text style={[styles.eyebrow, tone === "fire" && styles.eyebrowFire]}>{eyebrow}</Text> : null}
         <Text style={styles.title}>{title}</Text>
         {meta ? <Text style={styles.meta}>{meta}</Text> : null}
       </View>
@@ -32,6 +32,9 @@ const styles = StyleSheet.create({
     ...theme.typography.small,
     color: theme.colors.textDim,
     marginBottom: theme.spacing.xs,
+  },
+  eyebrowFire: {
+    color: theme.colors.fire,
   },
   title: {
     ...theme.typography.heading,

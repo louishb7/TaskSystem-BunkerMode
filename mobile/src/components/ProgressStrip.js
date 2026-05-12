@@ -6,15 +6,23 @@ import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 export default function ProgressStrip({ completed = 0, label = "PROGRESSO", total = 0 }) {
   const ratio = total > 0 ? Math.min(1, Math.max(0, completed / total)) : 0;
   const percent = Math.round(ratio * 100);
+  const remaining = Math.max(0, total - completed);
+  const complete = total > 0 && completed === total;
 
   return (
     <View style={styles.container}>
       <View style={styles.row}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={styles.value}>{total > 0 ? `${percent}%` : "0%"}</Text>
+        <Text style={[styles.value, complete && styles.valueComplete]}>
+          {total > 0 ? `${percent}%` : "0%"}
+        </Text>
       </View>
       <View style={styles.track}>
-        <View style={[styles.fill, { width: `${percent}%` }]} />
+        <View style={[styles.fill, complete && styles.fillComplete, { width: `${percent}%` }]} />
+      </View>
+      <View style={styles.metaRow}>
+        <Text style={styles.meta}>{completed}/{total} EXECUTADAS</Text>
+        <Text style={styles.meta}>{remaining === 1 ? "1 RESTA" : `${remaining} RESTAM`}</Text>
       </View>
     </View>
   );
@@ -35,7 +43,10 @@ const styles = StyleSheet.create({
   },
   value: {
     ...theme.typography.small,
-    color: theme.colors.red,
+    color: theme.colors.fire,
+  },
+  valueComplete: {
+    color: theme.colors.success,
   },
   track: {
     backgroundColor: theme.colors.surfaceDeep,
@@ -45,7 +56,19 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fill: {
-    backgroundColor: theme.colors.red,
+    backgroundColor: theme.colors.fire,
     height: "100%",
+  },
+  fillComplete: {
+    backgroundColor: theme.colors.success,
+  },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  meta: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+    fontSize: 9,
   },
 });

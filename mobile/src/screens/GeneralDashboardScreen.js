@@ -7,6 +7,7 @@ import BrandSymbol from "../components/BrandSymbol";
 import CommandActionDock from "../components/CommandActionDock";
 import DaySelector from "../components/DaySelector";
 import EmptyState from "../components/EmptyState";
+import LionEmblem from "../components/LionEmblem";
 import MissionCard, { MissionProgress } from "../components/MissionCard";
 import ModeSwitchButton from "../components/ModeSwitchButton";
 import SectionHeader from "../components/SectionHeader";
@@ -16,6 +17,7 @@ import TacticalScreen from "../components/TacticalScreen";
 import GeneralReviewScreen from "./GeneralReviewScreen";
 import MissionFormScreen from "./MissionFormScreen";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
+import { isCompleted, isDoneNotMarked } from "../utils/missionStatus";
 
 function getErrorMessage(result, fallback) {
   if (result?.status === 0) {
@@ -89,6 +91,20 @@ function formatSelectedDate(date) {
   }
 }
 
+function mergeMissionLists(...missionLists) {
+  const missionsById = new Map();
+
+  missionLists.flat().forEach((mission) => {
+    if (!mission?.id) {
+      return;
+    }
+
+    missionsById.set(mission.id, mission);
+  });
+
+  return Array.from(missionsById.values());
+}
+
 export default function GeneralDashboardScreen({
   token,
   user,
@@ -98,6 +114,7 @@ export default function GeneralDashboardScreen({
   const insets = useSafeAreaInsets();
   const [missions, setMissions] = useState([]);
   const [reviewMissions, setReviewMissions] = useState([]);
+  const [historicalMissions, setHistoricalMissions] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -117,32 +134,45 @@ export default function GeneralDashboardScreen({
   const weekLabel = formatWeekLabel(weekDays);
   const selectedDateApi = formatDateForApi(selectedDate);
   const todayDate = useMemo(() => startOfDay(new Date()), []);
-  const hasReview = reviewMissions.length > 0;
   const selectedDateLabel = formatSelectedDate(selectedDate);
   const generalName = user?.nome_general || user?.usuario || "General";
-
-  const selectedMissions = useMemo(
-    () => missions.filter((mission) => normalizePrazo(mission?.prazo) === selectedDateApi),
-    [missions, selectedDateApi]
+  const visibleReviewMissions = useMemo(
+    () => reviewMissions.filter((mission) => !isDoneNotMarked(mission)),
+    [reviewMissions]
+  );
+  const hasReview = visibleReviewMissions.length > 0;
+  const dailyMissions = useMemo(
+    () => mergeMissionLists(missions, reviewMissions, historicalMissions),
+    [historicalMissions, missions, reviewMissions]
   );
 
-  const missionCountsByDate = useMemo(() => {
-    const counts = {};
-    missions.forEach((mission) => {
+  const selectedMissions = useMemo(
+    () => dailyMissions.filter((mission) => normalizePrazo(mission?.prazo) === selectedDateApi),
+    [dailyMissions, selectedDateApi]
+  );
+
+  const missionStatsByDate = useMemo(() => {
+    const stats = {};
+    dailyMissions.forEach((mission) => {
       const key = normalizePrazo(mission?.prazo);
       if (!key) {
         return;
       }
-      counts[key] = (counts[key] || 0) + 1;
+      const current = stats[key] || { completed: 0, total: 0 };
+      stats[key] = {
+        completed: current.completed + (isCompleted(mission) ? 1 : 0),
+        total: current.total + 1,
+      };
     });
-    return counts;
-  }, [missions]);
+    return stats;
+  }, [dailyMissions]);
 
   const selectedCompletedCount = useMemo(
-    () => selectedMissions.filter((mission) => mission?.status_code === "CONCLUIDA").length,
+    () => selectedMissions.filter(isCompleted).length,
     [selectedMissions]
   );
   const selectedRemainingCount = Math.max(0, selectedMissions.length - selectedCompletedCount);
+  const selectedDecidedCount = selectedMissions.filter((mission) => mission?.is_decided === true).length;
 
   async function handleUnauthorized(result) {
     if (result?.status === 401) {
@@ -159,15 +189,16 @@ export default function GeneralDashboardScreen({
       setRefreshing(true);
     }
 
-    const [missionsResult, reviewResult] = await Promise.all([
+    const [missionsResult, reviewResult, historicalResult] = await Promise.all([
       api.listMissions(token),
       api.listReviewMissions(token),
+      api.listHistoricalMissions(token),
     ]);
 
     setInitialLoading(false);
     setRefreshing(false);
 
-    for (const result of [missionsResult, reviewResult]) {
+    for (const result of [missionsResult, reviewResult, historicalResult]) {
       if (await handleUnauthorized(result)) {
         return;
       }
@@ -178,13 +209,19 @@ export default function GeneralDashboardScreen({
     if (missionsResult.ok) {
       setMissions(missionsResult.data);
     } else {
-      nextError = getErrorMessage(missionsResult, "Não foi possível carregar missões.");
+      nextError = getErrorMessage(missionsResult, "Não foi possível carregar ordens.");
     }
 
     if (reviewResult.ok) {
       setReviewMissions(reviewResult.data);
     } else if (!nextError) {
-      nextError = getErrorMessage(reviewResult, "Não foi possível carregar pós-ação.");
+      nextError = getErrorMessage(reviewResult, "Não foi possível carregar relatório.");
+    }
+
+    if (historicalResult.ok) {
+      setHistoricalMissions(historicalResult.data);
+    } else if (!nextError) {
+      nextError = getErrorMessage(historicalResult, "Não foi possível carregar histórico.");
     }
 
     setError(nextError);
@@ -288,7 +325,7 @@ export default function GeneralDashboardScreen({
       <TacticalScreen variant="general">
         <View style={styles.loading}>
           <BrandSymbol muted size={82} />
-          <ActivityIndicator color={theme.colors.red} />
+          <ActivityIndicator color={theme.colors.fire} />
           <Text style={styles.loadingText}>SINCRONIZANDO COMANDO</Text>
         </View>
       </TacticalScreen>
@@ -299,7 +336,7 @@ export default function GeneralDashboardScreen({
     <CommandActionDock
       active={activeScreen === "reviews"}
       bottomInset={insets.bottom}
-      count={reviewMissions.length}
+      count={visibleReviewMissions.length}
       generalName={generalName}
       onLayout={(event) => {
         const nextHeight = Math.ceil(event.nativeEvent.layout.height);
@@ -317,8 +354,9 @@ export default function GeneralDashboardScreen({
     return (
       <>
         <GeneralReviewScreen
+          allMissions={dailyMissions}
           bottomPadding={commandDockHeight}
-          missions={reviewMissions}
+          missions={visibleReviewMissions}
           onBack={() => setActiveScreen("home")}
           onLogout={onLogout}
           onReload={() => loadAll()}
@@ -339,12 +377,28 @@ export default function GeneralDashboardScreen({
       >
         <TacticalPanel elevated style={styles.calendarPanel}>
           <SectionHeader
-            eyebrow="QUADRO OPERACIONAL"
+            eyebrow="SEMANA OPERACIONAL"
+            tone="fire"
             title="A semana na parede"
             meta="Cada marca é um dia de caça. Escolha onde o General dará ordens."
           />
+          <View style={styles.weekNavigation}>
+            <Pressable
+              onPress={() => setSelectedDate((current) => addDays(current, -7))}
+              style={styles.weekButton}
+            >
+              <Text style={styles.weekButtonText}>ANTERIOR</Text>
+            </Pressable>
+            <Text numberOfLines={1} style={styles.weekLabel}>{weekLabel}</Text>
+            <Pressable
+              onPress={() => setSelectedDate((current) => addDays(current, 7))}
+              style={styles.weekButton}
+            >
+              <Text style={styles.weekButtonText}>PRÓXIMA</Text>
+            </Pressable>
+          </View>
           <DaySelector
-            missionCountsByDate={missionCountsByDate}
+            missionStatsByDate={missionStatsByDate}
             onSelectDate={(date) => setSelectedDate(startOfDay(date))}
             selectedDate={selectedDate}
             todayDate={todayDate}
@@ -354,29 +408,42 @@ export default function GeneralDashboardScreen({
 
         <StatusNotice type="error" message={error} />
 
-        <TacticalPanel elevated style={styles.lionPanel}>
+        <TacticalPanel fire style={styles.lionPanel}>
           <View style={styles.lionTop}>
-            <View style={styles.lionSignal} />
             <View style={styles.lionCopy}>
               <Text style={styles.lionEyebrow}>LEÃO DO DIA</Text>
               <Text style={styles.lionTitle}>{selectedDateLabel}</Text>
+              <Text style={styles.lionBrief}>
+                {selectedRemainingCount > 0
+                  ? `${selectedRemainingCount} ordens ainda sustentam a caçada.`
+                  : selectedMissions.length > 0
+                    ? "Caçada concluída para o dia selecionado."
+                    : "Nenhuma caça definida para este dia."}
+              </Text>
             </View>
-            <View style={styles.lionCounter}>
-              <Text style={styles.lionCounterValue}>{selectedRemainingCount}</Text>
-              <Text style={styles.lionCounterLabel}>RESTAM</Text>
-            </View>
+            <LionEmblem size={94} />
           </View>
-          <Text style={styles.lionBrief}>
-            {selectedMissions.length === 1
-              ? "1 ordem para matar o leão do dia."
-              : `${selectedMissions.length} ordens para matar o leão do dia.`}
-          </Text>
           <MissionProgress label="CAÇADA" missions={selectedMissions} />
+          <View style={styles.sideMetrics}>
+            <Metric label="ORDENS" value={selectedMissions.length} />
+            <Metric label="EXECUTADAS" value={selectedCompletedCount} />
+            <Metric label="RESTAM" value={selectedRemainingCount} />
+          </View>
+          <View style={styles.decidedSummary}>
+            <View>
+              <Text style={styles.decidedLabel}>DECIDIDAS</Text>
+              <Text style={styles.decidedValue}>{selectedDecidedCount}</Text>
+            </View>
+            <Text style={styles.decidedText}>
+              {selectedDecidedCount === 1 ? "1 inegociável" : `${selectedDecidedCount} inegociáveis`}
+            </Text>
+          </View>
         </TacticalPanel>
 
-        <TacticalPanel style={styles.ordersPanel}>
+        <TacticalPanel fire style={styles.ordersPanel}>
           <SectionHeader
             eyebrow="ORDENS DO DIA"
+            tone="fire"
             title="Plano da caça"
             meta={
               selectedMissions.length === 1
@@ -433,6 +500,15 @@ export default function GeneralDashboardScreen({
   );
 }
 
+function Metric({ label, value }) {
+  return (
+    <View style={styles.metricBox}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   loading: {
     alignItems: "center",
@@ -450,9 +526,36 @@ const styles = StyleSheet.create({
   calendarPanel: {
     marginBottom: theme.spacing.md,
   },
-  lionPanel: {
-    backgroundColor: "rgba(23,23,23,0.94)",
+  weekNavigation: {
+    alignItems: "center",
+    backgroundColor: "rgba(17,17,17,0.52)",
+    borderColor: theme.colors.borderSoft,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.sm,
+  },
+  weekButton: {
+    alignItems: "center",
     borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 34,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  weekButtonText: {
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
+  },
+  weekLabel: {
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
+    flex: 1,
+    textAlign: "center",
+  },
+  lionPanel: {
     marginTop: theme.spacing.md,
   },
   lionTop: {
@@ -461,18 +564,13 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
     marginBottom: theme.spacing.md,
   },
-  lionSignal: {
-    backgroundColor: theme.colors.red,
-    height: 46,
-    width: 4,
-  },
   lionCopy: {
     flex: 1,
     minWidth: 0,
   },
   lionEyebrow: {
     ...theme.typography.small,
-    color: theme.colors.red,
+    color: theme.colors.fire,
   },
   lionTitle: {
     ...theme.typography.heading,
@@ -502,22 +600,74 @@ const styles = StyleSheet.create({
   lionBrief: {
     ...theme.typography.body,
     color: theme.colors.textMuted,
-    marginBottom: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+  },
+  sideMetrics: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  metricBox: {
+    backgroundColor: "rgba(0,0,0,0.28)",
+    borderColor: theme.colors.borderSoft,
+    borderWidth: 1,
+    flex: 1,
+    padding: theme.spacing.sm,
+  },
+  metricLabel: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+    fontSize: 9,
+  },
+  metricValue: {
+    color: theme.colors.fire,
+    fontSize: 22,
+    fontWeight: "900",
+    lineHeight: 24,
+    marginTop: theme.spacing.xs,
+  },
+  decidedSummary: {
+    alignItems: "center",
+    backgroundColor: theme.colors.purpleWash,
+    borderColor: theme.colors.purpleBorder,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.sm,
+  },
+  decidedLabel: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+    fontSize: 9,
+  },
+  decidedValue: {
+    color: theme.colors.neonPurple,
+    fontSize: 21,
+    fontWeight: "900",
+    lineHeight: 23,
+  },
+  decidedText: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    flexShrink: 1,
+    textAlign: "right",
   },
   createButton: {
     alignItems: "center",
-    backgroundColor: theme.colors.surfaceRaised,
-    borderColor: theme.colors.borderStrong,
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     justifyContent: "center",
     marginTop: theme.spacing.md,
     minHeight: 54,
     paddingHorizontal: theme.spacing.md,
+    ...theme.shadow.fire,
   },
   createText: {
     ...theme.typography.label,
-    color: theme.colors.text,
+    color: theme.colors.black,
     fontSize: 14,
   },
   ordersPanel: {

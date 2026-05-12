@@ -50,8 +50,9 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
   },
   soldierButton: {
-    backgroundColor: theme.colors.amber,
-    borderColor: theme.colors.amber,
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
+    ...theme.shadow.fire,
   },
   generalButton: {
     backgroundColor: theme.colors.surfaceRaised,
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
   },
   kicker: {
     ...theme.typography.small,
-    color: theme.colors.amberDark,
+    color: theme.colors.fireDark,
   },
   label: {
     ...theme.typography.label,
@@ -79,9 +80,9 @@ const styles = StyleSheet.create({
   },
   marker: {
     ...theme.typography.small,
-    color: theme.colors.amberDark,
+    color: theme.colors.fireDark,
   },
   markerSoldier: {
-    color: theme.colors.red,
+    color: theme.colors.fire,
   },
 });

@@ -39,7 +39,7 @@ export default function App() {
       setUser(null);
     } else {
       setToken(session.token);
-      setUser(null);
+      setUser(session.user);
     }
     setBooting(false);
   }
@@ -66,7 +66,7 @@ export default function App() {
     content = (
       <View style={styles.boot}>
         <BrandSymbol muted size={72} />
-        <ActivityIndicator color={theme.colors.red} />
+        <ActivityIndicator color={theme.colors.fire} />
       </View>
     );
   } else if (!token || !user) {

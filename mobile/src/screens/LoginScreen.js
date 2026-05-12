@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...theme.typography.label,
-    color: theme.colors.red,
+    color: theme.colors.fire,
     marginTop: theme.spacing.sm,
     textAlign: "center",
   },
@@ -166,18 +166,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
   },
   inputFocused: {
-    borderColor: theme.colors.red,
+    borderColor: theme.colors.fire,
   },
   button: {
     alignItems: "center",
-    backgroundColor: theme.colors.red,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     height: theme.layout.actionHeight,
     justifyContent: "center",
     marginTop: theme.spacing.xs,
     width: "100%",
+    ...theme.shadow.fire,
   },
   buttonActive: {
     opacity: 0.78,

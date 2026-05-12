@@ -48,7 +48,7 @@ export default function CommandActionDock({
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.reviewText, active && styles.reviewTextActive]}>PÓS-AÇÃO</Text>
+            <Text style={[styles.reviewText, active && styles.reviewTextActive]}>RELATÓRIO</Text>
             {count > 0 ? (
               <View style={styles.countBox}>
                 <Text style={styles.countText}>{count > 99 ? "99+" : count}</Text>
@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
   },
   reviewButtonActive: {
-    backgroundColor: theme.colors.redWash,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fireWash,
+    borderColor: theme.colors.fire,
   },
   pressed: {
     opacity: 0.72,
@@ -159,12 +159,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   reviewTextActive: {
-    color: theme.colors.red,
+    color: theme.colors.fire,
   },
   countBox: {
     alignItems: "center",
-    backgroundColor: theme.colors.red,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
     borderWidth: 1,
     minWidth: 28,
     paddingHorizontal: theme.spacing.xs,

@@ -258,21 +258,21 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
   },
   inputFocused: {
-    borderColor: theme.colors.red,
+    borderColor: theme.colors.fire,
   },
   multiline: {
     minHeight: 132,
   },
   deadlineContext: {
-    backgroundColor: theme.colors.redWash,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fireWash,
+    borderColor: theme.colors.fire,
     borderWidth: 1,
     marginBottom: theme.spacing.sm,
     padding: theme.spacing.md,
   },
   deadlineContextLabel: {
     ...theme.typography.small,
-    color: theme.colors.red,
+    color: theme.colors.fire,
   },
   deadlineContextValue: {
     ...theme.typography.heading,
@@ -296,8 +296,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
   },
   segmentActive: {
-    backgroundColor: theme.colors.red,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
   },
   segmentText: {
     ...theme.typography.small,
@@ -309,13 +309,14 @@ const styles = StyleSheet.create({
   },
   submit: {
     alignItems: "center",
-    backgroundColor: theme.colors.red,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     justifyContent: "center",
     minHeight: theme.layout.actionHeight,
     width: "100%",
+    ...theme.shadow.fire,
   },
   submitText: {
     ...theme.typography.label,

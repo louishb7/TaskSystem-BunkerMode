@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { isCompleted } from "../utils/missionStatus";
+import { isCompleted, isDoneNotMarked } from "../utils/missionStatus";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 import ProgressStrip from "./ProgressStrip";
 
@@ -12,6 +12,14 @@ const failureReasonTypes = [
   { value: "external_blocker", label: "IMPEDIMENTO REAL" },
   { value: "other", label: "OUTRO" },
 ];
+
+const fallbackReasonByType = {
+  not_done: "Não fiz.",
+  done_not_marked: "Fiz fora do aplicativo, mas não registrei no prazo.",
+  partially_done: "Fiz parcialmente.",
+  external_blocker: "Houve impedimento real.",
+  other: "Outro motivo informado pelas opções.",
+};
 
 function hasPermissions(mission) {
   return mission?.permissions && typeof mission.permissions === "object";
@@ -89,6 +97,10 @@ function formatDeadline(value) {
 }
 
 function statusText(mission) {
+  if (isDoneNotMarked(mission)) {
+    return "EXECUTADA FORA DO APLICATIVO";
+  }
+
   const compact = {
     PENDENTE: "PENDENTE",
     CONCLUIDA: "EXECUTADA",
@@ -124,6 +136,7 @@ export default function MissionCard({
   const isDecided = mission?.is_decided === true;
   const canComplete = can(mission, "can_complete");
   const canJustify = can(mission, "can_justify");
+  const requiresJustification = isDecided;
   const disabled = toggling || completing || justifying;
 
   useEffect(() => {
@@ -133,13 +146,10 @@ export default function MissionCard({
 
   function submitJustification() {
     const trimmed = failureReason.trim();
-    if (!trimmed) {
-      return;
-    }
 
     onJustify?.({
       failure_reason_type: failureReasonType,
-      failure_reason: trimmed,
+      failure_reason: trimmed || fallbackReasonByType[failureReasonType],
     });
   }
 
@@ -169,7 +179,9 @@ export default function MissionCard({
 
         {canJustify ? (
           <View style={styles.justification}>
-            <Text style={styles.dangerLabel}>JUSTIFICATIVA OBRIGATÓRIA</Text>
+            <Text style={styles.dangerLabel}>
+              {requiresJustification ? "JUSTIFICATIVA OBRIGATÓRIA" : "REGISTRO DA FALHA"}
+            </Text>
             <View style={styles.reasonGrid}>
               {failureReasonTypes.map((option) => {
                 const selected = option.value === failureReasonType;
@@ -191,24 +203,26 @@ export default function MissionCard({
               multiline
               onChangeText={setFailureReason}
               onFocus={onInputFocus}
-              placeholder="REGISTRE O MOTIVO"
+              placeholder="REGISTRE O MOTIVO SE NECESSÁRIO"
               placeholderTextColor={theme.colors.textDim}
               style={styles.justificationInput}
               value={failureReason}
             />
             <Pressable
-              disabled={justifying || !failureReason.trim()}
+              disabled={justifying}
               onPress={submitJustification}
               style={[
                 styles.primaryAction,
                 styles.justifyAction,
-                (!failureReason.trim() || justifying) && styles.disabled,
+                justifying && styles.disabled,
               ]}
             >
               {justifying ? (
                 <ActivityIndicator color={theme.colors.black} />
               ) : (
-                <Text style={styles.primaryActionText}>REGISTRAR JUSTIFICATIVA</Text>
+                <Text style={styles.primaryActionText}>
+                  {requiresJustification ? "REGISTRAR JUSTIFICATIVA" : "REGISTRAR FALHA"}
+                </Text>
               )}
             </Pressable>
           </View>
@@ -353,19 +367,21 @@ const styles = StyleSheet.create({
   },
   soldierCard: {
     backgroundColor: theme.colors.surface,
-    borderLeftColor: theme.colors.red,
+    borderLeftColor: theme.colors.fire,
     borderLeftWidth: 2,
   },
   soldierDecidedCard: {
     backgroundColor: theme.colors.surfaceDeep,
-    borderColor: theme.colors.red,
+    borderColor: theme.colors.purpleBorder,
+    borderLeftColor: theme.colors.neonPurple,
   },
   dangerCard: {
     borderColor: theme.colors.red,
   },
   decidedCard: {
-    borderColor: theme.colors.borderStrong,
-    borderLeftColor: theme.colors.red,
+    backgroundColor: "rgba(23,23,23,0.95)",
+    borderColor: theme.colors.purpleBorder,
+    borderLeftColor: theme.colors.neonPurple,
     borderLeftWidth: 3,
   },
   soldierCardTop: {
@@ -374,20 +390,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   orderCode: {
-    borderColor: theme.colors.red,
+    borderColor: theme.colors.fireBorder,
     borderWidth: 1,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
   },
   orderCodeCritical: {
-    backgroundColor: theme.colors.redWash,
+    backgroundColor: theme.colors.purpleWash,
+    borderColor: theme.colors.purpleBorder,
   },
   orderCodeText: {
     ...theme.typography.small,
-    color: theme.colors.red,
+    color: theme.colors.fire,
   },
   orderCodeCriticalText: {
-    color: theme.colors.white,
+    color: theme.colors.neonPurple,
   },
   status: {
     ...theme.typography.small,
@@ -428,8 +445,9 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
   },
   metaTagCritical: {
-    borderColor: theme.colors.red,
-    color: theme.colors.red,
+    backgroundColor: theme.colors.purpleDark,
+    borderColor: theme.colors.purpleBorder,
+    color: theme.colors.neonPurple,
   },
   statusRow: {
     alignItems: "center",
@@ -440,7 +458,7 @@ const styles = StyleSheet.create({
   },
   done: {
     ...theme.typography.small,
-    color: theme.colors.text,
+    color: theme.colors.success,
   },
   actions: {
     borderTopColor: theme.colors.border,
@@ -453,14 +471,15 @@ const styles = StyleSheet.create({
   },
   primaryAction: {
     alignItems: "center",
-    backgroundColor: theme.colors.red,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     justifyContent: "center",
     marginTop: theme.spacing.md,
     minHeight: theme.layout.actionHeight,
     paddingHorizontal: theme.spacing.md,
+    ...theme.shadow.fire,
   },
   justifyAction: {
     marginTop: theme.spacing.sm,
@@ -486,11 +505,11 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
   },
   committedAction: {
-    backgroundColor: theme.colors.redWash,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.purpleWash,
+    borderColor: theme.colors.purpleBorder,
   },
   committedActionText: {
-    color: theme.colors.red,
+    color: theme.colors.neonPurple,
   },
   dangerAction: {
     backgroundColor: theme.colors.redWash,
@@ -531,8 +550,8 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
   },
   reasonButtonSelected: {
-    backgroundColor: theme.colors.red,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
   },
   reasonText: {
     ...theme.typography.small,
@@ -543,7 +562,7 @@ const styles = StyleSheet.create({
   },
   justificationInput: {
     ...theme.typography.body,
-    borderColor: theme.colors.red,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     color: theme.colors.text,

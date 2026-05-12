@@ -7,7 +7,9 @@ export default function TacticalPanel({
   children,
   danger = false,
   elevated = false,
+  fire = false,
   muted = false,
+  purple = false,
   style,
 }) {
   return (
@@ -16,6 +18,8 @@ export default function TacticalPanel({
         styles.panel,
         muted && styles.muted,
         elevated && styles.elevated,
+        fire && styles.fire,
+        purple && styles.purple,
         danger && styles.danger,
         style,
       ]}
@@ -37,6 +41,15 @@ const styles = StyleSheet.create({
   danger: {
     borderColor: theme.colors.red,
   },
+  fire: {
+    backgroundColor: "rgba(20,20,20,0.95)",
+    borderColor: "rgba(255,138,42,0.32)",
+    ...theme.shadow.fire,
+  },
+  purple: {
+    backgroundColor: "rgba(17,17,17,0.94)",
+    borderColor: theme.colors.purpleBorder,
+  },
   muted: {
     backgroundColor: "rgba(17,17,17,0.90)",
     borderColor: theme.colors.borderSoft,
@@ -44,5 +57,6 @@ const styles = StyleSheet.create({
   elevated: {
     backgroundColor: "rgba(32,32,32,0.96)",
     borderColor: theme.colors.borderStrong,
+    ...theme.shadow.raised,
   },
 });

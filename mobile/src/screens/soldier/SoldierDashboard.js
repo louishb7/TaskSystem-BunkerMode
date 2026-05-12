@@ -15,10 +15,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../../api/client";
 import BrandSymbol from "../../components/BrandSymbol";
 import EmptyState from "../../components/EmptyState";
-import MissionCard from "../../components/MissionCard";
+import MissionCard, { MissionProgress } from "../../components/MissionCard";
 import ModeSwitchButton from "../../components/ModeSwitchButton";
 import SoldierHeader from "../../components/SoldierHeader";
 import StatusNotice from "../../components/StatusNotice";
+import TacticalPanel from "../../components/TacticalPanel";
 import TacticalScreen from "../../components/TacticalScreen";
 import { bunkerTheme as theme } from "../../theme/bunkermodeTheme";
 import { STATUS } from "../../utils/missionStatus";
@@ -226,6 +227,10 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
             totalCount={missions.length || actionMissions.length}
           />
 
+          <TacticalPanel style={styles.progressPanel}>
+            <MissionProgress label="CAÇADA" missions={missions.length ? missions : actionMissions} />
+          </TacticalPanel>
+
           <View style={styles.notices}>
             <StatusNotice type="error" message={error} />
             <StatusNotice type="info" message={notice} />
@@ -378,7 +383,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     ...theme.typography.small,
-    color: theme.colors.red,
+    color: theme.colors.fire,
   },
   keyboard: {
     flex: 1,
@@ -390,6 +395,11 @@ const styles = StyleSheet.create({
   },
   notices: {
     marginTop: theme.spacing.md,
+  },
+  progressPanel: {
+    borderColor: "rgba(255,138,42,0.22)",
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.sm,
   },
   list: {
     flex: 1,
@@ -423,14 +433,14 @@ const styles = StyleSheet.create({
   },
   protocolBox: {
     backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.red,
+    borderColor: theme.colors.fire,
     borderWidth: 1,
     padding: theme.spacing.lg,
     width: "100%",
   },
   protocolKicker: {
     ...theme.typography.small,
-    color: theme.colors.red,
+    color: theme.colors.fire,
     marginBottom: theme.spacing.sm,
   },
   protocolText: {
@@ -452,19 +462,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
   },
   protocolButtonDanger: {
-    backgroundColor: theme.colors.redWash,
-    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.fireWash,
+    borderColor: theme.colors.fire,
   },
   protocolButtonText: {
     ...theme.typography.label,
     color: theme.colors.textMuted,
   },
   protocolButtonTextDanger: {
-    color: theme.colors.red,
+    color: theme.colors.fire,
   },
   input: {
     ...theme.typography.body,
-    borderColor: theme.colors.red,
+    borderColor: theme.colors.fire,
     borderWidth: 1,
     color: theme.colors.text,
     marginTop: theme.spacing.sm,

@@ -326,6 +326,7 @@ export function useMissionBoard({
     deleteMission,
     formLoading,
     formStatus,
+    hasRegisteredOutcomes: registeredOutcomeMissions.length > 0,
     justificationLoadingId,
     missionLoading,
     missions,
