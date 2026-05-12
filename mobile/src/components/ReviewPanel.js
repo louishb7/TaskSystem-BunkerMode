@@ -104,6 +104,10 @@ function formatOperationalPeriod(period) {
   return `${formatOperationalDate(period.start_date)} a ${formatOperationalDate(period.end_date)}`;
 }
 
+function getReviewPeriodLabel(review) {
+  return `${formatOperationalDate(review.start_date)} - ${formatOperationalDate(review.end_date)}`;
+}
+
 export default function ReviewPanel({
   allMissions = [],
   missions = [],
@@ -116,6 +120,8 @@ export default function ReviewPanel({
 }) {
   const [period, setPeriod] = useState("week");
   const [failuresOpen, setFailuresOpen] = useState(false);
+  const [weeklyFailuresOpen, setWeeklyFailuresOpen] = useState(false);
+  const [selectedReviewId, setSelectedReviewId] = useState(null);
   const [reviewNote, setReviewNote] = useState("");
   const [closingReview, setClosingReview] = useState(false);
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -168,7 +174,9 @@ export default function ReviewPanel({
   const weeklyTotal = (weeklyReport.total_missions || 0) + weeklyPending;
   const weeklyFailures = Array.isArray(reviewState?.reading?.failures) ? reviewState.reading.failures : [];
   const brokenDecided = Array.isArray(reviewState?.reading?.broken_decided) ? reviewState.reading.broken_decided : [];
-  const hasWeeklyReview = Boolean(reviewState?.pending || reviewState?.review);
+  const visibleWeeklyFailures = weeklyFailuresOpen ? weeklyFailures : weeklyFailures.slice(0, 4);
+  const selectedReview = weeklyReviews.find((review) => review.id === selectedReviewId);
+  const hasWeeklyReview = Boolean(reviewState?.pending);
   const executionReading = (() => {
     if (total === 0) {
       return "Sem ordens no período carregado. O relatório fica limpo até haver execução registrada.";
@@ -245,32 +253,44 @@ export default function ReviewPanel({
                 )}
               </Pressable>
             </View>
-          ) : (
-            <Text style={styles.meta}>Fechada em {formatDateTime(reviewState?.review?.reviewed_at)}.</Text>
-          )}
+          ) : null}
 
-          <View style={styles.list}>
-            <Text style={[styles.failureKicker, styles.dangerText]}>FALHAS DA SEMANA</Text>
-            {weeklyFailures.length > 0 ? weeklyFailures.slice(0, 3).map((mission, index) => (
-              <View key={String(mission?.id ?? index)} style={styles.itemCompact}>
-                <Text style={styles.itemTitle}>{mission?.titulo || "Sem título"}</Text>
-                <Text style={styles.itemMeta}>{mission?.failure_reason || "Justificativa não registrada."}</Text>
+          <View style={styles.weeklyFailures}>
+            <View style={styles.weeklyFailuresHeader}>
+              <View style={styles.weeklyFailuresCopy}>
+                <Text style={[styles.failureKicker, styles.dangerText]}>FALHAS DA SEMANA</Text>
+                <Text style={styles.meta}>
+                  {weeklyFailures.length > 0
+                    ? `${weeklyFailures.length} falha contabilizada.`
+                    : "Nenhuma falha contabilizada na semana."}
+                </Text>
+              </View>
+              {weeklyFailures.length > 4 ? (
+                <Pressable
+                  onPress={() => setWeeklyFailuresOpen((current) => !current)}
+                  style={styles.smallButton}
+                >
+                  <Text style={styles.smallButtonText}>{weeklyFailuresOpen ? "RECOLHER" : "VER TODAS"}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            {visibleWeeklyFailures.length > 0 ? visibleWeeklyFailures.map((mission, index) => (
+              <View key={String(mission?.id ?? index)} style={[styles.failureRow, mission?.is_decided && styles.failureRowCritical]}>
+                <Text style={[styles.failureRowType, mission?.is_decided && styles.dangerText]}>
+                  {mission?.is_decided ? "DECIDIDA" : "FALHA"}
+                </Text>
+                <Text style={styles.failureRowTitle}>{mission?.titulo || "Sem título"}</Text>
+                <Text style={styles.failureRowReason}>{mission?.failure_reason || "Justificativa não registrada."}</Text>
               </View>
             )) : (
-              <Text style={styles.meta}>Nenhuma falha contabilizada na semana.</Text>
+              null
             )}
           </View>
 
           {brokenDecided.length > 0 ? (
-            <View style={styles.list}>
-              <Text style={[styles.failureKicker, styles.dangerText]}>DECIDIDAS QUEBRADAS</Text>
-              {brokenDecided.slice(0, 3).map((mission, index) => (
-                <View key={String(mission?.id ?? index)} style={styles.itemCompact}>
-                  <Text style={styles.itemTitle}>{mission?.titulo || "Sem título"}</Text>
-                  <Text style={styles.itemMeta}>{mission?.failure_reason || "Sem justificativa registrada."}</Text>
-                </View>
-              ))}
-            </View>
+            <Text style={styles.criticalNote}>
+              {brokenDecided.length} Decidida quebrada nesta semana operacional.
+            </Text>
           ) : null}
         </TacticalPanel>
       ) : null}
@@ -340,20 +360,48 @@ export default function ReviewPanel({
       </TacticalPanel>
 
       <TacticalPanel style={styles.historyPanel}>
-        <Text style={styles.kicker}>HISTÓRICO DE REVISÕES</Text>
+        <Text style={styles.kicker}>ARQUIVO OPERACIONAL</Text>
+        <Text style={styles.title}>Semanas registradas</Text>
         {weeklyReviews.length > 0 ? (
-          <View style={styles.list}>
-            {weeklyReviews.slice(0, 5).map((review) => (
-              <View key={String(review.id)} style={styles.itemCompact}>
-                <Text style={styles.itemTitle}>{formatOperationalDate(review.reviewed_at)}</Text>
-                <Text style={styles.itemMeta}>
-                  {formatOperationalDate(review.start_date)} a {formatOperationalDate(review.end_date)}
-                </Text>
-                <Text style={styles.reason}>{review.resumo_operacional}</Text>
-                {review.observacao ? <Text style={styles.infoNote}>{review.observacao}</Text> : null}
+          <>
+            <View style={styles.weekGrid}>
+              {weeklyReviews.map((review) => (
+                <Pressable
+                  key={String(review.id)}
+                  onPress={() => setSelectedReviewId((current) => (current === review.id ? null : review.id))}
+                  style={[styles.weekCell, selectedReviewId === review.id && styles.weekCellSelected]}
+                >
+                  <Text style={styles.weekCellKicker}>SEMANA</Text>
+                  <Text style={styles.weekCellPeriod}>{getReviewPeriodLabel(review)}</Text>
+                  <Text style={styles.weekCellDate}>{formatOperationalDate(review.reviewed_at)}</Text>
+                </Pressable>
+              ))}
+            </View>
+            {selectedReview ? (
+              <View style={styles.selectedReview}>
+                <Text style={styles.kicker}>REVISÃO ARQUIVADA</Text>
+                <Text style={styles.itemTitle}>{getReviewPeriodLabel(selectedReview)}</Text>
+                <Text style={styles.itemMeta}>Fechada em {formatDateTime(selectedReview.reviewed_at)}.</Text>
+                <View style={styles.metrics}>
+                  <Metric label="EXECUTADAS" value={selectedReview.completed_missions} />
+                  <Metric label="PENDENTES" value={selectedReview.pending_missions} />
+                  <Metric label="FALHAS" value={selectedReview.failed_missions} purple />
+                  <Metric label="QUEBRADAS" value={selectedReview.committed_missions_failed} purple />
+                </View>
+                <Text style={styles.reason}>{selectedReview.resumo_operacional}</Text>
+                {selectedReview.observacao ? (
+                  <Text style={styles.infoNote}>{selectedReview.observacao}</Text>
+                ) : null}
               </View>
-            ))}
-          </View>
+            ) : (
+              <View style={styles.emptyArchive}>
+                <Text style={styles.itemTitle}>Selecione uma semana</Text>
+                <Text style={styles.itemMeta}>
+                  O registro operacional aparece aqui apenas quando uma semana arquivada é escolhida.
+                </Text>
+              </View>
+            )}
+          </>
         ) : (
           <Text style={styles.meta}>Nenhuma revisão semanal foi fechada ainda.</Text>
         )}
@@ -595,6 +643,111 @@ const styles = StyleSheet.create({
   list: {
     gap: theme.spacing.md,
     marginTop: theme.spacing.sm,
+  },
+  weeklyFailures: {
+    backgroundColor: "rgba(0,0,0,0.20)",
+    borderColor: "rgba(229,57,53,0.22)",
+    borderWidth: 1,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+  },
+  weeklyFailuresHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    justifyContent: "space-between",
+  },
+  weeklyFailuresCopy: {
+    flex: 1,
+  },
+  smallButton: {
+    alignItems: "center",
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    minHeight: 34,
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.sm,
+  },
+  smallButtonText: {
+    ...theme.typography.small,
+    color: theme.colors.text,
+  },
+  failureRow: {
+    borderTopColor: theme.colors.borderSoft,
+    borderTopWidth: 1,
+    gap: theme.spacing.xs,
+    paddingTop: theme.spacing.sm,
+  },
+  failureRowCritical: {
+    borderTopColor: "rgba(229,57,53,0.30)",
+  },
+  failureRowType: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+  },
+  failureRowTitle: {
+    ...theme.typography.label,
+    color: theme.colors.text,
+  },
+  failureRowReason: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+  },
+  criticalNote: {
+    ...theme.typography.caption,
+    backgroundColor: theme.colors.redWash,
+    borderColor: "rgba(229,57,53,0.30)",
+    borderWidth: 1,
+    color: theme.colors.red,
+    padding: theme.spacing.sm,
+  },
+  weekGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  weekCell: {
+    backgroundColor: "rgba(0,0,0,0.22)",
+    borderColor: theme.colors.borderSoft,
+    borderWidth: 1,
+    flexBasis: "48%",
+    flexGrow: 1,
+    gap: theme.spacing.xs,
+    minHeight: 78,
+    padding: theme.spacing.sm,
+  },
+  weekCellSelected: {
+    backgroundColor: theme.colors.fireWash,
+    borderColor: theme.colors.fireBorder,
+  },
+  weekCellKicker: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+  },
+  weekCellPeriod: {
+    ...theme.typography.label,
+    color: theme.colors.fire,
+  },
+  weekCellDate: {
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
+  },
+  selectedReview: {
+    backgroundColor: "rgba(0,0,0,0.22)",
+    borderColor: theme.colors.fireBorder,
+    borderWidth: 1,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+  },
+  emptyArchive: {
+    backgroundColor: "rgba(0,0,0,0.16)",
+    borderColor: theme.colors.borderSoft,
+    borderWidth: 1,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
   },
   closeBox: {
     backgroundColor: "rgba(0,0,0,0.22)",

@@ -134,6 +134,7 @@ export default function MissionCard({
   const instruction = mission?.instrucao || "";
   const statusLabel = statusText(mission);
   const isDecided = mission?.is_decided === true;
+  const completed = isCompleted(mission);
   const canComplete = can(mission, "can_complete");
   const canJustify = can(mission, "can_justify");
   const requiresJustification = isDecided;
@@ -248,7 +249,7 @@ export default function MissionCard({
   }
 
   return (
-    <View style={[styles.card, isDecided && styles.decidedCard]}>
+    <View style={[styles.card, isDecided && styles.decidedCard, completed && styles.completedCard]}>
       <View style={styles.badgeRow}>
         <Text style={[styles.metaTag, isDecided && styles.metaTagCritical]}>
           {isDecided ? "DECIDIDA" : "ORDEM"}
@@ -262,9 +263,9 @@ export default function MissionCard({
         <Text numberOfLines={3} style={styles.instruction}>{instruction}</Text>
       ) : null}
 
-      {isCompleted(mission) ? (
+      {completed ? (
         <View style={styles.statusRow}>
-          <Text style={styles.done}>EXECUTADA</Text>
+          <Text style={styles.done}>CUMPRIDA</Text>
         </View>
       ) : null}
 
@@ -386,6 +387,12 @@ const styles = StyleSheet.create({
     borderLeftColor: theme.colors.neonPurple,
     borderLeftWidth: 3,
   },
+  completedCard: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.successBorder,
+    borderLeftColor: theme.colors.success,
+    borderLeftWidth: 3,
+  },
   soldierCardTop: {
     alignItems: "center",
     flexDirection: "row",
@@ -460,7 +467,12 @@ const styles = StyleSheet.create({
   },
   done: {
     ...theme.typography.small,
+    backgroundColor: theme.colors.successWash,
+    borderColor: theme.colors.successBorder,
+    borderWidth: 1,
     color: theme.colors.success,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
   },
   actions: {
     borderTopColor: theme.colors.border,

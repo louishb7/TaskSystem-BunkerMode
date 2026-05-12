@@ -95,6 +95,7 @@ export default function MissionCard({
   const canComplete = can(mission, "can_complete");
   const canJustify = can(mission, "can_justify");
   const requiresJustification = mission?.requires_immediate_justification === true || (canJustify && isDecided);
+  const completed = isCompleted(mission);
 
   useEffect(() => {
     setConfirmingToggle(false);
@@ -135,7 +136,7 @@ export default function MissionCard({
   }
 
   return (
-    <article className={`mission-card ${isDecided ? "decided" : ""}`}>
+    <article className={`mission-card ${isDecided ? "decided" : ""} ${completed ? "completed" : ""}`}>
       <div className="mission-badge-row">
         <span className={`meta-tag ${isDecided ? "critical" : ""}`}>
           {isDecided ? "DECIDIDA" : "ORDEM"}
@@ -146,7 +147,7 @@ export default function MissionCard({
 
       <h3>{title}</h3>
       {instruction && <p className="mission-instruction">{instruction}</p>}
-      {isCompleted(mission) && <span className="done-label">EXECUTADA</span>}
+      {completed && <span className="done-label">CUMPRIDA</span>}
 
       <div className="mission-actions">
         {can(mission, "can_toggle_decided") && (

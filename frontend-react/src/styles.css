@@ -807,6 +807,24 @@ h3 {
   box-shadow: 0 16px 46px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(155, 92, 255, 0.08);
 }
 
+.mission-card.completed {
+  border-color: var(--success-border);
+  border-left: 3px solid var(--success);
+  background:
+    linear-gradient(90deg, var(--success-wash), transparent 42%),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 80px),
+    rgba(23, 23, 23, 0.94);
+}
+
+.mission-card.completed.decided {
+  border-color: var(--success-border);
+  border-left-color: var(--success);
+  background:
+    linear-gradient(90deg, var(--success-wash), transparent 42%),
+    linear-gradient(180deg, rgba(155, 92, 255, 0.06), transparent 80px),
+    rgba(23, 23, 23, 0.95);
+}
+
 .mission-card.soldier-card {
   border-left: 2px solid var(--fire);
 }
@@ -844,6 +862,12 @@ h3 {
   background: rgba(42, 18, 63, 0.78);
   color: var(--neon-purple);
   box-shadow: 0 0 18px rgba(155, 92, 255, 0.12);
+}
+
+.mission-card.completed .done-label {
+  border-color: var(--success-border);
+  background: var(--success-wash);
+  color: var(--success);
 }
 
 .mission-card h3 {
@@ -1404,6 +1428,126 @@ h3 {
   border-color: var(--border-soft);
 }
 
+.weekly-failure-table {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(229, 57, 53, 0.22);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px;
+}
+
+.weekly-failure-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.weekly-failure-header p {
+  margin-bottom: 0;
+}
+
+.failure-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.failure-row {
+  display: grid;
+  grid-template-columns: 82px minmax(120px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--border-soft);
+  min-height: 42px;
+  padding-top: 8px;
+}
+
+.failure-row span {
+  color: var(--text-dim);
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.failure-row.critical span,
+.failure-row.critical strong {
+  color: var(--red);
+}
+
+.failure-row strong {
+  color: var(--text);
+  font-size: 0.86rem;
+  text-transform: uppercase;
+}
+
+.failure-row p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.weekly-critical-note {
+  border: 1px solid rgba(229, 57, 53, 0.28);
+  background: var(--red-wash);
+  color: var(--red);
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.review-week-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 8px;
+}
+
+.review-week-grid button {
+  display: grid;
+  gap: 5px;
+  min-height: 74px;
+  border: 1px solid var(--border-soft);
+  background:
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent),
+    rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  cursor: pointer;
+  padding: 10px;
+  text-align: left;
+}
+
+.review-week-grid button.selected {
+  border-color: var(--fire-border);
+  background:
+    linear-gradient(180deg, var(--fire-wash), transparent),
+    rgba(0, 0, 0, 0.26);
+}
+
+.review-week-grid span,
+.review-week-grid small {
+  color: var(--text-dim);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.review-week-grid strong {
+  color: var(--fire);
+  font-size: 0.82rem;
+}
+
+.selected-review-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--fire-border);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 14px;
+}
+
+.archived-review-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .failure-justification-form {
   display: grid;
   gap: 10px;
@@ -1613,6 +1757,11 @@ h3 {
   .weekly-review-lists {
     grid-template-columns: 1fr;
   }
+
+  .failure-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1658,6 +1807,10 @@ h3 {
   }
 
   .review-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .archived-review-metrics {
     grid-template-columns: 1fr;
   }
 
