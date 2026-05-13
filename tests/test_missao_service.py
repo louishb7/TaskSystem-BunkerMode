@@ -110,10 +110,12 @@ class RepositorioOwnershipFake:
         self.missao = missao
         self.missao_adicionada = missao
 
-    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id):
+    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id, operacao_id=None, operacao_dia=None):
         self.contexto = {
             "criada_por_id": criada_por_id,
             "responsavel_id": responsavel_id,
+            "operacao_id": operacao_id,
+            "operacao_dia": operacao_dia,
         }
 
     def remover_missao(self, missao_id):

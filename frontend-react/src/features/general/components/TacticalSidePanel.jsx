@@ -21,7 +21,9 @@ export default function TacticalSidePanel({
           <h2>{selectedDateLabel}</h2>
           <p>
             {remainingCount > 0
-              ? `${remainingCount} ordens ainda sustentam a caçada.`
+              ? remainingCount === 1
+                ? "1 ordem ainda resiste à caçada."
+                : `${remainingCount} ordens ainda resistem à caçada.`
               : totalCount > 0
                 ? "Caçada concluída para o dia selecionado."
                 : "Nenhuma caça definida para este dia."}

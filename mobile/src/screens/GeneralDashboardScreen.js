@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "../api/client";
@@ -91,6 +91,27 @@ function formatSelectedDate(date) {
   }
 }
 
+const operationWeekdays = [
+  { value: 0, label: "SEG" },
+  { value: 1, label: "TER" },
+  { value: 2, label: "QUA" },
+  { value: 3, label: "QUI" },
+  { value: 4, label: "SEX" },
+  { value: 5, label: "SÁB" },
+  { value: 6, label: "DOM" },
+];
+
+const initialOperationForm = {
+  nome: "",
+  descricao: "",
+  start_date: "",
+  end_date: "",
+  weekdays: [],
+  ordem_titulo: "",
+  ordem_instrucao: "",
+  is_decided: false,
+};
+
 function mergeMissionLists(...missionLists) {
   const missionsById = new Map();
 
@@ -103,6 +124,19 @@ function mergeMissionLists(...missionLists) {
   });
 
   return Array.from(missionsById.values());
+}
+
+function isFailureMission(mission) {
+  return String(mission?.status_code || "").startsWith("FALHA");
+}
+
+function groupMissions(missions) {
+  return {
+    critical: missions.filter((mission) => !isCompleted(mission) && mission?.is_decided === true),
+    pending: missions.filter((mission) => !isCompleted(mission) && mission?.is_decided !== true && !isFailureMission(mission)),
+    failures: missions.filter((mission) => !isCompleted(mission) && isFailureMission(mission)),
+    completed: missions.filter(isCompleted),
+  };
 }
 
 export default function GeneralDashboardScreen({
@@ -118,6 +152,10 @@ export default function GeneralDashboardScreen({
   const [dailyProgressMissions, setDailyProgressMissions] = useState([]);
   const [reviewState, setReviewState] = useState(null);
   const [weeklyReviews, setWeeklyReviews] = useState([]);
+  const [operations, setOperations] = useState([]);
+  const [operationFormOpen, setOperationFormOpen] = useState(false);
+  const [operationForm, setOperationForm] = useState(initialOperationForm);
+  const [operationLoading, setOperationLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -129,6 +167,7 @@ export default function GeneralDashboardScreen({
   const [activeScreen, setActiveScreen] = useState("home");
   const [commandDockHeight, setCommandDockHeight] = useState(112);
   const [soldierConfirmOpen, setSoldierConfirmOpen] = useState(false);
+  const materializedWeekRef = useRef("");
 
   useEffect(() => {
     loadAll({ initial: true });
@@ -178,6 +217,26 @@ export default function GeneralDashboardScreen({
   );
   const selectedRemainingCount = Math.max(0, selectedMissions.length - selectedCompletedCount);
   const selectedDecidedCount = selectedMissions.filter((mission) => mission?.is_decided === true).length;
+  const missionGroups = useMemo(() => groupMissions(selectedMissions), [selectedMissions]);
+
+  useEffect(() => {
+    if (!token || !weekDays.length) {
+      return;
+    }
+    const startDate = formatDateForApi(weekDays[0]);
+    const endDate = formatDateForApi(weekDays[weekDays.length - 1]);
+    const key = `${startDate}:${endDate}`;
+    if (materializedWeekRef.current === key) {
+      return;
+    }
+    materializedWeekRef.current = key;
+    api.materializeOperations(token, { start_date: startDate, end_date: endDate }).then(async (result) => {
+      if (await handleUnauthorized(result)) {
+        return;
+      }
+      await loadAll();
+    });
+  }, [token, weekLabel]);
 
   async function handleUnauthorized(result) {
     if (result?.status === 401) {
@@ -200,18 +259,20 @@ export default function GeneralDashboardScreen({
       historicalResult,
       reviewStateResult,
       weeklyReviewsResult,
+      operationsResult,
     ] = await Promise.all([
       api.listMissions(token),
       api.listReviewMissions(token),
       api.listHistoricalMissions(token),
       api.getReviewState(token),
       api.listWeeklyReviews(token),
+      api.listOperations(token),
     ]);
 
     setInitialLoading(false);
     setRefreshing(false);
 
-    for (const result of [missionsResult, reviewResult, historicalResult, reviewStateResult, weeklyReviewsResult]) {
+    for (const result of [missionsResult, reviewResult, historicalResult, reviewStateResult, weeklyReviewsResult, operationsResult]) {
       if (await handleUnauthorized(result)) {
         return;
       }
@@ -247,6 +308,12 @@ export default function GeneralDashboardScreen({
       setWeeklyReviews(Array.isArray(weeklyReviewsResult.data) ? weeklyReviewsResult.data : []);
     } else if (!nextError) {
       nextError = getErrorMessage(weeklyReviewsResult, "Não foi possível carregar o histórico de revisões.");
+    }
+
+    if (operationsResult.ok) {
+      setOperations(Array.isArray(operationsResult.data) ? operationsResult.data : []);
+    } else if (!nextError) {
+      nextError = getErrorMessage(operationsResult, "Não foi possível carregar operações.");
     }
 
     setDailyProgressMissions([]);
@@ -353,6 +420,58 @@ export default function GeneralDashboardScreen({
     }
     if (!result.ok) {
       setError(getErrorMessage(result, "Não foi possível remover a missão."));
+    }
+    await loadAll();
+  }
+
+  function updateOperationField(field, value) {
+    setOperationForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function toggleOperationWeekday(value) {
+    setOperationForm((current) => {
+      const selected = current.weekdays.includes(value)
+        ? current.weekdays.filter((item) => item !== value)
+        : [...current.weekdays, value].sort((a, b) => a - b);
+      return { ...current, weekdays: selected };
+    });
+  }
+
+  async function createOperation() {
+    setError("");
+    setOperationLoading(true);
+    const result = await api.createOperation(token, {
+      ...operationForm,
+      descricao: operationForm.descricao || null,
+      ordem_instrucao: operationForm.ordem_instrucao || null,
+    });
+    setOperationLoading(false);
+
+    if (await handleUnauthorized(result)) {
+      return;
+    }
+    if (!result.ok) {
+      setError(getErrorMessage(result, "Não foi possível registrar a operação."));
+      return;
+    }
+    setOperationForm(initialOperationForm);
+    setOperationFormOpen(false);
+    materializedWeekRef.current = "";
+    await loadAll();
+  }
+
+  async function closeOperation(operationId) {
+    setError("");
+    setOperationLoading(true);
+    const result = await api.closeOperation(token, operationId);
+    setOperationLoading(false);
+
+    if (await handleUnauthorized(result)) {
+      return;
+    }
+    if (!result.ok) {
+      setError(getErrorMessage(result, "Não foi possível encerrar a operação."));
+      return;
     }
     await loadAll();
   }
@@ -472,7 +591,9 @@ export default function GeneralDashboardScreen({
               <Text style={styles.lionTitle}>{selectedDateLabel}</Text>
               <Text style={styles.lionBrief}>
                 {selectedRemainingCount > 0
-                  ? `${selectedRemainingCount} ordens ainda sustentam a caçada.`
+                  ? selectedRemainingCount === 1
+                    ? "1 ordem ainda resiste à caçada."
+                    : `${selectedRemainingCount} ordens ainda resistem à caçada.`
                   : selectedMissions.length > 0
                     ? "Caçada concluída para o dia selecionado."
                     : "Nenhuma caça definida para este dia."}
@@ -503,25 +624,51 @@ export default function GeneralDashboardScreen({
             tone="fire"
             title="Plano da caça"
             meta={
-              selectedMissions.length === 1
-                ? "1 ordem definida para o dia selecionado."
-                : `${selectedMissions.length} ordens definidas para o dia selecionado.`
+              selectedRemainingCount > 0
+                ? `${selectedRemainingCount} em aberto. ${selectedCompletedCount} cumpridas no arquivo do dia.`
+                : selectedCompletedCount > 0
+                  ? "Todas as ordens do dia foram cumpridas."
+                  : "Nenhuma ordem foi definida para o dia selecionado."
             }
           />
 
           {selectedMissions.length > 0 ? (
-            <View style={styles.missionList}>
-              {selectedMissions.map((mission, index) => (
-                <MissionCard
-                  key={String(mission?.id ?? index)}
-                  mission={mission}
-                  onDelete={deleteMission}
-                  onEdit={openEditForm}
-                  onToggleDecision={toggleDecision}
-                  toggling={togglingId === mission?.id}
-                  variant="general"
-                />
-              ))}
+            <View style={styles.missionGroups}>
+              <MissionGroup
+                label="Inegociáveis"
+                missions={missionGroups.critical}
+                onDelete={deleteMission}
+                onEdit={openEditForm}
+                onToggleDecision={toggleDecision}
+                togglingId={togglingId}
+                tone="critical"
+              />
+              <MissionGroup
+                label="Pendentes"
+                missions={missionGroups.pending}
+                onDelete={deleteMission}
+                onEdit={openEditForm}
+                onToggleDecision={toggleDecision}
+                togglingId={togglingId}
+              />
+              <MissionGroup
+                label="Falhas em leitura"
+                missions={missionGroups.failures}
+                onDelete={deleteMission}
+                onEdit={openEditForm}
+                onToggleDecision={toggleDecision}
+                togglingId={togglingId}
+                tone="danger"
+              />
+              <MissionGroup
+                label="Cumpridas"
+                missions={missionGroups.completed}
+                onDelete={deleteMission}
+                onEdit={openEditForm}
+                onToggleDecision={toggleDecision}
+                togglingId={togglingId}
+                tone="completed"
+              />
             </View>
           ) : (
             <EmptyState
@@ -533,6 +680,142 @@ export default function GeneralDashboardScreen({
           <Pressable onPress={openCreateForm} style={styles.createButton}>
             <Text style={styles.createText}>CRIAR NOVA ORDEM</Text>
           </Pressable>
+        </TacticalPanel>
+
+        <TacticalPanel style={styles.operationsPanel}>
+          <SectionHeader
+            eyebrow="OPERAÇÕES"
+            title="Plano em período fechado"
+            meta="Ordens geradas por operação aparecem no quadro do dia e no Soldado."
+          />
+          <Pressable
+            disabled={operationLoading}
+            onPress={() => setOperationFormOpen((current) => !current)}
+            style={styles.operationAction}
+          >
+            <Text style={styles.operationActionText}>
+              {operationFormOpen ? "FECHAR OPERAÇÃO" : "NOVA OPERAÇÃO"}
+            </Text>
+          </Pressable>
+          {operationFormOpen ? (
+            <View style={styles.operationForm}>
+              <TextInput
+                onChangeText={(value) => updateOperationField("nome", value)}
+                placeholder="NOME DA OPERAÇÃO"
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.operationInput}
+                value={operationForm.nome}
+              />
+              <TextInput
+                onChangeText={(value) => updateOperationField("descricao", value)}
+                placeholder="DIRETIVA OPCIONAL"
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.operationInput}
+                value={operationForm.descricao}
+              />
+              <View style={styles.operationDateRow}>
+                <TextInput
+                  onChangeText={(value) => updateOperationField("start_date", value)}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={theme.colors.textDim}
+                  style={[styles.operationInput, styles.operationDateInput]}
+                  value={operationForm.start_date}
+                />
+                <TextInput
+                  onChangeText={(value) => updateOperationField("end_date", value)}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={theme.colors.textDim}
+                  style={[styles.operationInput, styles.operationDateInput]}
+                  value={operationForm.end_date}
+                />
+              </View>
+              <View style={styles.operationWeekdayGrid}>
+                {operationWeekdays.map((day) => (
+                  <Pressable
+                    key={day.value}
+                    onPress={() => toggleOperationWeekday(day.value)}
+                    style={[
+                      styles.operationWeekday,
+                      operationForm.weekdays.includes(day.value) && styles.operationWeekdaySelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.operationWeekdayText,
+                        operationForm.weekdays.includes(day.value) && styles.operationWeekdayTextSelected,
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                onChangeText={(value) => updateOperationField("ordem_titulo", value)}
+                placeholder="ORDEM DIÁRIA"
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.operationInput}
+                value={operationForm.ordem_titulo}
+              />
+              <TextInput
+                onChangeText={(value) => updateOperationField("ordem_instrucao", value)}
+                placeholder="INSTRUÇÃO OPCIONAL"
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.operationInput}
+                value={operationForm.ordem_instrucao}
+              />
+              <Pressable
+                onPress={() => updateOperationField("is_decided", !operationForm.is_decided)}
+                style={[
+                  styles.operationDecision,
+                  operationForm.is_decided && styles.operationDecisionSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.operationDecisionText,
+                    operationForm.is_decided && styles.operationDecisionTextSelected,
+                  ]}
+                >
+                  {operationForm.is_decided ? "DECIDIDA ATIVA" : "MARCAR COMO DECIDIDA"}
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={operationLoading}
+                onPress={createOperation}
+                style={[styles.operationPrimary, operationLoading && styles.operationDisabled]}
+              >
+                <Text style={styles.operationPrimaryText}>
+                  {operationLoading ? "REGISTRANDO" : "REGISTRAR OPERAÇÃO"}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <View style={styles.operationRows}>
+            {operations.length > 0 ? (
+              operations.slice(0, 4).map((operation) => (
+                <View key={String(operation.id)} style={styles.operationRow}>
+                  <View style={styles.operationInfo}>
+                    <Text numberOfLines={1} style={styles.operationName}>{operation.nome}</Text>
+                    <Text numberOfLines={1} style={styles.operationMeta}>
+                      {operation.status === "ativa" ? "ATIVA" : "ENCERRADA"} | {operation.ordem_titulo}
+                    </Text>
+                  </View>
+                  {operation.status === "ativa" ? (
+                    <Pressable
+                      disabled={operationLoading}
+                      onPress={() => closeOperation(operation.id)}
+                      style={styles.operationClose}
+                    >
+                      <Text style={styles.operationCloseText}>ENCERRAR</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ))
+            ) : (
+              <Text style={styles.operationEmpty}>Nenhuma operação registrada.</Text>
+            )}
+          </View>
         </TacticalPanel>
 
         <TacticalPanel style={styles.transitionPanel}>
@@ -590,6 +873,49 @@ export default function GeneralDashboardScreen({
         </View>
       ) : null}
     </TacticalScreen>
+  );
+}
+
+function MissionGroup({
+  label,
+  missions,
+  onDelete,
+  onEdit,
+  onToggleDecision,
+  togglingId,
+  tone = "",
+}) {
+  if (!missions.length) {
+    return null;
+  }
+
+  return (
+    <View style={styles.missionGroup}>
+      <View style={styles.missionGroupHeader}>
+        <Text style={[
+          styles.missionGroupLabel,
+          tone === "critical" && styles.missionGroupCritical,
+          tone === "danger" && styles.missionGroupDanger,
+          tone === "completed" && styles.missionGroupCompleted,
+        ]}>
+          {label}
+        </Text>
+        <Text style={styles.missionGroupCount}>{missions.length}</Text>
+      </View>
+      <View style={[styles.missionList, tone === "completed" && styles.completedMissionList]}>
+        {missions.map((mission, index) => (
+          <MissionCard
+            key={String(mission?.id ?? index)}
+            mission={mission}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            onToggleDecision={onToggleDecision}
+            toggling={togglingId === mission?.id}
+            variant="general"
+          />
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -766,9 +1092,181 @@ const styles = StyleSheet.create({
   ordersPanel: {
     marginTop: theme.spacing.md,
   },
+  operationsPanel: {
+    marginTop: theme.spacing.md,
+  },
+  operationAction: {
+    alignItems: "center",
+    borderColor: theme.colors.fireBorder,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    marginTop: theme.spacing.md,
+    minHeight: 42,
+  },
+  operationActionText: {
+    ...theme.typography.small,
+    color: theme.colors.fire,
+  },
+  operationForm: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  operationInput: {
+    ...theme.typography.body,
+    backgroundColor: theme.colors.surfaceDeep,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    color: theme.colors.text,
+    minHeight: 42,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  operationDateRow: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+  },
+  operationDateInput: {
+    flex: 1,
+  },
+  operationWeekdayGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.xs,
+  },
+  operationWeekday: {
+    alignItems: "center",
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    minHeight: 34,
+    minWidth: 42,
+    justifyContent: "center",
+  },
+  operationWeekdaySelected: {
+    borderColor: theme.colors.fireBorder,
+  },
+  operationWeekdayText: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+  },
+  operationWeekdayTextSelected: {
+    color: theme.colors.fire,
+  },
+  operationDecision: {
+    alignItems: "center",
+    borderColor: theme.colors.purpleBorder,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 40,
+  },
+  operationDecisionSelected: {
+    backgroundColor: theme.colors.purpleWash,
+  },
+  operationDecisionText: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+  },
+  operationDecisionTextSelected: {
+    color: theme.colors.neonPurple,
+  },
+  operationPrimary: {
+    alignItems: "center",
+    backgroundColor: theme.colors.fire,
+    borderRadius: theme.radius.sm,
+    justifyContent: "center",
+    minHeight: 46,
+  },
+  operationDisabled: {
+    opacity: 0.62,
+  },
+  operationPrimaryText: {
+    ...theme.typography.label,
+    color: theme.colors.black,
+  },
+  operationRows: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  operationRow: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surfaceDeep,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    justifyContent: "space-between",
+    padding: theme.spacing.sm,
+  },
+  operationInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  operationName: {
+    ...theme.typography.label,
+    color: theme.colors.text,
+  },
+  operationMeta: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+    marginTop: 2,
+  },
+  operationEmpty: {
+    ...theme.typography.body,
+    color: theme.colors.textMuted,
+  },
+  operationClose: {
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+  },
+  operationCloseText: {
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
+  },
   missionList: {
     gap: theme.spacing.sm,
     marginTop: theme.spacing.md,
+  },
+  missionGroups: {
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
+  missionGroup: {
+    gap: theme.spacing.sm,
+  },
+  missionGroupHeader: {
+    alignItems: "center",
+    borderBottomColor: theme.colors.borderSoft,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: theme.spacing.xs,
+  },
+  missionGroupLabel: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+  },
+  missionGroupCritical: {
+    color: theme.colors.neonPurple,
+  },
+  missionGroupDanger: {
+    color: theme.colors.red,
+  },
+  missionGroupCompleted: {
+    color: theme.colors.success,
+  },
+  missionGroupCount: {
+    ...theme.typography.small,
+    color: theme.colors.fire,
+  },
+  completedMissionList: {
+    marginTop: 0,
+    opacity: 0.82,
   },
   transitionPanel: {
     marginTop: theme.spacing.md,

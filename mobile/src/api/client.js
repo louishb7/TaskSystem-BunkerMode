@@ -182,6 +182,18 @@ export const api = {
   closeWeeklyReview(token, payload) {
     return request("/revisoes/fechar", { token, method: "POST", body: payload });
   },
+  listOperations(token) {
+    return request("/operacoes", { token });
+  },
+  createOperation(token, payload) {
+    return request("/operacoes", { token, method: "POST", body: payload });
+  },
+  closeOperation(token, operationId) {
+    return request(`/operacoes/${operationId}/encerrar`, { token, method: "PATCH" });
+  },
+  materializeOperations(token, payload) {
+    return request("/operacoes/materializar", { token, method: "POST", body: payload });
+  },
   deleteMission(token, missionId) {
     return request(`/missoes/${missionId}`, { token, method: "DELETE" });
   },

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
@@ -65,6 +65,12 @@ export default function GeneralCommandPage({
   const remainingCount = Math.max(0, selectedMissions.length - completedCount);
   const reviewCount = board.reviewMissions.length + (board.reviewState?.pending ? 1 : 0);
 
+  useEffect(() => {
+    const start = formatDateForApi(weekDays[0]);
+    const end = formatDateForApi(weekDays[weekDays.length - 1]);
+    board.materializeOperations?.({ start_date: start, end_date: end });
+  }, [weekDays]);
+
   function openCreateForm() {
     setEditingMission(null);
     board.setFormStatus(emptyStatus);
@@ -120,12 +126,19 @@ export default function GeneralCommandPage({
   return (
     <TacticalShell mode="general">
       <section className="general-layout">
-        <CommandRail
-          generalName={generalName}
-          onLogout={onLogout}
-          onOpenReview={onOpenReview}
-          reviewCount={reviewCount}
-        />
+        <aside className="general-side operational-side">
+          <TacticalSidePanel
+            remainingCount={remainingCount}
+            selectedDateLabel={selectedDateLabel}
+            selectedMissions={selectedMissions}
+          />
+          <ModeTransitionPanel
+            loading={modeLoading}
+            onActivateSoldier={() => setShowSoldierConfirm(true)}
+            orderCount={selectedMissions.length}
+            reviewCount={reviewCount}
+          />
+        </aside>
 
         <section className="general-board">
           <WeekPanel
@@ -152,7 +165,18 @@ export default function GeneralCommandPage({
           />
         </section>
 
-        <aside className="general-side">
+        <aside className="general-side command-side">
+          <CommandRail
+            generalName={generalName}
+            onCloseOperation={board.closeOperation}
+            onCreateOperation={board.createOperation}
+            onLogout={onLogout}
+            onOpenReview={onOpenReview}
+            operationLoading={board.operationLoading}
+            operationStatus={board.operationStatus}
+            operations={board.operations}
+            reviewCount={reviewCount}
+          />
           {formOpen && (
             <MissionForm
               currentUser={user}
@@ -169,17 +193,6 @@ export default function GeneralCommandPage({
               status={board.formStatus}
             />
           )}
-          <TacticalSidePanel
-            remainingCount={remainingCount}
-            selectedDateLabel={selectedDateLabel}
-            selectedMissions={selectedMissions}
-          />
-          <ModeTransitionPanel
-            loading={modeLoading}
-            onActivateSoldier={() => setShowSoldierConfirm(true)}
-            orderCount={selectedMissions.length}
-            reviewCount={reviewCount}
-          />
         </aside>
       </section>
 

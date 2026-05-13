@@ -96,6 +96,8 @@ export default function MissionCard({
   const canJustify = can(mission, "can_justify");
   const requiresJustification = mission?.requires_immediate_justification === true || (canJustify && isDecided);
   const completed = isCompleted(mission);
+  const deadlineLabel = formatDeadline(mission?.prazo);
+  const operationName = mission?.operacao_nome;
 
   useEffect(() => {
     setConfirmingToggle(false);
@@ -106,9 +108,11 @@ export default function MissionCard({
       <article className={`mission-card soldier-card ${isDecided ? "decided" : ""} ${canJustify ? "danger" : ""}`}>
         <div className="mission-badge-row">
           {isDecided && <span className="meta-tag critical">INEGOCIÁVEL</span>}
+          {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
           <span className="meta-tag">{statusText(mission)}</span>
         </div>
         <h3>{title}</h3>
+        {operationName && <p className="mission-origin">Operação: {operationName}</p>}
         {instruction && <p className="mission-instruction">{instruction}</p>}
 
         {canJustify && (
@@ -141,11 +145,13 @@ export default function MissionCard({
         <span className={`meta-tag ${isDecided ? "critical" : ""}`}>
           {isDecided ? "DECIDIDA" : "ORDEM"}
         </span>
-        <span className="meta-tag">{formatDeadline(mission?.prazo)}</span>
+        {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
+        {deadlineLabel !== "HOJE" && <span className="meta-tag">{deadlineLabel}</span>}
         <span className="meta-tag">{statusText(mission)}</span>
       </div>
 
       <h3>{title}</h3>
+      {operationName && <p className="mission-origin">Operação: {operationName}</p>}
       {instruction && <p className="mission-instruction">{instruction}</p>}
       {completed && <span className="done-label">CUMPRIDA</span>}
 

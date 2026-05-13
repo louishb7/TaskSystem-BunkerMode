@@ -19,6 +19,7 @@ export default function SoldierExecutionPage({
   const [unlockPassword, setUnlockPassword] = useState("");
   const [returnLoading, setReturnLoading] = useState(false);
   const remainingOrders = actionMissions.length;
+  const nextOrder = actionMissions[0];
 
   async function submitReturn(event) {
     event.preventDefault();
@@ -62,8 +63,8 @@ export default function SoldierExecutionPage({
                 {remainingOrders === 0
                   ? "Caçada concluída. Aguarde o retorno ao comando."
                   : remainingOrders === 1
-                    ? "1 ordem restante para matar o leão. Execute."
-                    : `${remainingOrders} ordens restantes para matar o leão. Execute.`}
+                    ? "1 ordem restante em execução."
+                    : `${remainingOrders} ordens restantes em execução.`}
               </strong>
             </div>
           </div>
@@ -81,19 +82,25 @@ export default function SoldierExecutionPage({
             message="O Soldado aguarda o quadro operacional."
           />
         ) : actionMissions.length > 0 ? (
-          <div className="mission-list soldier-list">
-            {actionMissions.map((mission) => (
-              <MissionCard
-                key={mission.id}
-                completing={board.completeLoadingId === mission.id}
-                justifying={board.justificationLoadingId === mission.id}
-                mission={mission}
-                onComplete={() => board.completeMission(mission)}
-                onJustify={board.submitFailureJustification}
-                variant="soldier"
-              />
-            ))}
-          </div>
+          <>
+            <div className="execution-focus-line">
+              <span>PRÓXIMA ORDEM</span>
+              <strong>{nextOrder?.titulo || "Ordem sem título"}</strong>
+            </div>
+            <div className="mission-list soldier-list">
+              {actionMissions.map((mission) => (
+                <MissionCard
+                  key={mission.id}
+                  completing={board.completeLoadingId === mission.id}
+                  justifying={board.justificationLoadingId === mission.id}
+                  mission={mission}
+                  onComplete={() => board.completeMission(mission)}
+                  onJustify={board.submitFailureJustification}
+                  variant="soldier"
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <EmptyState
             title="Caçada concluída"

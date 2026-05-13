@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getErrorMessage } from "../../../api/httpClient.js";
 import { emptyStatus } from "../../../constants/uiState.js";
@@ -32,6 +32,9 @@ export function useMissionBoard({
   const [registeredOutcomeMissions, setRegisteredOutcomeMissions] = useState([]);
   const [reviewState, setReviewState] = useState(null);
   const [weeklyReviews, setWeeklyReviews] = useState([]);
+  const [operations, setOperations] = useState([]);
+  const [operationLoading, setOperationLoading] = useState(false);
+  const [operationStatus, setOperationStatus] = useState(emptyStatus);
   const [missionLoading, setMissionLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [reviewLoadingId, setReviewLoadingId] = useState(null);
@@ -40,6 +43,7 @@ export function useMissionBoard({
   const [justificationLoadingId, setJustificationLoadingId] = useState(null);
   const [status, setStatus] = useState(emptyStatus);
   const [formStatus, setFormStatus] = useState(emptyStatus);
+  const materializingOperationsRef = useRef(new Set());
 
   const actionMissions = useMemo(() => getActionMissions(missions), [missions]);
   const dailyMissions = useMemo(
@@ -62,6 +66,8 @@ export function useMissionBoard({
       setRegisteredOutcomeMissions([]);
       setReviewState(null);
       setWeeklyReviews([]);
+      setOperations([]);
+      setOperationStatus(emptyStatus);
       setStatus(emptyStatus);
       setFormStatus(emptyStatus);
       return;
@@ -81,12 +87,20 @@ export function useMissionBoard({
     }
 
     setMissionLoading(true);
-    const [missionsResult, reviewResult, historicalResult, reviewStateResult, weeklyReviewsResult] = await Promise.all([
+    const [
+      missionsResult,
+      reviewResult,
+      historicalResult,
+      reviewStateResult,
+      weeklyReviewsResult,
+      operationsResult,
+    ] = await Promise.all([
       api.listMissions(token),
       api.listReviewMissions(token),
       api.listHistoricalMissions(token),
       api.getReviewState(token),
       api.listWeeklyReviews(token),
+      api.listOperations(token),
     ]);
     setMissionLoading(false);
 
@@ -96,6 +110,7 @@ export function useMissionBoard({
       || onUnauthorized(historicalResult)
       || onUnauthorized(reviewStateResult)
       || onUnauthorized(weeklyReviewsResult)
+      || onUnauthorized(operationsResult)
     ) {
       return;
     }
@@ -154,6 +169,17 @@ export function useMissionBoard({
       return;
     }
 
+    if (operationsResult.ok) {
+      setOperations(Array.isArray(operationsResult.data) ? operationsResult.data : []);
+    } else {
+      setOperations([]);
+      setStatus({
+        type: "error",
+        message: getErrorMessage(operationsResult, "Não foi possível carregar operações."),
+      });
+      return;
+    }
+
     setDailyProgressMissions([]);
     setRegisteredOutcomeMissions([]);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
@@ -198,7 +224,90 @@ export function useMissionBoard({
     setHistoricalMissions([]);
     setReviewState(null);
     setWeeklyReviews([]);
+    setOperations([]);
+    setOperationStatus(emptyStatus);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
+  }
+
+  async function materializeOperations(payload) {
+    if (!token) {
+      return false;
+    }
+    const key = `${payload?.start_date || ""}:${payload?.end_date || ""}`;
+    if (materializingOperationsRef.current.has(key)) {
+      return true;
+    }
+
+    materializingOperationsRef.current.add(key);
+    try {
+      const result = await api.materializeOperations(token, payload);
+      if (onUnauthorized(result)) {
+        return false;
+      }
+      if (!result.ok) {
+        setStatus({
+          type: "error",
+          message: getErrorMessage(result, "Não foi possível preparar as ordens da operação."),
+        });
+        return false;
+      }
+      await loadGeneralBoard();
+      return true;
+    } finally {
+      materializingOperationsRef.current.delete(key);
+    }
+  }
+
+  async function createOperation(payload) {
+    if (operationLoading) {
+      return false;
+    }
+    setOperationLoading(true);
+    setOperationStatus(emptyStatus);
+    const result = await api.createOperation(token, payload);
+    setOperationLoading(false);
+
+    if (onUnauthorized(result)) {
+      return false;
+    }
+
+    if (!result.ok) {
+      setOperationStatus({
+        type: "error",
+        message: getErrorMessage(result, "Não foi possível registrar a operação."),
+      });
+      return false;
+    }
+
+    await loadGeneralBoard("Operação registrada.");
+    setOperationStatus({ type: "success", message: "Operação registrada." });
+    return true;
+  }
+
+  async function closeOperation(operationId) {
+    if (operationLoading) {
+      return false;
+    }
+    setOperationLoading(true);
+    setOperationStatus(emptyStatus);
+    const result = await api.closeOperation(token, operationId);
+    setOperationLoading(false);
+
+    if (onUnauthorized(result)) {
+      return false;
+    }
+
+    if (!result.ok) {
+      setOperationStatus({
+        type: "error",
+        message: getErrorMessage(result, "Não foi possível encerrar a operação."),
+      });
+      return false;
+    }
+
+    await loadGeneralBoard("Operação encerrada.");
+    setOperationStatus({ type: "success", message: "Operação encerrada." });
+    return true;
   }
 
   async function createMission(payload) {
@@ -421,8 +530,10 @@ export function useMissionBoard({
     actionMissions,
     clearFailureReport,
     closeWeeklyReview,
+    closeOperation,
     completeLoadingId,
     completeMission,
+    createOperation,
     createMission,
     dailyMissions,
     decisionLoadingId,
@@ -433,6 +544,10 @@ export function useMissionBoard({
     justificationLoadingId,
     missionLoading,
     missions,
+    materializeOperations,
+    operationLoading,
+    operationStatus,
+    operations,
     reviewLoadingId,
     reviewMissions,
     reviewState,

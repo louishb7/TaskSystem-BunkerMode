@@ -3,8 +3,11 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     psycopg = None
 
+import json
+
 from auditoria import EventoAuditoria
 from missao import Missao
+from operacao import Operacao
 from revisao import RevisaoSemanal
 from usuario import Usuario
 
@@ -138,11 +141,40 @@ class RepositorioPostgres:
             ADD COLUMN IF NOT EXISTS general_verdict TEXT NULL;
             """,
             """
+            CREATE TABLE IF NOT EXISTS operacoes (
+                operacao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+                nome TEXT NOT NULL,
+                descricao TEXT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                weekdays TEXT NOT NULL,
+                ordem_titulo TEXT NOT NULL,
+                ordem_instrucao TEXT NULL,
+                is_decided BOOLEAN NOT NULL DEFAULT FALSE,
+                status TEXT NOT NULL DEFAULT 'ativa',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
             CREATE TABLE IF NOT EXISTS missao_contextos (
                 missao_id INTEGER PRIMARY KEY,
                 criada_por_id INTEGER NULL REFERENCES usuarios(usuario_id) ON DELETE SET NULL,
                 responsavel_id INTEGER NULL REFERENCES usuarios(usuario_id) ON DELETE SET NULL
             );
+            """,
+            """
+            ALTER TABLE IF EXISTS missao_contextos
+            ADD COLUMN IF NOT EXISTS operacao_id INTEGER NULL REFERENCES operacoes(operacao_id) ON DELETE SET NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS missao_contextos
+            ADD COLUMN IF NOT EXISTS operacao_dia DATE NULL;
+            """,
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_missao_contextos_operacao_dia
+            ON missao_contextos (operacao_id, operacao_dia)
+            WHERE operacao_id IS NOT NULL AND operacao_dia IS NOT NULL;
             """,
             """
             CREATE TABLE IF NOT EXISTS auditoria_eventos (
@@ -202,6 +234,8 @@ class RepositorioPostgres:
             failure_reason = None
             soldier_excuse = None
             general_verdict = None
+            operacao_id = None
+            operacao_nome = None
         elif len(linha) == 10:
             (
                 missao_id,
@@ -219,6 +253,8 @@ class RepositorioPostgres:
             completed_at = None
             failure_reason_type = None
             failure_reason = soldier_excuse
+            operacao_id = None
+            operacao_nome = None
         elif len(linha) == 13:
             (
                 missao_id,
@@ -236,6 +272,27 @@ class RepositorioPostgres:
                 general_verdict,
             ) = linha
             failure_reason_type = None
+            operacao_id = None
+            operacao_nome = None
+        elif len(linha) == 16:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
+                is_decided,
+                created_at,
+                completed_at,
+                failed_at,
+                failure_reason_type,
+                failure_reason,
+                soldier_excuse,
+                general_verdict,
+                operacao_id,
+                operacao_nome,
+            ) = linha
         else:
             (
                 missao_id,
@@ -253,6 +310,8 @@ class RepositorioPostgres:
                 soldier_excuse,
                 general_verdict,
             ) = linha
+            operacao_id = None
+            operacao_nome = None
         return Missao(
             missao_id=missao_id,
             titulo=titulo,
@@ -268,6 +327,8 @@ class RepositorioPostgres:
             failure_reason=failure_reason,
             soldier_excuse=soldier_excuse,
             general_verdict=general_verdict,
+            operacao_id=operacao_id,
+            operacao_nome=operacao_nome,
         )
 
     def _reconstruir_usuario(self, linha: tuple) -> Usuario:
@@ -358,6 +419,36 @@ class RepositorioPostgres:
             observacao=observacao,
         )
 
+    def _reconstruir_operacao(self, linha: tuple) -> Operacao:
+        (
+            operacao_id,
+            usuario_id,
+            nome,
+            descricao,
+            start_date,
+            end_date,
+            weekdays,
+            ordem_titulo,
+            ordem_instrucao,
+            is_decided,
+            status,
+            created_at,
+        ) = linha
+        return Operacao(
+            operacao_id=operacao_id,
+            usuario_id=usuario_id,
+            nome=nome,
+            descricao=descricao,
+            start_date=start_date,
+            end_date=end_date,
+            weekdays=json.loads(weekdays),
+            ordem_titulo=ordem_titulo,
+            ordem_instrucao=ordem_instrucao,
+            is_decided=is_decided,
+            status=status,
+            created_at=created_at,
+        )
+
     def carregar_dados(self) -> list[Missao]:
         self.inicializar_schema()
         try:
@@ -365,10 +456,13 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided,
-                               created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
-                        FROM missoes
-                        ORDER BY prioridade, missao_id;
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
+                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
+                        FROM missoes m
+                        LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
+                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
+                        ORDER BY m.prioridade, m.missao_id;
                         """
                     )
                     linhas = cursor.fetchall()
@@ -388,9 +482,11 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
-                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason, m.soldier_excuse, m.general_verdict
+                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
+                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
                         WHERE mc.responsavel_id = %s
                         ORDER BY m.prioridade, m.missao_id;
                         """,
@@ -412,10 +508,13 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT missao_id, titulo, prioridade, prazo, instrucao, status, is_decided,
-                               created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
-                        FROM missoes
-                        WHERE missao_id = %s;
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
+                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
+                        FROM missoes m
+                        LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
+                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
+                        WHERE m.missao_id = %s;
                         """,
                         (missao_id,),
                     )
@@ -770,6 +869,8 @@ class RepositorioPostgres:
         missao_id: int,
         criada_por_id: int | None,
         responsavel_id: int | None,
+        operacao_id: int | None = None,
+        operacao_dia=None,
     ) -> None:
         self.inicializar_schema()
         try:
@@ -777,13 +878,15 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO missao_contextos (missao_id, criada_por_id, responsavel_id)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO missao_contextos (missao_id, criada_por_id, responsavel_id, operacao_id, operacao_dia)
+                        VALUES (%s, %s, %s, %s, %s)
                         ON CONFLICT (missao_id)
                         DO UPDATE SET criada_por_id = EXCLUDED.criada_por_id,
-                                      responsavel_id = EXCLUDED.responsavel_id;
+                                      responsavel_id = EXCLUDED.responsavel_id,
+                                      operacao_id = EXCLUDED.operacao_id,
+                                      operacao_dia = EXCLUDED.operacao_dia;
                         """,
-                        (missao_id, criada_por_id, responsavel_id),
+                        (missao_id, criada_por_id, responsavel_id, operacao_id, operacao_dia),
                     )
                 conexao.commit()
         except ErroRepositorio:
@@ -799,7 +902,7 @@ class RepositorioPostgres:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
                     cursor.execute(
-                        "SELECT criada_por_id, responsavel_id FROM missao_contextos WHERE missao_id = %s;",
+                        "SELECT criada_por_id, responsavel_id, operacao_id, operacao_dia FROM missao_contextos WHERE missao_id = %s;",
                         (missao_id,),
                     )
                     linha = cursor.fetchone()
@@ -811,11 +914,231 @@ class RepositorioPostgres:
             ) from erro
         if linha is None:
             return None
-        criada_por_id, responsavel_id = linha
+        criada_por_id, responsavel_id, operacao_id, operacao_dia = linha
         return {
             "criada_por_id": criada_por_id,
             "responsavel_id": responsavel_id,
+            "operacao_id": operacao_id,
+            "operacao_dia": operacao_dia,
         }
+
+    def adicionar_operacao(self, operacao: Operacao) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO operacoes (
+                            usuario_id, nome, descricao, start_date, end_date, weekdays,
+                            ordem_titulo, ordem_instrucao, is_decided, status, created_at
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING operacao_id;
+                        """,
+                        (
+                            operacao.usuario_id,
+                            operacao.nome,
+                            operacao.descricao,
+                            operacao.start_date,
+                            operacao.end_date,
+                            json.dumps(operacao.weekdays),
+                            operacao.ordem_titulo,
+                            operacao.ordem_instrucao,
+                            operacao.is_decided,
+                            operacao.status,
+                            operacao.created_at,
+                        ),
+                    )
+                    operacao.atualizar_operacao_id(cursor.fetchone()[0])
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao adicionar operação no banco de dados."
+            ) from erro
+
+    def listar_operacoes_por_usuario(self, usuario_id: int) -> list[Operacao]:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT operacao_id, usuario_id, nome, descricao, start_date, end_date,
+                               weekdays, ordem_titulo, ordem_instrucao, is_decided, status, created_at
+                        FROM operacoes
+                        WHERE usuario_id = %s
+                        ORDER BY status ASC, start_date DESC, operacao_id DESC;
+                        """,
+                        (usuario_id,),
+                    )
+                    linhas = cursor.fetchall()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao listar operações no banco de dados."
+            ) from erro
+        return [self._reconstruir_operacao(linha) for linha in linhas]
+
+    def buscar_operacao_por_id(self, operacao_id: int) -> Operacao | None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT operacao_id, usuario_id, nome, descricao, start_date, end_date,
+                               weekdays, ordem_titulo, ordem_instrucao, is_decided, status, created_at
+                        FROM operacoes
+                        WHERE operacao_id = %s;
+                        """,
+                        (operacao_id,),
+                    )
+                    linha = cursor.fetchone()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao buscar operação no banco de dados."
+            ) from erro
+        return None if linha is None else self._reconstruir_operacao(linha)
+
+    def atualizar_operacao(self, operacao: Operacao) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        UPDATE operacoes
+                        SET nome = %s,
+                            descricao = %s,
+                            start_date = %s,
+                            end_date = %s,
+                            weekdays = %s,
+                            ordem_titulo = %s,
+                            ordem_instrucao = %s,
+                            is_decided = %s,
+                            status = %s
+                        WHERE operacao_id = %s AND usuario_id = %s;
+                        """,
+                        (
+                            operacao.nome,
+                            operacao.descricao,
+                            operacao.start_date,
+                            operacao.end_date,
+                            json.dumps(operacao.weekdays),
+                            operacao.ordem_titulo,
+                            operacao.ordem_instrucao,
+                            operacao.is_decided,
+                            operacao.status,
+                            operacao.operacao_id,
+                            operacao.usuario_id,
+                        ),
+                    )
+                    if cursor.rowcount == 0:
+                        raise EscritaRepositorioError(
+                            f"Operação {operacao.operacao_id} não encontrada para atualização."
+                        )
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao atualizar operação no banco de dados."
+            ) from erro
+
+    def buscar_missao_de_operacao_por_data(self, operacao_id: int, prazo) -> Missao | None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
+                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
+                        FROM missoes m
+                        JOIN missao_contextos mc ON mc.missao_id = m.missao_id
+                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
+                        WHERE mc.operacao_id = %s AND (mc.operacao_dia = %s OR m.prazo = %s)
+                        LIMIT 1;
+                        """,
+                        (operacao_id, prazo, prazo),
+                    )
+                    linha = cursor.fetchone()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao buscar ordem de operação no banco de dados."
+            ) from erro
+        return None if linha is None else self._reconstruir_missao(linha)
+
+    def criar_missao_de_operacao_se_ausente(
+        self,
+        missao: Missao,
+        criada_por_id: int,
+        responsavel_id: int,
+        operacao_id: int,
+        operacao_dia,
+    ) -> Missao | None:
+        self.inicializar_schema()
+        existente = self.buscar_missao_de_operacao_por_data(operacao_id, operacao_dia)
+        if existente is not None:
+            return None
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO missoes (
+                            titulo, prioridade, prazo, instrucao, status, is_decided,
+                            created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING missao_id;
+                        """,
+                        (
+                            missao.titulo,
+                            missao.prioridade.value,
+                            missao.prazo_date,
+                            missao.instrucao,
+                            missao.status.value,
+                            missao.is_decided,
+                            missao.created_at,
+                            missao.completed_at,
+                            missao.failed_at,
+                            None if missao.failure_reason_type is None else missao.failure_reason_type.value,
+                            missao.failure_reason,
+                            missao.soldier_excuse,
+                            missao.general_verdict,
+                        ),
+                    )
+                    missao_id = cursor.fetchone()[0]
+                    cursor.execute(
+                        """
+                        INSERT INTO missao_contextos (
+                            missao_id, criada_por_id, responsavel_id, operacao_id, operacao_dia
+                        )
+                        VALUES (%s, %s, %s, %s, %s);
+                        """,
+                        (missao_id, criada_por_id, responsavel_id, operacao_id, operacao_dia),
+                    )
+                    missao.atualizar_missao_id(missao_id)
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.errors.UniqueViolation:
+            return None
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao criar ordem de operação no banco de dados."
+            ) from erro
+        return missao
 
     def registrar_auditoria(self, evento: EventoAuditoria) -> None:
         self.inicializar_schema()

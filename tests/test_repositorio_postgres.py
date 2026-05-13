@@ -139,7 +139,7 @@ def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
     assert missoes[0].is_decided is False
     assert missoes[1].status == StatusMissao.CONCLUIDA
     assert missoes[1].is_decided is True
-    assert "ORDER BY prioridade, missao_id" in cursor.executions[-1][0]
+    assert "ORDER BY m.prioridade, m.missao_id" in cursor.executions[-1][0]
 
 
 def test_buscar_por_id_retorna_none_quando_nao_encontra(monkeypatch, repositorio):

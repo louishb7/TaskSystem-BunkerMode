@@ -22,8 +22,8 @@ export default function SoldierHeader({ currentDay, remainingCount = 0, totalCou
             {remainingCount === 0
               ? "Caçada concluída. Aguarde o retorno ao comando."
               : remainingCount === 1
-                ? "1 ordem restante para matar o leão. Execute."
-                : `${remainingCount} ordens restantes para matar o leão. Execute.`}
+                ? "1 ordem restante em execução."
+                : `${remainingCount} ordens restantes em execução.`}
           </Text>
         </View>
       </View>

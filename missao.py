@@ -61,6 +61,8 @@ class Missao:
         soldier_excuse=None,
         general_verdict=None,
         user_id=None,
+        operacao_id=None,
+        operacao_nome=None,
     ):
         self.missao_id = self._validar_missao_id(missao_id)
         self.titulo = self._validar_titulo(titulo)
@@ -79,6 +81,11 @@ class Missao:
         )
         self.general_verdict = self._validar_general_verdict(general_verdict)
         self.user_id = self._validar_user_id(user_id)
+        self.operacao_id = self._validar_operacao_id(operacao_id)
+        self.operacao_nome = self._validar_texto_opcional(
+            operacao_nome,
+            "Nome da operação não pode ser vazio.",
+        )
         self._normalizar_consistencia_inicial()
 
     @property
@@ -109,6 +116,8 @@ class Missao:
             "soldier_excuse": self.failure_reason,
             "general_verdict": self.general_verdict,
             "user_id": self.user_id,
+            "operacao_id": self.operacao_id,
+            "operacao_nome": self.operacao_nome,
             "requires_immediate_justification": self.requires_immediate_justification(),
             "has_pending_non_blocking_justification": self.has_pending_non_blocking_justification(),
             "permissions": permissions or {
@@ -192,6 +201,8 @@ class Missao:
         return self.can_be_completed(reference_date=referencia)
 
     def can_be_edited_by_general(self):
+        if self.operacao_id is not None:
+            return False
         return (
             self.is_pending()
             or self.is_completed()
@@ -199,9 +210,13 @@ class Missao:
         )
 
     def can_be_marked_decided(self):
+        if self.operacao_id is not None:
+            return False
         return self.is_pending()
 
     def can_be_deleted_by_general(self):
+        if self.operacao_id is not None:
+            return False
         return self.is_operational()
 
     def requires_soldier_justification(self):
@@ -414,6 +429,13 @@ class Missao:
         if not isinstance(user_id, int) or user_id < 1:
             raise ValueError("ID do usuário da missão deve ser um inteiro positivo.")
         return user_id
+
+    def _validar_operacao_id(self, operacao_id):
+        if operacao_id is None:
+            return None
+        if not isinstance(operacao_id, int) or operacao_id < 1:
+            raise ValueError("ID da operação da missão deve ser um inteiro positivo.")
+        return operacao_id
 
     def _validar_prioridade(self, prioridade):
         if isinstance(prioridade, PrioridadeMissao):

@@ -1,11 +1,17 @@
 import React from "react";
 
 import BrandSymbol from "../../../components/ui/BrandSymbol.jsx";
+import OperationsPanel from "../../operations/components/OperationsPanel.jsx";
 
 export default function CommandRail({
   generalName,
+  onCloseOperation,
+  onCreateOperation,
   onLogout,
   onOpenReview,
+  operationLoading,
+  operationStatus,
+  operations,
   reviewCount,
 }) {
   return (
@@ -23,6 +29,13 @@ export default function CommandRail({
           ABRIR RELATÓRIO
           {reviewCount > 0 && <span className="count-badge">{reviewCount}</span>}
         </button>
+        <OperationsPanel
+          loading={operationLoading}
+          onCloseOperation={onCloseOperation}
+          onCreateOperation={onCreateOperation}
+          operations={operations}
+          status={operationStatus}
+        />
         <button className="button secondary" type="button" onClick={onLogout}>
           SAIR
         </button>

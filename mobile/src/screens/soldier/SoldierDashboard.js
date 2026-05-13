@@ -254,6 +254,15 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
             <StatusNotice type="info" message={notice} />
           </View>
 
+          {actionMissions.length > 0 ? (
+            <View style={styles.focusLine}>
+              <Text style={styles.focusLabel}>PRÓXIMA ORDEM</Text>
+              <Text numberOfLines={1} style={styles.focusTitle}>
+                {actionMissions[0]?.titulo || "Ordem sem título"}
+              </Text>
+            </View>
+          ) : null}
+
           <FlatList
             contentContainerStyle={[
               styles.listContent,
@@ -413,6 +422,28 @@ const styles = StyleSheet.create({
   },
   notices: {
     marginTop: theme.spacing.md,
+  },
+  focusLine: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.24)",
+    borderColor: theme.colors.fireBorder,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    justifyContent: "space-between",
+    marginTop: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  focusLabel: {
+    ...theme.typography.small,
+    color: theme.colors.fire,
+  },
+  focusTitle: {
+    ...theme.typography.label,
+    color: theme.colors.text,
+    flex: 1,
+    textAlign: "right",
   },
   progressPanel: {
     borderColor: "rgba(255,138,42,0.22)",

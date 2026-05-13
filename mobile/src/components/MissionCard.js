@@ -135,6 +135,7 @@ export default function MissionCard({
   const statusLabel = statusText(mission);
   const isDecided = mission?.is_decided === true;
   const completed = isCompleted(mission);
+  const operationName = mission?.operacao_nome;
   const canComplete = can(mission, "can_complete");
   const canJustify = can(mission, "can_justify");
   const requiresJustification = isDecided;
@@ -172,10 +173,18 @@ export default function MissionCard({
               </Text>
             </View>
           ) : null}
+          {operationName ? (
+            <View style={[styles.orderCode, styles.orderCodeOperation]}>
+              <Text style={[styles.orderCodeText, styles.orderCodeOperationText]}>OPERAÇÃO</Text>
+            </View>
+          ) : null}
           <Text numberOfLines={1} style={styles.status}>{statusLabel}</Text>
         </View>
 
         <Text numberOfLines={2} style={styles.soldierTitle}>{title}</Text>
+        {operationName ? (
+          <Text numberOfLines={1} style={styles.origin}>Operação: {operationName}</Text>
+        ) : null}
         {instruction ? (
           <Text numberOfLines={4} style={styles.instruction}>{instruction}</Text>
         ) : null}
@@ -254,11 +263,15 @@ export default function MissionCard({
         <Text style={[styles.metaTag, isDecided && styles.metaTagCritical]}>
           {isDecided ? "DECIDIDA" : "ORDEM"}
         </Text>
+        {operationName ? <Text style={[styles.metaTag, styles.metaTagOperation]}>OPERAÇÃO</Text> : null}
         <Text style={styles.metaTag}>{formatDeadline(mission?.prazo)}</Text>
         <Text style={styles.metaTag}>{statusLabel}</Text>
       </View>
 
       <Text style={styles.title}>{title}</Text>
+      {operationName ? (
+        <Text numberOfLines={1} style={styles.origin}>Operação: {operationName}</Text>
+      ) : null}
       {instruction ? (
         <Text numberOfLines={3} style={styles.instruction}>{instruction}</Text>
       ) : null}
@@ -415,6 +428,13 @@ const styles = StyleSheet.create({
   orderCodeCriticalText: {
     color: theme.colors.neonPurple,
   },
+  orderCodeOperation: {
+    backgroundColor: "rgba(255,138,42,0.08)",
+    borderColor: theme.colors.fireBorder,
+  },
+  orderCodeOperationText: {
+    color: theme.colors.fire,
+  },
   status: {
     ...theme.typography.small,
     color: theme.colors.textMuted,
@@ -439,6 +459,11 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     marginTop: theme.spacing.sm,
   },
+  origin: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+    marginTop: theme.spacing.xs,
+  },
   badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -457,6 +482,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.purpleDark,
     borderColor: theme.colors.purpleBorder,
     color: theme.colors.neonPurple,
+  },
+  metaTagOperation: {
+    backgroundColor: "rgba(255,138,42,0.08)",
+    borderColor: theme.colors.fireBorder,
+    color: theme.colors.fire,
   },
   statusRow: {
     alignItems: "center",
