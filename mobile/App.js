@@ -38,8 +38,9 @@ export default function App() {
       setToken(null);
       setUser(null);
     } else {
-      setToken(session.token);
-      setUser(session.user);
+      await clearSession();
+      setToken(null);
+      setUser(null);
     }
     setBooting(false);
   }

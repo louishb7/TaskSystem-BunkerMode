@@ -177,6 +177,7 @@ export default function GeneralCommandPage({
           <ModeTransitionPanel
             loading={modeLoading}
             onActivateSoldier={() => setShowSoldierConfirm(true)}
+            orderCount={selectedMissions.length}
             reviewCount={reviewCount}
           />
         </aside>
@@ -187,6 +188,7 @@ export default function GeneralCommandPage({
           loading={modeLoading}
           onCancel={() => setShowSoldierConfirm(false)}
           onConfirm={confirmActivateSoldier}
+          orderCount={selectedMissions.length}
         />
       )}
     </TacticalShell>

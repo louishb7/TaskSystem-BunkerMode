@@ -17,6 +17,7 @@ export default function SoldierHeader({ currentDay, remainingCount = 0, totalCou
           <Text style={styles.title}>LEÃO DO DIA</Text>
           <Text style={styles.subtitle}>{currentDay}</Text>
           <View style={styles.rule} />
+          <Text style={styles.lockNote}>Planejamento bloqueado. Somente execução.</Text>
           <Text style={styles.directive}>
             {remainingCount === 0
               ? "Caçada concluída. Aguarde o retorno ao comando."
@@ -71,6 +72,11 @@ const styles = StyleSheet.create({
   directive: {
     ...theme.typography.small,
     color: theme.colors.text,
+    marginTop: theme.spacing.sm,
+  },
+  lockNote: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
     marginTop: theme.spacing.sm,
   },
   briefing: {

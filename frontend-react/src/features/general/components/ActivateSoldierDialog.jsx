@@ -4,6 +4,7 @@ export default function ActivateSoldierDialog({
   loading,
   onCancel,
   onConfirm,
+  orderCount = 0,
 }) {
   return (
     <div className="modal-backdrop" role="presentation">
@@ -11,8 +12,13 @@ export default function ActivateSoldierDialog({
         <p className="section-kicker fire">ATIVAR SOLDADO</p>
         <h2>Entrar em execução</h2>
         <p className="muted">
-          O General já decidiu. Ao entrar, o Soldado executa sem editar, apagar ou renegociar ordens.
+          O plano já foi decidido. Ao entrar em execução, planejamento fica bloqueado.
         </p>
+        <div className="protocol-brief">
+          <span>{orderCount === 1 ? "1 ordem disponível" : `${orderCount} ordens disponíveis`}</span>
+          <span>Sem criação, edição ou renegociação.</span>
+          <span>O Soldado executa apenas o que está no quadro.</span>
+        </div>
         <div className="actions-row">
           <button className="button secondary" type="button" onClick={onCancel}>
             CANCELAR

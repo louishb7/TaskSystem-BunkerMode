@@ -1197,6 +1197,25 @@ h3 {
   font-size: 0.82rem;
 }
 
+.mode-transition-count {
+  color: var(--fire);
+  font-weight: 800;
+}
+
+.protocol-brief {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border-soft);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 12px;
+}
+
+.protocol-brief span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .review-screen {
   display: grid;
   width: min(980px, 100%);
@@ -1684,6 +1703,14 @@ h3 {
 .mission-card.soldier-card .mission-instruction {
   max-width: 58ch;
   line-height: 1.55;
+}
+
+.soldier-lock-note {
+  margin: 0 0 8px;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .soldier-footer {

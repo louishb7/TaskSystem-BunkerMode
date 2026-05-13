@@ -48,7 +48,16 @@ export default function App() {
       return false;
     }
 
-    await auth.reloadCurrentUser();
+    auth.syncUserFromServer(result.data);
+    const confirmedUser = await auth.reloadCurrentUser("soldier");
+    if (!confirmedUser) {
+      board.setStatus({
+        type: "error",
+        message: "Soldado ativado, mas a sessão não confirmou o modo ativo.",
+      });
+      return false;
+    }
+
     setActiveRoute(APP_ROUTES.GENERAL_HOME);
     return true;
   }
@@ -69,7 +78,16 @@ export default function App() {
       return false;
     }
 
-    await auth.reloadCurrentUser();
+    auth.syncUserFromServer(result.data);
+    const confirmedUser = await auth.reloadCurrentUser("general");
+    if (!confirmedUser) {
+      board.setStatus({
+        type: "error",
+        message: "Retorno ao General não foi confirmado pela sessão.",
+      });
+      return false;
+    }
+
     setActiveRoute(board.hasRegisteredOutcomes ? APP_ROUTES.REVIEW : APP_ROUTES.GENERAL_HOME);
     return true;
   }

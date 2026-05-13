@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from api.routes import (
     alterar_timezone,
     alterar_turno_planejamento,
+    atualizar_modo_sessao,
     concluir_missao,
     criar_missao,
     definir_nome_general,
@@ -23,6 +24,8 @@ from api.routes import (
     obter_estado_revisao,
     listar_revisoes,
     fechar_revisao,
+    liberar_general,
+    obter_usuario_atual,
     registrar_justificativa_falha,
     registrar_usuario,
     revisar_justificativa,
@@ -37,9 +40,11 @@ from api.schemas import (
     PlanningWindowPayload,
     RegistroPayload,
     RevisaoJustificativaPayload,
+    SessionModePayload,
     SoldierExcusePayload,
     TimezonePayload,
     FecharRevisaoPayload,
+    UnlockGeneralPayload,
 )
 from missao import Missao, StatusMissao
 from services.auth_service import AuthService
@@ -226,6 +231,52 @@ def test_auth_register_login_e_me_v2():
     assert usuario["timezone_updated_at"] is None
     assert usuario_obj.usuario == "Henrique"
     assert usuario_obj.active_mode == "general"
+
+
+def test_api_confirma_active_mode_apos_ida_e_retorno_ao_general():
+    _, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
+
+    soldado = atualizar_modo_sessao(
+        SessionModePayload(mode="soldier"),
+        usuario=usuario,
+        auth_service=auth,
+    )
+
+    assert soldado["active_mode"] == "soldier"
+    assert obter_usuario_atual(usuario)["active_mode"] == "soldier"
+
+    with pytest.raises(HTTPException) as erro:
+        criar_missao(
+            MissaoCreatePayload(
+                titulo="Bloqueada no Soldado",
+                prioridade=1,
+                prazo="24-04-2026",
+                responsavel_id=usuario_dict["id"],
+            ),
+            usuario=usuario,
+            missao_service=missoes,
+        )
+    assert erro.value.status_code == 403
+
+    general = liberar_general(
+        UnlockGeneralPayload(senha="segredo123"),
+        usuario=usuario,
+        auth_service=auth,
+    )
+    criada = criar_missao(
+        MissaoCreatePayload(
+            titulo="Liberada no General",
+            prioridade=1,
+            prazo="24-04-2026",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    assert general["active_mode"] == "general"
+    assert obter_usuario_atual(usuario)["active_mode"] == "general"
+    assert criada["titulo"] == "Liberada no General"
 
 
 def test_api_altera_turno_e_timezone_apenas_no_modo_general():

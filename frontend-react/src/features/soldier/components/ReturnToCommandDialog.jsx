@@ -17,8 +17,13 @@ export default function ReturnToCommandDialog({
             <p className="section-kicker danger">PROTOCOLO DE SAÍDA</p>
             <h2>Retornar ao comando</h2>
             <p className="muted">
-              Você está saindo do modo de execução. Confirme antes de voltar ao Posto de Comando.
+              Encerrar execução libera planejamento apenas depois da confirmação do servidor.
             </p>
+            <div className="protocol-brief">
+              <span>O Soldado para de executar.</span>
+              <span>O General volta a criar e editar ordens.</span>
+              <span>A sessão será recarregada antes do retorno.</span>
+            </div>
             <div className="actions-row">
               <button className="button secondary" type="button" onClick={onCancel}>
                 CANCELAR

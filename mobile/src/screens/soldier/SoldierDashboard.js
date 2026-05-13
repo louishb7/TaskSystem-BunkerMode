@@ -95,13 +95,17 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     return false;
   }
 
-  async function reloadUser() {
+  async function reloadUser(expectedMode = null) {
     const result = await api.getCurrentUser(token);
     if (await handleUnauthorized(result)) {
       return false;
     }
     if (!result.ok) {
       setError(getErrorMessage(result, "Não foi possível recarregar o usuário."));
+      return false;
+    }
+    if (expectedMode && result.data?.active_mode !== expectedMode) {
+      setError("Modo ativo não confirmado pelo servidor.");
       return false;
     }
     await onUserChange(result.data);
@@ -202,7 +206,10 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
 
     setSenha("");
     setReturnStep("closed");
-    await reloadUser();
+    const confirmed = await reloadUser("general");
+    if (!confirmed) {
+      await onUserChange(result.data);
+    }
   }
 
   if (loading) {
@@ -310,7 +317,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
                 <>
                   <Text style={styles.protocolKicker}>PROTOCOLO DE SAÍDA</Text>
                   <Text style={styles.protocolText}>
-                    Você está saindo do modo de execução. Confirme antes de retornar ao comando.
+                    Encerrar execução libera planejamento apenas depois da confirmação do servidor.
                   </Text>
                   <View style={styles.protocolActions}>
                     <ProtocolButton

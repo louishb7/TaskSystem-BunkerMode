@@ -128,6 +128,7 @@ export default function GeneralDashboardScreen({
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [activeScreen, setActiveScreen] = useState("home");
   const [commandDockHeight, setCommandDockHeight] = useState(112);
+  const [soldierConfirmOpen, setSoldierConfirmOpen] = useState(false);
 
   useEffect(() => {
     loadAll({ initial: true });
@@ -272,24 +273,35 @@ export default function GeneralDashboardScreen({
   async function activateSoldier() {
     setActivatingSoldier(true);
     const result = await api.setSessionMode(token, { mode: "soldier" });
-    setActivatingSoldier(false);
     if (await handleUnauthorized(result)) {
+      setActivatingSoldier(false);
       return;
     }
     if (!result.ok) {
+      setActivatingSoldier(false);
       setError(getErrorMessage(result, "Não foi possível ativar o Soldado."));
       return;
     }
 
     const userResult = await api.getCurrentUser(token);
     if (await handleUnauthorized(userResult)) {
+      setActivatingSoldier(false);
       return;
     }
     if (!userResult.ok) {
-      setError(getErrorMessage(userResult, "Não foi possível recarregar o usuário."));
+      setActivatingSoldier(false);
+      setSoldierConfirmOpen(false);
+      await onUserChange(result.data);
+      return;
+    }
+    if (userResult.data?.active_mode !== "soldier") {
+      setActivatingSoldier(false);
+      setError(getErrorMessage(userResult, "Não foi possível confirmar o modo Soldado."));
       return;
     }
 
+    setActivatingSoldier(false);
+    setSoldierConfirmOpen(false);
     await onUserChange(userResult.data);
   }
 
@@ -538,11 +550,45 @@ export default function GeneralDashboardScreen({
           <ModeSwitchButton
             loading={activatingSoldier}
             mode="general"
-            onPress={activateSoldier}
+            onPress={() => setSoldierConfirmOpen(true)}
           />
         </TacticalPanel>
       </ScrollView>
       {commandDock}
+      {soldierConfirmOpen ? (
+        <View style={styles.protocolOverlay}>
+          <View style={styles.protocolBox}>
+            <Text style={styles.protocolKicker}>ATIVAR SOLDADO</Text>
+            <Text style={styles.protocolTitle}>Entrar em execução</Text>
+            <Text style={styles.protocolText}>
+              Ao entrar em execução, planejamento fica bloqueado. O Soldado não cria, edita ou renegocia ordens.
+            </Text>
+            <Text style={styles.protocolMeta}>
+              {selectedMissions.length === 1
+                ? "1 ordem no dia selecionado."
+                : `${selectedMissions.length} ordens no dia selecionado.`}
+            </Text>
+            <View style={styles.protocolActions}>
+              <Pressable
+                disabled={activatingSoldier}
+                onPress={() => setSoldierConfirmOpen(false)}
+                style={styles.protocolSecondary}
+              >
+                <Text style={styles.protocolSecondaryText}>CANCELAR</Text>
+              </Pressable>
+              <Pressable
+                disabled={activatingSoldier}
+                onPress={activateSoldier}
+                style={[styles.protocolPrimary, activatingSoldier && styles.protocolDisabled]}
+              >
+                <Text style={styles.protocolPrimaryText}>
+                  {activatingSoldier ? "ATIVANDO" : "ATIVAR SOLDADO"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      ) : null}
     </TacticalScreen>
   );
 }
@@ -726,5 +772,75 @@ const styles = StyleSheet.create({
   },
   transitionPanel: {
     marginTop: theme.spacing.md,
+  },
+  protocolOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.82)",
+    justifyContent: "center",
+    padding: theme.spacing.screen,
+  },
+  protocolBox: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
+    width: "100%",
+  },
+  protocolKicker: {
+    ...theme.typography.small,
+    color: theme.colors.fire,
+  },
+  protocolTitle: {
+    ...theme.typography.heading,
+    color: theme.colors.text,
+  },
+  protocolText: {
+    ...theme.typography.body,
+    color: theme.colors.textMuted,
+  },
+  protocolMeta: {
+    ...theme.typography.caption,
+    backgroundColor: "rgba(0,0,0,0.22)",
+    borderColor: theme.colors.borderSoft,
+    borderWidth: 1,
+    color: theme.colors.fire,
+    padding: theme.spacing.sm,
+  },
+  protocolActions: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+  },
+  protocolSecondary: {
+    alignItems: "center",
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  protocolSecondaryText: {
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
+  },
+  protocolPrimary: {
+    alignItems: "center",
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  protocolPrimaryText: {
+    ...theme.typography.small,
+    color: theme.colors.black,
+  },
+  protocolDisabled: {
+    opacity: 0.58,
   },
 });

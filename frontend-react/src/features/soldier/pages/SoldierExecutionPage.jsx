@@ -57,6 +57,7 @@ export default function SoldierExecutionPage({
               <h1>LEÃO DO DIA</h1>
               <p>{formatCurrentDay()}</p>
               <div className="soldier-rule" />
+              <p className="soldier-lock-note">Planejamento bloqueado. Somente execução permanece disponível.</p>
               <strong>
                 {remainingOrders === 0
                   ? "Caçada concluída. Aguarde o retorno ao comando."

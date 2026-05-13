@@ -72,9 +72,10 @@ export function useAuthSession() {
     }
 
     if (!result.ok) {
+      clearSession();
       setAuthStatus({
         type: "error",
-        message: getErrorMessage(result, "Não foi possível recarregar o usuário."),
+        message: getErrorMessage(result, "Sessão não confirmada. Entre novamente."),
       });
       return;
     }
@@ -128,7 +129,11 @@ export function useAuthSession() {
     setAuthStatus({ type: "success", message: "Conta criada. Entre no bunker para continuar." });
   }
 
-  async function reloadCurrentUser() {
+  function syncUserFromServer(nextUser) {
+    persistUser(nextUser);
+  }
+
+  async function reloadCurrentUser(expectedMode = null) {
     const result = await api.getCurrentUser(token);
 
     if (handleUnauthorized(result)) {
@@ -139,6 +144,14 @@ export function useAuthSession() {
       setAuthStatus({
         type: "error",
         message: getErrorMessage(result, "Não foi possível recarregar o usuário."),
+      });
+      return null;
+    }
+
+    if (expectedMode && result.data?.active_mode !== expectedMode) {
+      setAuthStatus({
+        type: "error",
+        message: "Modo ativo não confirmado pelo servidor. Recarregue a sessão.",
       });
       return null;
     }
@@ -158,6 +171,7 @@ export function useAuthSession() {
     login,
     register,
     reloadCurrentUser,
+    syncUserFromServer,
     token,
     user,
   };
