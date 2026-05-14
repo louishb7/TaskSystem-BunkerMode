@@ -76,24 +76,22 @@ export default function SoldierExecutionPage({
             <span>EXECUÇÃO</span>
           </div>
           <div className="soldier-briefing">
-            <LionEmblem compact />
-            <div>
+            <LionEmblem variant="hero" />
+            <div className="soldier-briefing-copy">
               <h1>LEÃO DO DIA</h1>
-              <p>{turnDateLabel}</p>
-              <div className="soldier-rule" />
+              <div className="soldier-briefing-meta">
+                <span>{turnDateLabel}</span>
+                <strong>
+                  {remainingOrders === 0
+                    ? "CAÇADA CONCLUÍDA"
+                    : "ORDENS EM EXECUÇÃO"}
+                </strong>
+              </div>
               <p className="soldier-lock-note">Planejamento bloqueado. Somente execução permanece disponível.</p>
-              <strong>
-                {remainingOrders === 0
-                  ? "Caçada concluída. Aguarde o retorno ao comando."
-                  : "Ordens em execução."}
-              </strong>
+              <MissionProgress label="CAÇADA" missions={dailyMissions.length > 0 ? dailyMissions : missions} />
             </div>
           </div>
         </header>
-
-        <section className="panel soldier-progress-panel" aria-label="Progresso da caçada do dia">
-          <MissionProgress label="CAÇADA" missions={dailyMissions.length > 0 ? dailyMissions : missions} />
-        </section>
 
         <StatusNotice status={board.status} />
 

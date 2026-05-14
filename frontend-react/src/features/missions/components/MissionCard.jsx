@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 
+import missionDecidedAsset from "../../../assets/bunkermode/mission/missao-decidida.png";
 import { isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js";
 import FailureJustificationForm from "./FailureJustificationForm.jsx";
 
@@ -65,7 +66,7 @@ function statusText(mission) {
 
   const compact = {
     PENDENTE: "PENDENTE",
-    CONCLUIDA: "EXECUTADA",
+    CONCLUIDA: "",
     FALHA_PENDENTE_JUSTIFICATIVA: "FALHOU",
     FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHOU",
     FALHA_REVISADA: "FALHA REVISADA",
@@ -104,6 +105,7 @@ export default function MissionCard({
   const deadlineLabel = formatDeadline(mission?.prazo);
   const operationName = mission?.operacao_nome;
   const failed = String(mission?.status_code || "").startsWith("FALHA");
+  const currentStatusText = statusText(mission);
 
   useEffect(() => {
     setConfirmingToggle(false);
@@ -115,7 +117,7 @@ export default function MissionCard({
     return (
       <article className={`mission-card soldier-card ${isDecided ? "decided" : ""} ${failed ? "danger" : ""}`}>
         <div className="mission-badge-row">
-          {isDecided && <span className="meta-tag critical">INEGOCIÁVEL</span>}
+          {isDecided && <span className="meta-tag critical"><img src={missionDecidedAsset} alt="" />INEGOCIÁVEL</span>}
           {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
           <span className="meta-tag">{statusText(mission)}</span>
         </div>
@@ -182,13 +184,25 @@ export default function MissionCard({
           <h3>{title}</h3>
           {operationName && <p className="mission-origin">Operação: {operationName}</p>}
         </div>
-        <div className="mission-badge-row">
-          {isPinned && <span className="meta-tag pinned">FIXADA</span>}
-          {isDecided && <span className="meta-tag critical">DECIDIDA</span>}
-          {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
-          {deadlineLabel !== "HOJE" && <span className="meta-tag">{deadlineLabel}</span>}
-          <span className="meta-tag">{statusText(mission)}</span>
+        <div className="mission-head-actions">
+          <button
+            className={`priority-icon-button ${isPinned ? "active" : ""}`}
+            aria-label={isPinned ? "Prioridade fixada" : "Elevar prioridade"}
+            disabled={disabled}
+            title={isPinned ? "Prioridade fixada" : "Elevar prioridade"}
+            type="button"
+            onClick={() => onTogglePin?.(mission)}
+          >
+            <span aria-hidden="true" />
+          </button>
         </div>
+      </div>
+
+      <div className="mission-badge-row mission-context-row">
+        {isPinned && <span className="meta-tag pinned">FIXADA</span>}
+        {isDecided && <span className="meta-tag critical"><img src={missionDecidedAsset} alt="" />DECIDIDA</span>}
+        {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
+        {deadlineLabel !== "HOJE" && <span className="meta-tag">{deadlineLabel}</span>}
       </div>
 
       {detailsOpen && (
@@ -198,11 +212,65 @@ export default function MissionCard({
           ) : (
             <p className="mission-instruction">Sem instrução adicional.</p>
           )}
-          {completed && <span className="done-label">CUMPRIDA</span>}
+          <div className="mission-actions detail-actions">
+            {can(mission, "can_toggle_decided") && (
+              confirmingToggle ? (
+                <>
+                  <button
+                    className="button danger compact"
+                    disabled={disabled}
+                    type="button"
+                    onClick={() => {
+                      setConfirmingToggle(false);
+                      onToggleDecision?.(mission);
+                    }}
+                  >
+                    {toggling ? "AGUARDE" : "CONFIRMAR RETIRADA"}
+                  </button>
+                  <button
+                    className="button secondary compact"
+                    disabled={disabled}
+                    type="button"
+                    onClick={() => setConfirmingToggle(false)}
+                  >
+                    CANCELAR
+                  </button>
+                </>
+              ) : (
+                <button
+                  className={`button compact ${isDecided ? "decision ghost" : "secondary"}`}
+                  disabled={disabled}
+                  type="button"
+                  onClick={() => {
+                    if (isDecided) {
+                      setConfirmingToggle(true);
+                      return;
+                    }
+                    onToggleDecision?.(mission);
+                  }}
+                >
+                  {toggling ? "AGUARDE" : isDecided ? "REMOVER DECIDIDA" : "MARCAR DECIDIDA"}
+                </button>
+              )
+            )}
+
+            {can(mission, "can_edit") && (
+              <button className="button secondary compact" disabled={disabled} type="button" onClick={onEdit}>
+                EDITAR
+              </button>
+            )}
+
+            {can(mission, "can_delete") && (
+              <button className="button secondary compact" disabled={disabled} type="button" onClick={onDelete}>
+                REMOVER
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      <div className="mission-actions">
+      <div className="mission-actions primary-actions">
+        {!completed && currentStatusText && <span className="meta-tag mission-footer-status">{currentStatusText}</span>}
         <button
           className="button secondary compact subtle"
           type="button"
@@ -210,68 +278,6 @@ export default function MissionCard({
         >
           {detailsOpen ? "OCULTAR" : "DETALHES"}
         </button>
-
-        <button
-          className={`button compact pin-action ${isPinned ? "decision ghost" : "secondary"}`}
-          disabled={disabled}
-          type="button"
-          onClick={() => onTogglePin?.(mission)}
-        >
-          {pinning ? "AGUARDE" : isPinned ? "PRIORIDADE FIXADA" : "SUBIR PRIORIDADE"}
-        </button>
-
-        {can(mission, "can_toggle_decided") && (
-          confirmingToggle ? (
-            <>
-              <button
-                className="button danger compact"
-                disabled={disabled}
-                type="button"
-                onClick={() => {
-                  setConfirmingToggle(false);
-                  onToggleDecision?.(mission);
-                }}
-              >
-                {toggling ? "AGUARDE" : "CONFIRMAR RETIRADA"}
-              </button>
-              <button
-                className="button secondary compact"
-                disabled={disabled}
-                type="button"
-                onClick={() => setConfirmingToggle(false)}
-              >
-                CANCELAR
-              </button>
-            </>
-          ) : (
-            <button
-              className={`button compact ${isDecided ? "decision ghost" : "secondary"}`}
-              disabled={disabled}
-              type="button"
-              onClick={() => {
-                if (isDecided) {
-                  setConfirmingToggle(true);
-                  return;
-                }
-                onToggleDecision?.(mission);
-              }}
-            >
-              {toggling ? "AGUARDE" : isDecided ? "REMOVER DECIDIDA" : "MARCAR DECIDIDA"}
-            </button>
-          )
-        )}
-
-        {can(mission, "can_edit") && (
-          <button className="button secondary compact" disabled={disabled} type="button" onClick={onEdit}>
-            EDITAR
-          </button>
-        )}
-
-        {can(mission, "can_delete") && (
-          <button className="button secondary compact" disabled={disabled} type="button" onClick={onDelete}>
-            REMOVER
-          </button>
-        )}
       </div>
     </article>
   );

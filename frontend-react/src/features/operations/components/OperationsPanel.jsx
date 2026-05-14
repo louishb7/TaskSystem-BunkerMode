@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 
+import operationsAsset from "../../../assets/bunkermode/operations/operacoes.png";
 import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 
 const WEEKDAYS = [
@@ -217,9 +218,12 @@ export default function OperationsPanel({
   return (
     <section className="command-operations">
       <div className="command-operations-head">
-        <div>
-          <span>OPERAÇÕES</span>
-          <p>Crie, acompanhe e encerre planos por período.</p>
+        <div className="asset-heading">
+          <img src={operationsAsset} alt="" />
+          <div>
+            <span>OPERAÇÕES</span>
+            <p>Crie, acompanhe e encerre planos por período.</p>
+          </div>
         </div>
         <div className="operation-panel-actions">
           <button

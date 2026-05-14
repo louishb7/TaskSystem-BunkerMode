@@ -1,16 +1,14 @@
 import React from "react";
 
-export default function LionEmblem({ compact = false }) {
+import lionEmblem from "../../assets/bunkermode/emblems/leao-do-dia.png";
+
+export default function LionEmblem({ compact = false, variant }) {
+  const resolvedVariant = variant || (compact ? "compact" : "panel");
+
   return (
-    <div className={`lion-emblem ${compact ? "compact" : ""}`} aria-hidden="true">
-      <span className="lion-emblem-ring" />
-      <span className="lion-emblem-helmet" />
-      <span className="lion-emblem-core">
-        <span className="lion-emblem-brow" />
-        <span className="lion-emblem-eye left" />
-        <span className="lion-emblem-eye right" />
-        <span className="lion-emblem-mark" />
-        <span className="lion-emblem-jaw" />
+    <div className={`lion-emblem ${resolvedVariant}`} aria-hidden="true">
+      <span className="lion-emblem-frame">
+        <img src={lionEmblem} alt="" />
       </span>
     </div>
   );

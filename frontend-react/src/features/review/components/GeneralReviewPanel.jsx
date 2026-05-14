@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 
+import archiveAsset from "../../../assets/bunkermode/archive/arquivo-missoes.png";
 import { formatDateTime, parseApiDate } from "../../../utils/date.js";
 import { STATUS_MISSAO, isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js";
 import { getWeekDays, normalizeMissionDate } from "../../calendar/calendarUtils.js";
@@ -468,8 +469,13 @@ export default function GeneralReviewPanel({
       </div>
 
       <div className="weekly-review-history">
-        <p className="section-kicker fire">ARQUIVO OPERACIONAL</p>
-        <h3>Semanas registradas</h3>
+        <div className="asset-heading compact">
+          <img src={archiveAsset} alt="" />
+          <div>
+            <p className="section-kicker fire">ARQUIVO OPERACIONAL</p>
+            <h3>Semanas registradas</h3>
+          </div>
+        </div>
         {weeklyReviews.length > 0 ? (
           <>
             <div className="review-week-grid" aria-label="Semanas revisadas">

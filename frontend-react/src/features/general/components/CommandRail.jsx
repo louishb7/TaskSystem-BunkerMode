@@ -1,5 +1,7 @@
 import React from "react";
 
+import operationsAsset from "../../../assets/bunkermode/operations/operacoes.png";
+import reviewAsset from "../../../assets/bunkermode/review/revisao-relatorio.png";
 import BrandSymbol from "../../../components/ui/BrandSymbol.jsx";
 
 export default function CommandRail({
@@ -21,11 +23,17 @@ export default function CommandRail({
       <p className="rail-note">Revise o quadro, abra o relatório e mantenha o comando limpo.</p>
       <div className="rail-actions">
         <button className="button secondary" type="button" onClick={onOpenReview}>
-          ABRIR RELATÓRIO
+          <span className="button-asset-label">
+            <img src={reviewAsset} alt="" />
+            ABRIR RELATÓRIO
+          </span>
           {reviewCount > 0 && <span className="count-badge">{reviewCount}</span>}
         </button>
         <button className="button secondary" type="button" onClick={onOpenOperations}>
-          OPERAÇÕES
+          <span className="button-asset-label">
+            <img src={operationsAsset} alt="" />
+            OPERAÇÕES
+          </span>
         </button>
         <button className="button secondary" type="button" onClick={onLogout}>
           SAIR

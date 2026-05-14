@@ -46,15 +46,16 @@ export default function DaySelector({
           >
             <button className="day-select-button" type="button" onClick={() => onSelectDate(date)}>
               <span className="day-week">{WEEK_LABELS[date.getDay()]}</span>
-              <span className="day-number">{dayNumber}</span>
               <span className="day-date">{dayNumber}/{monthNumber}</span>
-              <span className="day-today">{today ? "HOJE" : "\u00A0"}</span>
-              <span
-                className="day-execution"
-                aria-label={executionLabel ? (isDayOff ? "Dia off" : `${percent}% do Leão do Dia`) : "Dia futuro sem status"}
-              >
-                {executionLabel || "\u00A0"}
-              </span>
+              {today && <span className="day-status day-today">HOJE</span>}
+              {executionLabel && (
+                <span
+                  className="day-status day-execution"
+                  aria-label={isDayOff ? "Dia off" : `${percent}% do Leão do Dia`}
+                >
+                  {executionLabel}
+                </span>
+              )}
             </button>
           </div>
         );

@@ -1,5 +1,6 @@
 import React from "react";
 
+import generalModeAsset from "../../../assets/bunkermode/modes/modo-general.png";
 import LionEmblem from "../../../components/ui/LionEmblem.jsx";
 import { MissionProgress } from "../../missions/components/MissionCard.jsx";
 
@@ -19,8 +20,11 @@ export default function TacticalSidePanel({
 
   return (
     <section className="panel tactical-side-panel" aria-label="Painel tático do Leão do Dia">
-      <div className="lion-emblem-card">
-        <div className="lion-emblem-copy">
+      <div
+        className="lion-emblem-card"
+        style={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}
+      >
+        <div className="lion-emblem-copy" style={{ flex: 1 }}>
           <p className="section-kicker fire">LEÃO DO DIA</p>
           <h2>{selectedDateLabel}</h2>
           <p>
@@ -29,7 +33,9 @@ export default function TacticalSidePanel({
               : "Nenhuma caça definida para este dia."}
           </p>
         </div>
-        <LionEmblem />
+        <div className="lion-emblem-media" style={{ display: "flex", justifyContent: "center", width: 120 }}>
+          <LionEmblem variant="compact" />
+        </div>
       </div>
 
       <div className="side-block hunt-block">
@@ -37,6 +43,10 @@ export default function TacticalSidePanel({
       </div>
 
       <div className="side-block hunt-entry">
+        <div className="mode-heading compact">
+          <img src={generalModeAsset} alt="" />
+          <strong>General decide. Soldado executa.</strong>
+        </div>
         <p className="muted">
           {reviewCount > 0
             ? "Há revisão pendente. Entre somente se as ordens do dia estiverem fechadas."
