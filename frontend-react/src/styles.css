@@ -627,7 +627,7 @@ h3 {
 
 .day-week,
 .day-today,
-.day-load {
+.day-execution {
   font-size: 0.64rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -643,19 +643,15 @@ h3 {
   color: var(--fire);
 }
 
-.day-load {
+.day-execution {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 8px;
-  gap: 3px;
-}
-
-.day-load span {
-  display: block;
-  width: 12px;
-  height: 3px;
-  background: rgba(255, 138, 42, 0.44);
+  min-height: 24px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.24);
+  color: var(--text-dim);
+  padding: 4px 7px;
 }
 
 .day-node.complete {
@@ -665,10 +661,6 @@ h3 {
     var(--surface-raised);
 }
 
-.day-node.complete .day-load span {
-  background: var(--success);
-}
-
 .day-node.complete .day-number {
   color: var(--text);
 }
@@ -676,6 +668,27 @@ h3 {
 .day-node.complete.selected {
   border-color: var(--fire);
   box-shadow: inset 0 -2px 0 var(--fire), 0 0 0 1px rgba(103, 197, 135, 0.16);
+}
+
+.day-node.execution-high .day-execution {
+  border-color: var(--success-border);
+  color: var(--success);
+}
+
+.day-node.execution-medium .day-execution {
+  border-color: var(--fire-border);
+  color: var(--fire);
+}
+
+.day-node.execution-low .day-execution {
+  border-color: rgba(255, 76, 76, 0.5);
+  color: var(--red);
+}
+
+.day-node.execution-neutral .day-execution {
+  border-color: var(--border-soft);
+  color: var(--text-dim);
+  font-size: 0.56rem;
 }
 
 .mission-progress {
@@ -976,6 +989,20 @@ h3 {
   text-transform: uppercase;
 }
 
+.command-operations-head p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.operation-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .empty-copy {
   margin: 0;
   color: var(--text-muted);
@@ -1038,6 +1065,38 @@ h3 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.operation-date-field {
+  border: 1px solid rgba(255, 138, 42, 0.22) !important;
+  background: rgba(255, 138, 42, 0.06);
+  padding: 10px !important;
+}
+
+.operation-form .operation-date-input {
+  min-height: 54px;
+  border-color: rgba(255, 138, 42, 0.55);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 138, 42, 0.08)),
+    #1f1b17;
+  color: var(--text);
+  color-scheme: light;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.operation-form .operation-date-input::-webkit-calendar-picker-indicator {
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  filter: invert(70%) sepia(76%) saturate(1172%) hue-rotate(335deg) brightness(104%) contrast(101%);
+  opacity: 1;
+}
+
+.operation-form .operation-date-input:focus {
+  outline: 2px solid rgba(255, 138, 42, 0.34);
+  outline-offset: 2px;
 }
 
 .weekday-grid {
@@ -1990,6 +2049,25 @@ h3 {
   line-height: 1.55;
 }
 
+.soldier-failure-trigger {
+  margin-top: 10px;
+}
+
+.soldier-failure-box {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.soldier-failure-warning {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
 .soldier-lock-note {
   margin: 0 0 8px;
   color: var(--text-dim);
@@ -2048,6 +2126,46 @@ h3 {
   box-shadow: var(--shadow);
   gap: 12px;
   padding: 22px;
+}
+
+.command-modal-backdrop {
+  z-index: 30;
+  align-items: center;
+  overflow-y: auto;
+}
+
+.command-modal-card {
+  display: grid;
+  width: min(760px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.08), transparent 42%),
+    var(--surface);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.order-modal-card {
+  width: min(620px, 100%);
+}
+
+.order-modal-card .mission-form {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.operations-modal-card {
+  width: min(900px, 100%);
+}
+
+.operations-modal-card .command-operations {
+  border: 0;
+  padding: 0;
 }
 
 @media (max-width: 1180px) {

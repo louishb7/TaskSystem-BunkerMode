@@ -273,7 +273,7 @@ def test_to_response_soldier_define_permissions_corretas():
         "can_edit": False,
         "can_delete": False,
         "can_toggle_decided": False,
-        "can_justify": False,
+        "can_justify": True,
         "can_review": False,
         "can_view_history": False,
     }

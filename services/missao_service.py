@@ -433,7 +433,7 @@ class MissaoService:
             can_edit=is_general and missao.can_be_edited_by_general(),
             can_delete=is_general and missao.can_be_deleted_by_general(),
             can_toggle_decided=is_general and missao.can_be_marked_decided(),
-            can_justify=is_soldier and missao.requires_soldier_justification(),
+            can_justify=is_soldier and (missao.is_pending() or missao.requires_soldier_justification()),
             can_review=is_general and missao.requires_general_review(),
             can_view_history=can_view_history,
         )

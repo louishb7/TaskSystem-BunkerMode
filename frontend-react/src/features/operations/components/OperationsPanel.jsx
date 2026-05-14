@@ -14,7 +14,6 @@ const WEEKDAYS = [
 
 const initialForm = {
   nome: "",
-  descricao: "",
   start_date: "",
   end_date: "",
   weekdays: [],
@@ -71,6 +70,7 @@ function OperationItem({ loading, onCloseOperation, operation }) {
 
 export default function OperationsPanel({
   loading = false,
+  onClose,
   onCloseOperation,
   onCreateOperation,
   operations = [],
@@ -107,7 +107,6 @@ export default function OperationsPanel({
     }
     const saved = await onCreateOperation?.({
       ...form,
-      descricao: form.descricao || null,
       ordem_instrucao: form.ordem_instrucao || null,
     });
     if (saved) {
@@ -119,15 +118,23 @@ export default function OperationsPanel({
   return (
     <section className="command-operations">
       <div className="command-operations-head">
-        <span>OPERAÇÕES</span>
-        <button
-          className="button compact fire"
-          disabled={loading}
-          type="button"
-          onClick={() => setFormOpen((current) => !current)}
-        >
-          {formOpen ? "FECHAR" : "NOVA OPERAÇÃO"}
-        </button>
+        <div>
+          <span>OPERAÇÕES</span>
+          <p>Crie, acompanhe e encerre planos por período.</p>
+        </div>
+        <div className="operation-panel-actions">
+          <button
+            className="button compact fire"
+            disabled={loading}
+            type="button"
+            onClick={() => setFormOpen((current) => !current)}
+          >
+            {formOpen ? "FECHAR FORMULÁRIO" : "CRIAR OPERAÇÃO"}
+          </button>
+          <button className="button secondary compact" disabled={loading} type="button" onClick={onClose}>
+            FECHAR
+          </button>
+        </div>
       </div>
 
       <StatusNotice status={status} />
@@ -144,31 +151,24 @@ export default function OperationsPanel({
               onChange={(event) => updateField("nome", event.target.value)}
             />
           </label>
-          <label>
-            Diretiva opcional
-            <textarea
-              disabled={loading}
-              rows={2}
-              value={form.descricao}
-              onChange={(event) => updateField("descricao", event.target.value)}
-            />
-          </label>
           <div className="operation-form-grid">
-            <label>
-              Início
+            <label className="operation-date-field">
+              Início da operação
               <input
                 disabled={loading}
                 required
+                className="operation-date-input"
                 type="date"
                 value={form.start_date}
                 onChange={(event) => updateField("start_date", event.target.value)}
               />
             </label>
-            <label>
-              Fim
+            <label className="operation-date-field">
+              Fim da operação
               <input
                 disabled={loading}
                 required
+                className="operation-date-input"
                 type="date"
                 value={form.end_date}
                 onChange={(event) => updateField("end_date", event.target.value)}

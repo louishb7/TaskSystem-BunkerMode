@@ -522,6 +522,52 @@ def test_rota_justification_persiste_tipo_e_texto_da_justificativa():
     assert recarregada.completed_at is None
 
 
+def test_soldado_registra_falha_manual_antes_do_prazo_e_ordem_sai_do_quadro():
+    repo, auth, missoes, relatorios, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Acordar às 8h",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Executar no horário definido.",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    usuario.definir_modo("soldier")
+    auth.alterar_modo(usuario.usuario_id, "soldier")
+
+    quadro_inicial = listar_missoes_operacionais(usuario=usuario, missao_service=missoes)
+    resposta = registrar_justificativa_falha(
+        1,
+        FailureJustificationPayload(
+            failure_reason_type="not_done",
+            failure_reason="Acordei às 10h.",
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    quadro_final = listar_missoes_operacionais(usuario=usuario, missao_service=missoes)
+    usuario.definir_modo("general")
+    repo.atualizar_modo_ativo(usuario.usuario_id, "general")
+    relatorio = obter_relatorio_semanal(
+        start_date="2026-04-20",
+        end_date="2026-04-26",
+        usuario=usuario,
+        relatorio_service=relatorios,
+    )
+
+    assert quadro_inicial[0]["permissions"]["can_complete"] is True
+    assert quadro_inicial[0]["permissions"]["can_justify"] is True
+    assert resposta["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
+    assert resposta["completed_at"] is None
+    assert resposta["failure_reason"] == "Acordei às 10h."
+    assert quadro_final == []
+    assert relatorio["failed_missions"] == 1
+    assert relatorio["completed_missions"] == 0
+
+
 def test_fluxo_lifecycle_expirada_justificada_revisada_reflete_no_relatorio():
     _, auth, missoes, relatorios, usuario_dict, usuario = preparar_ambiente()
     criar_missao(

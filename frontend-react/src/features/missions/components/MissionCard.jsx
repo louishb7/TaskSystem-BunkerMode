@@ -87,6 +87,7 @@ export default function MissionCard({
   variant = "general",
 }) {
   const [confirmingToggle, setConfirmingToggle] = useState(false);
+  const [failureFormOpen, setFailureFormOpen] = useState(false);
   const soldier = variant === "soldier";
   const title = mission?.titulo || "Sem título";
   const instruction = mission?.instrucao || "";
@@ -101,6 +102,7 @@ export default function MissionCard({
 
   useEffect(() => {
     setConfirmingToggle(false);
+    setFailureFormOpen(false);
   }, [mission?.id, mission?.is_decided]);
 
   if (soldier) {
@@ -115,16 +117,6 @@ export default function MissionCard({
         {operationName && <p className="mission-origin">Operação: {operationName}</p>}
         {instruction && <p className="mission-instruction">{instruction}</p>}
 
-        {canJustify && (
-          <FailureJustificationForm
-            loading={justifying}
-            mission={mission}
-            onSubmit={onJustify}
-            required={requiresJustification}
-            submitLabel={requiresJustification ? "REGISTRAR JUSTIFICATIVA" : "REGISTRAR FALHA"}
-          />
-        )}
-
         {canComplete && (
           <button
             className="button fire full"
@@ -134,6 +126,44 @@ export default function MissionCard({
           >
             {completing ? "AGUARDE" : "EXECUTADA"}
           </button>
+        )}
+
+        {canJustify && canComplete && !failureFormOpen && (
+          <button
+            className="button danger ghost full soldier-failure-trigger"
+            disabled={disabled}
+            type="button"
+            onClick={() => setFailureFormOpen(true)}
+          >
+            REGISTRAR FALHA
+          </button>
+        )}
+
+        {canJustify && (!canComplete || failureFormOpen) && (
+          <div className="soldier-failure-box">
+            {canComplete && (
+              <p className="soldier-failure-warning">
+                A ordem será retirada do quadro do Soldado e registrada como falha no relatório.
+              </p>
+            )}
+            <FailureJustificationForm
+              loading={justifying}
+              mission={mission}
+              onSubmit={onJustify}
+              required={requiresJustification}
+              submitLabel={requiresJustification ? "REGISTRAR JUSTIFICATIVA" : "REGISTRAR FALHA"}
+            />
+            {canComplete && (
+              <button
+                className="button secondary compact"
+                disabled={disabled}
+                type="button"
+                onClick={() => setFailureFormOpen(false)}
+              >
+                CANCELAR FALHA
+              </button>
+            )}
+          </div>
         )}
       </article>
     );

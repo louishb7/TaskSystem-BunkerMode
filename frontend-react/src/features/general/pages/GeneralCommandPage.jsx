@@ -21,6 +21,7 @@ import ModeTransitionPanel from "../components/ModeTransitionPanel.jsx";
 import OrdersPanel from "../components/OrdersPanel.jsx";
 import TacticalSidePanel from "../components/TacticalSidePanel.jsx";
 import WeekPanel from "../components/WeekPanel.jsx";
+import OperationsPanel from "../../operations/components/OperationsPanel.jsx";
 
 export default function GeneralCommandPage({
   board,
@@ -33,6 +34,7 @@ export default function GeneralCommandPage({
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [formOpen, setFormOpen] = useState(false);
   const [editingMission, setEditingMission] = useState(null);
+  const [operationsOpen, setOperationsOpen] = useState(false);
   const [showSoldierConfirm, setShowSoldierConfirm] = useState(false);
   const [modeLoading, setModeLoading] = useState(false);
 
@@ -168,16 +170,18 @@ export default function GeneralCommandPage({
         <aside className="general-side command-side">
           <CommandRail
             generalName={generalName}
-            onCloseOperation={board.closeOperation}
-            onCreateOperation={board.createOperation}
+            onCreateOrder={openCreateForm}
             onLogout={onLogout}
+            onOpenOperations={() => setOperationsOpen(true)}
             onOpenReview={onOpenReview}
-            operationLoading={board.operationLoading}
-            operationStatus={board.operationStatus}
-            operations={board.operations}
             reviewCount={reviewCount}
           />
-          {formOpen && (
+        </aside>
+      </section>
+
+      {formOpen && (
+        <div className="modal-backdrop command-modal-backdrop" role="presentation">
+          <div className="command-modal-card order-modal-card" role="dialog" aria-modal="true" aria-label={editingMission ? "Editar ordem" : "Nova ordem"}>
             <MissionForm
               currentUser={user}
               editingMission={editingMission}
@@ -192,9 +196,24 @@ export default function GeneralCommandPage({
               onUpdate={updateMission}
               status={board.formStatus}
             />
-          )}
-        </aside>
-      </section>
+          </div>
+        </div>
+      )}
+
+      {operationsOpen && (
+        <div className="modal-backdrop command-modal-backdrop" role="presentation">
+          <div className="command-modal-card operations-modal-card" role="dialog" aria-modal="true" aria-label="Operações">
+            <OperationsPanel
+              loading={board.operationLoading}
+              onClose={() => setOperationsOpen(false)}
+              onCloseOperation={board.closeOperation}
+              onCreateOperation={board.createOperation}
+              operations={board.operations}
+              status={board.operationStatus}
+            />
+          </div>
+        </div>
+      )}
 
       {showSoldierConfirm && (
         <ActivateSoldierDialog
