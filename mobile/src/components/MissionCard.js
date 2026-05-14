@@ -127,6 +127,7 @@ export default function MissionCard({
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingToggle, setConfirmingToggle] = useState(false);
+  const [failureFormOpen, setFailureFormOpen] = useState(false);
   const [failureReasonType, setFailureReasonType] = useState("not_done");
   const [failureReason, setFailureReason] = useState("");
   const soldier = variant === "soldier";
@@ -144,6 +145,7 @@ export default function MissionCard({
   useEffect(() => {
     setConfirmingToggle(false);
     setConfirmingDelete(false);
+    setFailureFormOpen(false);
   }, [mission?.id, mission?.is_decided]);
 
   function submitJustification() {
@@ -189,8 +191,37 @@ export default function MissionCard({
           <Text numberOfLines={4} style={styles.instruction}>{instruction}</Text>
         ) : null}
 
-        {canJustify ? (
+        {canComplete ? (
+          <Pressable
+            disabled={completing}
+            onPress={onComplete}
+            style={[styles.primaryAction, completing && styles.disabled]}
+          >
+            {completing ? (
+              <ActivityIndicator color={theme.colors.black} />
+            ) : (
+              <Text style={styles.primaryActionText}>EXECUTADA</Text>
+            )}
+          </Pressable>
+        ) : null}
+
+        {canJustify && canComplete && !failureFormOpen ? (
+          <Pressable
+            disabled={disabled}
+            onPress={() => setFailureFormOpen(true)}
+            style={[styles.secondaryAction, styles.manualFailureAction]}
+          >
+            <Text style={styles.manualFailureText}>REGISTRAR FALHA</Text>
+          </Pressable>
+        ) : null}
+
+        {canJustify && (!canComplete || failureFormOpen) ? (
           <View style={styles.justification}>
+            {canComplete ? (
+              <Text style={styles.failureWarning}>
+                A ordem será retirada do quadro do Soldado e registrada como falha no relatório.
+              </Text>
+            ) : null}
             <Text style={styles.dangerLabel}>
               {requiresJustification ? "JUSTIFICATIVA OBRIGATÓRIA" : "REGISTRO DA FALHA"}
             </Text>
@@ -237,21 +268,16 @@ export default function MissionCard({
                 </Text>
               )}
             </Pressable>
+            {canComplete ? (
+              <Pressable
+                disabled={disabled}
+                onPress={() => setFailureFormOpen(false)}
+                style={styles.secondaryAction}
+              >
+                <Text style={styles.secondaryActionText}>CANCELAR FALHA</Text>
+              </Pressable>
+            ) : null}
           </View>
-        ) : null}
-
-        {canComplete ? (
-          <Pressable
-            disabled={completing}
-            onPress={onComplete}
-            style={[styles.primaryAction, completing && styles.disabled]}
-          >
-            {completing ? (
-              <ActivityIndicator color={theme.colors.black} />
-            ) : (
-              <Text style={styles.primaryActionText}>EXECUTADA</Text>
-            )}
-          </Pressable>
         ) : null}
       </View>
     );
@@ -548,6 +574,14 @@ const styles = StyleSheet.create({
     ...theme.typography.small,
     color: theme.colors.textMuted,
   },
+  manualFailureAction: {
+    borderColor: theme.colors.red,
+    marginTop: theme.spacing.sm,
+  },
+  manualFailureText: {
+    ...theme.typography.small,
+    color: theme.colors.red,
+  },
   committedAction: {
     backgroundColor: theme.colors.purpleWash,
     borderColor: theme.colors.purpleBorder,
@@ -576,6 +610,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,
+  },
+  failureWarning: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.sm,
   },
   dangerLabel: {
     ...theme.typography.small,

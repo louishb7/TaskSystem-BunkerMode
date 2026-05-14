@@ -10,7 +10,9 @@ export default function CommandActionDock({
   count = 0,
   generalName,
   onLayout,
+  onCreateOrder,
   onLogout,
+  onOperationsPress,
   onReviewPress,
   weekLabel,
 }) {
@@ -40,6 +42,18 @@ export default function CommandActionDock({
 
         <View style={styles.actionLine}>
           <Text numberOfLines={1} style={styles.week}>{weekLabel}</Text>
+          <Pressable
+            onPress={onCreateOrder}
+            style={({ pressed }) => [styles.commandButton, styles.primaryButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.primaryText}>NOVA ORDEM</Text>
+          </Pressable>
+          <Pressable
+            onPress={onOperationsPress}
+            style={({ pressed }) => [styles.commandButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.commandText}>OPERAÇÕES</Text>
+          </Pressable>
           <Pressable
             onPress={onReviewPress}
             style={({ pressed }) => [
@@ -133,6 +147,30 @@ const styles = StyleSheet.create({
     color: theme.colors.textDim,
     flex: 1,
     minWidth: 0,
+  },
+  commandButton: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 38,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  commandText: {
+    ...theme.typography.label,
+    color: theme.colors.text,
+    fontSize: 10,
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
+  },
+  primaryText: {
+    ...theme.typography.label,
+    color: theme.colors.black,
+    fontSize: 10,
   },
   reviewButton: {
     alignItems: "center",

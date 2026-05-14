@@ -24,6 +24,16 @@ function formatApiDate(date) {
   return `${day}-${month}-${year}`;
 }
 
+function executionTone(percent) {
+  if (percent >= 80) {
+    return "high";
+  }
+  if (percent >= 40) {
+    return "medium";
+  }
+  return "low";
+}
+
 export default function DaySelector({
   missionStatsByDate = null,
   missionCountsByDate = {},
@@ -43,6 +53,8 @@ export default function DaySelector({
         const total = rawStats?.total ?? missionCountsByDate[formatApiDate(date)] ?? 0;
         const completed = rawStats?.completed ?? 0;
         const complete = total > 0 && completed === total;
+        const percent = total > 0 ? Math.round((completed / total) * 100) : null;
+        const tone = percent === null ? "neutral" : executionTone(percent);
 
         return (
           <Pressable
@@ -70,9 +82,9 @@ export default function DaySelector({
               {today ? "HOJE" : " "}
             </Text>
             <View style={styles.countRow}>
-              <View style={[styles.countDot, total > 0 && styles.countDotActive, complete && styles.countDotComplete]} />
-              <Text style={[styles.count, total > 0 && styles.countActive, complete && styles.countComplete]}>
-                {total > 0 ? `${completed}/${total}` : "-"}
+              <View style={[styles.countDot, styles[`countDot${tone}`]]} />
+              <Text style={[styles.count, styles[`count${tone}`]]}>
+                {percent === null ? "-" : `${percent}%`}
               </Text>
             </View>
           </Pressable>
@@ -182,6 +194,18 @@ const styles = StyleSheet.create({
   countDotComplete: {
     backgroundColor: theme.colors.success,
   },
+  countDothigh: {
+    backgroundColor: theme.colors.success,
+  },
+  countDotmedium: {
+    backgroundColor: theme.colors.fire,
+  },
+  countDotlow: {
+    backgroundColor: theme.colors.red,
+  },
+  countDotneutral: {
+    backgroundColor: theme.colors.borderStrong,
+  },
   count: {
     ...theme.typography.small,
     color: theme.colors.textDim,
@@ -192,5 +216,17 @@ const styles = StyleSheet.create({
   },
   countComplete: {
     color: theme.colors.success,
+  },
+  counthigh: {
+    color: theme.colors.success,
+  },
+  countmedium: {
+    color: theme.colors.fire,
+  },
+  countlow: {
+    color: theme.colors.red,
+  },
+  countneutral: {
+    color: theme.colors.textDim,
   },
 });

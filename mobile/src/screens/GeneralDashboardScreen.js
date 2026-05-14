@@ -103,7 +103,6 @@ const operationWeekdays = [
 
 const initialOperationForm = {
   nome: "",
-  descricao: "",
   start_date: "",
   end_date: "",
   weekdays: [],
@@ -153,6 +152,7 @@ export default function GeneralDashboardScreen({
   const [reviewState, setReviewState] = useState(null);
   const [weeklyReviews, setWeeklyReviews] = useState([]);
   const [operations, setOperations] = useState([]);
+  const [operationsOpen, setOperationsOpen] = useState(false);
   const [operationFormOpen, setOperationFormOpen] = useState(false);
   const [operationForm, setOperationForm] = useState(initialOperationForm);
   const [operationLoading, setOperationLoading] = useState(false);
@@ -442,7 +442,6 @@ export default function GeneralDashboardScreen({
     setOperationLoading(true);
     const result = await api.createOperation(token, {
       ...operationForm,
-      descricao: operationForm.descricao || null,
       ordem_instrucao: operationForm.ordem_instrucao || null,
     });
     setOperationLoading(false);
@@ -517,7 +516,9 @@ export default function GeneralDashboardScreen({
           currentHeight === nextHeight ? currentHeight : nextHeight
         ));
       }}
+      onCreateOrder={openCreateForm}
       onLogout={onLogout}
+      onOperationsPress={() => setOperationsOpen(true)}
       onReviewPress={() => setActiveScreen("reviews")}
       weekLabel={weekLabel}
     />
@@ -682,142 +683,6 @@ export default function GeneralDashboardScreen({
           </Pressable>
         </TacticalPanel>
 
-        <TacticalPanel style={styles.operationsPanel}>
-          <SectionHeader
-            eyebrow="OPERAÇÕES"
-            title="Plano em período fechado"
-            meta="Ordens geradas por operação aparecem no quadro do dia e no Soldado."
-          />
-          <Pressable
-            disabled={operationLoading}
-            onPress={() => setOperationFormOpen((current) => !current)}
-            style={styles.operationAction}
-          >
-            <Text style={styles.operationActionText}>
-              {operationFormOpen ? "FECHAR OPERAÇÃO" : "NOVA OPERAÇÃO"}
-            </Text>
-          </Pressable>
-          {operationFormOpen ? (
-            <View style={styles.operationForm}>
-              <TextInput
-                onChangeText={(value) => updateOperationField("nome", value)}
-                placeholder="NOME DA OPERAÇÃO"
-                placeholderTextColor={theme.colors.textDim}
-                style={styles.operationInput}
-                value={operationForm.nome}
-              />
-              <TextInput
-                onChangeText={(value) => updateOperationField("descricao", value)}
-                placeholder="DIRETIVA OPCIONAL"
-                placeholderTextColor={theme.colors.textDim}
-                style={styles.operationInput}
-                value={operationForm.descricao}
-              />
-              <View style={styles.operationDateRow}>
-                <TextInput
-                  onChangeText={(value) => updateOperationField("start_date", value)}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={theme.colors.textDim}
-                  style={[styles.operationInput, styles.operationDateInput]}
-                  value={operationForm.start_date}
-                />
-                <TextInput
-                  onChangeText={(value) => updateOperationField("end_date", value)}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={theme.colors.textDim}
-                  style={[styles.operationInput, styles.operationDateInput]}
-                  value={operationForm.end_date}
-                />
-              </View>
-              <View style={styles.operationWeekdayGrid}>
-                {operationWeekdays.map((day) => (
-                  <Pressable
-                    key={day.value}
-                    onPress={() => toggleOperationWeekday(day.value)}
-                    style={[
-                      styles.operationWeekday,
-                      operationForm.weekdays.includes(day.value) && styles.operationWeekdaySelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.operationWeekdayText,
-                        operationForm.weekdays.includes(day.value) && styles.operationWeekdayTextSelected,
-                      ]}
-                    >
-                      {day.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              <TextInput
-                onChangeText={(value) => updateOperationField("ordem_titulo", value)}
-                placeholder="ORDEM DIÁRIA"
-                placeholderTextColor={theme.colors.textDim}
-                style={styles.operationInput}
-                value={operationForm.ordem_titulo}
-              />
-              <TextInput
-                onChangeText={(value) => updateOperationField("ordem_instrucao", value)}
-                placeholder="INSTRUÇÃO OPCIONAL"
-                placeholderTextColor={theme.colors.textDim}
-                style={styles.operationInput}
-                value={operationForm.ordem_instrucao}
-              />
-              <Pressable
-                onPress={() => updateOperationField("is_decided", !operationForm.is_decided)}
-                style={[
-                  styles.operationDecision,
-                  operationForm.is_decided && styles.operationDecisionSelected,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.operationDecisionText,
-                    operationForm.is_decided && styles.operationDecisionTextSelected,
-                  ]}
-                >
-                  {operationForm.is_decided ? "DECIDIDA ATIVA" : "MARCAR COMO DECIDIDA"}
-                </Text>
-              </Pressable>
-              <Pressable
-                disabled={operationLoading}
-                onPress={createOperation}
-                style={[styles.operationPrimary, operationLoading && styles.operationDisabled]}
-              >
-                <Text style={styles.operationPrimaryText}>
-                  {operationLoading ? "REGISTRANDO" : "REGISTRAR OPERAÇÃO"}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-          <View style={styles.operationRows}>
-            {operations.length > 0 ? (
-              operations.slice(0, 4).map((operation) => (
-                <View key={String(operation.id)} style={styles.operationRow}>
-                  <View style={styles.operationInfo}>
-                    <Text numberOfLines={1} style={styles.operationName}>{operation.nome}</Text>
-                    <Text numberOfLines={1} style={styles.operationMeta}>
-                      {operation.status === "ativa" ? "ATIVA" : "ENCERRADA"} | {operation.ordem_titulo}
-                    </Text>
-                  </View>
-                  {operation.status === "ativa" ? (
-                    <Pressable
-                      disabled={operationLoading}
-                      onPress={() => closeOperation(operation.id)}
-                      style={styles.operationClose}
-                    >
-                      <Text style={styles.operationCloseText}>ENCERRAR</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              ))
-            ) : (
-              <Text style={styles.operationEmpty}>Nenhuma operação registrada.</Text>
-            )}
-          </View>
-        </TacticalPanel>
-
         <TacticalPanel style={styles.transitionPanel}>
           <SectionHeader
             eyebrow="TRANSIÇÃO DE MODO"
@@ -838,6 +703,155 @@ export default function GeneralDashboardScreen({
         </TacticalPanel>
       </ScrollView>
       {commandDock}
+      {operationsOpen ? (
+        <View style={styles.protocolOverlay}>
+          <ScrollView contentContainerStyle={styles.operationsOverlayContent}>
+            <TacticalPanel style={styles.operationsPanel}>
+              <SectionHeader
+                eyebrow="OPERAÇÕES"
+                title="Plano em período fechado"
+                meta="Ordens geradas por operação aparecem no quadro do dia e no Soldado."
+              />
+              <View style={styles.operationOverlayActions}>
+                <Pressable
+                  disabled={operationLoading}
+                  onPress={() => setOperationFormOpen((current) => !current)}
+                  style={styles.operationAction}
+                >
+                  <Text style={styles.operationActionText}>
+                    {operationFormOpen ? "FECHAR FORMULÁRIO" : "CRIAR OPERAÇÃO"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  disabled={operationLoading}
+                  onPress={() => setOperationsOpen(false)}
+                  style={styles.operationAction}
+                >
+                  <Text style={styles.operationActionText}>FECHAR</Text>
+                </Pressable>
+              </View>
+              {operationFormOpen ? (
+                <View style={styles.operationForm}>
+                  <TextInput
+                    onChangeText={(value) => updateOperationField("nome", value)}
+                    placeholder="NOME DA OPERAÇÃO"
+                    placeholderTextColor={theme.colors.textDim}
+                    style={styles.operationInput}
+                    value={operationForm.nome}
+                  />
+                  <View style={styles.operationDateRow}>
+                    <View style={styles.operationDateField}>
+                      <Text style={styles.operationDateLabel}>INÍCIO DA OPERAÇÃO</Text>
+                      <TextInput
+                        onChangeText={(value) => updateOperationField("start_date", value)}
+                        placeholder="AAAA-MM-DD"
+                        placeholderTextColor={theme.colors.textMuted}
+                        style={[styles.operationInput, styles.operationDateInput]}
+                        value={operationForm.start_date}
+                      />
+                    </View>
+                    <View style={styles.operationDateField}>
+                      <Text style={styles.operationDateLabel}>FIM DA OPERAÇÃO</Text>
+                      <TextInput
+                        onChangeText={(value) => updateOperationField("end_date", value)}
+                        placeholder="AAAA-MM-DD"
+                        placeholderTextColor={theme.colors.textMuted}
+                        style={[styles.operationInput, styles.operationDateInput]}
+                        value={operationForm.end_date}
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.operationWeekdayGrid}>
+                    {operationWeekdays.map((day) => (
+                      <Pressable
+                        key={day.value}
+                        onPress={() => toggleOperationWeekday(day.value)}
+                        style={[
+                          styles.operationWeekday,
+                          operationForm.weekdays.includes(day.value) && styles.operationWeekdaySelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.operationWeekdayText,
+                            operationForm.weekdays.includes(day.value) && styles.operationWeekdayTextSelected,
+                          ]}
+                        >
+                          {day.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <TextInput
+                    onChangeText={(value) => updateOperationField("ordem_titulo", value)}
+                    placeholder="ORDEM DIÁRIA"
+                    placeholderTextColor={theme.colors.textDim}
+                    style={styles.operationInput}
+                    value={operationForm.ordem_titulo}
+                  />
+                  <TextInput
+                    onChangeText={(value) => updateOperationField("ordem_instrucao", value)}
+                    placeholder="INSTRUÇÃO OPCIONAL"
+                    placeholderTextColor={theme.colors.textDim}
+                    style={styles.operationInput}
+                    value={operationForm.ordem_instrucao}
+                  />
+                  <Pressable
+                    onPress={() => updateOperationField("is_decided", !operationForm.is_decided)}
+                    style={[
+                      styles.operationDecision,
+                      operationForm.is_decided && styles.operationDecisionSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.operationDecisionText,
+                        operationForm.is_decided && styles.operationDecisionTextSelected,
+                      ]}
+                    >
+                      {operationForm.is_decided ? "DECIDIDA ATIVA" : "MARCAR COMO DECIDIDA"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    disabled={operationLoading}
+                    onPress={createOperation}
+                    style={[styles.operationPrimary, operationLoading && styles.operationDisabled]}
+                  >
+                    <Text style={styles.operationPrimaryText}>
+                      {operationLoading ? "REGISTRANDO" : "REGISTRAR OPERAÇÃO"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+              <View style={styles.operationRows}>
+                {operations.length > 0 ? (
+                  operations.map((operation) => (
+                    <View key={String(operation.id)} style={styles.operationRow}>
+                      <View style={styles.operationInfo}>
+                        <Text numberOfLines={1} style={styles.operationName}>{operation.nome}</Text>
+                        <Text numberOfLines={1} style={styles.operationMeta}>
+                          {operation.status === "ativa" ? "ATIVA" : "ENCERRADA"} | {operation.ordem_titulo}
+                        </Text>
+                      </View>
+                      {operation.status === "ativa" ? (
+                        <Pressable
+                          disabled={operationLoading}
+                          onPress={() => closeOperation(operation.id)}
+                          style={styles.operationClose}
+                        >
+                          <Text style={styles.operationCloseText}>ENCERRAR</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.operationEmpty}>Nenhuma operação registrada.</Text>
+                )}
+              </View>
+            </TacticalPanel>
+          </ScrollView>
+        </View>
+      ) : null}
       {soldierConfirmOpen ? (
         <View style={styles.protocolOverlay}>
           <View style={styles.protocolBox}>
@@ -1095,13 +1109,23 @@ const styles = StyleSheet.create({
   operationsPanel: {
     marginTop: theme.spacing.md,
   },
+  operationsOverlayContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: theme.spacing.screen,
+  },
+  operationOverlayActions: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
   operationAction: {
     alignItems: "center",
     borderColor: theme.colors.fireBorder,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     justifyContent: "center",
-    marginTop: theme.spacing.md,
+    flex: 1,
     minHeight: 42,
   },
   operationActionText: {
@@ -1123,11 +1147,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
   },
   operationDateRow: {
-    flexDirection: "row",
     gap: theme.spacing.sm,
   },
+  operationDateField: {
+    backgroundColor: "rgba(255,138,42,0.07)",
+    borderColor: theme.colors.fireBorder,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    gap: theme.spacing.xs,
+    padding: theme.spacing.sm,
+  },
+  operationDateLabel: {
+    ...theme.typography.small,
+    color: theme.colors.fire,
+  },
   operationDateInput: {
-    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderColor: theme.colors.fireBorder,
+    color: theme.colors.white,
+    flex: 0,
+    fontSize: 16,
+    fontWeight: "900",
+    minHeight: 56,
+    paddingHorizontal: theme.spacing.md,
   },
   operationWeekdayGrid: {
     flexDirection: "row",
