@@ -33,6 +33,27 @@ function formatDate(value) {
   return `${day}/${month}/${year}`;
 }
 
+function dateOnly(value) {
+  if (!value) {
+    return null;
+  }
+  const [year, month, day] = String(value).slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+}
+
+function todayOnly() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function periodHasPassed(endDate) {
+  const end = dateOnly(endDate);
+  return end !== null && todayOnly() > end;
+}
+
 function weekdayLabels(values = []) {
   const set = new Set(values);
   return WEEKDAYS.filter((day) => set.has(day.value)).map((day) => day.label).join(" ");
@@ -40,6 +61,7 @@ function weekdayLabels(values = []) {
 
 function OperationItem({ loading, onCloseOperation, operation }) {
   const active = operation.status === "ativa";
+  const canClose = active && periodHasPassed(operation.end_date);
 
   return (
     <article className={`operation-row ${active ? "active" : "closed"}`}>
@@ -47,7 +69,7 @@ function OperationItem({ loading, onCloseOperation, operation }) {
         <span className={`operation-status ${active ? "active" : "closed"}`}>
           {active ? "ATIVA" : "ENCERRADA"}
         </span>
-        {active && (
+        {canClose && (
           <button
             className="button secondary compact operation-close"
             disabled={loading}

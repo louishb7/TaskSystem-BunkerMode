@@ -34,6 +34,7 @@ class OperacaoService:
     def listar_operacoes(self, usuario=None) -> list[dict]:
         self._garantir_modo_general(usuario)
         operacoes = self.repositorio.listar_operacoes_por_usuario(usuario.usuario_id)
+        operacoes = [self._reativar_se_periodo_nao_passou(operacao) for operacao in operacoes]
         return [operacao.to_dict() for operacao in operacoes]
 
     def encerrar_operacao(self, operacao_id: int, usuario=None) -> dict:
@@ -41,6 +42,11 @@ class OperacaoService:
         operacao = self.repositorio.buscar_operacao_por_id(operacao_id)
         if operacao is None or operacao.usuario_id != usuario.usuario_id:
             raise ValueError("Operação não encontrada.")
+        operacao = self._reativar_se_periodo_nao_passou(operacao)
+        if self._periodo_nao_passou(operacao):
+            raise ValueError(
+                "Operação ainda está dentro do período registrado. Ela só pode ser encerrada após a data final."
+            )
         if not operacao.esta_ativa():
             return operacao.to_dict()
         operacao.encerrar()
@@ -60,6 +66,7 @@ class OperacaoService:
         geradas = []
         operacoes = self.repositorio.listar_operacoes_por_usuario(usuario.usuario_id)
         for operacao in operacoes:
+            operacao = self._reativar_se_periodo_nao_passou(operacao)
             if not operacao.esta_ativa():
                 continue
             dia = inicio
@@ -151,3 +158,15 @@ class OperacaoService:
 
     def _now(self) -> datetime:
         return self._now_provider()
+
+    def _hoje_operacional(self) -> date:
+        return operational_date_for(self._now())
+
+    def _periodo_nao_passou(self, operacao: Operacao) -> bool:
+        return self._hoje_operacional() <= operacao.end_date
+
+    def _reativar_se_periodo_nao_passou(self, operacao: Operacao) -> Operacao:
+        if operacao.status == Operacao.STATUS_ENCERRADA and self._periodo_nao_passou(operacao):
+            operacao.reativar()
+            self.repositorio.atualizar_operacao(operacao)
+        return operacao

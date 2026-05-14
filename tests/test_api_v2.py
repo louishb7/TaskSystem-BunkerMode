@@ -1347,15 +1347,75 @@ def test_operacao_materializa_ordem_do_dia_sem_duplicar_e_encerramento_bloqueia_
     assert [missao["titulo"] for missao in soldado] == ["Treinar por 45 minutos"]
 
     usuario.definir_modo("general")
-    encerrada = encerrar_operacao(operacao["id"], usuario=usuario, operacao_service=operacoes)
+    operacoes_pos_periodo = OperacaoService(
+        repo,
+        now_provider=lambda: datetime(2026, 5, 9, 10, 0, 0),
+    )
+    encerrada = encerrar_operacao(
+        operacao["id"],
+        usuario=usuario,
+        operacao_service=operacoes_pos_periodo,
+    )
     nova = materializar_operacoes(
         OperacaoMaterializarPayload(start_date="2026-05-01", end_date="2026-05-01"),
         usuario=usuario,
-        operacao_service=operacoes,
+        operacao_service=operacoes_pos_periodo,
     )
 
     assert encerrada["status"] == "encerrada"
     assert nova["generated"] == 0
+
+
+def test_operacao_nao_encerra_antes_da_data_final():
+    repo, _, _, _, _, usuario = preparar_ambiente()
+    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
+    operacao = criar_operacao(
+        OperacaoCreatePayload(
+            nome="Criar disciplina",
+            start_date="2026-04-20",
+            end_date="2026-04-30",
+            weekdays=[0, 1, 2, 3, 4],
+            ordem_titulo="Executar bloco de disciplina",
+        ),
+        usuario=usuario,
+        operacao_service=operacoes,
+    )
+
+    try:
+        encerrar_operacao(operacao["id"], usuario=usuario, operacao_service=operacoes)
+    except HTTPException as erro:
+        assert erro.status_code == 400
+        assert "período registrado" in erro.detail
+    else:
+        raise AssertionError("Operação dentro do período não deveria ser encerrada.")
+
+    historico = listar_operacoes(usuario=usuario, operacao_service=operacoes)
+
+    assert historico[0]["status"] == "ativa"
+
+
+def test_operacao_encerrada_indevidamente_e_reativada_ao_listar():
+    repo, _, _, _, _, usuario = preparar_ambiente()
+    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
+    operacao = criar_operacao(
+        OperacaoCreatePayload(
+            nome="Criar disciplina",
+            start_date="2026-04-20",
+            end_date="2026-04-30",
+            weekdays=[4],
+            ordem_titulo="Executar disciplina",
+        ),
+        usuario=usuario,
+        operacao_service=operacoes,
+    )
+    persistida = repo.buscar_operacao_por_id(operacao["id"])
+    persistida.encerrar()
+    repo.atualizar_operacao(persistida)
+
+    historico = listar_operacoes(usuario=usuario, operacao_service=operacoes)
+
+    assert historico[0]["status"] == "ativa"
+    assert repo.buscar_operacao_por_id(operacao["id"]).status == "ativa"
 
 
 def test_operacao_materializa_sem_bloqueio_de_dia_off_manual():
@@ -1448,12 +1508,16 @@ def test_operacao_nao_materializa_fora_do_periodo_ou_encerrada():
         usuario=usuario,
         operacao_service=operacoes,
     )
-    encerrar_operacao(ativa["id"], usuario=usuario, operacao_service=operacoes)
+    operacoes_pos_periodo = OperacaoService(
+        repo,
+        now_provider=lambda: datetime(2026, 5, 1, 10, 0, 0),
+    )
+    encerrar_operacao(ativa["id"], usuario=usuario, operacao_service=operacoes_pos_periodo)
 
     resultado = materializar_operacoes(
         OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
         usuario=usuario,
-        operacao_service=operacoes,
+        operacao_service=operacoes_pos_periodo,
     )
 
     assert futura["status"] == "ativa"

@@ -56,6 +56,9 @@ class Operacao:
     def encerrar(self):
         self.status = self.STATUS_ENCERRADA
 
+    def reativar(self):
+        self.status = self.STATUS_ATIVA
+
     def to_dict(self):
         return {
             "id": self.operacao_id,

@@ -4,9 +4,11 @@
   --surface: #171717;
   --surface-raised: #202020;
   --surface-deep: #111111;
+  --surface-command: rgba(16, 16, 16, 0.96);
   --border: rgba(237, 237, 237, 0.1);
   --border-strong: rgba(237, 237, 237, 0.18);
   --border-soft: rgba(237, 237, 237, 0.08);
+  --border-operational: rgba(255, 138, 42, 0.24);
   --text: #ededed;
   --text-muted: #c8c8c8;
   --text-dim: #9a9a9a;

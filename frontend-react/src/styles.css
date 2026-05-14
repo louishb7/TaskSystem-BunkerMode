@@ -14,9 +14,9 @@ body::before {
   inset: 0;
   z-index: -3;
   background:
-    radial-gradient(circle at 18% 12%, rgba(255, 138, 42, 0.12), transparent 28%),
-    radial-gradient(circle at 82% 8%, rgba(155, 92, 255, 0.07), transparent 26%),
-    linear-gradient(115deg, rgba(0, 0, 0, 0.74), rgba(14, 14, 14, 0.92) 54%, rgba(0, 0, 0, 0.8)),
+    radial-gradient(circle at 50% 10%, rgba(255, 138, 42, 0.10), transparent 30%),
+    radial-gradient(circle at 84% 14%, rgba(155, 92, 255, 0.045), transparent 26%),
+    linear-gradient(115deg, rgba(0, 0, 0, 0.82), rgba(14, 14, 14, 0.94) 54%, rgba(0, 0, 0, 0.86)),
     url("./assets/bunkermode/backgrounds/general/bg_general_concrete.png");
   background-repeat: repeat;
   background-size: auto, auto, auto, 230px 210px;
@@ -34,7 +34,7 @@ body::after {
     linear-gradient(180deg, rgba(237, 237, 237, 0.04), transparent 150px),
     url("./assets/bunkermode/effects/noise_texture.png");
   background-size: auto, 64px 64px, 64px 64px, auto, 360px 360px;
-  opacity: 0.48;
+  opacity: 0.42;
   pointer-events: none;
 }
 
@@ -69,6 +69,13 @@ textarea {
 input:focus,
 textarea:focus {
   border-color: var(--fire);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 1px solid rgba(255, 138, 42, 0.7);
+  outline-offset: 2px;
 }
 
 label {
@@ -190,7 +197,12 @@ h3 {
   font-weight: 900;
   padding: 10px 14px;
   text-transform: uppercase;
-  transition: opacity var(--motion-fast), transform var(--motion-fast), border-color var(--motion-fast);
+  transition:
+    background var(--motion-fast),
+    border-color var(--motion-fast),
+    box-shadow var(--motion-fast),
+    opacity var(--motion-fast),
+    transform var(--motion-fast);
 }
 
 .button:hover:not(:disabled),
@@ -206,8 +218,15 @@ h3 {
 
 .button.secondary {
   background:
-    linear-gradient(180deg, rgba(255, 138, 42, 0.04), transparent 72%),
-    var(--surface-raised);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.034), transparent 72%),
+    rgba(18, 18, 18, 0.84);
+}
+
+.button.secondary:hover:not(:disabled) {
+  border-color: rgba(255, 138, 42, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 138, 42, 0.06), transparent 78%),
+    rgba(20, 20, 20, 0.9);
 }
 
 .button.danger {
@@ -268,11 +287,11 @@ h3 {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.038), rgba(237, 237, 237, 0) 90px),
-    rgba(23, 23, 23, 0.93);
-  box-shadow: var(--shadow-raised);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03), rgba(237, 237, 237, 0) 120px),
+    var(--surface-command);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(237, 237, 237, 0.03);
   padding: 18px;
 }
 
@@ -281,16 +300,17 @@ h3 {
   position: absolute;
   inset: 0 0 auto;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(237, 237, 237, 0.22), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 138, 42, 0.18), rgba(237, 237, 237, 0.14), transparent);
   pointer-events: none;
 }
 
 .panel.elevated,
 .tactical-panel.elevated {
-  border-color: var(--border-strong);
+  border-color: var(--border-operational);
   background:
-    linear-gradient(135deg, rgba(237, 237, 237, 0.052), transparent 44%),
-    rgba(32, 32, 32, 0.96);
+    linear-gradient(135deg, rgba(255, 138, 42, 0.055), transparent 46%),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.036), transparent 120px),
+    rgba(20, 20, 20, 0.96);
 }
 
 .section-heading {
@@ -468,7 +488,18 @@ h3 {
 .tactical-shell {
   position: relative;
   min-height: 100vh;
-  padding: 24px;
+  padding: 26px;
+}
+
+.tactical-shell.general::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, transparent 0 17%, rgba(255, 138, 42, 0.035) 17% 17.08%, transparent 17.08% 78%, rgba(237, 237, 237, 0.026) 78% 78.08%, transparent 78.08%),
+    radial-gradient(ellipse at center 20%, rgba(255, 138, 42, 0.06), transparent 42%);
+  pointer-events: none;
 }
 
 .tactical-shell.soldier::before {
@@ -487,11 +518,21 @@ h3 {
 
 .general-layout {
   display: grid;
-  grid-template-columns: minmax(340px, 380px) minmax(0, 1fr) minmax(260px, 320px);
+  grid-template-columns: minmax(320px, 368px) minmax(0, 1fr) minmax(246px, 300px);
   align-items: start;
   width: min(1540px, 100%);
   margin: 0 auto;
-  gap: 18px;
+  gap: 14px;
+}
+
+.general-board {
+  position: relative;
+  border-left: 1px solid rgba(255, 138, 42, 0.10);
+  border-right: 1px solid rgba(237, 237, 237, 0.055);
+  background:
+    linear-gradient(180deg, rgba(255, 138, 42, 0.035), transparent 160px),
+    rgba(0, 0, 0, 0.08);
+  padding: 0 14px 14px;
 }
 
 .command-rail,
@@ -501,10 +542,12 @@ h3 {
 }
 
 .command-rail {
-  border-color: rgba(255, 138, 42, 0.22);
+  border-color: rgba(237, 237, 237, 0.14);
   background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.1), transparent 42%),
+    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 46%),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 90px),
     rgba(16, 16, 16, 0.96);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.36), inset 3px 0 0 rgba(255, 138, 42, 0.18);
 }
 
 .command-identity {
@@ -537,6 +580,8 @@ h3 {
 .rail-actions .button {
   justify-content: space-between;
   width: 100%;
+  border-left-color: rgba(255, 138, 42, 0.22);
+  background: rgba(9, 9, 9, 0.34);
 }
 
 .count-badge {
@@ -552,10 +597,12 @@ h3 {
 }
 
 .tactical-panel.elevated {
-  border-color: rgba(255, 138, 42, 0.24);
+  border-color: rgba(255, 138, 42, 0.30);
   background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.09), transparent 44%),
-    rgba(26, 26, 26, 0.96);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 130px),
+    rgba(17, 17, 17, 0.97);
+  box-shadow: 0 22px 64px rgba(0, 0, 0, 0.46), inset 0 -1px 0 rgba(255, 138, 42, 0.08);
 }
 
 .week-navigation {
@@ -564,8 +611,8 @@ h3 {
   align-items: center;
   gap: 10px;
   border: 1px solid var(--border-soft);
-  background: rgba(17, 17, 17, 0.52);
-  margin-bottom: 10px;
+  background: rgba(0, 0, 0, 0.24);
+  margin-bottom: 12px;
   padding: 8px;
 }
 
@@ -585,27 +632,31 @@ h3 {
   position: relative;
   display: grid;
   grid-template-columns: repeat(7, minmax(74px, 1fr));
-  gap: 8px;
-  border: 1px solid var(--border-soft);
-  background: rgba(17, 17, 17, 0.58);
+  gap: 6px;
+  border: 1px solid rgba(255, 138, 42, 0.14);
+  background:
+    linear-gradient(rgba(237, 237, 237, 0.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(237, 237, 237, 0.018) 1px, transparent 1px),
+    rgba(7, 7, 7, 0.46);
+  background-size: 42px 42px, 42px 42px, auto;
   overflow-x: auto;
-  padding: 12px;
+  padding: 10px;
 }
 
 .day-node {
   display: grid;
-  min-height: 96px;
+  min-height: 104px;
   align-content: start;
   justify-items: center;
-  border: 1px solid var(--border-strong);
+  border: 1px solid rgba(237, 237, 237, 0.13);
   border-radius: 0;
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.04), transparent 68%),
-    var(--surface-raised);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.038), transparent 68%),
+    rgba(23, 23, 23, 0.9);
   color: var(--text-muted);
   gap: 4px;
-  padding: 8px;
-  transition: border-color var(--motion-fast), background var(--motion-fast), transform var(--motion-fast);
+  padding: 9px 7px;
+  transition: border-color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .day-select-button {
@@ -629,12 +680,13 @@ h3 {
 .day-node.selected {
   border-color: var(--fire);
   background:
-    linear-gradient(180deg, var(--fire-wash), transparent 76%),
-    var(--surface-raised);
-  box-shadow: inset 0 -2px 0 var(--fire), 0 0 24px rgba(255, 138, 42, 0.08);
+    linear-gradient(180deg, rgba(255, 138, 42, 0.16), transparent 76%),
+    rgba(28, 23, 19, 0.96);
+  box-shadow: inset 0 -2px 0 var(--fire), 0 0 0 1px rgba(255, 138, 42, 0.12);
 }
 
 .day-node:hover {
+  border-color: rgba(255, 138, 42, 0.3);
   transform: translateY(-1px);
 }
 
@@ -648,7 +700,7 @@ h3 {
 
 .day-number {
   color: var(--text);
-  font-size: 1.25rem;
+  font-size: 1.32rem;
   font-weight: 900;
 }
 
@@ -671,8 +723,8 @@ h3 {
 .day-node.complete {
   border-color: var(--success-border);
   background:
-    linear-gradient(180deg, var(--success-wash), transparent 76%),
-    var(--surface-raised);
+    linear-gradient(180deg, rgba(103, 197, 135, 0.12), transparent 76%),
+    rgba(18, 25, 20, 0.92);
 }
 
 .day-node.complete .day-number {
@@ -695,8 +747,9 @@ h3 {
 }
 
 .day-node.execution-low .day-execution {
-  border-color: rgba(255, 76, 76, 0.5);
-  color: var(--red);
+  border-color: rgba(229, 57, 53, 0.36);
+  background: rgba(229, 57, 53, 0.065);
+  color: #ff7a76;
 }
 
 .day-node.execution-neutral .day-execution {
@@ -708,7 +761,7 @@ h3 {
 .day-node.execution-off .day-execution {
   border-color: var(--border-soft);
   background: rgba(237, 237, 237, 0.04);
-  color: var(--text-muted);
+  color: var(--text-dim);
   font-size: 0.55rem;
 }
 
@@ -800,12 +853,12 @@ h3 {
 
 .orders-panel {
   display: grid;
-  border-color: rgba(255, 138, 42, 0.32);
+  border-color: rgba(255, 138, 42, 0.26);
   background:
-    radial-gradient(circle at 96% 0%, rgba(255, 138, 42, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(255, 138, 42, 0.07), rgba(237, 237, 237, 0) 110px),
-    rgba(20, 20, 20, 0.95);
-  box-shadow: var(--shadow-raised), 0 0 34px rgba(255, 138, 42, 0.06);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 38%),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.032), rgba(237, 237, 237, 0) 130px),
+    rgba(14, 14, 14, 0.96);
+  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.48), inset 0 0 0 1px rgba(255, 138, 42, 0.03);
 }
 
 .orders-panel .section-kicker {
@@ -825,12 +878,14 @@ h3 {
 
 .mission-groups {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .mission-group {
   display: grid;
-  gap: 8px;
+  gap: 9px;
+  border-top: 1px solid rgba(237, 237, 237, 0.055);
+  padding-top: 10px;
 }
 
 .mission-group-header {
@@ -838,7 +893,7 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 0;
   color: var(--text-muted);
   padding-bottom: 6px;
   font-size: 0.66rem;
@@ -877,31 +932,39 @@ h3 {
   display: grid;
   min-height: 96px;
   gap: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid rgba(237, 237, 237, 0.09);
+  border-left: 2px solid rgba(237, 237, 237, 0.16);
+  border-radius: var(--radius-sm);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 80px),
-    rgba(23, 23, 23, 0.94);
-  padding: 14px;
+    linear-gradient(180deg, rgba(237, 237, 237, 0.022), transparent 84px),
+    rgba(14, 14, 14, 0.62);
+  padding: 13px 14px;
+  transition: border-color var(--motion-fast), background var(--motion-fast), opacity var(--motion-fast);
+}
+
+.mission-card:hover {
+  border-color: rgba(237, 237, 237, 0.16);
+  background:
+    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent 84px),
+    rgba(18, 18, 18, 0.7);
 }
 
 .mission-card.decided {
   border-color: var(--purple-border);
   border-left: 3px solid var(--neon-purple);
   background:
-    linear-gradient(90deg, var(--purple-wash), transparent 46%),
+    linear-gradient(90deg, rgba(155, 92, 255, 0.12), transparent 46%),
     linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 80px),
-    rgba(23, 23, 23, 0.95);
-  box-shadow: 0 16px 46px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(155, 92, 255, 0.08);
+    rgba(17, 17, 17, 0.95);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(155, 92, 255, 0.06);
 }
 
 .mission-card.completed {
-  border-color: var(--success-border);
-  border-left: 3px solid var(--success);
+  border-color: rgba(103, 197, 135, 0.22);
+  border-left: 3px solid rgba(103, 197, 135, 0.72);
   background:
-    linear-gradient(90deg, var(--success-wash), transparent 42%),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 80px),
-    rgba(23, 23, 23, 0.94);
+    linear-gradient(90deg, rgba(103, 197, 135, 0.08), transparent 42%),
+    rgba(12, 15, 13, 0.72);
 }
 
 .mission-card.completed.decided {
@@ -944,12 +1007,12 @@ h3 {
 .done-label {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
+  min-height: 24px;
   border: 1px solid var(--border);
-  background: var(--surface-deep);
+  background: rgba(0, 0, 0, 0.28);
   color: var(--text-muted);
-  padding: 4px 8px;
-  font-size: 0.68rem;
+  padding: 3px 7px;
+  font-size: 0.62rem;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -962,8 +1025,8 @@ h3 {
 }
 
 .meta-tag.operation {
-  border-color: rgba(255, 138, 42, 0.34);
-  background: rgba(255, 138, 42, 0.08);
+  border-color: rgba(255, 138, 42, 0.28);
+  background: rgba(255, 138, 42, 0.055);
   color: var(--fire);
 }
 
@@ -996,8 +1059,8 @@ h3 {
   display: grid;
   min-width: 0;
   gap: 12px;
-  border-top: 1px solid var(--border-soft);
-  border-bottom: 1px solid var(--border-soft);
+  border-top: 1px solid rgba(255, 138, 42, 0.12);
+  border-bottom: 1px solid rgba(237, 237, 237, 0.08);
   padding: 14px 0;
 }
 
@@ -1040,8 +1103,10 @@ h3 {
   display: grid;
   gap: 10px;
   overflow: hidden;
-  border: 1px solid var(--border-soft);
-  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 138, 42, 0.14);
+  background:
+    linear-gradient(90deg, rgba(255, 138, 42, 0.04), transparent 44%),
+    rgba(0, 0, 0, 0.20);
   padding: 10px;
   animation: operation-form-enter 160ms ease-out;
 }
@@ -1164,7 +1229,7 @@ h3 {
 .operations-list {
   display: grid;
   gap: 8px;
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid rgba(237, 237, 237, 0.08);
   padding-top: 12px;
 }
 
@@ -1179,11 +1244,11 @@ h3 {
   display: grid;
   min-width: 0;
   gap: 5px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(237, 237, 237, 0.09);
   border-left: 2px solid rgba(255, 138, 42, 0.42);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 52%),
-    rgba(17, 17, 17, 0.78);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.07), transparent 52%),
+    rgba(10, 10, 10, 0.62);
   padding: 10px;
 }
 
@@ -1307,12 +1372,13 @@ h3 {
 
 .tactical-side-panel {
   display: grid;
-  gap: 14px;
-  border-color: rgba(255, 138, 42, 0.24);
+  gap: 12px;
+  border-color: rgba(255, 138, 42, 0.32);
   background:
-    radial-gradient(circle at 80% 8%, rgba(255, 138, 42, 0.2), transparent 30%),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.04), transparent 120px),
-    rgba(16, 16, 16, 0.96);
+    radial-gradient(circle at 78% 8%, rgba(255, 138, 42, 0.18), transparent 32%),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.036), transparent 130px),
+    rgba(13, 13, 13, 0.97);
+  box-shadow: 0 24px 66px rgba(0, 0, 0, 0.48), inset 0 0 0 1px rgba(255, 138, 42, 0.04);
 }
 
 .lion-emblem-card {
@@ -1483,8 +1549,8 @@ h3 {
 .side-block {
   display: grid;
   gap: 8px;
-  border: 1px solid var(--border-soft);
-  background: rgba(10, 10, 10, 0.36);
+  border: 1px solid rgba(237, 237, 237, 0.085);
+  background: rgba(0, 0, 0, 0.28);
   padding: 12px;
 }
 
@@ -1511,8 +1577,8 @@ h3 {
 .side-metrics div {
   display: grid;
   gap: 4px;
-  border: 1px solid var(--border-soft);
-  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(237, 237, 237, 0.085);
+  background: rgba(0, 0, 0, 0.24);
   padding: 10px;
 }
 
@@ -1551,10 +1617,10 @@ h3 {
 .mode-transition-panel {
   display: grid;
   gap: 12px;
-  border-color: rgba(255, 138, 42, 0.22);
+  border-color: rgba(255, 138, 42, 0.18);
   background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.1), transparent 48%),
-    rgba(16, 16, 16, 0.94);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.07), transparent 42%),
+    rgba(12, 12, 12, 0.92);
   padding: 14px;
 }
 
@@ -1588,7 +1654,7 @@ h3 {
 
 .review-screen {
   display: grid;
-  width: min(980px, 100%);
+  width: min(1040px, 100%);
   margin: 0 auto;
   gap: 14px;
 }
@@ -1608,6 +1674,7 @@ h3 {
 .review-panel {
   display: grid;
   gap: 14px;
+  border-color: rgba(255, 138, 42, 0.18);
 }
 
 .review-toolbar {
@@ -1643,8 +1710,8 @@ h3 {
   gap: 16px;
   border: 1px solid rgba(255, 138, 42, 0.22);
   background:
-    radial-gradient(circle at 100% 0%, rgba(255, 138, 42, 0.12), transparent 34%),
-    rgba(0, 0, 0, 0.26);
+    radial-gradient(circle at 100% 0%, rgba(255, 138, 42, 0.09), transparent 34%),
+    rgba(0, 0, 0, 0.24);
   padding: 16px;
 }
 
@@ -1662,8 +1729,8 @@ h3 {
 }
 
 .review-metrics div {
-  border: 1px solid var(--border-soft);
-  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(237, 237, 237, 0.08);
+  background: rgba(0, 0, 0, 0.24);
   padding: 12px;
 }
 
@@ -1683,21 +1750,10 @@ h3 {
   line-height: 1;
 }
 
-.review-metric-decision {
-  border-color: var(--purple-border) !important;
-  background:
-    linear-gradient(90deg, var(--purple-wash), transparent),
-    rgba(0, 0, 0, 0.28) !important;
-}
-
-.review-metric-decision strong {
-  color: var(--neon-purple);
-}
-
 .review-failure-panel {
   display: grid;
   gap: 10px;
-  border: 1px solid var(--red);
+  border: 1px solid rgba(229, 57, 53, 0.36);
   background:
     linear-gradient(180deg, var(--red-wash), transparent 84px),
     rgba(0, 0, 0, 0.24);
@@ -1737,8 +1793,8 @@ h3 {
 .review-card {
   display: grid;
   gap: 10px;
-  border: 1px solid var(--red);
-  background: var(--surface-deep);
+  border: 1px solid rgba(229, 57, 53, 0.28);
+  background: rgba(9, 9, 9, 0.62);
   padding: 14px;
 }
 
@@ -1783,7 +1839,7 @@ h3 {
   display: grid;
   gap: 12px;
   border: 1px solid rgba(255, 138, 42, 0.18);
-  background: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.18);
   padding: 14px;
 }
 
@@ -1807,21 +1863,11 @@ h3 {
   justify-self: start;
 }
 
-.weekly-review-lists {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.compact-card {
-  border-color: var(--border-soft);
-}
-
 .weekly-failure-table {
   display: grid;
   gap: 10px;
   border: 1px solid rgba(229, 57, 53, 0.22);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.22);
   padding: 12px;
 }
 
@@ -1983,18 +2029,20 @@ h3 {
 
 .soldier-layout {
   display: grid;
-  width: min(740px, 100%);
+  width: min(760px, 100%);
   min-height: calc(100vh - 48px);
   margin: 0 auto;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: 14px;
 }
 
 .soldier-header {
-  border: 1px solid rgba(255, 138, 42, 0.2);
+  border: 1px solid rgba(255, 138, 42, 0.26);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.12), transparent 48%),
-    rgba(11, 11, 11, 0.58);
+    radial-gradient(circle at 16% 36%, rgba(255, 138, 42, 0.12), transparent 32%),
+    linear-gradient(90deg, rgba(255, 138, 42, 0.10), transparent 52%),
+    rgba(8, 8, 8, 0.72);
+  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.52), inset 0 -1px 0 rgba(255, 138, 42, 0.08);
   padding: 20px;
 }
 
@@ -2050,8 +2098,8 @@ h3 {
 .soldier-progress-panel {
   border-color: rgba(255, 138, 42, 0.3);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.12), transparent 50%),
-    rgba(17, 17, 17, 0.9);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.10), transparent 50%),
+    rgba(9, 9, 9, 0.78);
   padding: 14px;
 }
 
@@ -2062,7 +2110,11 @@ h3 {
 }
 
 .mission-card.soldier-card {
-  min-height: 132px;
+  min-height: 128px;
+  border-left-width: 3px;
+  background:
+    linear-gradient(90deg, rgba(255, 138, 42, 0.055), transparent 42%),
+    rgba(11, 11, 11, 0.74);
   padding: 18px;
 }
 
@@ -2078,21 +2130,21 @@ h3 {
 .soldier-failure-trigger {
   justify-self: end;
   width: auto;
-  min-height: 34px;
-  border: 1px solid var(--red);
+  min-height: 30px;
+  border: 1px solid rgba(229, 57, 53, 0.32);
   border-radius: var(--radius-sm);
-  background: var(--red-wash);
+  background: rgba(0, 0, 0, 0.18);
   color: var(--red);
   cursor: pointer;
-  padding: 7px 10px;
-  font-size: 0.72rem;
-  font-weight: 900;
+  padding: 5px 8px;
+  font-size: 0.66rem;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
 .soldier-failure-trigger:hover:not(:disabled) {
-  background: rgba(229, 57, 53, 0.18);
-  border-color: var(--red);
+  background: rgba(229, 57, 53, 0.08);
+  border-color: rgba(229, 57, 53, 0.48);
 }
 
 .soldier-failure-box {
@@ -2123,8 +2175,10 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid var(--fire-border);
-  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid rgba(255, 138, 42, 0.32);
+  background:
+    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 42%),
+    rgba(0, 0, 0, 0.24);
   padding: 10px 12px;
 }
 
@@ -2145,7 +2199,7 @@ h3 {
 
 .soldier-footer {
   border: 1px solid var(--border);
-  background: rgba(23, 23, 23, 0.94);
+  background: rgba(12, 12, 12, 0.8);
   padding: 8px;
 }
 
@@ -2215,6 +2269,10 @@ h3 {
     grid-template-columns: 220px minmax(0, 1fr);
   }
 
+  .general-board {
+    padding-right: 0;
+  }
+
   .general-side {
     grid-column: 1 / -1;
     position: static;
@@ -2248,10 +2306,6 @@ h3 {
   }
 
   .review-content-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .weekly-review-lists {
     grid-template-columns: 1fr;
   }
 
@@ -2291,6 +2345,12 @@ h3 {
     padding: 8px;
   }
 
+  .general-board {
+    border: 0;
+    background: transparent;
+    padding: 0;
+  }
+
   .review-summary {
     display: grid;
   }
@@ -2327,5 +2387,4 @@ h3 {
     min-height: 98px;
     padding: 8px 6px;
   }
-
 }
