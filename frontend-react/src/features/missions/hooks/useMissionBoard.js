@@ -41,6 +41,7 @@ export function useMissionBoard({
   const [formLoading, setFormLoading] = useState(false);
   const [reviewLoadingId, setReviewLoadingId] = useState(null);
   const [decisionLoadingId, setDecisionLoadingId] = useState(null);
+  const [pinLoadingId, setPinLoadingId] = useState(null);
   const [completeLoadingId, setCompleteLoadingId] = useState(null);
   const [justificationLoadingId, setJustificationLoadingId] = useState(null);
   const [status, setStatus] = useState(emptyStatus);
@@ -473,6 +474,34 @@ export function useMissionBoard({
     return true;
   }
 
+  async function toggleMissionPin(mission) {
+    if (!mission?.id) {
+      setStatus({ type: "error", message: "Ordem inválida para subir prioridade." });
+      return false;
+    }
+
+    setPinLoadingId(mission.id);
+    setStatus(emptyStatus);
+    const result = await api.toggleMissionPin(token, mission.id);
+    setPinLoadingId(null);
+
+    if (onUnauthorized(result)) {
+      return false;
+    }
+
+    if (!result.ok) {
+      setStatus({
+        type: "error",
+        message: getErrorMessage(result, "Não foi possível subir prioridade."),
+      });
+      await loadGeneralBoard();
+      return false;
+    }
+
+    await loadGeneralBoard();
+    return true;
+  }
+
   async function deleteMission(mission) {
     if (!mission?.id) {
       setStatus({ type: "error", message: "Ordem inválida para remoção." });
@@ -635,6 +664,7 @@ export function useMissionBoard({
     operationalTurn,
     operationalTurnAcknowledged,
     operations,
+    pinLoadingId,
     reviewLoadingId,
     reviewMissions,
     reviewState,
@@ -644,6 +674,7 @@ export function useMissionBoard({
     submitFailureJustification,
     submitGeneralReview,
     toggleMissionDecision,
+    toggleMissionPin,
     updateMission,
     weeklyReviews,
   };

@@ -227,6 +227,33 @@ def test_listar_missoes_prioriza_decididas_e_ignora_prioridade_numerica():
     ]
 
 
+def test_listar_missoes_prioriza_fixada_antes_de_decididas():
+    repositorio = RepositorioListagemFake()
+    repositorio.carregar_dados = lambda: [
+        Missao(
+            missao_id=1,
+            titulo="Decidida",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Executar",
+            is_decided=True,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Fixada",
+            prioridade=3,
+            prazo="24-04-2026",
+            instrucao="Executar",
+            is_pinned=True,
+        ),
+    ]
+    service = criar_missao_service(repositorio)
+
+    missoes = service.listar_missoes()
+
+    assert [missao.titulo for missao in missoes] == ["Fixada", "Decidida"]
+
+
 def test_listar_missoes_prioriza_justificativa_antes_de_decididas():
     repositorio = RepositorioListagemFake()
     repositorio.carregar_dados = lambda: [
@@ -609,6 +636,40 @@ def test_usuario_pode_alternar_decisao_sem_afetar_outros_campos():
     assert missao.is_decided is True
     assert missao.titulo == "Missão protegida"
     assert repositorio.auditoria_registrada[-1].acao == "missao_decidida"
+
+
+def test_usuario_nao_pode_marcar_quarta_decidida_no_mesmo_dia():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.atualizar_prazo("24-04-2026")
+    outras = [
+        Missao(
+            missao_id=indice,
+            titulo=f"Decidida {indice}",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Executar",
+            user_id=1,
+            is_decided=True,
+        )
+        for indice in (1, 2, 3)
+    ]
+    repositorio.carregar_dados_por_responsavel = lambda responsavel_id: [repositorio.missao, *outras]
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    with pytest.raises(ValueError, match="Limite de 3 missões Decididas"):
+        service.alternar_decisao(10, usuario=usuario)
+
+
+def test_usuario_pode_alternar_prioridade_fixada():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.alternar_prioridade_fixada(10, usuario=usuario)
+
+    assert missao.is_pinned is True
+    assert repositorio.auditoria_registrada[-1].acao == "missao_prioridade_fixada"
 
 
 def test_usuario_pode_remover_decisao_de_missao_pendente():

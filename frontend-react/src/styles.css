@@ -14,12 +14,13 @@ body::before {
   inset: 0;
   z-index: -3;
   background:
-    radial-gradient(circle at 50% 10%, rgba(255, 138, 42, 0.10), transparent 30%),
-    radial-gradient(circle at 84% 14%, rgba(155, 92, 255, 0.045), transparent 26%),
-    linear-gradient(115deg, rgba(0, 0, 0, 0.82), rgba(14, 14, 14, 0.94) 54%, rgba(0, 0, 0, 0.86)),
+    radial-gradient(ellipse at 46% 0%, rgba(255, 138, 42, 0.13), transparent 34%),
+    linear-gradient(90deg, rgba(255, 138, 42, 0.035) 0 1px, transparent 1px 82px),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.030) 0 1px, transparent 1px 74px),
+    linear-gradient(115deg, rgba(0, 0, 0, 0.78), rgba(13, 13, 13, 0.92) 54%, rgba(0, 0, 0, 0.84)),
     url("./assets/bunkermode/backgrounds/general/bg_general_concrete.png");
   background-repeat: repeat;
-  background-size: auto, auto, auto, 230px 210px;
+  background-size: auto, 82px 82px, 74px 74px, auto, 230px 210px;
 }
 
 body::after {
@@ -28,7 +29,7 @@ body::after {
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(ellipse at center, transparent 44%, rgba(0, 0, 0, 0.48) 100%),
+    radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.54) 100%),
     linear-gradient(rgba(237, 237, 237, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(237, 237, 237, 0.025) 1px, transparent 1px),
     linear-gradient(180deg, rgba(237, 237, 237, 0.04), transparent 150px),
@@ -606,9 +607,11 @@ h3 {
 .tactical-panel.elevated {
   border-color: rgba(255, 138, 42, 0.30);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.09), transparent 34%),
+    linear-gradient(90deg, rgba(255, 138, 42, 0.10), transparent 34%),
+    linear-gradient(135deg, rgba(237, 237, 237, 0.035) 0 1px, transparent 1px 18px),
     linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 130px),
     rgba(17, 17, 17, 0.97);
+  background-size: auto, 18px 18px, auto, auto;
   box-shadow: 0 22px 64px rgba(0, 0, 0, 0.46), inset 0 -1px 0 rgba(255, 138, 42, 0.08);
 }
 
@@ -639,13 +642,14 @@ h3 {
   position: relative;
   display: grid;
   grid-template-columns: repeat(7, minmax(74px, 1fr));
-  gap: 6px;
+  gap: 7px;
   border: 1px solid rgba(255, 138, 42, 0.14);
   background:
+    linear-gradient(90deg, rgba(255, 138, 42, 0.055), transparent 18%, transparent 82%, rgba(237, 237, 237, 0.035)),
     linear-gradient(rgba(237, 237, 237, 0.026) 1px, transparent 1px),
     linear-gradient(90deg, rgba(237, 237, 237, 0.018) 1px, transparent 1px),
     rgba(7, 7, 7, 0.46);
-  background-size: 42px 42px, 42px 42px, auto;
+  background-size: auto, 42px 42px, 42px 42px, auto;
   overflow-x: auto;
   padding: 10px;
 }
@@ -658,6 +662,7 @@ h3 {
   border: 1px solid rgba(237, 237, 237, 0.13);
   border-radius: 0;
   background:
+    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 3px),
     linear-gradient(180deg, rgba(237, 237, 237, 0.038), transparent 68%),
     rgba(23, 23, 23, 0.9);
   color: var(--text-muted);
@@ -698,6 +703,7 @@ h3 {
 }
 
 .day-week,
+.day-date,
 .day-today,
 .day-execution {
   font-size: 0.64rem;
@@ -705,10 +711,20 @@ h3 {
   text-transform: uppercase;
 }
 
+.day-week {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
 .day-number {
   color: var(--text);
   font-size: 1.32rem;
   font-weight: 900;
+}
+
+.day-date {
+  color: var(--text-muted);
+  font-size: 0.62rem;
 }
 
 .day-today {
@@ -761,6 +777,7 @@ h3 {
 
 .day-node.execution-neutral .day-execution {
   border-color: var(--border-soft);
+  background: transparent;
   color: var(--text-muted);
   font-size: 0.56rem;
 }
@@ -959,6 +976,11 @@ h3 {
   color: var(--neon-purple);
 }
 
+.mission-group.pinned .mission-group-header span,
+.mission-group.pinned .mission-group-header strong {
+  color: var(--fire);
+}
+
 .mission-group.danger .mission-group-header span,
 .mission-group.danger .mission-group-header strong {
   color: var(--red);
@@ -979,15 +1001,15 @@ h3 {
 
 .mission-card {
   display: grid;
-  min-height: 96px;
-  gap: 10px;
+  min-height: 58px;
+  gap: 7px;
   border: 1px solid rgba(237, 237, 237, 0.09);
   border-left: 2px solid rgba(237, 237, 237, 0.16);
   border-radius: var(--radius-sm);
   background:
     linear-gradient(180deg, rgba(237, 237, 237, 0.022), transparent 84px),
     rgba(14, 14, 14, 0.62);
-  padding: 13px 14px;
+  padding: 9px 10px;
   transition: border-color var(--motion-fast), background var(--motion-fast), opacity var(--motion-fast);
 }
 
@@ -1006,6 +1028,16 @@ h3 {
     linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 80px),
     rgba(17, 17, 17, 0.95);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(155, 92, 255, 0.06);
+}
+
+.mission-card.pinned {
+  border-color: rgba(255, 138, 42, 0.36);
+  border-left: 3px solid var(--fire);
+  background:
+    linear-gradient(90deg, rgba(255, 138, 42, 0.13), transparent 48%),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent 60px),
+    rgba(17, 17, 17, 0.94);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(255, 138, 42, 0.06);
 }
 
 .mission-card.completed {
@@ -1049,7 +1081,8 @@ h3 {
 .mission-badge-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 5px;
 }
 
 .meta-tag,
@@ -1060,8 +1093,8 @@ h3 {
   border: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.28);
   color: var(--text-muted);
-  padding: 3px 7px;
-  font-size: 0.62rem;
+  padding: 2px 6px;
+  font-size: 0.58rem;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -1079,10 +1112,27 @@ h3 {
   color: var(--fire);
 }
 
-.mission-origin {
-  margin: -4px 0 0;
+.meta-tag.pinned {
+  border-color: rgba(255, 138, 42, 0.42);
+  background: rgba(255, 138, 42, 0.08);
   color: var(--fire);
-  font-size: 0.72rem;
+}
+
+.mission-compact-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.mission-title-stack {
+  min-width: 0;
+}
+
+.mission-origin {
+  margin: 2px 0 0;
+  color: var(--fire);
+  font-size: 0.64rem;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -1094,7 +1144,10 @@ h3 {
 }
 
 .mission-card h3 {
-  margin: 2px 0 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.94rem;
+  line-height: 1.18;
 }
 
 .mission-instruction {
@@ -1102,6 +1155,13 @@ h3 {
   margin: 0;
   color: var(--text-muted);
   line-height: 1.45;
+}
+
+.mission-details-inline {
+  display: grid;
+  gap: 7px;
+  border-top: 1px solid rgba(237, 237, 237, 0.08);
+  padding-top: 8px;
 }
 
 .command-operations {
@@ -1441,9 +1501,20 @@ h3 {
 .mission-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   border-top: 1px solid var(--border);
-  padding-top: 12px;
+  padding-top: 8px;
+}
+
+.mission-actions .button.compact {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 0.58rem;
+}
+
+.mission-actions .button.subtle {
+  border-color: rgba(237, 237, 237, 0.10);
+  color: var(--text-dim);
 }
 
 .empty-state {
@@ -1677,12 +1748,26 @@ h3 {
   padding: 12px;
 }
 
+.hunt-entry .mode-transition-count,
+.hunt-entry .muted,
 .decided-summary span,
 .side-metrics span {
   color: var(--text-muted);
   font-size: 0.64rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.hunt-entry .muted {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+.hunt-entry .mode-transition-count {
+  margin: 0;
+  color: var(--fire);
 }
 
 .decided-summary p {

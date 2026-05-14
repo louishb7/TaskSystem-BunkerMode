@@ -500,6 +500,19 @@ def alternar_decisao_missao(
     return missao_service.to_response(missao, usuario=usuario)
 
 
+@router.patch("/missoes/{missao_id}/toggle-pin")
+def alternar_prioridade_missao(
+    missao_id: int,
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+):
+    try:
+        missao = missao_service.alternar_prioridade_fixada(missao_id, usuario=usuario)
+    except (MissaoNaoEncontrada, PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+    return missao_service.to_response(missao, usuario=usuario)
+
+
 @router.post("/missoes/{missao_id}/soldier-excuse")
 def registrar_justificativa_soldado(
     missao_id: int,

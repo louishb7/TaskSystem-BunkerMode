@@ -102,6 +102,12 @@ export const api = {
       method: "PATCH",
     });
   },
+  toggleMissionPin(token, missionId) {
+    return requestMission(`/missoes/${missionId}/toggle-pin`, {
+      token,
+      method: "PATCH",
+    });
+  },
   submitFailureJustification(token, missionId, payload) {
     return requestMission(`/missoes/${missionId}/justification`, {
       token,

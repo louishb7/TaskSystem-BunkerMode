@@ -22,16 +22,22 @@ export default function DaySelector({
   weekDays,
 }) {
   return (
-    <div className="week-board" aria-label="Semana operacional">
+    <div className="week-board" aria-label="Cronograma de caça">
       {weekDays.map((date) => {
         const apiDate = formatDateForApi(date);
         const selected = date.getTime() === selectedDate.getTime();
         const today = date.getTime() === todayDate.getTime();
+        const past = date.getTime() < todayDate.getTime();
+        const future = date.getTime() > todayDate.getTime();
         const stats = missionStatsByDate[apiDate] || { completed: 0, total: 0 };
-        const isDayOff = stats.total === 0;
+        const isDayOff = past && stats.total === 0;
         const complete = stats.total > 0 && stats.completed === stats.total;
-        const percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : null;
-        const tone = isDayOff ? "off" : executionTone(percent);
+        const percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+        const hasExecutionLabel = !future && (today || past || stats.total > 0);
+        const executionLabel = isDayOff ? "DIA OFF" : hasExecutionLabel ? `${percent}%` : "";
+        const tone = isDayOff ? "off" : hasExecutionLabel ? executionTone(percent) : "neutral";
+        const dayNumber = String(date.getDate()).padStart(2, "0");
+        const monthNumber = String(date.getMonth() + 1).padStart(2, "0");
 
         return (
           <div
@@ -40,13 +46,14 @@ export default function DaySelector({
           >
             <button className="day-select-button" type="button" onClick={() => onSelectDate(date)}>
               <span className="day-week">{WEEK_LABELS[date.getDay()]}</span>
-              <span className="day-number">{String(date.getDate()).padStart(2, "0")}</span>
+              <span className="day-number">{dayNumber}</span>
+              <span className="day-date">{dayNumber}/{monthNumber}</span>
               <span className="day-today">{today ? "HOJE" : "\u00A0"}</span>
               <span
                 className="day-execution"
-                aria-label={isDayOff ? "Dia off automático" : `${percent}% do Leão do Dia`}
+                aria-label={executionLabel ? (isDayOff ? "Dia off" : `${percent}% do Leão do Dia`) : "Dia futuro sem status"}
               >
-                {isDayOff ? "DIA OFF" : `${percent}%`}
+                {executionLabel || "\u00A0"}
               </span>
             </button>
           </div>

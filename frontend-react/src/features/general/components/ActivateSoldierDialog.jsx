@@ -9,8 +9,8 @@ export default function ActivateSoldierDialog({
   return (
     <div className="modal-backdrop" role="presentation">
       <section className="modal-card" role="dialog" aria-modal="true">
-        <p className="section-kicker fire">ATIVAR SOLDADO</p>
-        <h2>Entrar em execução</h2>
+        <p className="section-kicker fire">CAÇADA</p>
+        <h2>Iniciar caçada</h2>
         <p className="muted">
           O plano já foi decidido. Ao entrar em execução, planejamento fica bloqueado.
         </p>
@@ -24,7 +24,7 @@ export default function ActivateSoldierDialog({
             CANCELAR
           </button>
           <button className="button fire" type="button" onClick={onConfirm} disabled={loading}>
-            {loading ? "ATIVANDO" : "ATIVAR SOLDADO"}
+            {loading ? "ABRINDO" : "INICIAR CAÇADA"}
           </button>
         </div>
       </section>

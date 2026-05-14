@@ -165,15 +165,16 @@ def test_adicionar_missao_atualiza_id_e_confirma_transacao(
     assert missao_exemplo.missao_id == 7
     assert connection.commit_called is True
     params = cursor.executions[-1][1]
-    assert params[0:6] == (
+    assert params[0:7] == (
         "Estudar persistência",
         1,
         date(2026, 4, 20),
         "Validar escrita no PostgreSQL",
         "Pendente",
         False,
+        False,
     )
-    assert params[7:] == (None, None, None, None, None, None)
+    assert params[8:] == (None, None, None, None, None, None)
 
 
 def test_atualizar_missao_lanca_erro_quando_linha_nao_existe(

@@ -82,17 +82,21 @@ export default function MissionCard({
   onDelete,
   onEdit,
   onJustify,
+  onTogglePin,
   onToggleDecision,
+  pinning = false,
   toggling = false,
   variant = "general",
 }) {
   const [confirmingToggle, setConfirmingToggle] = useState(false);
   const [failureFormOpen, setFailureFormOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const soldier = variant === "soldier";
   const title = mission?.titulo || "Sem título";
   const instruction = mission?.instrucao || "";
   const isDecided = mission?.is_decided === true;
-  const disabled = toggling || completing || justifying;
+  const isPinned = mission?.is_pinned === true;
+  const disabled = toggling || pinning || completing || justifying;
   const canComplete = can(mission, "can_complete");
   const canJustify = can(mission, "can_justify");
   const requiresJustification = mission?.requires_immediate_justification === true || (canJustify && isDecided);
@@ -104,6 +108,7 @@ export default function MissionCard({
   useEffect(() => {
     setConfirmingToggle(false);
     setFailureFormOpen(false);
+    setDetailsOpen(false);
   }, [mission?.id, mission?.is_decided]);
 
   if (soldier) {
@@ -171,20 +176,50 @@ export default function MissionCard({
   }
 
   return (
-    <article className={`mission-card ${isDecided ? "decided" : ""} ${completed ? "completed" : ""}`}>
-      <div className="mission-badge-row">
-        {isDecided && <span className="meta-tag critical">DECIDIDA</span>}
-        {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
-        {deadlineLabel !== "HOJE" && <span className="meta-tag">{deadlineLabel}</span>}
-        <span className="meta-tag">{statusText(mission)}</span>
+    <article className={`mission-card ${isPinned ? "pinned" : ""} ${isDecided ? "decided" : ""} ${completed ? "completed" : ""}`}>
+      <div className="mission-compact-head">
+        <div className="mission-title-stack">
+          <h3>{title}</h3>
+          {operationName && <p className="mission-origin">Operação: {operationName}</p>}
+        </div>
+        <div className="mission-badge-row">
+          {isPinned && <span className="meta-tag pinned">FIXADA</span>}
+          {isDecided && <span className="meta-tag critical">DECIDIDA</span>}
+          {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
+          {deadlineLabel !== "HOJE" && <span className="meta-tag">{deadlineLabel}</span>}
+          <span className="meta-tag">{statusText(mission)}</span>
+        </div>
       </div>
 
-      <h3>{title}</h3>
-      {operationName && <p className="mission-origin">Operação: {operationName}</p>}
-      {instruction && <p className="mission-instruction">{instruction}</p>}
-      {completed && <span className="done-label">CUMPRIDA</span>}
+      {detailsOpen && (
+        <div className="mission-details-inline">
+          {instruction ? (
+            <p className="mission-instruction">{instruction}</p>
+          ) : (
+            <p className="mission-instruction">Sem instrução adicional.</p>
+          )}
+          {completed && <span className="done-label">CUMPRIDA</span>}
+        </div>
+      )}
 
       <div className="mission-actions">
+        <button
+          className="button secondary compact subtle"
+          type="button"
+          onClick={() => setDetailsOpen((current) => !current)}
+        >
+          {detailsOpen ? "OCULTAR" : "DETALHES"}
+        </button>
+
+        <button
+          className={`button compact pin-action ${isPinned ? "decision ghost" : "secondary"}`}
+          disabled={disabled}
+          type="button"
+          onClick={() => onTogglePin?.(mission)}
+        >
+          {pinning ? "AGUARDE" : isPinned ? "PRIORIDADE FIXADA" : "SUBIR PRIORIDADE"}
+        </button>
+
         {can(mission, "can_toggle_decided") && (
           confirmingToggle ? (
             <>
@@ -242,7 +277,7 @@ export default function MissionCard({
   );
 }
 
-export function MissionProgress({ label = "PROGRESSO", missions }) {
+export function MissionProgress({ emptyLabel = "DIA OFF", label = "PROGRESSO", missions }) {
   const total = missions.length;
   const completed = missions.filter(isCompleted).length;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -253,14 +288,14 @@ export function MissionProgress({ label = "PROGRESSO", missions }) {
     <div className={`mission-progress ${complete ? "complete" : ""} ${off ? "off" : ""}`}>
       <div>
         <span>{label}</span>
-        <strong>{off ? "DIA OFF" : `${percent}%`}</strong>
+        <strong>{off ? emptyLabel : `${percent}%`}</strong>
       </div>
       <div className="progress-track">
         <span style={{ width: `${percent}%` }} />
       </div>
       <div className="progress-meta">
         <span>
-          {off ? "DIA OFF" : `${completed}/${total} EXECUTADAS`}
+          {off ? emptyLabel : `${completed}/${total} EXECUTADAS`}
         </span>
       </div>
     </div>

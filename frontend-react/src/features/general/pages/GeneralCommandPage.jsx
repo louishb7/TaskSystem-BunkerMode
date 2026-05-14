@@ -16,7 +16,6 @@ import {
 } from "../../calendar/calendarUtils.js";
 import ActivateSoldierDialog from "../components/ActivateSoldierDialog.jsx";
 import CommandRail from "../components/CommandRail.jsx";
-import ModeTransitionPanel from "../components/ModeTransitionPanel.jsx";
 import OrdersPanel from "../components/OrdersPanel.jsx";
 import TacticalSidePanel from "../components/TacticalSidePanel.jsx";
 import WeekPanel from "../components/WeekPanel.jsx";
@@ -127,14 +126,13 @@ export default function GeneralCommandPage({
       <section className="general-layout">
         <aside className="general-side operational-side">
           <TacticalSidePanel
-            selectedDateLabel={selectedDateLabel}
-            selectedMissions={selectedMissions}
-          />
-          <ModeTransitionPanel
             loading={modeLoading}
             onActivateSoldier={() => setShowSoldierConfirm(true)}
-            orderCount={selectedMissions.length}
             reviewCount={reviewCount}
+            selectedDate={selectedDate}
+            selectedDateLabel={selectedDateLabel}
+            selectedMissions={selectedMissions}
+            todayDate={todayDate}
           />
         </aside>
 
@@ -158,7 +156,9 @@ export default function GeneralCommandPage({
             onCreateOrder={openCreateForm}
             onDeleteMission={deleteMission}
             onEditMission={openEditForm}
+            onTogglePin={board.toggleMissionPin}
             onToggleDecision={board.toggleMissionDecision}
+            pinLoadingId={board.pinLoadingId}
             selectedMissions={selectedMissions}
           />
         </section>

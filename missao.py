@@ -63,6 +63,7 @@ class Missao:
         user_id=None,
         operacao_id=None,
         operacao_nome=None,
+        is_pinned=False,
     ):
         self.missao_id = self._validar_missao_id(missao_id)
         self.titulo = self._validar_titulo(titulo)
@@ -86,6 +87,7 @@ class Missao:
             operacao_nome,
             "Nome da operação não pode ser vazio.",
         )
+        self.is_pinned = self._validar_is_pinned(is_pinned)
         self._normalizar_consistencia_inicial()
 
     @property
@@ -108,6 +110,7 @@ class Missao:
             "status_code": self.status_code,
             "status_label": self.status_label,
             "is_decided": self.is_decided,
+            "is_pinned": self.is_pinned,
             "created_at": self.created_at.isoformat(),
             "completed_at": None if self.completed_at is None else self.completed_at.isoformat(),
             "failed_at": None if self.failed_at is None else self.failed_at.isoformat(),
@@ -293,6 +296,9 @@ class Missao:
     def alternar_decisao(self):
         self.is_decided = not self.is_decided
 
+    def alternar_prioridade_fixada(self):
+        self.is_pinned = not self.is_pinned
+
     def atualizar_status(self, status):
         novo_status = self._validar_status(status)
         if novo_status == StatusMissao.PENDENTE:
@@ -472,6 +478,11 @@ class Missao:
         if not isinstance(is_decided, bool):
             raise ValueError("Marcador de decisão deve ser booleano.")
         return is_decided
+
+    def _validar_is_pinned(self, is_pinned):
+        if not isinstance(is_pinned, bool):
+            raise ValueError("Marcador de prioridade deve ser booleano.")
+        return is_pinned
 
     def _validar_datetime(self, valor, mensagem_erro, default_now=False):
         if valor is None:

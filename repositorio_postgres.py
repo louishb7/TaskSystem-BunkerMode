@@ -109,6 +109,10 @@ class RepositorioPostgres:
             """,
             """
             ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
             ADD COLUMN IF NOT EXISTS failed_at TIMESTAMP NULL;
             """,
             """
@@ -220,6 +224,7 @@ class RepositorioPostgres:
             ) from erro
 
     def _reconstruir_missao(self, linha: tuple) -> Missao:
+        is_pinned = False
         if len(linha) == 7:
             (
                 missao_id,
@@ -296,6 +301,26 @@ class RepositorioPostgres:
                 operacao_id,
                 operacao_nome,
             ) = linha
+        elif len(linha) == 17:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
+                is_decided,
+                is_pinned,
+                created_at,
+                completed_at,
+                failed_at,
+                failure_reason_type,
+                failure_reason,
+                soldier_excuse,
+                general_verdict,
+                operacao_id,
+                operacao_nome,
+            ) = linha
         else:
             (
                 missao_id,
@@ -332,6 +357,7 @@ class RepositorioPostgres:
             general_verdict=general_verdict,
             operacao_id=operacao_id,
             operacao_nome=operacao_nome,
+            is_pinned=is_pinned,
         )
 
     def _reconstruir_usuario(self, linha: tuple) -> Usuario:
@@ -460,7 +486,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
-                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
                                m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
                         FROM missoes m
                         LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -485,7 +511,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
-                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
                                m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -512,7 +538,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
-                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
                                m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
                         FROM missoes m
                         LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -538,10 +564,10 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         INSERT INTO missoes (
-                            titulo, prioridade, prazo, instrucao, status, is_decided,
+                            titulo, prioridade, prazo, instrucao, status, is_decided, is_pinned,
                             created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
                         (
@@ -551,6 +577,7 @@ class RepositorioPostgres:
                             missao.instrucao,
                             missao.status.value,
                             missao.is_decided,
+                            missao.is_pinned,
                             missao.created_at,
                             missao.completed_at,
                             missao.failed_at,
@@ -584,6 +611,7 @@ class RepositorioPostgres:
                             instrucao = %s,
                             status = %s,
                             is_decided = %s,
+                            is_pinned = %s,
                             created_at = %s,
                             completed_at = %s,
                             failed_at = %s,
@@ -600,6 +628,7 @@ class RepositorioPostgres:
                             missao.instrucao,
                             missao.status.value,
                             missao.is_decided,
+                            missao.is_pinned,
                             missao.created_at,
                             missao.completed_at,
                             missao.failed_at,

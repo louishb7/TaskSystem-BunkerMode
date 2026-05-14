@@ -9,6 +9,7 @@ from services.operational_day import operational_date_for
 
 
 LEGACY_DEFAULT_PRIORITY = 2
+MAX_DECIDED_PER_DAY = 3
 
 
 class MissaoService:
@@ -202,6 +203,8 @@ class MissaoService:
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
         if not missao.can_be_marked_decided():
             raise ValueError("Apenas missões pendentes podem receber o marcador de decisão.")
+        if not missao.is_decided:
+            self._garantir_limite_decididas_do_dia(missao, usuario=usuario)
         missao.alternar_decisao()
         self.repositorio.atualizar_missao(missao)
 
@@ -214,6 +217,26 @@ class MissaoService:
                     "General marcou a missão como compromisso decidido."
                     if missao.is_decided
                     else "General removeu o marcador de compromisso decidido."
+                ),
+            )
+
+        return missao
+
+    def alternar_prioridade_fixada(self, missao_id: int, usuario=None) -> Missao:
+        self._garantir_modo_general(usuario)
+        missao = self._buscar_por_id_do_usuario(missao_id, usuario)
+        missao.alternar_prioridade_fixada()
+        self.repositorio.atualizar_missao(missao)
+
+        if usuario is not None:
+            self._registrar_auditoria(
+                missao_id=missao.missao_id,
+                usuario_id=usuario.usuario_id,
+                acao="missao_prioridade_fixada" if missao.is_pinned else "missao_prioridade_removida",
+                detalhes=(
+                    "General fixou a missão no topo do dia."
+                    if missao.is_pinned
+                    else "General removeu a missão do topo do dia."
                 ),
             )
 
@@ -493,12 +516,29 @@ class MissaoService:
         return sorted(
             missoes,
             key=lambda missao: (
+                0 if missao.is_pinned else 1,
                 0 if missao.requires_soldier_justification() else 1,
                 0 if missao.is_decided else 1,
+                1 if missao.is_completed() or missao.is_failed_waiting_review() or missao.is_failed_reviewed() else 0,
                 missao.due_date or date.max,
                 missao.missao_id or 0,
             ),
         )
+
+    def _garantir_limite_decididas_do_dia(self, missao: Missao, usuario=None) -> None:
+        dia = missao.due_date
+        if dia is None:
+            return
+
+        decididas_no_dia = [
+            item
+            for item in self._carregar_missoes_do_usuario(usuario)
+            if item.missao_id != missao.missao_id
+            and item.due_date == dia
+            and item.is_decided
+        ]
+        if len(decididas_no_dia) >= MAX_DECIDED_PER_DAY:
+            raise ValueError("Limite de 3 missões Decididas por dia atingido.")
 
     def _build_permissions(self, missao: Missao, usuario=None, reference_date: date | None = None) -> MissionPermissions:
         modo = getattr(usuario, "active_mode", "general") if usuario is not None else "general"

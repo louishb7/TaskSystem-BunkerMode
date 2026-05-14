@@ -10,10 +10,11 @@ function isFailure(mission) {
 
 function groupMissions(missions) {
   return {
-    critical: missions.filter((mission) => !isCompleted(mission) && mission?.is_decided === true),
-    pending: missions.filter((mission) => !isCompleted(mission) && mission?.is_decided !== true && !isFailure(mission)),
-    failures: missions.filter((mission) => !isCompleted(mission) && isFailure(mission)),
-    completed: missions.filter(isCompleted),
+    pinned: missions.filter((mission) => mission?.is_pinned === true),
+    critical: missions.filter((mission) => mission?.is_pinned !== true && !isCompleted(mission) && mission?.is_decided === true),
+    pending: missions.filter((mission) => mission?.is_pinned !== true && !isCompleted(mission) && mission?.is_decided !== true && !isFailure(mission)),
+    failures: missions.filter((mission) => mission?.is_pinned !== true && !isCompleted(mission) && isFailure(mission)),
+    completed: missions.filter((mission) => mission?.is_pinned !== true && isCompleted(mission)),
   };
 }
 
@@ -23,11 +24,13 @@ export default function OrdersPanel({
   onCreateOrder,
   onDeleteMission,
   onEditMission,
+  onTogglePin,
   onToggleDecision,
+  pinLoadingId,
   selectedMissions,
 }) {
   const groups = groupMissions(selectedMissions);
-  const activeCount = groups.critical.length + groups.pending.length + groups.failures.length;
+  const activeCount = groups.pinned.filter((mission) => !isCompleted(mission)).length + groups.critical.length + groups.pending.length + groups.failures.length;
   const completedCount = groups.completed.length;
 
   function renderMissionGroup(label, missions, tone = "") {
@@ -48,7 +51,9 @@ export default function OrdersPanel({
               mission={mission}
               onDelete={() => onDeleteMission(mission)}
               onEdit={() => onEditMission(mission)}
+              onTogglePin={() => onTogglePin(mission)}
               onToggleDecision={() => onToggleDecision(mission)}
+              pinning={pinLoadingId === mission.id}
               toggling={decisionLoadingId === mission.id}
               variant="general"
             />
@@ -66,7 +71,7 @@ export default function OrdersPanel({
           <h2>Mesa operacional</h2>
           <p className="muted">
             {activeCount > 0
-              ? `${activeCount} em aberto. ${completedCount} cumpridas permanecem arquivadas no quadro.`
+              ? `${activeCount} em aberto. ${completedCount} cumpridas.`
               : completedCount > 0
                 ? "Todas as ordens do dia foram cumpridas."
                 : "Nenhuma ordem definida para o dia selecionado."}
@@ -84,6 +89,7 @@ export default function OrdersPanel({
         />
       ) : selectedMissions.length > 0 ? (
         <div className="mission-groups">
+          {renderMissionGroup("Fixadas", groups.pinned, "pinned")}
           {renderMissionGroup("Inegociáveis", groups.critical, "critical")}
           {renderMissionGroup("Pendentes", groups.pending)}
           {renderMissionGroup("Falhas em leitura", groups.failures, "danger")}
