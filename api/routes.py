@@ -255,11 +255,23 @@ def _listar_missoes_operacionais(
     missao_service: MissaoService = Depends(get_missao_service),
     operacao_service: OperacaoService = Depends(get_operacao_service),
 ):
-    if hasattr(operacao_service, "materializar_dia_operacional"):
+    materializar = (
+        getattr(operacao_service, "materializar_turno_soldado", None)
+        if getattr(usuario, "active_mode", "general") == "soldier"
+        else getattr(operacao_service, "materializar_dia_operacional", None)
+    )
+    if callable(materializar):
         try:
-            operacao_service.materializar_dia_operacional(usuario=usuario)
+            materializar(usuario=usuario)
         except (PermissaoNegadaError, ValueError) as erro:
             _raise_http_from_domain_error(erro)
+    if getattr(usuario, "active_mode", "general") == "soldier":
+        estado = missao_service.estado_turno_soldado(usuario=usuario)
+        return missao_service.to_response_list(
+            missao_service.listar_acoes_do_turno_soldado(usuario=usuario),
+            usuario=usuario,
+            reference_date=estado["active_date"],
+        )
     return missao_service.to_response_list(
         missao_service.listar_missoes(usuario=usuario),
         usuario=usuario,
@@ -298,15 +310,63 @@ def listar_missoes_do_dia_operacional(
     missao_service: MissaoService = Depends(get_missao_service),
     operacao_service: OperacaoService = Depends(get_operacao_service),
 ):
-    if hasattr(operacao_service, "materializar_dia_operacional"):
+    materializar = (
+        getattr(operacao_service, "materializar_turno_soldado", None)
+        if getattr(usuario, "active_mode", "general") == "soldier"
+        else getattr(operacao_service, "materializar_dia_operacional", None)
+    )
+    if callable(materializar):
         try:
-            operacao_service.materializar_dia_operacional(usuario=usuario)
+            materializar(usuario=usuario)
         except (PermissaoNegadaError, ValueError) as erro:
             _raise_http_from_domain_error(erro)
+    if getattr(usuario, "active_mode", "general") == "soldier":
+        estado = missao_service.estado_turno_soldado(usuario=usuario)
+        return missao_service.to_response_list(
+            missao_service.listar_missoes_do_turno_soldado(usuario=usuario),
+            usuario=usuario,
+            reference_date=estado["active_date"],
+        )
     return missao_service.to_response_list(
         missao_service.listar_missoes_do_dia_operacional(usuario=usuario),
         usuario=usuario,
     )
+
+
+@router.get("/missoes/turno-operacional")
+def obter_turno_operacional(
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+    operacao_service: OperacaoService = Depends(get_operacao_service),
+):
+    materializar = getattr(operacao_service, "materializar_turno_soldado", None)
+    if callable(materializar):
+        try:
+            materializar(usuario=usuario)
+        except (PermissaoNegadaError, ValueError) as erro:
+            _raise_http_from_domain_error(erro)
+    try:
+        return missao_service.estado_turno_soldado(usuario=usuario)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.post("/missoes/turno-operacional/encerrar-pendencias")
+def encerrar_pendencias_turno_operacional(
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+    operacao_service: OperacaoService = Depends(get_operacao_service),
+):
+    materializar = getattr(operacao_service, "materializar_turno_soldado", None)
+    if callable(materializar):
+        try:
+            materializar(usuario=usuario)
+        except (PermissaoNegadaError, ValueError) as erro:
+            _raise_http_from_domain_error(erro)
+    try:
+        return missao_service.encerrar_pendencias_do_ciclo_anterior(usuario=usuario)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
 
 
 @router.get("/operacoes")
@@ -356,6 +416,18 @@ def encerrar_operacao(
 ):
     try:
         return operacao_service.encerrar_operacao(operacao_id, usuario=usuario)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.delete("/operacoes/{operacao_id}", status_code=status.HTTP_204_NO_CONTENT)
+def cancelar_operacao(
+    operacao_id: int,
+    usuario=Depends(get_current_user),
+    operacao_service: OperacaoService = Depends(get_operacao_service),
+):
+    try:
+        operacao_service.cancelar_operacao(operacao_id, usuario=usuario)
     except (PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
 

@@ -203,6 +203,7 @@ export default function GeneralCommandPage({
               onClose={() => setOperationsOpen(false)}
               onCloseOperation={board.closeOperation}
               onCreateOperation={board.createOperation}
+              onDeleteOperation={board.deleteOperation}
               operations={board.operations}
               status={board.operationStatus}
             />

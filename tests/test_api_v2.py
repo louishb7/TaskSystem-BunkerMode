@@ -18,10 +18,13 @@ from api.routes import (
     listar_missoes_operacionais,
     listar_missoes_em_revisao,
     listar_missoes_do_dia_operacional,
+    obter_turno_operacional,
+    encerrar_pendencias_turno_operacional,
     listar_operacoes,
     login,
     limpar_relatorio_falhas,
     criar_operacao,
+    cancelar_operacao,
     encerrar_operacao,
     materializar_operacoes,
     obter_relatorio_semanal,
@@ -213,6 +216,22 @@ class RepositorioV2Fake:
                 self.operacoes[indice] = operacao_atualizada
                 return
 
+    def remover_operacao(self, operacao_id, usuario_id):
+        missao_ids = [
+            missao_id
+            for missao_id, contexto in self.contextos.items()
+            if contexto.get("operacao_id") == operacao_id
+        ]
+        self.operacoes = [
+            operacao
+            for operacao in self.operacoes
+            if not (operacao.operacao_id == operacao_id and operacao.usuario_id == usuario_id)
+        ]
+        self.missoes = [missao for missao in self.missoes if missao.missao_id not in missao_ids]
+        for missao_id in missao_ids:
+            self.contextos.pop(missao_id, None)
+        self.auditoria = [evento for evento in self.auditoria if evento.missao_id not in missao_ids]
+
     def buscar_missao_de_operacao_por_data(self, operacao_id, prazo):
         for missao in self.missoes:
             contexto = self.contextos.get(missao.missao_id, {})
@@ -222,6 +241,13 @@ class RepositorioV2Fake:
             ):
                 return missao
         return None
+
+    def listar_missoes_por_operacao(self, operacao_id):
+        return [
+            missao
+            for missao in self.missoes
+            if self.contextos.get(missao.missao_id, {}).get("operacao_id") == operacao_id
+        ]
 
     def criar_missao_de_operacao_se_ausente(self, missao, criada_por_id, responsavel_id, operacao_id, operacao_dia):
         if self.buscar_missao_de_operacao_por_data(operacao_id, operacao_dia) is not None:
@@ -1364,6 +1390,171 @@ def test_operacao_materializa_ordem_do_dia_sem_duplicar_e_encerramento_bloqueia_
 
     assert encerrada["status"] == "encerrada"
     assert nova["generated"] == 0
+
+
+def test_operacao_encerrada_lista_metricas_reais_de_execucao():
+    repo, _, missoes, _, _, usuario = preparar_ambiente()
+    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
+
+    operacao = criar_operacao(
+        OperacaoCreatePayload(
+            nome="Reconstrução Física",
+            start_date="2026-04-20",
+            end_date="2026-04-24",
+            weekdays=[4],
+            ordem_titulo="Treinar por 45 minutos",
+        ),
+        usuario=usuario,
+        operacao_service=operacoes,
+    )
+    materializar_operacoes(
+        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
+        usuario=usuario,
+        operacao_service=operacoes,
+    )
+    ordem = listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)[0]
+
+    usuario.definir_modo("soldier")
+    concluir_missao(ordem["id"], usuario=usuario, missao_service=missoes)
+    usuario.definir_modo("general")
+
+    operacoes_pos_periodo = OperacaoService(
+        repo,
+        now_provider=lambda: datetime(2026, 4, 25, 10, 0, 0),
+    )
+    encerrar_operacao(operacao["id"], usuario=usuario, operacao_service=operacoes_pos_periodo)
+
+    historico = listar_operacoes(usuario=usuario, operacao_service=operacoes_pos_periodo)
+
+    assert historico[0]["status"] == "encerrada"
+    assert historico[0]["metrics"] == {
+        "total_missions": 1,
+        "completed_missions": 1,
+        "failed_missions": 0,
+        "completion_rate": 100.0,
+    }
+
+
+def test_operacao_cancelada_e_removida_da_listagem():
+    repo, _, missoes, _, _, usuario = preparar_ambiente()
+    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
+    operacao = criar_operacao(
+        OperacaoCreatePayload(
+            nome="Criar disciplina",
+            start_date="2026-04-20",
+            end_date="2026-04-30",
+            weekdays=[0, 1, 2, 3, 4],
+            ordem_titulo="Executar bloco de disciplina",
+        ),
+        usuario=usuario,
+        operacao_service=operacoes,
+    )
+    materializar_operacoes(
+        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
+        usuario=usuario,
+        operacao_service=operacoes,
+    )
+
+    assert len(listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)) == 1
+
+    cancelar_operacao(operacao["id"], usuario=usuario, operacao_service=operacoes)
+
+    assert listar_operacoes(usuario=usuario, operacao_service=operacoes) == []
+    assert listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes) == []
+
+
+def test_soldado_migra_para_dia_atual_antes_das_quatro_sem_pendencias_anteriores():
+    repo, _, missoes, _, _, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(titulo="Ordem de sábado", prazo="25-04-2026"),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    usuario.definir_modo("soldier")
+    missoes_madrugada = MissaoService(
+        repo,
+        today_provider=lambda: datetime(2026, 4, 25).date(),
+        now_provider=lambda: datetime(2026, 4, 25, 2, 0, 0),
+    )
+    operacoes_madrugada = OperacaoService(repo, now_provider=lambda: datetime(2026, 4, 25, 2, 0, 0))
+
+    estado = obter_turno_operacional(
+        usuario=usuario,
+        missao_service=missoes_madrugada,
+        operacao_service=operacoes_madrugada,
+    )
+    cacada = listar_missoes_do_dia_operacional(
+        usuario=usuario,
+        missao_service=missoes_madrugada,
+        operacao_service=operacoes_madrugada,
+    )
+
+    assert estado["active_date_label"] == "2026-04-25"
+    assert estado["auto_advanced"] is True
+    assert estado["requires_decision"] is False
+    assert [missao["titulo"] for missao in cacada] == ["Ordem de sábado"]
+
+
+def test_soldado_mostra_transicao_com_pendencias_e_pode_encerrar_ciclo_anterior():
+    repo, _, missoes, relatorios, _, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(titulo="Pendente de sexta", prazo="24-04-2026"),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    criar_missao(
+        MissaoCreatePayload(titulo="Ordem de sábado", prazo="25-04-2026"),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    usuario.definir_modo("soldier")
+    agora = datetime(2026, 4, 25, 2, 0, 0)
+    missoes_madrugada = MissaoService(
+        repo,
+        today_provider=lambda: agora.date(),
+        now_provider=lambda: agora,
+    )
+    operacoes_madrugada = OperacaoService(repo, now_provider=lambda: agora)
+
+    estado = obter_turno_operacional(
+        usuario=usuario,
+        missao_service=missoes_madrugada,
+        operacao_service=operacoes_madrugada,
+    )
+    ciclo_anterior = listar_missoes_do_dia_operacional(
+        usuario=usuario,
+        missao_service=missoes_madrugada,
+        operacao_service=operacoes_madrugada,
+    )
+
+    assert estado["active_date_label"] == "2026-04-24"
+    assert estado["requires_decision"] is True
+    assert estado["previous_pending_count"] == 1
+    assert [missao["titulo"] for missao in ciclo_anterior] == ["Pendente de sexta"]
+
+    estado_pos_encerramento = encerrar_pendencias_turno_operacional(
+        usuario=usuario,
+        missao_service=missoes_madrugada,
+        operacao_service=operacoes_madrugada,
+    )
+    nova_cacada = listar_missoes_do_dia_operacional(
+        usuario=usuario,
+        missao_service=missoes_madrugada,
+        operacao_service=operacoes_madrugada,
+    )
+
+    assert estado_pos_encerramento["active_date_label"] == "2026-04-25"
+    assert estado_pos_encerramento["requires_decision"] is False
+    assert [missao["titulo"] for missao in nova_cacada] == ["Ordem de sábado"]
+
+    usuario.definir_modo("general")
+    relatorio = obter_relatorio_semanal(
+        usuario=usuario,
+        relatorio_service=relatorios,
+        start_date="2026-04-20",
+        end_date="2026-04-26",
+    )
+    assert relatorio["failed_missions"] == 1
 
 
 def test_operacao_nao_encerra_antes_da_data_final():

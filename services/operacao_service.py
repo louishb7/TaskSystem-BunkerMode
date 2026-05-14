@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 
-from missao import Missao
+from missao import Missao, StatusMissao
 from operacao import Operacao
 from services.exceptions import PermissaoNegadaError
 from services.missao_service import LEGACY_DEFAULT_PRIORITY
@@ -35,7 +35,7 @@ class OperacaoService:
         self._garantir_modo_general(usuario)
         operacoes = self.repositorio.listar_operacoes_por_usuario(usuario.usuario_id)
         operacoes = [self._reativar_se_periodo_nao_passou(operacao) for operacao in operacoes]
-        return [operacao.to_dict() for operacao in operacoes]
+        return [self._operacao_to_response(operacao) for operacao in operacoes]
 
     def encerrar_operacao(self, operacao_id: int, usuario=None) -> dict:
         self._garantir_modo_general(usuario)
@@ -48,10 +48,17 @@ class OperacaoService:
                 "Operação ainda está dentro do período registrado. Ela só pode ser encerrada após a data final."
             )
         if not operacao.esta_ativa():
-            return operacao.to_dict()
+            return self._operacao_to_response(operacao)
         operacao.encerrar()
         self.repositorio.atualizar_operacao(operacao)
-        return operacao.to_dict()
+        return self._operacao_to_response(operacao)
+
+    def cancelar_operacao(self, operacao_id: int, usuario=None) -> None:
+        self._garantir_modo_general(usuario)
+        operacao = self.repositorio.buscar_operacao_por_id(operacao_id)
+        if operacao is None or operacao.usuario_id != usuario.usuario_id:
+            raise ValueError("Operação não encontrada.")
+        self.repositorio.remover_operacao(operacao.operacao_id, usuario.usuario_id)
 
     def materializar_periodo(self, usuario=None, start_date=None, end_date=None) -> dict:
         if usuario is None:
@@ -87,6 +94,23 @@ class OperacaoService:
     def materializar_dia_operacional(self, usuario=None) -> dict:
         hoje = operational_date_for(self._now())
         return self.materializar_periodo(usuario=usuario, start_date=hoje, end_date=hoje)
+
+    def materializar_turno_soldado(self, usuario=None) -> dict:
+        agora = self._now()
+        dia_operacional = operational_date_for(agora)
+        dia_calendario = agora.date()
+        geradas = self.materializar_periodo(usuario=usuario, start_date=dia_operacional, end_date=dia_operacional)
+        if dia_calendario != dia_operacional:
+            geradas_atuais = self.materializar_periodo(
+                usuario=usuario,
+                start_date=dia_calendario,
+                end_date=dia_calendario,
+            )
+            return {
+                "generated": geradas["generated"] + geradas_atuais["generated"],
+                "mission_ids": geradas["mission_ids"] + geradas_atuais["mission_ids"],
+            }
+        return geradas
 
     def _criar_missao_da_operacao(self, operacao: Operacao, usuario, dia: date) -> Missao | None:
         missao = Missao(
@@ -170,3 +194,35 @@ class OperacaoService:
             operacao.reativar()
             self.repositorio.atualizar_operacao(operacao)
         return operacao
+
+    def _operacao_to_response(self, operacao: Operacao) -> dict:
+        response = operacao.to_dict()
+        response["metrics"] = self._calcular_metricas(operacao)
+        return response
+
+    def _calcular_metricas(self, operacao: Operacao) -> dict:
+        listar = getattr(self.repositorio, "listar_missoes_por_operacao", None)
+        missoes = listar(operacao.operacao_id) if callable(listar) else []
+        total = len(missoes)
+        concluidas = [m for m in missoes if m.is_completed() or self._feita_sem_registro(m)]
+        falhas = [
+            m
+            for m in missoes
+            if m.status
+            in {
+                StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
+                StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+                StatusMissao.FALHA_REVISADA,
+            }
+            and not self._feita_sem_registro(m)
+        ]
+        return {
+            "total_missions": total,
+            "completed_missions": len(concluidas),
+            "failed_missions": len(falhas),
+            "completion_rate": 0 if total == 0 else round((len(concluidas) / total) * 100, 2),
+        }
+
+    @staticmethod
+    def _feita_sem_registro(missao: Missao) -> bool:
+        return getattr(missao.failure_reason_type, "value", None) == "done_not_marked"

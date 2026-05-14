@@ -75,6 +75,12 @@ export const api = {
   listDailyMissions(token) {
     return requestMissionList("/missoes/dia-operacional", { token });
   },
+  getOperationalTurn(token) {
+    return request("/missoes/turno-operacional", { token });
+  },
+  closePreviousOperationalTurn(token) {
+    return request("/missoes/turno-operacional/encerrar-pendencias", { token, method: "POST" });
+  },
   listReviewMissions(token) {
     return requestMissionList("/missoes/revisao", { token });
   },
@@ -134,6 +140,9 @@ export const api = {
   },
   closeOperation(token, operationId) {
     return request(`/operacoes/${operationId}/encerrar`, { token, method: "PATCH" });
+  },
+  deleteOperation(token, operationId) {
+    return request(`/operacoes/${operationId}`, { token, method: "DELETE" });
   },
   materializeOperations(token, payload) {
     return request("/operacoes/materializar", { token, method: "POST", body: payload });

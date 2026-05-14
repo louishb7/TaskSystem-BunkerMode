@@ -8,6 +8,27 @@ import { formatCurrentDay } from "../../calendar/calendarUtils.js";
 import MissionCard, { MissionProgress } from "../../missions/components/MissionCard.jsx";
 import ReturnToCommandDialog from "../components/ReturnToCommandDialog.jsx";
 
+function formatOperationalTurnDate(value) {
+  if (!value || typeof value !== "string") {
+    return formatCurrentDay();
+  }
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) {
+    return formatCurrentDay();
+  }
+  try {
+    return new Date(year, month - 1, day)
+      .toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+      })
+      .toUpperCase();
+  } catch {
+    return formatCurrentDay();
+  }
+}
+
 export default function SoldierExecutionPage({
   actionMissions,
   board,
@@ -19,7 +40,9 @@ export default function SoldierExecutionPage({
   const [unlockPassword, setUnlockPassword] = useState("");
   const [returnLoading, setReturnLoading] = useState(false);
   const remainingOrders = actionMissions.length;
-  const nextOrder = actionMissions[0];
+  const turn = board.operationalTurn;
+  const showTurnWarning = turn?.requires_decision === true && !board.operationalTurnAcknowledged;
+  const turnDateLabel = formatOperationalTurnDate(turn?.active_date_label);
 
   async function submitReturn(event) {
     event.preventDefault();
@@ -56,7 +79,7 @@ export default function SoldierExecutionPage({
             <LionEmblem compact />
             <div>
               <h1>LEÃO DO DIA</h1>
-              <p>{formatCurrentDay()}</p>
+              <p>{turnDateLabel}</p>
               <div className="soldier-rule" />
               <p className="soldier-lock-note">Planejamento bloqueado. Somente execução permanece disponível.</p>
               <strong>
@@ -74,31 +97,55 @@ export default function SoldierExecutionPage({
 
         <StatusNotice status={board.status} />
 
+        {showTurnWarning && (
+          <section className="operational-turn-panel" aria-label="Transição operacional de turno">
+            <div>
+              <span>TRANSIÇÃO DE TURNO</span>
+              <strong>Existem ordens pendentes do ciclo anterior.</strong>
+              <p>
+                O novo dia já tem ordens prontas. Continue o ciclo anterior ou encerre as pendências como falha para abrir a nova caçada.
+              </p>
+            </div>
+            <div className="operational-turn-actions">
+              <button
+                className="button secondary compact"
+                disabled={board.missionLoading}
+                type="button"
+                onClick={board.continuePreviousOperationalTurn}
+              >
+                CONTINUAR CICLO ANTERIOR
+              </button>
+              <button
+                className="button fire compact"
+                disabled={board.missionLoading}
+                type="button"
+                onClick={board.closePreviousOperationalTurn}
+              >
+                ENCERRAR PENDÊNCIAS
+              </button>
+            </div>
+          </section>
+        )}
+
         {board.missionLoading ? (
           <EmptyState
             title="Sincronizando ordens"
             message="O Soldado aguarda o quadro operacional."
           />
         ) : actionMissions.length > 0 ? (
-          <>
-            <div className="execution-focus-line">
-              <span>PRÓXIMA ORDEM</span>
-              <strong>{nextOrder?.titulo || "Ordem sem título"}</strong>
-            </div>
-            <div className="mission-list soldier-list">
-              {actionMissions.map((mission) => (
-                <MissionCard
-                  key={mission.id}
-                  completing={board.completeLoadingId === mission.id}
-                  justifying={board.justificationLoadingId === mission.id}
-                  mission={mission}
-                  onComplete={() => board.completeMission(mission)}
-                  onJustify={board.submitFailureJustification}
-                  variant="soldier"
-                />
-              ))}
-            </div>
-          </>
+          <div className="mission-list soldier-list">
+            {actionMissions.map((mission) => (
+              <MissionCard
+                key={mission.id}
+                completing={board.completeLoadingId === mission.id}
+                justifying={board.justificationLoadingId === mission.id}
+                mission={mission}
+                onComplete={() => board.completeMission(mission)}
+                onJustify={board.submitFailureJustification}
+                variant="soldier"
+              />
+            ))}
+          </div>
         ) : (
           <EmptyState
             title="Caçada concluída"

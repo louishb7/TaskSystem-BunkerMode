@@ -30,6 +30,8 @@ export function useMissionBoard({
   const [historicalMissions, setHistoricalMissions] = useState([]);
   const [dailyProgressMissions, setDailyProgressMissions] = useState([]);
   const [registeredOutcomeMissions, setRegisteredOutcomeMissions] = useState([]);
+  const [operationalTurn, setOperationalTurn] = useState(null);
+  const [operationalTurnAcknowledged, setOperationalTurnAcknowledged] = useState(false);
   const [reviewState, setReviewState] = useState(null);
   const [weeklyReviews, setWeeklyReviews] = useState([]);
   const [operations, setOperations] = useState([]);
@@ -64,6 +66,8 @@ export function useMissionBoard({
       setHistoricalMissions([]);
       setDailyProgressMissions([]);
       setRegisteredOutcomeMissions([]);
+      setOperationalTurn(null);
+      setOperationalTurnAcknowledged(false);
       setReviewState(null);
       setWeeklyReviews([]);
       setOperations([]);
@@ -182,6 +186,8 @@ export function useMissionBoard({
 
     setDailyProgressMissions([]);
     setRegisteredOutcomeMissions([]);
+    setOperationalTurn(null);
+    setOperationalTurnAcknowledged(false);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
   }
 
@@ -191,13 +197,14 @@ export function useMissionBoard({
     }
 
     setMissionLoading(true);
-    const [result, dailyResult] = await Promise.all([
+    const [result, dailyResult, turnResult] = await Promise.all([
       api.listOperationalMissions(token),
       api.listDailyMissions(token),
+      api.getOperationalTurn(token),
     ]);
     setMissionLoading(false);
 
-    if (onUnauthorized(result) || onUnauthorized(dailyResult)) {
+    if (onUnauthorized(result) || onUnauthorized(dailyResult) || onUnauthorized(turnResult)) {
       return;
     }
 
@@ -220,6 +227,22 @@ export function useMissionBoard({
       });
       return;
     }
+    if (turnResult.ok) {
+      setOperationalTurn(turnResult.data);
+      setOperationalTurnAcknowledged((current) => {
+        if (!current) {
+          return false;
+        }
+        return turnResult.data?.requires_decision === true;
+      });
+    } else {
+      setOperationalTurn(null);
+      setStatus({
+        type: "error",
+        message: getErrorMessage(turnResult, "Não foi possível ler o turno operacional."),
+      });
+      return;
+    }
     setReviewMissions([]);
     setHistoricalMissions([]);
     setReviewState(null);
@@ -227,6 +250,39 @@ export function useMissionBoard({
     setOperations([]);
     setOperationStatus(emptyStatus);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
+  }
+
+  function continuePreviousOperationalTurn() {
+    setOperationalTurnAcknowledged(true);
+  }
+
+  async function closePreviousOperationalTurn() {
+    if (!token || missionLoading) {
+      return false;
+    }
+
+    setMissionLoading(true);
+    setStatus(emptyStatus);
+    const result = await api.closePreviousOperationalTurn(token);
+    setMissionLoading(false);
+
+    if (onUnauthorized(result)) {
+      return false;
+    }
+
+    if (!result.ok) {
+      setStatus({
+        type: "error",
+        message: getErrorMessage(result, "Não foi possível encerrar as pendências do ciclo anterior."),
+      });
+      await loadSoldierBoard();
+      return false;
+    }
+
+    setOperationalTurn(result.data);
+    setOperationalTurnAcknowledged(false);
+    await loadSoldierBoard("Ciclo anterior encerrado.");
+    return true;
   }
 
   async function materializeOperations(payload) {
@@ -307,6 +363,32 @@ export function useMissionBoard({
 
     await loadGeneralBoard("Operação encerrada.");
     setOperationStatus({ type: "success", message: "Operação encerrada." });
+    return true;
+  }
+
+  async function deleteOperation(operationId) {
+    if (operationLoading) {
+      return false;
+    }
+    setOperationLoading(true);
+    setOperationStatus(emptyStatus);
+    const result = await api.deleteOperation(token, operationId);
+    setOperationLoading(false);
+
+    if (onUnauthorized(result)) {
+      return false;
+    }
+
+    if (!result.ok) {
+      setOperationStatus({
+        type: "error",
+        message: getErrorMessage(result, "Não foi possível cancelar a operação."),
+      });
+      return false;
+    }
+
+    await loadGeneralBoard("Operação cancelada.");
+    setOperationStatus({ type: "success", message: "Operação cancelada." });
     return true;
   }
 
@@ -531,12 +613,15 @@ export function useMissionBoard({
     clearFailureReport,
     closeWeeklyReview,
     closeOperation,
+    closePreviousOperationalTurn,
     completeLoadingId,
     completeMission,
     createOperation,
     createMission,
+    continuePreviousOperationalTurn,
     dailyMissions,
     decisionLoadingId,
+    deleteOperation,
     deleteMission,
     formLoading,
     formStatus,
@@ -547,6 +632,8 @@ export function useMissionBoard({
     materializeOperations,
     operationLoading,
     operationStatus,
+    operationalTurn,
+    operationalTurnAcknowledged,
     operations,
     reviewLoadingId,
     reviewMissions,

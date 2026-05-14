@@ -83,6 +83,58 @@ class MissaoService:
     def listar_missoes_do_dia_operacional(self, usuario=None) -> list[Missao]:
         return self.listar_missoes_por_dia_operacional(self._today(), usuario=usuario)
 
+    def listar_missoes_do_turno_soldado(self, usuario=None) -> list[Missao]:
+        estado = self.estado_turno_soldado(usuario=usuario)
+        return self.listar_missoes_por_dia_operacional(estado["active_date"], usuario=usuario)
+
+    def listar_acoes_do_turno_soldado(self, usuario=None) -> list[Missao]:
+        estado = self.estado_turno_soldado(usuario=usuario)
+        acoes_do_turno = self.listar_missoes_por_dia_operacional(estado["active_date"], usuario=usuario)
+        justificativas_pendentes = [
+            missao
+            for missao in self._carregar_missoes_do_usuario(usuario)
+            if missao.requires_soldier_justification()
+            and all(missao.missao_id != existente.missao_id for existente in acoes_do_turno)
+        ]
+        return [
+            missao
+            for missao in self.sort_missions_for_board(justificativas_pendentes + acoes_do_turno)
+            if missao.is_visible_to_soldier(estado["active_date"])
+        ]
+
+    def estado_turno_soldado(self, usuario=None) -> dict:
+        self._garantir_modo_soldado(usuario)
+        agora = self._now()
+        dia_operacional = operational_date_for(agora)
+        dia_calendario = agora.date()
+
+        missoes_ciclo_anterior = self.listar_missoes_por_dia_operacional(dia_operacional, usuario=usuario)
+        missoes_dia_atual = (
+            []
+            if dia_calendario == dia_operacional
+            else self.listar_missoes_por_dia_operacional(dia_calendario, usuario=usuario)
+        )
+        pendencias_anteriores = [missao for missao in missoes_ciclo_anterior if missao.is_pending()]
+        novo_dia_disponivel = dia_calendario != dia_operacional and len(missoes_dia_atual) > 0
+        exige_decisao = novo_dia_disponivel and len(pendencias_anteriores) > 0
+        migrou_automaticamente = novo_dia_disponivel and len(pendencias_anteriores) == 0
+        dia_ativo = dia_operacional
+        if migrou_automaticamente:
+            dia_ativo = dia_calendario
+
+        return {
+            "active_date": dia_ativo,
+            "active_date_label": dia_ativo.isoformat(),
+            "previous_operational_date": dia_operacional.isoformat(),
+            "current_calendar_date": dia_calendario.isoformat(),
+            "before_cutoff": dia_calendario != dia_operacional,
+            "current_day_available": novo_dia_disponivel,
+            "requires_decision": exige_decisao,
+            "auto_advanced": migrou_automaticamente,
+            "previous_pending_count": len(pendencias_anteriores),
+            "current_missions_count": len(missoes_dia_atual),
+        }
+
     def listar_missoes_por_dia_operacional(self, dia: date, usuario=None) -> list[Missao]:
         missoes = self._carregar_missoes_do_usuario(usuario)
         return self.sort_missions_for_board(
@@ -266,6 +318,30 @@ class MissaoService:
             usuario=usuario,
         )
 
+    def encerrar_pendencias_do_ciclo_anterior(self, usuario=None) -> dict:
+        estado = self.estado_turno_soldado(usuario=usuario)
+        if not estado["requires_decision"]:
+            return estado
+
+        dia_anterior = self._parse_iso_date(
+            estado["previous_operational_date"],
+            "Data do ciclo anterior inválida.",
+        )
+        for missao in self.listar_missoes_por_dia_operacional(dia_anterior, usuario=usuario):
+            if not missao.is_pending():
+                continue
+            missao.marcar_como_falha(self._now())
+            self.repositorio.atualizar_missao(missao)
+            if usuario is not None:
+                self._registrar_auditoria(
+                    missao_id=missao.missao_id,
+                    usuario_id=usuario.usuario_id,
+                    acao="missao_falhou",
+                    detalhes=f"Missão '{missao.titulo}' encerrada na transição operacional.",
+                )
+
+        return self.estado_turno_soldado(usuario=usuario)
+
     def remover_missao(self, missao_id: int, usuario=None) -> None:
         self._garantir_modo_general(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
@@ -292,13 +368,13 @@ class MissaoService:
 
         return missao
 
-    def to_response(self, missao: Missao, usuario=None) -> dict:
+    def to_response(self, missao: Missao, usuario=None, reference_date: date | None = None) -> dict:
         return missao.to_dict(
-            permissions=self._build_permissions(missao, usuario=usuario).to_dict()
+            permissions=self._build_permissions(missao, usuario=usuario, reference_date=reference_date).to_dict()
         )
 
-    def to_response_list(self, missoes: list[Missao], usuario=None) -> list[dict]:
-        return [self.to_response(missao, usuario=usuario) for missao in missoes]
+    def to_response_list(self, missoes: list[Missao], usuario=None, reference_date: date | None = None) -> list[dict]:
+        return [self.to_response(missao, usuario=usuario, reference_date=reference_date) for missao in missoes]
 
     def _buscar_por_id_do_usuario(self, missao_id: int, usuario=None) -> Missao:
         missao = self.buscar_por_id(missao_id)
@@ -398,6 +474,13 @@ class MissaoService:
         data_falha = operational_date_for(missao.failed_at)
         return start_date <= data_falha <= end_date
 
+    @staticmethod
+    def _parse_iso_date(valor: str, mensagem: str) -> date:
+        try:
+            return datetime.strptime(valor, "%Y-%m-%d").date()
+        except (TypeError, ValueError) as erro:
+            raise ValueError(mensagem) from erro
+
     def _pertence_ao_dia_operacional(self, missao: Missao, dia: date) -> bool:
         if missao.due_date == dia:
             return True
@@ -417,14 +500,15 @@ class MissaoService:
             ),
         )
 
-    def _build_permissions(self, missao: Missao, usuario=None) -> MissionPermissions:
+    def _build_permissions(self, missao: Missao, usuario=None, reference_date: date | None = None) -> MissionPermissions:
         modo = getattr(usuario, "active_mode", "general") if usuario is not None else "general"
         is_general = modo == "general"
         is_soldier = modo == "soldier"
         can_view_history = is_general and missao.is_finalized()
+        referencia = reference_date or self._today()
 
         return MissionPermissions(
-            can_complete=is_soldier and missao.can_be_completed(reference_date=self._today()),
+            can_complete=is_soldier and missao.can_be_completed(reference_date=referencia),
             can_edit=is_general and missao.can_be_edited_by_general(),
             can_delete=is_general and missao.can_be_deleted_by_general(),
             can_toggle_decided=is_general and missao.can_be_marked_decided(),

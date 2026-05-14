@@ -1054,6 +1054,80 @@ class RepositorioPostgres:
                 "Erro ao atualizar operação no banco de dados."
             ) from erro
 
+    def remover_operacao(self, operacao_id: int, usuario_id: int) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT 1 FROM operacoes WHERE operacao_id = %s AND usuario_id = %s;",
+                        (operacao_id, usuario_id),
+                    )
+                    if cursor.fetchone() is None:
+                        raise EscritaRepositorioError(
+                            f"Operação {operacao_id} não encontrada para remoção."
+                        )
+                    cursor.execute(
+                        """
+                        SELECT missao_id
+                        FROM missao_contextos
+                        WHERE operacao_id = %s;
+                        """,
+                        (operacao_id,),
+                    )
+                    missao_ids = [linha[0] for linha in cursor.fetchall()]
+                    if missao_ids:
+                        cursor.execute(
+                            "DELETE FROM auditoria_eventos WHERE missao_id = ANY(%s);",
+                            (missao_ids,),
+                        )
+                        cursor.execute(
+                            "DELETE FROM missao_contextos WHERE missao_id = ANY(%s);",
+                            (missao_ids,),
+                        )
+                        cursor.execute(
+                            "DELETE FROM missoes WHERE missao_id = ANY(%s);",
+                            (missao_ids,),
+                        )
+                    cursor.execute(
+                        "DELETE FROM operacoes WHERE operacao_id = %s AND usuario_id = %s;",
+                        (operacao_id, usuario_id),
+                    )
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao remover operação no banco de dados."
+            ) from erro
+
+    def listar_missoes_por_operacao(self, operacao_id: int) -> list[Missao]:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
+                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
+                        FROM missoes m
+                        JOIN missao_contextos mc ON mc.missao_id = m.missao_id
+                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
+                        WHERE mc.operacao_id = %s
+                        ORDER BY m.prazo ASC, m.missao_id ASC;
+                        """,
+                        (operacao_id,),
+                    )
+                    linhas = cursor.fetchall()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao listar ordens da operação no banco de dados."
+            ) from erro
+        return [self._reconstruir_missao(linha) for linha in linhas]
+
     def buscar_missao_de_operacao_por_data(self, operacao_id: int, prazo) -> Missao | None:
         self.inicializar_schema()
         try:

@@ -173,9 +173,7 @@ export default function MissionCard({
   return (
     <article className={`mission-card ${isDecided ? "decided" : ""} ${completed ? "completed" : ""}`}>
       <div className="mission-badge-row">
-        <span className={`meta-tag ${isDecided ? "critical" : ""}`}>
-          {isDecided ? "DECIDIDA" : "ORDEM"}
-        </span>
+        {isDecided && <span className="meta-tag critical">DECIDIDA</span>}
         {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
         {deadlineLabel !== "HOJE" && <span className="meta-tag">{deadlineLabel}</span>}
         <span className="meta-tag">{statusText(mission)}</span>

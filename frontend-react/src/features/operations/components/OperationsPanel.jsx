@@ -59,9 +59,58 @@ function weekdayLabels(values = []) {
   return WEEKDAYS.filter((day) => set.has(day.value)).map((day) => day.label).join(" ");
 }
 
-function OperationItem({ loading, onCloseOperation, operation }) {
+function isEveryDay(values = []) {
+  return WEEKDAYS.every((day) => values.includes(day.value));
+}
+
+function OperationDays({ weekdays }) {
+  if (isEveryDay(weekdays)) {
+    return (
+      <span className="operation-days operation-days-daily">
+        <span aria-hidden="true" className="operation-infinity">
+          ∞
+        </span>
+        Todo santo dia
+      </span>
+    );
+  }
+
+  return <span className="operation-days">{weekdayLabels(weekdays) || "SEM DIAS"}</span>;
+}
+
+function formatMetric(value) {
+  const numeric = Number(value || 0);
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1).replace(".", ",");
+}
+
+function OperationItem({
+  expanded,
+  loading,
+  onCloseOperation,
+  onDeleteOperation,
+  onToggleDetails,
+  operation,
+}) {
   const active = operation.status === "ativa";
   const canClose = active && periodHasPassed(operation.end_date);
+  const canCancel = active;
+  const metrics = operation.metrics || {};
+  const totalMissions = Number(metrics.total_missions || 0);
+  const completedMissions = Number(metrics.completed_missions || 0);
+  const failedMissions = Number(metrics.failed_missions || 0);
+  const completionRate = formatMetric(metrics.completion_rate);
+
+  function confirmDelete() {
+    if (!canCancel || loading) {
+      return;
+    }
+    const confirmed = window.confirm(
+      `Cancelar a operação "${operation.nome}"?\n\nA operação e todas as ordens geradas por ela serão excluídas totalmente.`
+    );
+    if (confirmed) {
+      onDeleteOperation?.(operation.id);
+    }
+  }
 
   return (
     <article className={`operation-row ${active ? "active" : "closed"}`}>
@@ -69,23 +118,49 @@ function OperationItem({ loading, onCloseOperation, operation }) {
         <span className={`operation-status ${active ? "active" : "closed"}`}>
           {active ? "ATIVA" : "ENCERRADA"}
         </span>
-        {canClose && (
-          <button
-            className="button secondary compact operation-close"
-            disabled={loading}
-            type="button"
-            onClick={() => onCloseOperation?.(operation.id)}
-          >
-            ENCERRAR
+        <div className="operation-row-actions">
+          {canClose && (
+            <button
+              className="button secondary compact operation-close"
+              disabled={loading}
+              type="button"
+              onClick={() => onCloseOperation?.(operation.id)}
+            >
+              ENCERRAR
+            </button>
+          )}
+          <button className="button secondary compact operation-close" type="button" onClick={onToggleDetails}>
+            {expanded ? "OCULTAR" : "DETALHES"}
           </button>
-        )}
+        </div>
       </div>
-      <strong>{operation.nome}</strong>
-      <span className="operation-days">{weekdayLabels(operation.weekdays) || "SEM DIAS"}</span>
-      <span className="operation-period">
+      <span className="operation-period operation-period-strong">
         {formatDate(operation.start_date)} → {formatDate(operation.end_date)}
       </span>
-      <small>{operation.ordem_titulo}</small>
+      <strong className="operation-name">{operation.nome}</strong>
+      <OperationDays weekdays={operation.weekdays} />
+      <small className="operation-order-title">{operation.ordem_titulo}</small>
+      {expanded && (
+        <div className="operation-details">
+          {operation.ordem_instrucao && <p>{operation.ordem_instrucao}</p>}
+          <div className="operation-metrics" aria-label="Métricas da operação">
+            <span>{totalMissions} ordens</span>
+            <span>{completedMissions} executadas</span>
+            <span>{failedMissions} falhas</span>
+            <strong>{completionRate}% de sucesso</strong>
+          </div>
+          {canCancel && (
+            <button
+              className="button secondary compact danger"
+              disabled={loading}
+              type="button"
+              onClick={confirmDelete}
+            >
+              CANCELAR OPERAÇÃO
+            </button>
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -95,11 +170,13 @@ export default function OperationsPanel({
   onClose,
   onCloseOperation,
   onCreateOperation,
+  onDeleteOperation,
   operations = [],
   status,
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
+  const [expandedOperationId, setExpandedOperationId] = useState(null);
   const activeOperations = useMemo(
     () => operations.filter((operation) => operation.status === "ativa"),
     [operations]
@@ -252,9 +329,14 @@ export default function OperationsPanel({
         {activeOperations.length === 0 && <p className="empty-copy">Nenhuma operação ativa.</p>}
         {activeOperations.map((operation) => (
           <OperationItem
+            expanded={expandedOperationId === operation.id}
             key={operation.id}
             loading={loading}
             onCloseOperation={onCloseOperation}
+            onDeleteOperation={onDeleteOperation}
+            onToggleDetails={() =>
+              setExpandedOperationId((current) => (current === operation.id ? null : operation.id))
+            }
             operation={operation}
           />
         ))}
@@ -263,8 +345,15 @@ export default function OperationsPanel({
       <div className="operations-list muted">
         <h3>Encerradas</h3>
         {closedOperations.length === 0 && <p className="empty-copy">Arquivo sem operações encerradas.</p>}
-        {closedOperations.slice(0, 4).map((operation) => (
-          <OperationItem key={operation.id} operation={operation} />
+        {closedOperations.map((operation) => (
+          <OperationItem
+            expanded={expandedOperationId === operation.id}
+            key={operation.id}
+            onToggleDetails={() =>
+              setExpandedOperationId((current) => (current === operation.id ? null : operation.id))
+            }
+            operation={operation}
+          />
         ))}
       </div>
     </section>
