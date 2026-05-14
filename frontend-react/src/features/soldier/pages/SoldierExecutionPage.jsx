@@ -50,7 +50,7 @@ export default function SoldierExecutionPage({
         <header className="soldier-header">
           <div className="soldier-topline">
             <span>MODO SOLDADO</span>
-            <span>{remainingOrders} RESTAM</span>
+            <span>EXECUÇÃO</span>
           </div>
           <div className="soldier-briefing">
             <LionEmblem compact />
@@ -62,9 +62,7 @@ export default function SoldierExecutionPage({
               <strong>
                 {remainingOrders === 0
                   ? "Caçada concluída. Aguarde o retorno ao comando."
-                  : remainingOrders === 1
-                    ? "1 ordem restante em execução."
-                    : `${remainingOrders} ordens restantes em execução.`}
+                  : "Ordens em execução."}
               </strong>
             </div>
           </div>
@@ -104,7 +102,7 @@ export default function SoldierExecutionPage({
         ) : (
           <EmptyState
             title="Caçada concluída"
-            message="Nenhuma ordem resta para execução agora."
+            message="Nenhuma ordem disponível para execução agora."
           />
         )}
 

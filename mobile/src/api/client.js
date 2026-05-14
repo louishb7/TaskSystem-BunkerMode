@@ -194,6 +194,18 @@ export const api = {
   materializeOperations(token, payload) {
     return request("/operacoes/materializar", { token, method: "POST", body: payload });
   },
+  listDayOffs(token, payload) {
+    const search = new URLSearchParams();
+    search.set("start_date", payload.start_date);
+    search.set("end_date", payload.end_date);
+    return request(`/dias-off?${search.toString()}`, { token });
+  },
+  markDayOff(token, payload) {
+    return request("/dias-off", { token, method: "POST", body: payload });
+  },
+  clearDayOff(token, date) {
+    return request(`/dias-off/${encodeURIComponent(date)}`, { token, method: "DELETE" });
+  },
   deleteMission(token, missionId) {
     return request(`/missoes/${missionId}`, { token, method: "DELETE" });
   },

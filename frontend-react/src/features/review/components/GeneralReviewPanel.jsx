@@ -18,20 +18,14 @@ function getFailureReasonLabel(type) {
 
 function isFailureMission(mission) {
   return String(mission?.status_code || "").startsWith("FALHA")
-    && !isDoneNotMarked(mission)
-    && !isClearedInformativeFailure(mission);
-}
-
-function isClearedInformativeFailure(mission) {
-  return mission?.status_code === STATUS_MISSAO.FALHA_REVISADA
-    && mission?.is_decided !== true
-    && mission?.general_verdict === "accepted";
+    && !isDoneNotMarked(mission);
 }
 
 function isVisibleFailureRecord(mission) {
   return [
     STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA,
     STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+    STATUS_MISSAO.FALHA_REVISADA,
   ].includes(mission?.status_code) && !isDoneNotMarked(mission);
 }
 

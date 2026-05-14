@@ -136,11 +136,7 @@ class RevisaoService:
             StatusMissao.FALHA_REVISADA,
         }:
             return False
-        return not (
-            missao.is_failed_reviewed()
-            and not missao.is_decided
-            and missao.general_verdict == "accepted"
-        )
+        return True
 
     def _garantir_modo_general(self, usuario) -> None:
         if usuario is not None and getattr(usuario, "active_mode", "general") != "general":

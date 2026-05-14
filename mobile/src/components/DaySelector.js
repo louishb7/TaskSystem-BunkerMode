@@ -35,9 +35,11 @@ function executionTone(percent) {
 }
 
 export default function DaySelector({
+  dayOffDates = new Set(),
   missionStatsByDate = null,
   missionCountsByDate = {},
   onSelectDate,
+  onToggleDayOff,
   selectedDate,
   todayDate,
   weekDays,
@@ -53,8 +55,11 @@ export default function DaySelector({
         const total = rawStats?.total ?? missionCountsByDate[formatApiDate(date)] ?? 0;
         const completed = rawStats?.completed ?? 0;
         const complete = total > 0 && completed === total;
+        const apiDate = formatApiDate(date);
+        const isDayOff = dayOffDates?.has?.(apiDate) || total === 0;
+        const persistedDayOff = dayOffDates?.has?.(apiDate);
         const percent = total > 0 ? Math.round((completed / total) * 100) : null;
-        const tone = percent === null ? "neutral" : executionTone(percent);
+        const tone = isDayOff ? "neutral" : executionTone(percent);
 
         return (
           <Pressable
@@ -84,9 +89,17 @@ export default function DaySelector({
             <View style={styles.countRow}>
               <View style={[styles.countDot, styles[`countDot${tone}`]]} />
               <Text style={[styles.count, styles[`count${tone}`]]}>
-                {percent === null ? "-" : `${percent}%`}
+                {isDayOff ? "OFF" : `${percent}%`}
               </Text>
             </View>
+            <Pressable
+              onPress={() => onToggleDayOff?.(date)}
+              style={[styles.offButton, persistedDayOff && styles.offButtonActive]}
+            >
+              <Text style={[styles.offButtonText, persistedDayOff && styles.offButtonTextActive]}>
+                {persistedDayOff ? "DESFAZER" : "OFF"}
+              </Text>
+            </Pressable>
           </Pressable>
         );
       })}
@@ -228,5 +241,24 @@ const styles = StyleSheet.create({
   },
   countneutral: {
     color: theme.colors.textDim,
+  },
+  offButton: {
+    borderColor: theme.colors.borderSoft,
+    borderWidth: 1,
+    marginTop: theme.spacing.xs,
+    minHeight: 22,
+    paddingHorizontal: 4,
+    justifyContent: "center",
+  },
+  offButtonActive: {
+    borderColor: theme.colors.borderStrong,
+  },
+  offButtonText: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+    fontSize: 8,
+  },
+  offButtonTextActive: {
+    color: theme.colors.textMuted,
   },
 });

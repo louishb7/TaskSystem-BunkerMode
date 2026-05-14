@@ -99,6 +99,7 @@ export default function MissionCard({
   const completed = isCompleted(mission);
   const deadlineLabel = formatDeadline(mission?.prazo);
   const operationName = mission?.operacao_nome;
+  const failed = String(mission?.status_code || "").startsWith("FALHA");
 
   useEffect(() => {
     setConfirmingToggle(false);
@@ -107,7 +108,7 @@ export default function MissionCard({
 
   if (soldier) {
     return (
-      <article className={`mission-card soldier-card ${isDecided ? "decided" : ""} ${canJustify ? "danger" : ""}`}>
+      <article className={`mission-card soldier-card ${isDecided ? "decided" : ""} ${failed ? "danger" : ""}`}>
         <div className="mission-badge-row">
           {isDecided && <span className="meta-tag critical">INEGOCIÁVEL</span>}
           {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
@@ -130,12 +131,12 @@ export default function MissionCard({
 
         {canJustify && canComplete && !failureFormOpen && (
           <button
-            className="button danger ghost full soldier-failure-trigger"
+            className="soldier-failure-trigger"
             disabled={disabled}
             type="button"
             onClick={() => setFailureFormOpen(true)}
           >
-            REGISTRAR FALHA
+            Registrar falha
           </button>
         )}
 
@@ -246,25 +247,22 @@ export default function MissionCard({
 export function MissionProgress({ label = "PROGRESSO", missions }) {
   const total = missions.length;
   const completed = missions.filter(isCompleted).length;
-  const remaining = Math.max(0, total - completed);
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
   const complete = total > 0 && completed === total;
+  const off = total === 0;
 
   return (
-    <div className={`mission-progress ${complete ? "complete" : ""}`}>
+    <div className={`mission-progress ${complete ? "complete" : ""} ${off ? "off" : ""}`}>
       <div>
         <span>{label}</span>
-        <strong>{percent}%</strong>
+        <strong>{off ? "DIA OFF" : `${percent}%`}</strong>
       </div>
       <div className="progress-track">
         <span style={{ width: `${percent}%` }} />
       </div>
       <div className="progress-meta">
         <span>
-          {completed}/{total} EXECUTADAS
-        </span>
-        <span>
-          {remaining === 1 ? "1 RESTA" : `${remaining} RESTAM`}
+          {off ? "DIA OFF" : `${completed}/${total} EXECUTADAS`}
         </span>
       </div>
     </div>

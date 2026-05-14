@@ -152,6 +152,7 @@ export default function GeneralDashboardScreen({
   const [reviewState, setReviewState] = useState(null);
   const [weeklyReviews, setWeeklyReviews] = useState([]);
   const [operations, setOperations] = useState([]);
+  const [dayOffs, setDayOffs] = useState([]);
   const [operationsOpen, setOperationsOpen] = useState(false);
   const [operationFormOpen, setOperationFormOpen] = useState(false);
   const [operationForm, setOperationForm] = useState(initialOperationForm);
@@ -210,11 +211,16 @@ export default function GeneralDashboardScreen({
     });
     return stats;
   }, [dailyMissions]);
+  const dayOffDates = useMemo(
+    () => new Set(dayOffs.map((dayOff) => dayOff.date)),
+    [dayOffs]
+  );
 
   const selectedCompletedCount = useMemo(
     () => selectedMissions.filter(isCompleted).length,
     [selectedMissions]
   );
+  const selectedDayOff = dayOffDates.has(selectedDateApi) || selectedMissions.length === 0;
   const selectedRemainingCount = Math.max(0, selectedMissions.length - selectedCompletedCount);
   const selectedDecidedCount = selectedMissions.filter((mission) => mission?.is_decided === true).length;
   const missionGroups = useMemo(() => groupMissions(selectedMissions), [selectedMissions]);
@@ -235,6 +241,7 @@ export default function GeneralDashboardScreen({
         return;
       }
       await loadAll();
+      await loadDayOffs(startDate, endDate);
     });
   }, [token, weekLabel]);
 
@@ -260,6 +267,7 @@ export default function GeneralDashboardScreen({
       reviewStateResult,
       weeklyReviewsResult,
       operationsResult,
+      dayOffsResult,
     ] = await Promise.all([
       api.listMissions(token),
       api.listReviewMissions(token),
@@ -267,12 +275,16 @@ export default function GeneralDashboardScreen({
       api.getReviewState(token),
       api.listWeeklyReviews(token),
       api.listOperations(token),
+      api.listDayOffs(token, {
+        start_date: formatDateForApi(weekDays[0]),
+        end_date: formatDateForApi(weekDays[weekDays.length - 1]),
+      }),
     ]);
 
     setInitialLoading(false);
     setRefreshing(false);
 
-    for (const result of [missionsResult, reviewResult, historicalResult, reviewStateResult, weeklyReviewsResult, operationsResult]) {
+    for (const result of [missionsResult, reviewResult, historicalResult, reviewStateResult, weeklyReviewsResult, operationsResult, dayOffsResult]) {
       if (await handleUnauthorized(result)) {
         return;
       }
@@ -316,8 +328,27 @@ export default function GeneralDashboardScreen({
       nextError = getErrorMessage(operationsResult, "Não foi possível carregar operações.");
     }
 
+    if (dayOffsResult.ok) {
+      setDayOffs(Array.isArray(dayOffsResult.data?.days) ? dayOffsResult.data.days : []);
+    } else if (!nextError) {
+      nextError = getErrorMessage(dayOffsResult, "Não foi possível carregar Dias off.");
+    }
+
     setDailyProgressMissions([]);
     setError(nextError);
+  }
+
+  async function loadDayOffs(startDate, endDate) {
+    const result = await api.listDayOffs(token, { start_date: startDate, end_date: endDate });
+    if (await handleUnauthorized(result)) {
+      return false;
+    }
+    if (!result.ok) {
+      setError(getErrorMessage(result, "Não foi possível carregar Dias off."));
+      return false;
+    }
+    setDayOffs(Array.isArray(result.data?.days) ? result.data.days : []);
+    return true;
   }
 
   async function closeWeeklyReview(payload) {
@@ -385,6 +416,28 @@ export default function GeneralDashboardScreen({
   async function handleSaved() {
     setShowForm(false);
     setFormMission(null);
+    await loadAll();
+  }
+
+  async function toggleDayOff(date) {
+    const apiDate = formatDateForApi(date);
+    const stats = missionStatsByDate[apiDate] || { total: 0 };
+    const isDayOff = dayOffDates.has(apiDate);
+    if (!isDayOff && stats.total > 0) {
+      setError("Este dia possui ordens. Remova ou mova as ordens antes de marcar Dia off.");
+      return;
+    }
+    const result = isDayOff
+      ? await api.clearDayOff(token, apiDate)
+      : await api.markDayOff(token, { date: apiDate });
+    if (await handleUnauthorized(result)) {
+      return;
+    }
+    if (!result.ok) {
+      setError(getErrorMessage(result, isDayOff ? "Não foi possível desfazer Dia off." : "Não foi possível marcar Dia off."));
+      return;
+    }
+    materializedWeekRef.current = "";
     await loadAll();
   }
 
@@ -516,7 +569,6 @@ export default function GeneralDashboardScreen({
           currentHeight === nextHeight ? currentHeight : nextHeight
         ));
       }}
-      onCreateOrder={openCreateForm}
       onLogout={onLogout}
       onOperationsPress={() => setOperationsOpen(true)}
       onReviewPress={() => setActiveScreen("reviews")}
@@ -575,8 +627,10 @@ export default function GeneralDashboardScreen({
             </Pressable>
           </View>
           <DaySelector
+            dayOffDates={dayOffDates}
             missionStatsByDate={missionStatsByDate}
             onSelectDate={(date) => setSelectedDate(startOfDay(date))}
+            onToggleDayOff={toggleDayOff}
             selectedDate={selectedDate}
             todayDate={todayDate}
             weekDays={weekDays}
@@ -597,7 +651,9 @@ export default function GeneralDashboardScreen({
                     : `${selectedRemainingCount} ordens ainda resistem à caçada.`
                   : selectedMissions.length > 0
                     ? "Caçada concluída para o dia selecionado."
-                    : "Nenhuma caça definida para este dia."}
+                    : selectedDayOff
+                      ? "Dia off. Sem expectativa de execução."
+                      : "Nenhuma caça definida para este dia."}
               </Text>
             </View>
             <LionEmblem size={94} />

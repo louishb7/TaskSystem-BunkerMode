@@ -4,7 +4,6 @@ import BrandSymbol from "../../../components/ui/BrandSymbol.jsx";
 
 export default function CommandRail({
   generalName,
-  onCreateOrder,
   onLogout,
   onOpenOperations,
   onOpenReview,
@@ -24,9 +23,6 @@ export default function CommandRail({
         <button className="button secondary" type="button" onClick={onOpenReview}>
           ABRIR RELATÓRIO
           {reviewCount > 0 && <span className="count-badge">{reviewCount}</span>}
-        </button>
-        <button className="button fire" type="button" onClick={onCreateOrder}>
-          NOVA ORDEM
         </button>
         <button className="button secondary" type="button" onClick={onOpenOperations}>
           OPERAÇÕES

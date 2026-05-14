@@ -157,6 +157,9 @@ class RepositorioPostgres:
             );
             """,
             """
+            DROP TABLE IF EXISTS operational_day_overrides;
+            """,
+            """
             CREATE TABLE IF NOT EXISTS missao_contextos (
                 missao_id INTEGER PRIMARY KEY,
                 criada_por_id INTEGER NULL REFERENCES usuarios(usuario_id) ON DELETE SET NULL,

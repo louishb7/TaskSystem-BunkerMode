@@ -39,7 +39,7 @@ class RelatorioService:
             StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
             StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
             StatusMissao.FALHA_REVISADA,
-        } and not self._feita_sem_registro(m) and not self._falha_informativa_limpa(m)]
+        } and not self._feita_sem_registro(m)]
         falhas_decididas = [m for m in falhas if m.is_decided]
         aguardando_justificativa = [m for m in consideradas if m.requires_soldier_justification()]
         aguardando_revisao = [m for m in consideradas if m.requires_general_review()]
@@ -66,13 +66,6 @@ class RelatorioService:
         if data_evento is None:
             return False
         return inicio <= operational_date_for(data_evento) <= fim
-
-    def _falha_informativa_limpa(self, missao) -> bool:
-        return (
-            missao.status == StatusMissao.FALHA_REVISADA
-            and not missao.is_decided
-            and missao.general_verdict == "accepted"
-        )
 
     def _feita_sem_registro(self, missao) -> bool:
         return getattr(missao.failure_reason_type, "value", None) == "done_not_marked"

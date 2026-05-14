@@ -5,7 +5,6 @@ import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
 import { emptyStatus } from "../../../constants/uiState.js";
 import { formatDateForApi } from "../../../utils/date.js";
 import { isCompleted } from "../../../utils/missionStatus.js";
-import { countCompletedMissions } from "../../missions/missionSelectors.js";
 import MissionForm from "../../missions/components/MissionForm.jsx";
 import {
   addDays,
@@ -63,8 +62,6 @@ export default function GeneralCommandPage({
     () => board.dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === selectedDateApi),
     [board.dailyMissions, selectedDateApi]
   );
-  const completedCount = countCompletedMissions(selectedMissions);
-  const remainingCount = Math.max(0, selectedMissions.length - completedCount);
   const reviewCount = board.reviewMissions.length + (board.reviewState?.pending ? 1 : 0);
 
   useEffect(() => {
@@ -130,7 +127,6 @@ export default function GeneralCommandPage({
       <section className="general-layout">
         <aside className="general-side operational-side">
           <TacticalSidePanel
-            remainingCount={remainingCount}
             selectedDateLabel={selectedDateLabel}
             selectedMissions={selectedMissions}
           />
@@ -170,7 +166,6 @@ export default function GeneralCommandPage({
         <aside className="general-side command-side">
           <CommandRail
             generalName={generalName}
-            onCreateOrder={openCreateForm}
             onLogout={onLogout}
             onOpenOperations={() => setOperationsOpen(true)}
             onOpenReview={onOpenReview}

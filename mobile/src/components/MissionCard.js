@@ -141,6 +141,7 @@ export default function MissionCard({
   const canJustify = can(mission, "can_justify");
   const requiresJustification = isDecided;
   const disabled = toggling || completing || justifying;
+  const failed = String(mission?.status_code || "").startsWith("FALHA");
 
   useEffect(() => {
     setConfirmingToggle(false);
@@ -164,7 +165,7 @@ export default function MissionCard({
           styles.card,
           styles.soldierCard,
           isDecided && styles.soldierDecidedCard,
-          canJustify && styles.dangerCard,
+          failed && styles.dangerCard,
         ]}
       >
         <View style={styles.soldierCardTop}>
@@ -209,9 +210,9 @@ export default function MissionCard({
           <Pressable
             disabled={disabled}
             onPress={() => setFailureFormOpen(true)}
-            style={[styles.secondaryAction, styles.manualFailureAction]}
+            style={styles.manualFailureAction}
           >
-            <Text style={styles.manualFailureText}>REGISTRAR FALHA</Text>
+            <Text style={styles.manualFailureText}>Registrar falha</Text>
           </Pressable>
         ) : null}
 
@@ -482,7 +483,7 @@ const styles = StyleSheet.create({
   },
   instruction: {
     ...theme.typography.body,
-    color: theme.colors.textMuted,
+    color: theme.colors.text,
     marginTop: theme.spacing.sm,
   },
   origin: {
@@ -575,12 +576,22 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
   },
   manualFailureAction: {
+    alignItems: "center",
+    alignSelf: "flex-end",
+    backgroundColor: theme.colors.redWash,
     borderColor: theme.colors.red,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
     marginTop: theme.spacing.sm,
+    minHeight: 34,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
   },
   manualFailureText: {
     ...theme.typography.small,
     color: theme.colors.red,
+    fontWeight: "900",
   },
   committedAction: {
     backgroundColor: theme.colors.purpleWash,

@@ -68,7 +68,7 @@ class MissaoService:
             [
                 missao
                 for missao in missoes
-                if missao.is_finalized() and not self._falha_informativa_limpa(missao)
+                if missao.is_finalized()
             ]
         )
 
@@ -81,13 +81,15 @@ class MissaoService:
         ]
 
     def listar_missoes_do_dia_operacional(self, usuario=None) -> list[Missao]:
+        return self.listar_missoes_por_dia_operacional(self._today(), usuario=usuario)
+
+    def listar_missoes_por_dia_operacional(self, dia: date, usuario=None) -> list[Missao]:
         missoes = self._carregar_missoes_do_usuario(usuario)
-        hoje = self._today()
         return self.sort_missions_for_board(
             [
                 missao
                 for missao in missoes
-                if self._pertence_ao_dia_operacional(missao, hoje)
+                if self._pertence_ao_dia_operacional(missao, dia)
             ]
         )
 
@@ -395,13 +397,6 @@ class MissaoService:
             return False
         data_falha = operational_date_for(missao.failed_at)
         return start_date <= data_falha <= end_date
-
-    def _falha_informativa_limpa(self, missao: Missao) -> bool:
-        return (
-            missao.is_failed_reviewed()
-            and not missao.is_decided
-            and missao.general_verdict == "accepted"
-        )
 
     def _pertence_ao_dia_operacional(self, missao: Missao, dia: date) -> bool:
         if missao.due_date == dia:

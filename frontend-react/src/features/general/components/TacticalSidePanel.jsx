@@ -5,7 +5,6 @@ import { isCompleted } from "../../../utils/missionStatus.js";
 import { MissionProgress } from "../../missions/components/MissionCard.jsx";
 
 export default function TacticalSidePanel({
-  remainingCount,
   selectedDateLabel,
   selectedMissions,
 }) {
@@ -20,13 +19,9 @@ export default function TacticalSidePanel({
           <p className="section-kicker fire">LEÃO DO DIA</p>
           <h2>{selectedDateLabel}</h2>
           <p>
-            {remainingCount > 0
-              ? remainingCount === 1
-                ? "1 ordem ainda resiste à caçada."
-                : `${remainingCount} ordens ainda resistem à caçada.`
-              : totalCount > 0
-                ? "Caçada concluída para o dia selecionado."
-                : "Nenhuma caça definida para este dia."}
+            {totalCount > 0
+              ? "A execução do dia aparece nos dados abaixo."
+              : "Nenhuma caça definida para este dia."}
           </p>
         </div>
         <LionEmblem />
@@ -44,10 +39,6 @@ export default function TacticalSidePanel({
         <div>
           <span>EXECUTADAS</span>
           <strong>{completedCount}</strong>
-        </div>
-        <div>
-          <span>RESTAM</span>
-          <strong>{remainingCount}</strong>
         </div>
       </div>
 

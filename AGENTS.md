@@ -18,6 +18,8 @@ Seja direto. Sem enchimento. Sem teoria não solicitada. Critique quando necess�
 
 O projeto contém este arquivo `AGENTS.md` na raiz do repositório.
 
+TEMP: foco atual exclusivamente WEB; evitar mobile até consolidação do site.
+
 Você deve:
 
 * ler `AGENTS.md` antes de qualquer ação

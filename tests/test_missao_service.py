@@ -1173,9 +1173,9 @@ def test_limpar_relatorio_falhas_persiste_registros_informativos_sem_limpar_deci
     )
     historicas = service.listar_missoes_historicas(usuario=usuario)
 
-    assert relatorio["failed_missions"] == 1
-    assert relatorio["failure_reasons"] == ["Não executei."]
-    assert [missao.missao_id for missao in historicas] == []
+    assert relatorio["failed_missions"] == 2
+    assert relatorio["failure_reasons"] == ["Não executei.", "Não executei."]
+    assert [missao.missao_id for missao in historicas] == [1]
 
 
 def test_relatorio_semanal_valida_intervalo_invertido_e_parcial():

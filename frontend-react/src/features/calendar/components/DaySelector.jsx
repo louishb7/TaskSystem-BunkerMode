@@ -28,27 +28,28 @@ export default function DaySelector({
         const selected = date.getTime() === selectedDate.getTime();
         const today = date.getTime() === todayDate.getTime();
         const stats = missionStatsByDate[apiDate] || { completed: 0, total: 0 };
+        const isDayOff = stats.total === 0;
         const complete = stats.total > 0 && stats.completed === stats.total;
         const percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : null;
-        const tone = percent === null ? "neutral" : executionTone(percent);
+        const tone = isDayOff ? "off" : executionTone(percent);
 
         return (
-          <button
+          <div
             key={date.toISOString()}
             className={`day-node ${selected ? "selected" : ""} ${today ? "today" : ""} ${complete ? "complete" : ""} execution-${tone}`}
-            type="button"
-            onClick={() => onSelectDate(date)}
           >
-            <span className="day-week">{WEEK_LABELS[date.getDay()]}</span>
-            <span className="day-number">{String(date.getDate()).padStart(2, "0")}</span>
-            <span className="day-today">{today ? "HOJE" : "\u00A0"}</span>
-            <span
-              className="day-execution"
-              aria-label={percent === null ? "Sem ordens no dia" : `${percent}% do Leão do Dia`}
-            >
-              {percent === null ? "SEM ORDENS" : `${percent}%`}
-            </span>
-          </button>
+            <button className="day-select-button" type="button" onClick={() => onSelectDate(date)}>
+              <span className="day-week">{WEEK_LABELS[date.getDay()]}</span>
+              <span className="day-number">{String(date.getDate()).padStart(2, "0")}</span>
+              <span className="day-today">{today ? "HOJE" : "\u00A0"}</span>
+              <span
+                className="day-execution"
+                aria-label={isDayOff ? "Dia off automático" : `${percent}% do Leão do Dia`}
+              >
+                {isDayOff ? "DIA OFF" : `${percent}%`}
+              </span>
+            </button>
+          </div>
         );
       })}
     </div>

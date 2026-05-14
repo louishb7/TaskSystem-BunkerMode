@@ -1220,9 +1220,9 @@ def test_limpar_relatorio_falhas_persiste_no_backend():
     )
     historico = listar_missoes_historicas(usuario=usuario, missao_service=missoes)
 
-    assert relatorio["failed_missions"] == 0
-    assert relatorio["failure_reasons"] == []
-    assert historico == []
+    assert relatorio["failed_missions"] == 1
+    assert relatorio["failure_reasons"] == ["Não executei."]
+    assert [missao["id"] for missao in historico] == [1]
 
 
 def test_revisao_general_estado_fechamento_e_historico_persistem():
@@ -1356,6 +1356,36 @@ def test_operacao_materializa_ordem_do_dia_sem_duplicar_e_encerramento_bloqueia_
 
     assert encerrada["status"] == "encerrada"
     assert nova["generated"] == 0
+
+
+def test_operacao_materializa_sem_bloqueio_de_dia_off_manual():
+    repo, _, _, _, _, usuario = preparar_ambiente()
+    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
+    criar_operacao(
+        OperacaoCreatePayload(
+            nome="Treino",
+            start_date="2026-04-20",
+            end_date="2026-04-26",
+            weekdays=[4],
+            ordem_titulo="Treinar",
+        ),
+        usuario=usuario,
+        operacao_service=operacoes,
+    )
+
+    gerada = materializar_operacoes(
+        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
+        usuario=usuario,
+        operacao_service=operacoes,
+    )
+    duplicada = materializar_operacoes(
+        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
+        usuario=usuario,
+        operacao_service=operacoes,
+    )
+
+    assert gerada["generated"] == 1
+    assert duplicada["generated"] == 0
 
 
 def test_operacao_bloqueada_no_modo_soldado():

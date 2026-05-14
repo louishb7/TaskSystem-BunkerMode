@@ -8,20 +8,21 @@ export default function ProgressStrip({ completed = 0, label = "PROGRESSO", tota
   const percent = Math.round(ratio * 100);
   const remaining = Math.max(0, total - completed);
   const complete = total > 0 && completed === total;
+  const off = total === 0;
 
   return (
     <View style={styles.container}>
       <View style={styles.row}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={[styles.value, complete && styles.valueComplete]}>
-          {total > 0 ? `${percent}%` : "0%"}
+        <Text style={[styles.value, complete && styles.valueComplete, off && styles.valueOff]}>
+          {off ? "OFF" : `${percent}%`}
         </Text>
       </View>
       <View style={styles.track}>
         <View style={[styles.fill, complete && styles.fillComplete, { width: `${percent}%` }]} />
       </View>
       <View style={styles.metaRow}>
-        <Text style={styles.meta}>{completed}/{total} EXECUTADAS</Text>
+        <Text style={styles.meta}>{off ? "DIA OFF" : `${completed}/${total} EXECUTADAS`}</Text>
         <Text style={styles.meta}>{remaining === 1 ? "1 RESTA" : `${remaining} RESTAM`}</Text>
       </View>
     </View>
@@ -47,6 +48,9 @@ const styles = StyleSheet.create({
   },
   valueComplete: {
     color: theme.colors.success,
+  },
+  valueOff: {
+    color: theme.colors.textMuted,
   },
   track: {
     backgroundColor: theme.colors.surfaceDeep,
