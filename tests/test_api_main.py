@@ -19,7 +19,8 @@ def test_api_main_inclui_rotas_principais():
 
 
 def test_api_main_healthcheck_com_testclient():
-    response = TestClient(app).get("/api/v2/health")
+    with TestClient(app) as client:
+        response = client.get("/api/v2/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
