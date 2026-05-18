@@ -32,7 +32,7 @@ export default function FailureJustificationForm({
     const trimmedReason = reason.trim();
 
     if (required && !trimmedReason) {
-      setError("Informe o motivo da falha Decidida.");
+      setError("Informe o motivo da falha.");
       return;
     }
 

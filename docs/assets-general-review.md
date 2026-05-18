@@ -16,7 +16,7 @@ A tela do General deve usar:
 
 ## Imagens encontradas
 
-| Asset | Dimensões | Tamanho | Tipo | Uso decidido |
+| Asset | Dimensões | Tamanho | Tipo | Uso definido |
 | --- | ---: | ---: | --- | --- |
 | `docs/design-references/bunkermode/bg_bunker_reference.png` | 230 x 210 | 88K | PNG RGB | Referência de textura discreta. Fora do runtime. |
 | `docs/design-references/bunkermode/brand_board_full_reference.png` | 1536 x 1024 | 1.7M | PNG RGB | Inspiração visual. Grande e carregado demais para fundo mobile. |

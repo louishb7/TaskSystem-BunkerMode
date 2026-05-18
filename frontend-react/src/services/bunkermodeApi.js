@@ -96,12 +96,6 @@ export const api = {
   completeMission(token, missionId) {
     return requestMission(`/missoes/${missionId}/concluir`, { token, method: "PATCH" });
   },
-  toggleMissionDecision(token, missionId) {
-    return requestMission(`/missoes/${missionId}/toggle-decided`, {
-      token,
-      method: "PATCH",
-    });
-  },
   toggleMissionPin(token, missionId) {
     return requestMission(`/missoes/${missionId}/toggle-pin`, {
       token,

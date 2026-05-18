@@ -52,7 +52,6 @@ class Missao:
         prazo=None,
         instrucao=None,
         status=StatusMissao.PENDENTE,
-        is_decided=False,
         created_at=None,
         completed_at=None,
         failed_at=None,
@@ -71,7 +70,6 @@ class Missao:
         self._prazo = self._validar_prazo(prazo)
         self.instrucao = self._validar_instrucao(instrucao)
         self.status = self._validar_status(status)
-        self.is_decided = self._validar_is_decided(is_decided)
         self.created_at = self._validar_datetime(created_at, "Data de criação inválida.", default_now=True)
         self.completed_at = self._validar_datetime(completed_at, "Data de conclusão inválida.")
         self.failed_at = self._validar_datetime(failed_at, "Data de falha inválida.")
@@ -109,7 +107,6 @@ class Missao:
             "status": self.status.value,
             "status_code": self.status_code,
             "status_label": self.status_label,
-            "is_decided": self.is_decided,
             "is_pinned": self.is_pinned,
             "created_at": self.created_at.isoformat(),
             "completed_at": None if self.completed_at is None else self.completed_at.isoformat(),
@@ -127,7 +124,6 @@ class Missao:
                 "can_complete": False,
                 "can_edit": False,
                 "can_delete": False,
-                "can_toggle_decided": False,
                 "can_justify": False,
                 "can_review": False,
                 "can_view_history": False,
@@ -212,11 +208,6 @@ class Missao:
             or self.is_failed_waiting_justification()
         )
 
-    def can_be_marked_decided(self):
-        if self.operacao_id is not None:
-            return False
-        return self.is_pending()
-
     def can_be_deleted_by_general(self):
         if self.operacao_id is not None:
             return False
@@ -226,10 +217,10 @@ class Missao:
         return self.is_failed_waiting_justification()
 
     def requires_immediate_justification(self):
-        return self.requires_soldier_justification() and self.is_decided
+        return self.requires_soldier_justification()
 
     def has_pending_non_blocking_justification(self):
-        return self.requires_soldier_justification() and not self.is_decided
+        return False
 
     def pode_ser_justificada(self):
         return self.requires_soldier_justification()
@@ -292,9 +283,6 @@ class Missao:
         self.failure_reason_type = None
         self.failure_reason = None
         self.general_verdict = None
-
-    def alternar_decisao(self):
-        self.is_decided = not self.is_decided
 
     def alternar_prioridade_fixada(self):
         self.is_pinned = not self.is_pinned
@@ -473,11 +461,6 @@ class Missao:
             return StatusMissao(status_normalizado)
         except ValueError as erro:
             raise ValueError("Status de missão inválido.") from erro
-
-    def _validar_is_decided(self, is_decided):
-        if not isinstance(is_decided, bool):
-            raise ValueError("Marcador de decisão deve ser booleano.")
-        return is_decided
 
     def _validar_is_pinned(self, is_pinned):
         if not isinstance(is_pinned, bool):

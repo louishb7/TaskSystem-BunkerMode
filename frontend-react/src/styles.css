@@ -1064,11 +1064,6 @@ h3 {
   color: var(--neon-purple);
 }
 
-.mission-group.pinned .mission-group-header span,
-.mission-group.pinned .mission-group-header strong {
-  color: var(--fire);
-}
-
 .mission-group.danger .mission-group-header span,
 .mission-group.danger .mission-group-header strong {
   color: var(--red);
@@ -1121,7 +1116,7 @@ h3 {
     rgba(18, 18, 18, 0.7);
 }
 
-.mission-card.decided {
+.mission-card.priority-high {
   border-color: var(--purple-border);
   border-left: 3px solid var(--neon-purple);
   background:
@@ -1129,16 +1124,6 @@ h3 {
     linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 80px),
     rgba(17, 17, 17, 0.95);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(155, 92, 255, 0.06);
-}
-
-.mission-card.pinned {
-  border-color: rgba(255, 138, 42, 0.36);
-  border-left: 3px solid var(--fire);
-  background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.13), transparent 48%),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent 60px),
-    rgba(17, 17, 17, 0.94);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(255, 138, 42, 0.06);
 }
 
 .mission-card.completed {
@@ -1149,7 +1134,7 @@ h3 {
     rgba(12, 15, 13, 0.58);
 }
 
-.mission-card.completed.decided {
+.mission-card.completed.priority-high {
   border-color: var(--success-border);
   border-left-color: var(--success);
   background:
@@ -1163,7 +1148,7 @@ h3 {
   min-height: 88px;
 }
 
-.mission-card.soldier-card.decided {
+.mission-card.soldier-card.priority-high {
   border-left-color: var(--neon-purple);
 }
 
@@ -1284,9 +1269,9 @@ h3 {
 
 .priority-icon-button:hover:not(:disabled),
 .priority-icon-button.active {
-  border-color: rgba(255, 138, 42, 0.42);
-  background: rgba(255, 138, 42, 0.08);
-  color: var(--fire);
+  border-color: var(--purple-border);
+  background: var(--purple-wash);
+  color: var(--neon-purple);
 }
 
 .priority-icon-button:disabled {
@@ -1875,7 +1860,7 @@ h3 {
 
 .hunt-entry .mode-transition-count,
 .hunt-entry .muted,
-.decided-summary span,
+.priority-summary span,
 .side-metrics span {
   color: var(--text-muted);
   font-size: 0.64rem;
@@ -1895,7 +1880,7 @@ h3 {
   color: var(--fire);
 }
 
-.decided-summary p {
+.priority-summary p {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.82rem;
@@ -1921,7 +1906,7 @@ h3 {
   line-height: 1;
 }
 
-.decided-summary {
+.priority-summary {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   border-color: var(--purple-border);
@@ -1930,19 +1915,19 @@ h3 {
     rgba(10, 10, 10, 0.42);
 }
 
-.decided-summary div {
+.priority-summary div {
   display: grid;
   gap: 2px;
 }
 
-.decided-summary strong {
+.priority-summary strong {
   color: var(--neon-purple);
   font-size: 1.28rem;
   line-height: 1;
   text-shadow: 0 0 18px rgba(155, 92, 255, 0.28);
 }
 
-.decided-summary p {
+.priority-summary p {
   justify-self: end;
   text-align: right;
 }

@@ -66,7 +66,7 @@ class RevisaoService:
             completed_missions=leitura["report"]["completed_missions"],
             pending_missions=leitura["pending_missions"],
             failed_missions=leitura["report"]["failed_missions"],
-            committed_missions_failed=leitura["report"]["committed_missions_failed"],
+            high_priority_missions=leitura["report"]["high_priority_missions"],
             observacao=observacao,
         )
         self.repositorio.salvar_revisao_semanal(revisao)
@@ -86,13 +86,10 @@ class RevisaoService:
             if self._falha_contabilizavel(missao)
             and self._missao_no_periodo_por_evento(missao, start_date, end_date)
         ]
-        decididas_quebradas = [missao for missao in falhas if missao.is_decided]
-
         return {
             "report": report,
             "pending_missions": len(pendentes),
             "failures": [missao.to_dict() for missao in falhas],
-            "broken_decided": [missao.to_dict() for missao in decididas_quebradas],
             "operational_history": [
                 missao.to_dict()
                 for missao in missoes

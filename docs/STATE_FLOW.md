@@ -33,7 +33,7 @@ Responsabilidades:
 - criar ordem
 - editar ordem
 - remover ordem
-- alternar Decidida
+- alternar prioridade elevada
 - concluir ordem
 - registrar justificativa
 - revisar falha

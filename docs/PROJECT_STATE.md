@@ -18,14 +18,14 @@ Fluxo esperado: General cria ordens, o sistema preserva a decisão, Soldado exec
 - Autenticação por Bearer token.
 - `permissions` de missão são calculadas no servidor e consumidas por mobile/web.
 - `prioridade` permanece no banco, schema e payload por compatibilidade legada. A UI não deve expor Alta/Média/Baixa nem permitir planejamento por prioridade.
-- Decidida é o compromisso operacional visível do produto.
+- Prioridade elevada é o marcador operacional de ordens importantes.
 - Modo Soldado bloqueia criação, edição, remoção, histórico, relatório e revisão.
 
 ## Mobile
 
 - App Expo em `mobile/`.
 - `usuario.active_mode` decide a pilha: General ou Soldado.
-- General mostra Posto de Comando, Semana Operacional, Leão do Dia, Ordens do Dia, Decidida e Pós-Ação.
+- General mostra Posto de Comando, Semana Operacional, Leão do Dia, Ordens do Dia, prioridade elevada e Pós-Ação.
 - Soldado mostra apenas ordens executáveis ou justificáveis e a ação de Retornar ao Comando.
 - O fallback atual da API no cliente mobile é `http://192.168.18.71:8000/api/v2`; para uso real, definir `EXPO_PUBLIC_API_URL`.
 
@@ -33,7 +33,7 @@ Fluxo esperado: General cria ordens, o sistema preserva a decisão, Soldado exec
 
 - App Vite em `frontend-react/`.
 - Usa o mesmo contrato de API e valida `status_code`, `status_label` e `permissions`.
-- Espelha os conceitos principais do mobile: Posto de Comando, Semana Operacional, Leão do Dia, Ordens do Dia, Decidida, Modo Soldado e Pós-Ação.
+- Espelha os conceitos principais do mobile: Posto de Comando, Semana Operacional, Leão do Dia, Ordens do Dia, prioridade elevada, Modo Soldado e Pós-Ação.
 - Está organizado por `app/`, `features/`, `services/`, `api/`, `theme/`, `types/` e componentes globais.
 - Não tem lint configurado no `package.json`; o check disponível hoje é `npm run check`, que executa build.
 
@@ -50,7 +50,7 @@ Termos ativos:
 - Semana Operacional
 - Ordens do Dia
 - Criar nova ordem
-- Decidida
+- Prioridade elevada
 - Pós-Ação
 - Ativar Soldado
 - Retornar ao Comando

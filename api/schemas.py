@@ -95,7 +95,6 @@ class OperacaoCreatePayload(BaseModel):
     weekdays: list[int] = Field(min_length=1)
     ordem_titulo: str = Field(min_length=1)
     ordem_instrucao: str | None = None
-    is_decided: bool = False
 
 
 class OperacaoMaterializarPayload(BaseModel):

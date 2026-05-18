@@ -151,13 +151,11 @@ export default function GeneralCommandPage({
           <StatusNotice status={board.status} />
 
           <OrdersPanel
-            decisionLoadingId={board.decisionLoadingId}
             loading={board.missionLoading}
             onCreateOrder={openCreateForm}
             onDeleteMission={deleteMission}
             onEditMission={openEditForm}
             onTogglePin={board.toggleMissionPin}
-            onToggleDecision={board.toggleMissionDecision}
             pinLoadingId={board.pinLoadingId}
             selectedMissions={selectedMissions}
           />

@@ -44,7 +44,6 @@ Campos protegidos:
 - `permissions.can_complete`
 - `permissions.can_edit`
 - `permissions.can_delete`
-- `permissions.can_toggle_decided`
 - `permissions.can_justify`
 - `permissions.can_review`
 - `permissions.can_view_history`

@@ -4,7 +4,7 @@ Data: 2026-05-09
 
 ## Prioridade manual
 
-1. Rodar uma sessão real no mobile: login, criar ordem, marcar Decidida, ativar Soldado, executar, retornar ao comando.
+1. Rodar uma sessão real no web: login, criar ordem, elevar prioridade, ativar Soldado, executar, retornar ao comando.
 2. Validar uma falha real: deixar ordem vencer, justificar no Soldado e revisar no Pós-Ação.
 3. Conferir se o IP usado em `EXPO_PUBLIC_API_URL` está correto para dispositivo físico ou emulador.
 4. Revisar `docs/PROJECT_STATE.md` antes de retomar desenvolvimento.
@@ -13,8 +13,8 @@ Data: 2026-05-09
 
 - Retorno ao Comando com senha incorreta e senha correta.
 - Logout automático quando a API retornar 401.
-- Ordem Decidida vencida aparecendo para justificativa no Soldado.
-- Remoção de Decidida pedindo confirmação antes de retirar o compromisso.
+- Ordem prioritária vencida aparecendo para justificativa no Soldado.
+- Elevar e rebaixar prioridade sem alterar status da ordem.
 - Remoção de ordem operacional no General sem afetar histórico finalizado.
 - Pós-Ação vazio e Pós-Ação com falhas pendentes.
 
@@ -47,5 +47,5 @@ Data: 2026-05-09
 1. Criar migração de banco planejada.
 2. Ajustar schemas e testes de contrato.
 3. Remover fallback `LEGACY_DEFAULT_PRIORITY`.
-4. Garantir que ordenação continue baseada em Pós-Ação, Decidida, prazo e `id`.
+4. Garantir que ordenação continue baseada em Pós-Ação, prioridade elevada, prazo e `id`.
 5. Só então remover referências técnicas restantes.

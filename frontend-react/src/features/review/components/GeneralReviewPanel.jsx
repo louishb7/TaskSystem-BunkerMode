@@ -154,15 +154,14 @@ export default function GeneralReviewPanel({
   const completed = scopedMissions.filter(isCompleted).length;
   const pending = scopedMissions.filter(isPendingMission).length;
   const failures = scopedMissions.filter(isFailureMission);
-  const decidedFailures = failures.filter((mission) => mission?.is_decided === true);
   const reviewMissionIds = new Set(missions.map((mission) => mission.id));
   const visibleFailuresForList = uniqueMissions([...scopedReviewMissions, ...failures])
     .filter(isVisibleFailureRecord);
   const hasClearableFailure = visibleFailuresForList.some(
-    (mission) => mission?.is_decided !== true && mission?.failure_reason
+    (mission) => mission?.failure_reason
   );
-  const visiblePendingDecisionCount = visibleFailuresForList.filter(
-    (mission) => mission?.is_decided === true && reviewMissionIds.has(mission.id)
+  const visiblePendingReviewCount = visibleFailuresForList.filter(
+    (mission) => reviewMissionIds.has(mission.id)
   ).length;
   const huntRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   const remaining = Math.max(0, total - completed);
@@ -171,12 +170,8 @@ export default function GeneralReviewPanel({
       return "Sem ordens no período carregado. O relatório fica limpo até haver execução registrada.";
     }
 
-    if (decidedFailures.length > 0) {
-      return `${decidedFailures.length} ordem decidida falhou no período. Priorize a decisão do General antes de avançar.`;
-    }
-
     if (failures.length > 0) {
-      return `${failures.length} falha registrada no período. Use como leitura operacional; falhas normais não exigem decisão.`;
+      return `${failures.length} falha registrada no período. Use como leitura operacional da execução.`;
     }
 
     if (remaining > 0) {
@@ -218,7 +213,6 @@ export default function GeneralReviewPanel({
   const weeklyPending = reviewState?.reading?.pending_missions || 0;
   const weeklyTotal = (weeklyReport.total_missions || 0) + weeklyPending;
   const weeklyFailures = Array.isArray(reviewState?.reading?.failures) ? reviewState.reading.failures : [];
-  const brokenDecided = Array.isArray(reviewState?.reading?.broken_decided) ? reviewState.reading.broken_decided : [];
   const visibleWeeklyFailures = weeklyFailuresOpen ? weeklyFailures : weeklyFailures.slice(0, 4);
   const selectedReview = weeklyReviews.find((review) => review.id === selectedReviewId);
   const hasWeeklyReview = Boolean(reviewState?.pending);
@@ -271,8 +265,8 @@ export default function GeneralReviewPanel({
               <strong>{weeklyReport.failed_missions || 0}</strong>
             </div>
             <div>
-              <span>DECIDIDAS QUEBRADAS</span>
-              <strong>{weeklyReport.committed_missions_failed || 0}</strong>
+              <span>PRIORIDADE ELEVADA</span>
+              <strong>{weeklyReport.high_priority_missions || 0}</strong>
             </div>
           </div>
 
@@ -323,8 +317,8 @@ export default function GeneralReviewPanel({
             {visibleWeeklyFailures.length > 0 && (
               <div className="failure-rows">
                 {visibleWeeklyFailures.map((mission) => (
-                  <div key={mission.id} className={`failure-row ${mission.is_decided ? "critical" : ""}`}>
-                    <span>{mission.is_decided ? "DECIDIDA" : "FALHA"}</span>
+                  <div key={mission.id} className={`failure-row ${mission.is_pinned ? "critical" : ""}`}>
+                    <span>{mission.is_pinned ? "PRIORIDADE" : "FALHA"}</span>
                     <strong>{mission.titulo || "Sem título"}</strong>
                     <p>{mission.failure_reason || "Justificativa não registrada."}</p>
                   </div>
@@ -333,11 +327,6 @@ export default function GeneralReviewPanel({
             )}
           </div>
 
-          {brokenDecided.length > 0 && (
-            <p className="weekly-critical-note">
-              {brokenDecided.length} Decidida quebrada nesta semana operacional.
-            </p>
-          )}
         </div>
       )}
 
@@ -380,8 +369,8 @@ export default function GeneralReviewPanel({
         </div>
 
         <div className="review-failure-panel">
-          <p className="section-kicker danger">FALHAS AGUARDANDO DECISÃO</p>
-          <strong>{visiblePendingDecisionCount}</strong>
+          <p className="section-kicker danger">FALHAS EM REVISÃO</p>
+          <strong>{visiblePendingReviewCount}</strong>
           <p className="muted">
             {visibleFailuresForList.length > 0
               ? `${visibleFailuresForList.length} registro no relatório de falhas.`
@@ -412,12 +401,12 @@ export default function GeneralReviewPanel({
                   const failedAt = mission?.failed_at
                     ? `Falhou em ${formatDateTime(mission.failed_at)}`
                     : "";
-                  const requiresDecision = mission?.is_decided === true && reviewMissionIds.has(mission.id);
+                  const requiresReview = reviewMissionIds.has(mission.id);
 
                   return (
                     <article key={mission.id} className="review-card">
-                      <p className={`section-kicker ${requiresDecision ? "danger" : "fire"}`}>
-                        {requiresDecision ? "REVISÃO OBRIGATÓRIA" : "REGISTRO INFORMATIVO"}
+                      <p className={`section-kicker ${requiresReview ? "danger" : "fire"}`}>
+                        {requiresReview ? "REVISÃO OBRIGATÓRIA" : "REGISTRO INFORMATIVO"}
                       </p>
                       <h3>{mission.titulo || "Sem título"}</h3>
                       <p className="muted">
@@ -430,7 +419,7 @@ export default function GeneralReviewPanel({
                         <p>{mission.failure_reason || "Justificativa não registrada."}</p>
                       </div>
 
-                      {requiresDecision ? (
+                      {requiresReview ? (
                         <div className="actions-row">
                           <button
                             className="button secondary compact"
@@ -451,7 +440,7 @@ export default function GeneralReviewPanel({
                         </div>
                       ) : (
                         <p className="review-info-note">
-                          Falha normal registrada para leitura. Não exige decisão do General.
+                          Falha registrada para leitura operacional.
                         </p>
                       )}
                     </article>
@@ -511,8 +500,8 @@ export default function GeneralReviewPanel({
                     <strong>{selectedReview.failed_missions}</strong>
                   </div>
                   <div>
-                    <span>DECIDIDAS QUEBRADAS</span>
-                    <strong>{selectedReview.committed_missions_failed}</strong>
+                    <span>PRIORIDADE ELEVADA</span>
+                    <strong>{selectedReview.high_priority_missions}</strong>
                   </div>
                 </div>
                 <p>{selectedReview.resumo_operacional}</p>

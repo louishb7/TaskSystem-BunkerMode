@@ -18,7 +18,7 @@ class Operacao:
         weekdays=None,
         ordem_titulo=None,
         ordem_instrucao=None,
-        is_decided=False,
+        is_pinned=False,
         status=STATUS_ATIVA,
         created_at=None,
     ):
@@ -36,7 +36,7 @@ class Operacao:
             "Título da ordem da operação é obrigatório.",
         )
         self.ordem_instrucao = self._validar_texto_opcional(ordem_instrucao)
-        self.is_decided = bool(is_decided)
+        self.is_pinned = bool(is_pinned)
         self.status = self._validar_status(status)
         self.created_at = self._validar_datetime(created_at)
 
@@ -70,7 +70,7 @@ class Operacao:
             "weekdays": self.weekdays,
             "ordem_titulo": self.ordem_titulo,
             "ordem_instrucao": self.ordem_instrucao,
-            "is_decided": self.is_decided,
+            "is_pinned": self.is_pinned,
             "status": self.status,
             "created_at": self.created_at.isoformat(),
         }

@@ -2,7 +2,6 @@ const REQUIRED_PERMISSION_KEYS = Object.freeze([
   "can_complete",
   "can_edit",
   "can_delete",
-  "can_toggle_decided",
   "can_justify",
   "can_review",
   "can_view_history",

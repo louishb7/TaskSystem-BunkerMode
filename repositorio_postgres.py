@@ -105,11 +105,24 @@ class RepositorioPostgres:
             """,
             """
             ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS is_decided BOOLEAN NOT NULL DEFAULT FALSE;
+            ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
+            """,
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'missoes' AND column_name = 'is_decided'
+                ) THEN
+                    UPDATE missoes
+                    SET is_pinned = TRUE
+                    WHERE is_decided = TRUE;
+                END IF;
+            END $$;
             """,
             """
             ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
+            DROP COLUMN IF EXISTS is_decided;
             """,
             """
             ALTER TABLE IF EXISTS missoes
@@ -155,10 +168,31 @@ class RepositorioPostgres:
                 weekdays TEXT NOT NULL,
                 ordem_titulo TEXT NOT NULL,
                 ordem_instrucao TEXT NULL,
-                is_decided BOOLEAN NOT NULL DEFAULT FALSE,
+                is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
                 status TEXT NOT NULL DEFAULT 'ativa',
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            """,
+            """
+            ALTER TABLE IF EXISTS operacoes
+            ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
+            """,
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'operacoes' AND column_name = 'is_decided'
+                ) THEN
+                    UPDATE operacoes
+                    SET is_pinned = TRUE
+                    WHERE is_decided = TRUE;
+                END IF;
+            END $$;
+            """,
+            """
+            ALTER TABLE IF EXISTS operacoes
+            DROP COLUMN IF EXISTS is_decided;
             """,
             """
             DROP TABLE IF EXISTS operational_day_overrides;
@@ -204,10 +238,18 @@ class RepositorioPostgres:
                 completed_missions INTEGER NOT NULL DEFAULT 0,
                 pending_missions INTEGER NOT NULL DEFAULT 0,
                 failed_missions INTEGER NOT NULL DEFAULT 0,
-                committed_missions_failed INTEGER NOT NULL DEFAULT 0,
+                high_priority_missions INTEGER NOT NULL DEFAULT 0,
                 observacao TEXT NULL,
                 UNIQUE (usuario_id, start_date, end_date)
             );
+            """,
+            """
+            ALTER TABLE IF EXISTS revisoes_semanais
+            ADD COLUMN IF NOT EXISTS high_priority_missions INTEGER NOT NULL DEFAULT 0;
+            """,
+            """
+            ALTER TABLE IF EXISTS revisoes_semanais
+            DROP COLUMN IF EXISTS committed_missions_failed;
             """,
         ]
         try:
@@ -233,7 +275,26 @@ class RepositorioPostgres:
                 prazo,
                 instrucao,
                 status,
-                is_decided,
+                legacy_priority_marker,
+            ) = linha
+            is_pinned = bool(legacy_priority_marker)
+            created_at = None
+            completed_at = None
+            failed_at = None
+            failure_reason_type = None
+            failure_reason = None
+            soldier_excuse = None
+            general_verdict = None
+            operacao_id = None
+            operacao_nome = None
+        elif len(linha) == 6:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
             ) = linha
             created_at = None
             completed_at = None
@@ -252,7 +313,26 @@ class RepositorioPostgres:
                 prazo,
                 instrucao,
                 status,
-                is_decided,
+                legacy_priority_marker,
+                failed_at,
+                soldier_excuse,
+                general_verdict,
+            ) = linha
+            is_pinned = bool(legacy_priority_marker)
+            created_at = None
+            completed_at = None
+            failure_reason_type = None
+            failure_reason = soldier_excuse
+            operacao_id = None
+            operacao_nome = None
+        elif len(linha) == 9:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
                 failed_at,
                 soldier_excuse,
                 general_verdict,
@@ -271,7 +351,26 @@ class RepositorioPostgres:
                 prazo,
                 instrucao,
                 status,
-                is_decided,
+                legacy_priority_marker,
+                created_at,
+                completed_at,
+                failed_at,
+                failure_reason,
+                soldier_excuse,
+                general_verdict,
+            ) = linha
+            is_pinned = bool(legacy_priority_marker)
+            failure_reason_type = None
+            operacao_id = None
+            operacao_nome = None
+        elif len(linha) == 12:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
                 created_at,
                 completed_at,
                 failed_at,
@@ -282,7 +381,7 @@ class RepositorioPostgres:
             failure_reason_type = None
             operacao_id = None
             operacao_nome = None
-        elif len(linha) == 16:
+        elif len(linha) == 15:
             (
                 missao_id,
                 titulo,
@@ -290,7 +389,6 @@ class RepositorioPostgres:
                 prazo,
                 instrucao,
                 status,
-                is_decided,
                 created_at,
                 completed_at,
                 failed_at,
@@ -309,7 +407,27 @@ class RepositorioPostgres:
                 prazo,
                 instrucao,
                 status,
-                is_decided,
+                legacy_priority_marker,
+                is_pinned,
+                created_at,
+                completed_at,
+                failed_at,
+                failure_reason_type,
+                failure_reason,
+                soldier_excuse,
+                general_verdict,
+                operacao_id,
+                operacao_nome,
+            ) = linha
+            is_pinned = bool(is_pinned or legacy_priority_marker)
+        elif len(linha) == 16:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
                 is_pinned,
                 created_at,
                 completed_at,
@@ -329,7 +447,6 @@ class RepositorioPostgres:
                 prazo,
                 instrucao,
                 status,
-                is_decided,
                 created_at,
                 completed_at,
                 failed_at,
@@ -347,7 +464,6 @@ class RepositorioPostgres:
             prazo=prazo,
             instrucao=instrucao,
             status=status,
-            is_decided=is_decided,
             created_at=created_at,
             completed_at=completed_at,
             failed_at=failed_at,
@@ -431,7 +547,7 @@ class RepositorioPostgres:
             completed_missions,
             pending_missions,
             failed_missions,
-            committed_missions_failed,
+            high_priority_missions,
             observacao,
         ) = linha
         return RevisaoSemanal(
@@ -444,7 +560,7 @@ class RepositorioPostgres:
             completed_missions=completed_missions,
             pending_missions=pending_missions,
             failed_missions=failed_missions,
-            committed_missions_failed=committed_missions_failed,
+            high_priority_missions=high_priority_missions,
             observacao=observacao,
         )
 
@@ -459,7 +575,7 @@ class RepositorioPostgres:
             weekdays,
             ordem_titulo,
             ordem_instrucao,
-            is_decided,
+            is_pinned,
             status,
             created_at,
         ) = linha
@@ -473,7 +589,7 @@ class RepositorioPostgres:
             weekdays=json.loads(weekdays),
             ordem_titulo=ordem_titulo,
             ordem_instrucao=ordem_instrucao,
-            is_decided=is_decided,
+            is_pinned=is_pinned,
             status=status,
             created_at=created_at,
         )
@@ -485,7 +601,7 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
                                m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
                         FROM missoes m
@@ -510,7 +626,7 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
                                m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
                         FROM missoes m
@@ -537,7 +653,7 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
                                m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
                         FROM missoes m
@@ -564,10 +680,10 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         INSERT INTO missoes (
-                            titulo, prioridade, prazo, instrucao, status, is_decided, is_pinned,
+                            titulo, prioridade, prazo, instrucao, status, is_pinned,
                             created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
                         (
@@ -576,7 +692,6 @@ class RepositorioPostgres:
                             missao.prazo_date,
                             missao.instrucao,
                             missao.status.value,
-                            missao.is_decided,
                             missao.is_pinned,
                             missao.created_at,
                             missao.completed_at,
@@ -610,7 +725,6 @@ class RepositorioPostgres:
                             prazo = %s,
                             instrucao = %s,
                             status = %s,
-                            is_decided = %s,
                             is_pinned = %s,
                             created_at = %s,
                             completed_at = %s,
@@ -627,7 +741,6 @@ class RepositorioPostgres:
                             missao.prazo_date,
                             missao.instrucao,
                             missao.status.value,
-                            missao.is_decided,
                             missao.is_pinned,
                             missao.created_at,
                             missao.completed_at,
@@ -963,7 +1076,7 @@ class RepositorioPostgres:
                         """
                         INSERT INTO operacoes (
                             usuario_id, nome, descricao, start_date, end_date, weekdays,
-                            ordem_titulo, ordem_instrucao, is_decided, status, created_at
+                            ordem_titulo, ordem_instrucao, is_pinned, status, created_at
                         )
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING operacao_id;
@@ -977,7 +1090,7 @@ class RepositorioPostgres:
                             json.dumps(operacao.weekdays),
                             operacao.ordem_titulo,
                             operacao.ordem_instrucao,
-                            operacao.is_decided,
+                            operacao.is_pinned,
                             operacao.status,
                             operacao.created_at,
                         ),
@@ -999,7 +1112,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT operacao_id, usuario_id, nome, descricao, start_date, end_date,
-                               weekdays, ordem_titulo, ordem_instrucao, is_decided, status, created_at
+                               weekdays, ordem_titulo, ordem_instrucao, is_pinned, status, created_at
                         FROM operacoes
                         WHERE usuario_id = %s
                         ORDER BY status ASC, start_date DESC, operacao_id DESC;
@@ -1023,7 +1136,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT operacao_id, usuario_id, nome, descricao, start_date, end_date,
-                               weekdays, ordem_titulo, ordem_instrucao, is_decided, status, created_at
+                               weekdays, ordem_titulo, ordem_instrucao, is_pinned, status, created_at
                         FROM operacoes
                         WHERE operacao_id = %s;
                         """,
@@ -1053,7 +1166,7 @@ class RepositorioPostgres:
                             weekdays = %s,
                             ordem_titulo = %s,
                             ordem_instrucao = %s,
-                            is_decided = %s,
+                            is_pinned = %s,
                             status = %s
                         WHERE operacao_id = %s AND usuario_id = %s;
                         """,
@@ -1065,7 +1178,7 @@ class RepositorioPostgres:
                             json.dumps(operacao.weekdays),
                             operacao.ordem_titulo,
                             operacao.ordem_instrucao,
-                            operacao.is_decided,
+                            operacao.is_pinned,
                             operacao.status,
                             operacao.operacao_id,
                             operacao.usuario_id,
@@ -1137,8 +1250,8 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
-                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
+                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
                                m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -1164,8 +1277,8 @@ class RepositorioPostgres:
                 with conexao.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status, m.is_decided,
-                               m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
+                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
+                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
                                m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -1202,7 +1315,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         INSERT INTO missoes (
-                            titulo, prioridade, prazo, instrucao, status, is_decided,
+                            titulo, prioridade, prazo, instrucao, status, is_pinned,
                             created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
                         )
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -1214,7 +1327,7 @@ class RepositorioPostgres:
                             missao.prazo_date,
                             missao.instrucao,
                             missao.status.value,
-                            missao.is_decided,
+                            missao.is_pinned,
                             missao.created_at,
                             missao.completed_at,
                             missao.failed_at,
@@ -1311,7 +1424,7 @@ class RepositorioPostgres:
                         """
                         SELECT revisao_id, usuario_id, start_date, end_date, reviewed_at,
                                resumo_operacional, completed_missions, pending_missions,
-                               failed_missions, committed_missions_failed, observacao
+                               failed_missions, high_priority_missions, observacao
                         FROM revisoes_semanais
                         WHERE usuario_id = %s AND start_date = %s AND end_date = %s;
                         """,
@@ -1335,7 +1448,7 @@ class RepositorioPostgres:
                         """
                         SELECT revisao_id, usuario_id, start_date, end_date, reviewed_at,
                                resumo_operacional, completed_missions, pending_missions,
-                               failed_missions, committed_missions_failed, observacao
+                               failed_missions, high_priority_missions, observacao
                         FROM revisoes_semanais
                         WHERE usuario_id = %s
                         ORDER BY start_date DESC, revisao_id DESC;
@@ -1361,7 +1474,7 @@ class RepositorioPostgres:
                         INSERT INTO revisoes_semanais (
                             usuario_id, start_date, end_date, reviewed_at,
                             resumo_operacional, completed_missions, pending_missions,
-                            failed_missions, committed_missions_failed, observacao
+                            failed_missions, high_priority_missions, observacao
                         )
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (usuario_id, start_date, end_date)
@@ -1370,7 +1483,7 @@ class RepositorioPostgres:
                                       completed_missions = EXCLUDED.completed_missions,
                                       pending_missions = EXCLUDED.pending_missions,
                                       failed_missions = EXCLUDED.failed_missions,
-                                      committed_missions_failed = EXCLUDED.committed_missions_failed,
+                                      high_priority_missions = EXCLUDED.high_priority_missions,
                                       observacao = EXCLUDED.observacao
                         RETURNING revisao_id;
                         """,
@@ -1383,7 +1496,7 @@ class RepositorioPostgres:
                             revisao.completed_missions,
                             revisao.pending_missions,
                             revisao.failed_missions,
-                            revisao.committed_missions_failed,
+                            revisao.high_priority_missions,
                             revisao.observacao,
                         ),
                     )

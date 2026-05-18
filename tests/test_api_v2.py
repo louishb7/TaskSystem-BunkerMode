@@ -298,7 +298,6 @@ def assert_mission_contract(payload):
         "can_complete": payload["permissions"]["can_complete"],
         "can_edit": payload["permissions"]["can_edit"],
         "can_delete": payload["permissions"]["can_delete"],
-        "can_toggle_decided": payload["permissions"]["can_toggle_decided"],
         "can_justify": payload["permissions"]["can_justify"],
         "can_review": payload["permissions"]["can_review"],
         "can_view_history": payload["permissions"]["can_view_history"],
@@ -510,7 +509,6 @@ def test_soldado_pode_justificar_e_general_revisar():
     assert resposta["general_verdict"] == "accepted"
     assert resposta["permissions"]["can_edit"] is False
     assert resposta["permissions"]["can_delete"] is False
-    assert resposta["permissions"]["can_toggle_decided"] is False
 
 
 def test_rota_justification_persiste_tipo_e_texto_da_justificativa():
@@ -674,7 +672,7 @@ def test_listagem_operacional_nao_retorna_concluidas_ou_falhas_revisadas():
             failed_at=datetime(2026, 4, 23, 10, 0, 0),
             failure_reason="Falhou.",
             general_verdict="accepted",
-            is_decided=True,
+            is_pinned=True,
             user_id=usuario.usuario_id,
         ),
     ]
@@ -714,7 +712,7 @@ def test_missoes_operacionais_repete_a_mesma_listagem_de_missoes():
             failed_at=datetime(2026, 4, 23, 10, 0, 0),
             failure_reason="Falhou.",
             general_verdict="accepted",
-            is_decided=True,
+            is_pinned=True,
             user_id=usuario.usuario_id,
         ),
     ]
@@ -940,7 +938,7 @@ def test_historico_de_missoes_retorna_apenas_finalizadas():
             failed_at=datetime(2026, 4, 23, 10, 0, 0),
             failure_reason="Falhou.",
             general_verdict="accepted",
-            is_decided=True,
+            is_pinned=True,
             user_id=usuario.usuario_id,
         ),
         Missao(
@@ -1088,7 +1086,7 @@ def test_relatorio_semanal_retorna_payload_esperado():
             failed_at=datetime(2026, 4, 23, 12, 0, 0),
             failure_reason="Perdi o prazo por bloqueio externo.",
             user_id=usuario.usuario_id,
-            is_decided=True,
+            is_pinned=True,
         ),
     ]
     repo.contextos = {
@@ -1106,7 +1104,7 @@ def test_relatorio_semanal_retorna_payload_esperado():
     assert payload["total_missions"] == 2
     assert payload["completed_missions"] == 1
     assert payload["completion_rate"] == 50.0
-    assert payload["committed_missions_failed"] == 1
+    assert payload["high_priority_missions"] == 1
     assert payload["missions_waiting_justification"] == 0
     assert payload["missions_waiting_review"] == 1
     assert payload["failure_reasons"] == ["Perdi o prazo por bloqueio externo."]
@@ -1274,13 +1272,13 @@ def test_revisao_general_estado_fechamento_e_historico_persistem():
         ),
         Missao(
             missao_id=3,
-            titulo="Decidida quebrada",
+            titulo="Prioridade falhada",
             prioridade=1,
             prazo="23-04-2026",
             status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
             failed_at=datetime(2026, 4, 23, 10, 0, 0),
             failure_reason="Não executei.",
-            is_decided=True,
+            is_pinned=True,
             user_id=usuario.usuario_id,
         ),
     ]
@@ -1335,7 +1333,6 @@ def test_operacao_materializa_ordem_do_dia_sem_duplicar_e_encerramento_bloqueia_
             weekdays=[4],
             ordem_titulo="Treinar por 45 minutos",
             ordem_instrucao=None,
-            is_decided=True,
         ),
         usuario=usuario,
         operacao_service=operacoes,
@@ -1360,7 +1357,7 @@ def test_operacao_materializa_ordem_do_dia_sem_duplicar_e_encerramento_bloqueia_
     assert len(quadro) == 1
     assert quadro[0]["operacao_id"] == operacao["id"]
     assert quadro[0]["operacao_nome"] == "Reconstrução Física"
-    assert quadro[0]["is_decided"] is True
+    assert quadro[0]["is_pinned"] is False
     assert quadro[0]["permissions"]["can_edit"] is False
     assert quadro[0]["permissions"]["can_delete"] is False
 

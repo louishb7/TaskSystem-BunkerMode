@@ -15,7 +15,7 @@ class RevisaoSemanal:
         completed_missions=0,
         pending_missions=0,
         failed_missions=0,
-        committed_missions_failed=0,
+        high_priority_missions=0,
         observacao=None,
     ):
         self.revisao_id = self._validar_id(revisao_id, "ID da revisão", obrigatorio=False)
@@ -29,10 +29,7 @@ class RevisaoSemanal:
         self.completed_missions = self._validar_contagem(completed_missions, "executadas")
         self.pending_missions = self._validar_contagem(pending_missions, "pendentes")
         self.failed_missions = self._validar_contagem(failed_missions, "falhas")
-        self.committed_missions_failed = self._validar_contagem(
-            committed_missions_failed,
-            "decididas falhadas",
-        )
+        self.high_priority_missions = self._validar_contagem(high_priority_missions, "prioridade elevada")
         self.observacao = self._validar_texto_opcional(observacao)
 
     def to_dict(self):
@@ -46,7 +43,7 @@ class RevisaoSemanal:
             "completed_missions": self.completed_missions,
             "pending_missions": self.pending_missions,
             "failed_missions": self.failed_missions,
-            "committed_missions_failed": self.committed_missions_failed,
+            "high_priority_missions": self.high_priority_missions,
             "observacao": self.observacao,
         }
 

@@ -136,9 +136,9 @@ def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
     assert [missao.missao_id for missao in missoes] == [1, 2]
     assert missoes[0].prioridade == PrioridadeMissao.ALTA
     assert missoes[0].prazo == "20-04-2026"
-    assert missoes[0].is_decided is False
+    assert missoes[0].is_pinned is False
     assert missoes[1].status == StatusMissao.CONCLUIDA
-    assert missoes[1].is_decided is True
+    assert missoes[1].is_pinned is True
     assert "ORDER BY m.prioridade, m.missao_id" in cursor.executions[-1][0]
 
 
@@ -165,16 +165,15 @@ def test_adicionar_missao_atualiza_id_e_confirma_transacao(
     assert missao_exemplo.missao_id == 7
     assert connection.commit_called is True
     params = cursor.executions[-1][1]
-    assert params[0:7] == (
+    assert params[0:6] == (
         "Estudar persistência",
         1,
         date(2026, 4, 20),
         "Validar escrita no PostgreSQL",
         "Pendente",
         False,
-        False,
     )
-    assert params[8:] == (None, None, None, None, None, None)
+    assert params[7:] == (None, None, None, None, None, None)
 
 
 def test_atualizar_missao_lanca_erro_quando_linha_nao_existe(
@@ -353,9 +352,9 @@ def test_repositorio_postgres_persiste_fluxo_basico_real(
     assert buscada is not None
     assert buscada.titulo == "Persistir missão real"
     assert buscada.prazo == "22-04-2026"
-    assert buscada.is_decided is False
+    assert buscada.is_pinned is False
 
-    missao.alternar_decisao()
+    missao.alternar_prioridade_fixada()
     missao.atualizar_titulo("Persistir missão real atualizada")
     missao.concluir()
     repositorio.atualizar_missao(missao)
@@ -363,7 +362,7 @@ def test_repositorio_postgres_persiste_fluxo_basico_real(
     atualizada = repositorio.buscar_por_id(1)
     assert atualizada is not None
     assert atualizada.titulo == "Persistir missão real atualizada"
-    assert atualizada.is_decided is True
+    assert atualizada.is_pinned is True
     assert atualizada.status == StatusMissao.CONCLUIDA
 
     listadas = repositorio.carregar_dados()

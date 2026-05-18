@@ -73,8 +73,7 @@ export function isOperationalMission(mission) {
 export function canShowGeneralActions(mission) {
   return Boolean(
     mission.permissions.can_edit ||
-    mission.permissions.can_delete ||
-    mission.permissions.can_toggle_decided
+    mission.permissions.can_delete
   );
 }
 
@@ -84,10 +83,6 @@ export function canShowSoldierActions(mission) {
 
 export function canShowGeneralEdit(mission) {
   return mission.permissions.can_edit;
-}
-
-export function canShowGeneralDecisionToggle(mission) {
-  return mission.permissions.can_toggle_decided;
 }
 
 export function canShowGeneralDelete(mission) {

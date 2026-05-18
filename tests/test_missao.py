@@ -32,7 +32,7 @@ def test_criar_missao_valida():
     assert missao.prazo == "10-04-2026"
     assert missao.instrucao == "Treinar pesado"
     assert missao.status == StatusMissao.PENDENTE
-    assert missao.is_decided is False
+    assert missao.is_pinned is False
     assert missao.created_at is not None
     assert missao.completed_at is None
     assert missao.failure_reason is None
@@ -296,11 +296,9 @@ def test_helpers_de_estado_refletem_ciclo_da_missao():
     assert pendente.is_pending() is True
     assert pendente.is_operational() is True
     assert pendente.is_finalized() is False
-    assert pendente.can_be_marked_decided() is True
 
     assert aguardando_justificativa.requires_soldier_justification() is True
     assert aguardando_justificativa.is_operational() is True
-    assert aguardando_justificativa.can_be_marked_decided() is False
 
     assert aguardando_revisao.requires_general_review() is True
     assert aguardando_revisao.is_operational() is False
@@ -325,7 +323,6 @@ def test_to_dict_expoe_status_canonico_e_permissions_padrao(missao_base):
         "can_complete": False,
         "can_edit": False,
         "can_delete": False,
-        "can_toggle_decided": False,
         "can_justify": False,
         "can_review": False,
         "can_view_history": False,
@@ -414,7 +411,7 @@ def test_reabrir_missao_limpa_estado_de_conclusao():
     assert missao.failure_reason is None
 
 
-def test_alternar_decisao():
+def test_alternar_prioridade_fixada():
     missao = Missao(
         missao_id=1,
         titulo="Treinar",
@@ -423,8 +420,8 @@ def test_alternar_decisao():
         instrucao="Treinar pesado",
     )
 
-    missao.alternar_decisao()
-    assert missao.is_decided is True
+    missao.alternar_prioridade_fixada()
+    assert missao.is_pinned is True
 
-    missao.alternar_decisao()
-    assert missao.is_decided is False
+    missao.alternar_prioridade_fixada()
+    assert missao.is_pinned is False

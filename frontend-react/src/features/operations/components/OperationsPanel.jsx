@@ -20,7 +20,6 @@ const initialForm = {
   weekdays: [],
   ordem_titulo: "",
   ordem_instrucao: "",
-  is_decided: false,
 };
 
 function formatDate(value) {
@@ -312,15 +311,6 @@ export default function OperationsPanel({
               value={form.ordem_instrucao}
               onChange={(event) => updateField("ordem_instrucao", event.target.value)}
             />
-          </label>
-          <label className="toggle-row">
-            <input
-              checked={form.is_decided}
-              disabled={loading}
-              type="checkbox"
-              onChange={(event) => updateField("is_decided", event.target.checked)}
-            />
-            <span>Marcar ordens como Decididas</span>
           </label>
           <button className="button fire full" disabled={loading} type="submit">
             {loading ? "REGISTRANDO" : "REGISTRAR OPERAÇÃO"}

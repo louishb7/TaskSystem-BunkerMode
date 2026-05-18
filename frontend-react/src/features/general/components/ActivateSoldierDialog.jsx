@@ -12,7 +12,7 @@ export default function ActivateSoldierDialog({
         <p className="section-kicker fire">CAÇADA</p>
         <h2>Iniciar caçada</h2>
         <p className="muted">
-          O plano já foi decidido. Ao entrar em execução, planejamento fica bloqueado.
+          O plano está definido. Ao entrar em execução, planejamento fica bloqueado.
         </p>
         <div className="protocol-brief">
           <span>{orderCount === 1 ? "1 ordem disponível" : `${orderCount} ordens disponíveis`}</span>

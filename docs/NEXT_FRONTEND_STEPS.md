@@ -5,7 +5,7 @@ Data: 2026-05-09
 ## Prioridade alta
 
 1. Usar a web diariamente por alguns dias e registrar atritos reais.
-2. Validar o ciclo: criar ordem, marcar Decidida, ativar Soldado, executar, retornar ao comando.
+2. Validar o ciclo: criar ordem, elevar prioridade, ativar Soldado, executar, retornar ao comando.
 3. Validar falha: ordem vencida, justificativa no Soldado, decisão no Pós-Ação.
 4. Consolidar Revisão Semanal como tela própria quando o produto pedir.
 

@@ -25,7 +25,6 @@ class OperacaoService:
             weekdays=dados.get("weekdays"),
             ordem_titulo=dados.get("ordem_titulo"),
             ordem_instrucao=dados.get("ordem_instrucao"),
-            is_decided=dados.get("is_decided", False),
             created_at=self._now(),
         )
         self.repositorio.adicionar_operacao(operacao)
@@ -118,7 +117,7 @@ class OperacaoService:
             prioridade=LEGACY_DEFAULT_PRIORITY,
             prazo=dia,
             instrucao=operacao.ordem_instrucao,
-            is_decided=operacao.is_decided,
+            is_pinned=operacao.is_pinned,
             user_id=usuario.usuario_id,
             operacao_id=operacao.operacao_id,
             operacao_nome=operacao.nome,

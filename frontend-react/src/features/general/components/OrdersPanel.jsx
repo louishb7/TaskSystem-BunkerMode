@@ -10,27 +10,24 @@ function isFailure(mission) {
 
 function groupMissions(missions) {
   return {
-    pinned: missions.filter((mission) => mission?.is_pinned === true),
-    critical: missions.filter((mission) => mission?.is_pinned !== true && !isCompleted(mission) && mission?.is_decided === true),
-    pending: missions.filter((mission) => mission?.is_pinned !== true && !isCompleted(mission) && mission?.is_decided !== true && !isFailure(mission)),
+    highPriority: missions.filter((mission) => mission?.is_pinned === true),
+    pending: missions.filter((mission) => mission?.is_pinned !== true && !isCompleted(mission) && !isFailure(mission)),
     failures: missions.filter((mission) => mission?.is_pinned !== true && !isCompleted(mission) && isFailure(mission)),
     completed: missions.filter((mission) => mission?.is_pinned !== true && isCompleted(mission)),
   };
 }
 
 export default function OrdersPanel({
-  decisionLoadingId,
   loading,
   onCreateOrder,
   onDeleteMission,
   onEditMission,
   onTogglePin,
-  onToggleDecision,
   pinLoadingId,
   selectedMissions,
 }) {
   const groups = groupMissions(selectedMissions);
-  const activeCount = groups.pinned.filter((mission) => !isCompleted(mission)).length + groups.critical.length + groups.pending.length + groups.failures.length;
+  const activeCount = groups.highPriority.filter((mission) => !isCompleted(mission)).length + groups.pending.length + groups.failures.length;
   const completedCount = groups.completed.length;
 
   function renderMissionGroup(label, missions, tone = "") {
@@ -52,9 +49,7 @@ export default function OrdersPanel({
               onDelete={() => onDeleteMission(mission)}
               onEdit={() => onEditMission(mission)}
               onTogglePin={() => onTogglePin(mission)}
-              onToggleDecision={() => onToggleDecision(mission)}
               pinning={pinLoadingId === mission.id}
-              toggling={decisionLoadingId === mission.id}
               variant="general"
             />
           ))}
@@ -89,8 +84,7 @@ export default function OrdersPanel({
         />
       ) : selectedMissions.length > 0 ? (
         <div className="mission-groups">
-          {renderMissionGroup("Fixadas", groups.pinned, "pinned")}
-          {renderMissionGroup("Inegociáveis", groups.critical, "critical")}
+          {renderMissionGroup("Prioridade elevada", groups.highPriority, "critical")}
           {renderMissionGroup("Pendentes", groups.pending)}
           {renderMissionGroup("Falhas em leitura", groups.failures, "danger")}
           {renderMissionGroup("Cumpridas", groups.completed, "completed")}

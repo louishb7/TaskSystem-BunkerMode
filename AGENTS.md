@@ -174,7 +174,7 @@ Não adicione: username, roles
 * prazo
 * status_code
 * status_label
-* is_decided
+* is_pinned
 * failure_reason
 * created_at
 * completed_at

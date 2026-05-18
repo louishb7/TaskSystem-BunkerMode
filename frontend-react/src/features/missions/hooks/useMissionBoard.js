@@ -40,7 +40,6 @@ export function useMissionBoard({
   const [missionLoading, setMissionLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [reviewLoadingId, setReviewLoadingId] = useState(null);
-  const [decisionLoadingId, setDecisionLoadingId] = useState(null);
   const [pinLoadingId, setPinLoadingId] = useState(null);
   const [completeLoadingId, setCompleteLoadingId] = useState(null);
   const [justificationLoadingId, setJustificationLoadingId] = useState(null);
@@ -447,33 +446,6 @@ export function useMissionBoard({
     return true;
   }
 
-  async function toggleMissionDecision(mission) {
-    if (!mission?.id) {
-      setStatus({ type: "error", message: "Ordem inválida para alterar Decidida." });
-      return false;
-    }
-
-    setDecisionLoadingId(mission.id);
-    setStatus(emptyStatus);
-    const result = await api.toggleMissionDecision(token, mission.id);
-    setDecisionLoadingId(null);
-
-    if (onUnauthorized(result)) {
-      return false;
-    }
-
-    if (!result.ok) {
-      setStatus({
-        type: "error",
-        message: getErrorMessage(result, "Não foi possível alterar Decidida."),
-      });
-      return false;
-    }
-
-    await loadGeneralBoard();
-    return true;
-  }
-
   async function toggleMissionPin(mission) {
     if (!mission?.id) {
       setStatus({ type: "error", message: "Ordem inválida para subir prioridade." });
@@ -649,7 +621,6 @@ export function useMissionBoard({
     createMission,
     continuePreviousOperationalTurn,
     dailyMissions,
-    decisionLoadingId,
     deleteOperation,
     deleteMission,
     formLoading,
@@ -673,7 +644,6 @@ export function useMissionBoard({
     status,
     submitFailureJustification,
     submitGeneralReview,
-    toggleMissionDecision,
     toggleMissionPin,
     updateMission,
     weeklyReviews,
