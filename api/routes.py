@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from api.schemas import (
@@ -33,6 +31,7 @@ from services.exceptions import (
 )
 from services.missao_service import MissaoService
 from services.operacao_service import OperacaoService
+from services.operational_day import parse_iso_date
 from services.relatorio_service import RelatorioService
 from services.revisao_service import RevisaoService
 
@@ -694,9 +693,4 @@ def fechar_revisao(
 
 
 def _parse_query_date(raw_value: str | None):
-    if raw_value is None:
-        return None
-    try:
-        return datetime.strptime(raw_value, "%Y-%m-%d").date()
-    except ValueError as erro:
-        raise ValueError("Datas do relatório devem usar o formato YYYY-MM-DD.") from erro
+    return parse_iso_date(raw_value, "Datas do relatório devem usar o formato YYYY-MM-DD.")

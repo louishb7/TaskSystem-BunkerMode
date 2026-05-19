@@ -6,7 +6,6 @@ import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
 import { formatCurrentDay } from "../../calendar/calendarUtils.js";
 import MissionCard, { MissionProgress } from "../../missions/components/MissionCard.jsx";
-import ReturnToCommandDialog from "../components/ReturnToCommandDialog.jsx";
 
 function formatOperationalTurnDate(value) {
   if (!value || typeof value !== "string") {
@@ -36,35 +35,16 @@ export default function SoldierExecutionPage({
   missions,
   onReturnToCommand,
 }) {
-  const [returnStep, setReturnStep] = useState("closed");
-  const [unlockPassword, setUnlockPassword] = useState("");
   const [returnLoading, setReturnLoading] = useState(false);
   const remainingOrders = actionMissions.length;
   const turn = board.operationalTurn;
   const showTurnWarning = turn?.requires_decision === true && !board.operationalTurnAcknowledged;
   const turnDateLabel = formatOperationalTurnDate(turn?.active_date_label);
 
-  async function submitReturn(event) {
-    event.preventDefault();
-
-    if (!unlockPassword.trim()) {
-      board.setStatus({ type: "error", message: "Informe a senha para retornar ao comando." });
-      return;
-    }
-
+  async function handleReturnToCommand() {
     setReturnLoading(true);
-    const returned = await onReturnToCommand(unlockPassword);
+    await onReturnToCommand();
     setReturnLoading(false);
-
-    if (returned) {
-      setUnlockPassword("");
-      setReturnStep("closed");
-    }
-  }
-
-  function closeReturnDialog() {
-    setUnlockPassword("");
-    setReturnStep("closed");
   }
 
   return (
@@ -72,7 +52,7 @@ export default function SoldierExecutionPage({
       <section className="soldier-layout">
         <header className="soldier-header">
           <div className="soldier-topline">
-            <span>MODO SOLDADO</span>
+            <span>FOCO OPERACIONAL</span>
             <span>EXECUÇÃO</span>
           </div>
           <div className="soldier-briefing">
@@ -87,7 +67,7 @@ export default function SoldierExecutionPage({
                     : "ORDENS EM EXECUÇÃO"}
                 </strong>
               </div>
-              <p className="soldier-lock-note">Planejamento bloqueado. Somente execução permanece disponível.</p>
+              <p className="soldier-focus-note">Interface reduzida para manter ritmo, ação e continuidade.</p>
               <MissionProgress label="CAÇADA" missions={dailyMissions.length > 0 ? dailyMissions : missions} />
             </div>
           </div>
@@ -101,7 +81,7 @@ export default function SoldierExecutionPage({
               <span>TRANSIÇÃO DE TURNO</span>
               <strong>Existem ordens pendentes do ciclo anterior.</strong>
               <p>
-                O novo dia já tem ordens prontas. Continue o ciclo anterior ou encerre as pendências como falha para abrir a nova caçada.
+                O novo dia já tem ordens prontas. Continue o ciclo anterior ou encerre as pendências como falha para abrir a nova operação.
               </p>
             </div>
             <div className="operational-turn-actions">
@@ -128,7 +108,7 @@ export default function SoldierExecutionPage({
         {board.missionLoading ? (
           <EmptyState
             title="Sincronizando ordens"
-            message="O Soldado aguarda o quadro operacional."
+            message="O foco operacional está sincronizando o quadro."
           />
         ) : actionMissions.length > 0 ? (
           <div className="mission-list soldier-list">
@@ -155,26 +135,14 @@ export default function SoldierExecutionPage({
           <button
             className="mode-switch return-command"
             type="button"
-            onClick={() => setReturnStep("confirm")}
+            onClick={handleReturnToCommand}
             disabled={returnLoading}
           >
             <span>RETORNAR AO COMANDO</span>
-            <strong>VALIDAR</strong>
+            <strong>{returnLoading ? "AGUARDE" : "GENERAL"}</strong>
           </button>
         </footer>
       </section>
-
-      {returnStep !== "closed" && (
-        <ReturnToCommandDialog
-          loading={returnLoading}
-          onCancel={closeReturnDialog}
-          onContinue={() => setReturnStep("password")}
-          onPasswordChange={setUnlockPassword}
-          onSubmit={submitReturn}
-          password={unlockPassword}
-          step={returnStep}
-        />
-      )}
     </TacticalShell>
   );
 }

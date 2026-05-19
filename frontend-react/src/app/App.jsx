@@ -43,7 +43,7 @@ export default function App() {
     if (!result.ok) {
       board.setStatus({
         type: "error",
-        message: getErrorMessage(result, "Não foi possível ativar o Soldado."),
+        message: getErrorMessage(result, "Não foi possível entrar em foco operacional."),
       });
       return false;
     }
@@ -53,7 +53,7 @@ export default function App() {
     if (!confirmedUser) {
       board.setStatus({
         type: "error",
-        message: "Soldado ativado, mas a sessão não confirmou o modo ativo.",
+        message: "Foco operacional aberto, mas a sessão não confirmou o modo ativo.",
       });
       return false;
     }
@@ -62,9 +62,9 @@ export default function App() {
     return true;
   }
 
-  async function returnToCommand(password) {
+  async function returnToCommand() {
     board.setStatus(emptyStatus);
-    const result = await api.unlockGeneral(auth.token, { senha: password });
+    const result = await api.setSessionMode(auth.token, { mode: "general" });
 
     if (auth.handleUnauthorized(result)) {
       return false;
@@ -73,7 +73,7 @@ export default function App() {
     if (!result.ok) {
       board.setStatus({
         type: "error",
-        message: getErrorMessage(result, "General negado."),
+        message: getErrorMessage(result, "Não foi possível retornar ao comando."),
       });
       return false;
     }

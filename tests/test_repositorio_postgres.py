@@ -222,7 +222,7 @@ def test_busca_usuario_reconstroi_nome_do_general(monkeypatch, repositorio):
     assert usuario.timezone_updated_at is None
 
 
-def test_busca_usuario_reconstroi_lock_de_planejamento(monkeypatch, repositorio):
+def test_busca_usuario_reconstroi_data_de_emergencia(monkeypatch, repositorio):
     timezone_updated_at = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
     cursor = FakeCursor(
         fetchone_result=(

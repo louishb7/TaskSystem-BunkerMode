@@ -1,15 +1,16 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime
 
 from missao import StatusMissao
 from services.exceptions import PermissaoNegadaError
-from services.operational_day import operational_date_for
+from services.operational_day import operational_date_for, operational_week_bounds
 
 
 class RelatorioService:
     """Calcula relatórios semanais a partir do histórico persistido das missões."""
 
-    def __init__(self, repositorio):
+    def __init__(self, repositorio, now_provider=None):
         self.repositorio = repositorio
+        self._now_provider = now_provider or datetime.now
 
     def get_weekly_report_for_user(
         self,
@@ -76,10 +77,10 @@ class RelatorioService:
                 raise ValueError("Intervalo semanal inválido.")
             return start_date, end_date
 
-        hoje = self._today()
-        inicio = hoje - timedelta(days=hoje.weekday())
-        fim = inicio + timedelta(days=6)
-        return inicio, fim
+        return operational_week_bounds(self._today())
 
     def _today(self) -> date:
-        return datetime.combine(date.today(), time.min).date()
+        return operational_date_for(self._now())
+
+    def _now(self) -> datetime:
+        return self._now_provider()

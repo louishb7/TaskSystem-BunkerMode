@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +9,11 @@ from missao import Missao, PrioridadeMissao, StatusMissao
 from services.auth_service import AuthService
 from services.missao_service import MissaoService
 from services.mission_permissions import MissionPermissions
+from services.operational_day import (
+    operational_date_for,
+    operational_week_bounds,
+    previous_operational_week_bounds,
+)
 from services.relatorio_service import RelatorioService
 from services.revisao_service import RevisaoService
 from usuario import Usuario
@@ -145,6 +150,79 @@ class RepositorioOwnershipFake:
         self.revisoes.append(revisao)
 
 
+class RepositorioFluxoFake:
+    def __init__(self):
+        self.missoes = []
+        self.contextos = {}
+        self.auditoria_registrada = []
+        self.revisoes = []
+        self._next_id = 1
+
+    def buscar_por_id(self, missao_id):
+        return next((missao for missao in self.missoes if missao.missao_id == missao_id), None)
+
+    def buscar_contexto_missao(self, missao_id):
+        return self.contextos.get(missao_id)
+
+    def carregar_dados(self):
+        return list(self.missoes)
+
+    def carregar_dados_por_responsavel(self, responsavel_id):
+        return [
+            missao
+            for missao in self.missoes
+            if self.contextos.get(missao.missao_id, {}).get("responsavel_id") == responsavel_id
+            or missao.user_id == responsavel_id
+        ]
+
+    def adicionar_missao(self, missao):
+        if missao.missao_id is None:
+            missao.atualizar_missao_id(self._next_id)
+            self._next_id += 1
+        self.missoes.append(missao)
+
+    def atualizar_missao(self, missao):
+        for index, existente in enumerate(self.missoes):
+            if existente.missao_id == missao.missao_id:
+                self.missoes[index] = missao
+                return
+        self.missoes.append(missao)
+
+    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id, operacao_id=None, operacao_dia=None):
+        self.contextos[missao_id] = {
+            "criada_por_id": criada_por_id,
+            "responsavel_id": responsavel_id,
+            "operacao_id": operacao_id,
+            "operacao_dia": operacao_dia,
+        }
+
+    def remover_missao(self, missao_id):
+        self.missoes = [missao for missao in self.missoes if missao.missao_id != missao_id]
+
+    def listar_auditoria_por_missao(self, missao_id):
+        return [evento for evento in self.auditoria_registrada if evento.missao_id == missao_id]
+
+    def registrar_auditoria(self, evento):
+        self.auditoria_registrada.append(evento)
+
+    def buscar_revisao_por_periodo(self, usuario_id, start_date, end_date):
+        for revisao in self.revisoes:
+            if (
+                revisao.usuario_id == usuario_id
+                and revisao.start_date == start_date
+                and revisao.end_date == end_date
+            ):
+                return revisao
+        return None
+
+    def listar_revisoes_semanais(self, usuario_id):
+        return [revisao for revisao in self.revisoes if revisao.usuario_id == usuario_id]
+
+    def salvar_revisao_semanal(self, revisao):
+        revisao.atualizar_revisao_id(len(self.revisoes) + 1)
+        self.revisoes.append(revisao)
+
+
 def test_mission_permissions_to_dict_expoe_todas_as_chaves_booleanas():
     permissions = MissionPermissions(
         can_complete=True,
@@ -163,6 +241,29 @@ def test_mission_permissions_to_dict_expoe_todas_as_chaves_booleanas():
         "can_review": False,
         "can_view_history": True,
     }
+
+
+def test_data_operacional_usa_timezone_padrao_e_corte_das_quatro():
+    assert operational_date_for(datetime(2026, 4, 25, 3, 59, 0)) == date(2026, 4, 24)
+    assert operational_date_for(datetime(2026, 4, 25, 4, 0, 0)) == date(2026, 4, 25)
+
+    assert operational_date_for(datetime(2026, 4, 25, 6, 30, 0, tzinfo=timezone.utc)) == date(2026, 4, 24)
+    assert operational_date_for(datetime(2026, 4, 25, 7, 0, 0, tzinfo=timezone.utc)) == date(2026, 4, 25)
+
+
+def test_intervalos_operacionais_usam_semana_de_segunda_a_domingo():
+    assert operational_week_bounds(date(2026, 4, 20)) == (
+        date(2026, 4, 20),
+        date(2026, 4, 26),
+    )
+    assert operational_week_bounds(date(2026, 4, 26)) == (
+        date(2026, 4, 20),
+        date(2026, 4, 26),
+    )
+    assert previous_operational_week_bounds(date(2026, 4, 27)) == (
+        date(2026, 4, 20),
+        date(2026, 4, 26),
+    )
 
 
 def test_listar_missoes_com_usuario_filtra_por_responsavel():
@@ -279,6 +380,83 @@ def test_listar_missoes_prioriza_justificativa_antes_de_prioridade_elevada():
         "Prioridade elevada",
         "Aguardando justificativa",
     ]
+
+
+def test_fluxo_execucao_com_sucesso_preserva_prioridade_como_marcador():
+    repositorio = RepositorioFluxoFake()
+    momento = {"agora": datetime(2026, 4, 24, 10, 0, 0)}
+    service = MissaoService(repositorio, now_provider=lambda: momento["agora"])
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {"titulo": "Executar bloco", "prazo": "24-04-2026"},
+        usuario=usuario,
+    )
+    service.alternar_prioridade_fixada(missao.missao_id, usuario=usuario)
+
+    usuario.active_mode = "soldier"
+    acoes = service.listar_acoes_do_turno_soldado(usuario=usuario)
+    momento["agora"] = datetime(2026, 4, 24, 11, 0, 0)
+    concluida = service.concluir_missao(missao.missao_id, usuario=usuario)
+
+    usuario.active_mode = "general"
+    relatorio = RelatorioService(repositorio).get_weekly_report(
+        1,
+        start_date=date(2026, 4, 20),
+        end_date=date(2026, 4, 26),
+    )
+
+    assert [acao.missao_id for acao in acoes] == [missao.missao_id]
+    assert concluida.status == StatusMissao.CONCLUIDA
+    assert concluida.is_pinned is True
+    assert relatorio["completed_missions"] == 1
+    assert relatorio["failed_missions"] == 0
+    assert relatorio["high_priority_missions"] == 1
+
+
+def test_fluxo_falha_justificativa_revisao_e_relatorio_nao_ressuscita_falha():
+    repositorio = RepositorioFluxoFake()
+    momento = {"agora": datetime(2026, 4, 24, 10, 0, 0)}
+    service = MissaoService(repositorio, now_provider=lambda: momento["agora"])
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {"titulo": "Executar tarefa crítica", "prazo": "24-04-2026"},
+        usuario=usuario,
+    )
+
+    usuario.active_mode = "soldier"
+    momento["agora"] = datetime(2026, 4, 24, 22, 0, 0)
+    falha = service.registrar_justificativa_falha(
+        missao.missao_id,
+        "not_done",
+        "Não executei.",
+        usuario=usuario,
+    )
+    status_apos_justificativa = falha.status
+    failed_at_apos_justificativa = falha.failed_at
+
+    usuario.active_mode = "general"
+    pendentes_revisao = service.listar_missoes_para_revisao(usuario=usuario)
+    revisada = service.revisar_justificativa(missao.missao_id, accepted=True, usuario=usuario)
+    relatorio = RelatorioService(repositorio).get_weekly_report(
+        1,
+        start_date=date(2026, 4, 20),
+        end_date=date(2026, 4, 26),
+    )
+    limpas = service.limpar_relatorio_falhas(
+        usuario=usuario,
+        start_date=date(2026, 4, 20),
+        end_date=date(2026, 4, 26),
+    )
+
+    assert status_apos_justificativa == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert failed_at_apos_justificativa == datetime(2026, 4, 24, 22, 0, 0)
+    assert [missao.missao_id for missao in pendentes_revisao] == [missao.missao_id]
+    assert revisada.status == StatusMissao.FALHA_REVISADA
+    assert relatorio["failed_missions"] == 1
+    assert limpas == []
+    assert service.listar_missoes_para_revisao(usuario=usuario) == []
 
 
 def test_to_response_soldier_define_permissions_corretas():
@@ -513,13 +691,31 @@ def test_usuario_nao_pode_concluir_missao_de_outro_usuario():
         service.concluir_missao(10, usuario=usuario)
 
 
-def test_usuario_em_modo_general_nao_pode_concluir_missao():
+def test_usuario_em_modo_general_pode_concluir_missao():
     repositorio = RepositorioOwnershipFake()
     service = MissaoService(repositorio)
     usuario = SimpleNamespace(usuario_id=1, active_mode="general")
 
-    with pytest.raises(PermissionError):
-        service.concluir_missao(10, usuario=usuario)
+    missao = service.concluir_missao(10, usuario=usuario)
+
+    assert missao.status == StatusMissao.CONCLUIDA
+    assert missao.completed_at is not None
+
+
+def test_usuario_em_modo_general_pode_registrar_falha_administrativa():
+    repositorio = RepositorioOwnershipFake()
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.registrar_justificativa_falha(
+        10,
+        "not_done",
+        "Não executei.",
+        usuario=usuario,
+    )
+
+    assert missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert missao.failure_reason == "Não executei."
 
 
 def test_usuario_em_modo_soldado_nao_pode_criar_missao():
@@ -1098,6 +1294,29 @@ def test_relatorio_conta_madrugada_no_dia_operacional_anterior():
     assert relatorio_dia_25["failed_missions"] == 1
 
 
+def test_relatorio_default_usa_semana_da_data_operacional_antes_do_corte():
+    missao = Missao(
+        missao_id=1,
+        titulo="Executada no domingo operacional",
+        prioridade=1,
+        prazo="26-04-2026",
+        instrucao="Executar",
+        status=StatusMissao.CONCLUIDA,
+        completed_at=datetime(2026, 4, 27, 2, 0, 0),
+        user_id=1,
+    )
+    service = RelatorioService(
+        RepositorioRelatorioFake([missao]),
+        now_provider=lambda: datetime(2026, 4, 27, 2, 30, 0),
+    )
+
+    relatorio = service.get_weekly_report(1)
+
+    assert relatorio["start_date"] == "2026-04-20"
+    assert relatorio["end_date"] == "2026-04-26"
+    assert relatorio["completed_missions"] == 1
+
+
 def test_relatorio_conta_done_not_marked_como_executada():
     missao = Missao(
         missao_id=1,
@@ -1266,6 +1485,42 @@ def test_revisao_general_identifica_pendencia_fecha_e_lista_historico():
     assert revisao["observacao"] == "Ajustar execução da manhã."
     assert estado_fechado["pending"] is False
     assert historico == [revisao]
+
+
+def test_revisao_semanal_respeita_virada_operacional_da_semana():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.carregar_dados_por_responsavel = lambda responsavel_id: [
+        Missao(
+            missao_id=1,
+            titulo="Executada na semana anterior real",
+            prioridade=1,
+            prazo="19-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.CONCLUIDA,
+            completed_at=datetime(2026, 4, 19, 10, 0, 0),
+            user_id=1,
+        ),
+        Missao(
+            missao_id=2,
+            titulo="Domingo ainda no ciclo atual",
+            prioridade=1,
+            prazo="26-04-2026",
+            instrucao="Executar",
+            status=StatusMissao.CONCLUIDA,
+            completed_at=datetime(2026, 4, 27, 2, 0, 0),
+            user_id=1,
+        ),
+    ]
+    service = RevisaoService(
+        repositorio,
+        now_provider=lambda: datetime(2026, 4, 27, 2, 30, 0),
+    )
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    estado = service.obter_estado(usuario)
+
+    assert estado["period"] == {"start_date": "2026-04-13", "end_date": "2026-04-19"}
+    assert estado["reading"]["report"]["completed_missions"] == 1
 
 
 def test_revisao_general_nao_fica_pendente_sem_dados_operacionais():

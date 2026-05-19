@@ -1,9 +1,9 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 from missao import StatusMissao
 from revisao import RevisaoSemanal
 from services.exceptions import PermissaoNegadaError
-from services.operational_day import operational_date_for
+from services.operational_day import operational_date_for, previous_operational_week_bounds
 from services.relatorio_service import RelatorioService
 
 
@@ -13,7 +13,7 @@ class RevisaoService:
     def __init__(self, repositorio, now_provider=None):
         self.repositorio = repositorio
         self._now_provider = now_provider or datetime.now
-        self.relatorio_service = RelatorioService(repositorio)
+        self.relatorio_service = RelatorioService(repositorio, now_provider=self._now)
 
     def obter_estado(self, usuario) -> dict:
         self._garantir_modo_general(usuario)
@@ -108,11 +108,7 @@ class RevisaoService:
         )
 
     def _semana_anterior(self) -> tuple[date, date]:
-        hoje = operational_date_for(self._now())
-        inicio_semana_atual = hoje - timedelta(days=hoje.weekday())
-        fim = inicio_semana_atual - timedelta(days=1)
-        inicio = fim - timedelta(days=6)
-        return inicio, fim
+        return previous_operational_week_bounds(operational_date_for(self._now()))
 
     def _missao_no_periodo_por_prazo(self, missao, start_date: date, end_date: date) -> bool:
         return missao.due_date is not None and start_date <= missao.due_date <= end_date

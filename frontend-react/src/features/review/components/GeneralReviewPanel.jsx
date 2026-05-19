@@ -414,7 +414,7 @@ export default function GeneralReviewPanel({
                       </p>
 
                       <div className="review-reason">
-                        <span>JUSTIFICATIVA DO SOLDADO</span>
+                        <span>JUSTIFICATIVA DA EXECUÇÃO</span>
                         <strong>{getFailureReasonLabel(mission.failure_reason_type)}</strong>
                         <p>{mission.failure_reason || "Justificativa não registrada."}</p>
                       </div>

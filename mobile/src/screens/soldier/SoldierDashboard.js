@@ -4,10 +4,8 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -53,9 +51,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState(null);
   const [justifyingId, setJustifyingId] = useState(null);
-  const [unlocking, setUnlocking] = useState(false);
-  const [returnStep, setReturnStep] = useState("closed");
-  const [senha, setSenha] = useState("");
+  const [returningToCommand, setReturningToCommand] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -188,24 +184,22 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
   }
 
   async function returnToGeneral() {
-    setUnlocking(true);
+    setReturningToCommand(true);
     setError("");
     setNotice("");
 
-    const result = await api.unlockGeneral(token, { senha });
-    setUnlocking(false);
+    const result = await api.setSessionMode(token, { mode: "general" });
+    setReturningToCommand(false);
 
     if (await handleUnauthorized(result)) {
       return;
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "General negado."));
+      setError(getErrorMessage(result, "Não foi possível retornar ao comando."));
       return;
     }
 
-    setSenha("");
-    setReturnStep("closed");
     const confirmed = await reloadUser("general");
     if (!confirmed) {
       await onUserChange(result.data);
@@ -217,7 +211,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
       <TacticalScreen denseBackground variant="soldier">
         <View style={styles.loading}>
           <BrandSymbol size={82} />
-          <Text style={styles.loadingTitle}>SOLDADO</Text>
+          <Text style={styles.loadingTitle}>FOCO OPERACIONAL</Text>
           <Text style={styles.loadingText}>SINCRONIZANDO ORDENS</Text>
         </View>
       </TacticalScreen>
@@ -303,97 +297,15 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
 
           <View style={styles.footer}>
             <ModeSwitchButton
-              disabled={unlocking}
-              loading={unlocking}
+              disabled={returningToCommand}
+              loading={returningToCommand}
               mode="soldier"
-              onPress={() => setReturnStep("confirm")}
+              onPress={returnToGeneral}
             />
           </View>
         </View>
-
-        {returnStep !== "closed" ? (
-          <View
-            style={[
-              styles.overlay,
-              {
-                paddingBottom: Math.max(insets.bottom, 16) + (keyboardOpen ? 96 : 0),
-                paddingTop: theme.spacing.md,
-              },
-            ]}
-          >
-            <View style={styles.protocolBox}>
-              {returnStep === "confirm" ? (
-                <>
-                  <Text style={styles.protocolKicker}>PROTOCOLO DE SAÍDA</Text>
-                  <Text style={styles.protocolText}>
-                    Encerrar execução libera planejamento apenas depois da confirmação do servidor.
-                  </Text>
-                  <View style={styles.protocolActions}>
-                    <ProtocolButton
-                      disabled={unlocking}
-                      label="CANCELAR"
-                      onPress={() => {
-                        setSenha("");
-                        setReturnStep("closed");
-                      }}
-                    />
-                    <ProtocolButton
-                      danger
-                      disabled={unlocking}
-                      label="CONTINUAR"
-                      onPress={() => setReturnStep("password")}
-                    />
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.protocolKicker}>SENHA DO GENERAL</Text>
-                  <TextInput
-                    autoCapitalize="none"
-                    onChangeText={setSenha}
-                    placeholder="SENHA"
-                    placeholderTextColor={theme.colors.textDim}
-                    secureTextEntry
-                    style={styles.input}
-                    value={senha}
-                  />
-                  <View style={styles.protocolActions}>
-                    <ProtocolButton
-                      disabled={unlocking}
-                      label="CANCELAR"
-                      onPress={() => {
-                        setSenha("");
-                        setReturnStep("closed");
-                      }}
-                    />
-                    <ProtocolButton
-                      danger
-                      disabled={unlocking || !senha}
-                      label={unlocking ? "AGUARDE" : "RETORNAR"}
-                      onPress={returnToGeneral}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-          </View>
-        ) : null}
       </TacticalScreen>
     </KeyboardAvoidingView>
-  );
-}
-
-function ProtocolButton({ danger = false, disabled, label, onPress }) {
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.protocolButton, danger && styles.protocolButtonDanger, disabled && styles.disabled]}
-    >
-      <Text style={[styles.protocolButtonText, danger && styles.protocolButtonTextDanger]}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -468,67 +380,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderTopColor: theme.colors.border,
     padding: theme.spacing.sm,
-  },
-  overlay: {
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.92)",
-    bottom: 0,
-    justifyContent: "center",
-    left: 0,
-    padding: theme.spacing.screen,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  protocolBox: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.fire,
-    borderWidth: 1,
-    padding: theme.spacing.lg,
-    width: "100%",
-  },
-  protocolKicker: {
-    ...theme.typography.small,
-    color: theme.colors.fire,
-    marginBottom: theme.spacing.sm,
-  },
-  protocolText: {
-    ...theme.typography.body,
-    color: theme.colors.text,
-  },
-  protocolActions: {
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
-  },
-  protocolButton: {
-    alignItems: "center",
-    borderColor: theme.colors.borderStrong,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: theme.layout.actionHeight,
-    justifyContent: "center",
-    paddingHorizontal: theme.spacing.sm,
-  },
-  protocolButtonDanger: {
-    backgroundColor: theme.colors.fireWash,
-    borderColor: theme.colors.fire,
-  },
-  protocolButtonText: {
-    ...theme.typography.label,
-    color: theme.colors.textMuted,
-  },
-  protocolButtonTextDanger: {
-    color: theme.colors.fire,
-  },
-  input: {
-    ...theme.typography.body,
-    borderColor: theme.colors.fire,
-    borderWidth: 1,
-    color: theme.colors.text,
-    marginTop: theme.spacing.sm,
-    minHeight: theme.layout.actionHeight,
-    paddingHorizontal: theme.spacing.md,
   },
   disabled: {
     opacity: 0.45,

@@ -16,7 +16,7 @@ class MissaoService:
 
     def __init__(self, repositorio, today_provider=None, now_provider=None):
         self.repositorio = repositorio
-        self._today_provider = today_provider or date.today
+        self._today_provider = today_provider
         self._now_provider = now_provider or datetime.now
 
     def criar_missao(self, dados: dict, usuario=None) -> Missao:
@@ -175,7 +175,7 @@ class MissaoService:
         return missao
 
     def concluir_missao(self, missao_id: int, usuario=None) -> Missao:
-        self._garantir_modo_soldado(usuario)
+        self._garantir_contexto_de_execucao(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
         if missao.user_id is not None and usuario is not None and missao.user_id != usuario.usuario_id:
             raise MissaoNaoEncontrada(f"Missão {missao_id} não encontrada")
@@ -228,7 +228,7 @@ class MissaoService:
         motivo: str,
         usuario=None,
     ) -> Missao:
-        self._garantir_modo_soldado(usuario)
+        self._garantir_contexto_de_execucao(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
         if missao.is_pending():
             missao.marcar_como_falha(self._now())
@@ -502,14 +502,15 @@ class MissaoService:
         modo = getattr(usuario, "active_mode", "general") if usuario is not None else "general"
         is_general = modo == "general"
         is_soldier = modo == "soldier"
+        can_execute = is_general or is_soldier
         can_view_history = is_general and missao.is_finalized()
         referencia = reference_date or self._today()
 
         return MissionPermissions(
-            can_complete=is_soldier and missao.can_be_completed(reference_date=referencia),
+            can_complete=can_execute and missao.can_be_completed(reference_date=referencia),
             can_edit=is_general and missao.can_be_edited_by_general(),
             can_delete=is_general and missao.can_be_deleted_by_general(),
-            can_justify=is_soldier and (missao.is_pending() or missao.requires_soldier_justification()),
+            can_justify=can_execute and (missao.is_pending() or missao.requires_soldier_justification()),
             can_review=is_general and missao.requires_general_review(),
             can_view_history=can_view_history,
         )
@@ -525,6 +526,11 @@ class MissaoService:
             raise PermissaoNegadaError(
                 "Conclusão de missão disponível apenas com o modo Soldado ativo."
             )
+
+    def _garantir_contexto_de_execucao(self, usuario) -> None:
+        modo = getattr(usuario, "active_mode", "general") if usuario is not None else "general"
+        if modo not in {"general", "soldier"}:
+            raise PermissaoNegadaError("Execução disponível apenas em contexto operacional válido.")
 
     def _today(self) -> date:
         return operational_date_for(self._now())

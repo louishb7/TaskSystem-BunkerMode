@@ -16,9 +16,8 @@ class AuthService:
 
     SESSION_TTL_SECONDS = 60 * 60 * 24 * 30
     TIMEZONE_CHANGE_COOLDOWN = timedelta(days=30)
-    # Suspensão temporária para a fase de testes: o retorno ao General
-    # não deve ser bloqueado por horário enquanto a alternância mobile é validada.
-    # Reative quando o fluxo estiver estável e a janela de planejamento voltar a valer.
+    # Mantido apenas para compatibilidade com o endpoint legado /session/unlock-general.
+    # A troca normal entre General e Foco Operacional usa /session/mode.
     GENERAL_UNLOCK_WINDOW_ENFORCEMENT_ENABLED = False
 
     PLANNING_WINDOWS = {
@@ -78,13 +77,14 @@ class AuthService:
         return usuario
 
     def alterar_modo(self, usuario_id: int, modo: str) -> Usuario:
-        if str(modo).strip().lower() != "soldier":
-            raise ValueError("Este endpoint aceita apenas a ativação do modo Soldado.")
+        modo_normalizado = str(modo).strip().lower()
+        if modo_normalizado not in {"general", "soldier"}:
+            raise ValueError("Modo ativo inválido.")
         usuario = self.repositorio.buscar_usuario_por_id(usuario_id)
         if usuario is None:
             raise UsuarioNaoEncontrado("Usuário autenticado não encontrado.")
 
-        usuario.definir_modo(modo)
+        usuario.definir_modo(modo_normalizado)
         self.repositorio.atualizar_modo_ativo(usuario.usuario_id, usuario.active_mode)
         return usuario
 

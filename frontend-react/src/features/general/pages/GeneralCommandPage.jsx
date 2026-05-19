@@ -151,10 +151,14 @@ export default function GeneralCommandPage({
           <StatusNotice status={board.status} />
 
           <OrdersPanel
+            completeLoadingId={board.completeLoadingId}
+            justificationLoadingId={board.justificationLoadingId}
             loading={board.missionLoading}
+            onCompleteMission={board.completeMission}
             onCreateOrder={openCreateForm}
             onDeleteMission={deleteMission}
             onEditMission={openEditForm}
+            onJustifyMission={board.submitFailureJustification}
             onTogglePin={board.toggleMissionPin}
             pinLoadingId={board.pinLoadingId}
             selectedMissions={selectedMissions}

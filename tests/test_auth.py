@@ -108,7 +108,7 @@ def test_turno_planejamento_valida_janelas_inclusive_madrugada(turno, hora, espe
     assert service._dentro_do_turno(turno, local_time) is esperado
 
 
-def test_unlock_general_tem_bloqueio_por_horario_suspenso_temporariamente():
+def test_unlock_general_tem_janela_restrita_suspensa_temporariamente():
     recife = Usuario(
         usuario_id=1,
         usuario="Recife",
@@ -126,7 +126,7 @@ def test_unlock_general_tem_bloqueio_por_horario_suspenso_temporariamente():
     assert recife.emergency_unlock_date is None
 
 
-def test_unlock_general_nao_consume_emergencia_enquanto_bloqueio_estiver_suspenso():
+def test_unlock_general_nao_consume_emergencia_enquanto_janela_estiver_suspensa():
     usuario = Usuario(
         usuario_id=1,
         usuario="Henrique",
@@ -143,6 +143,23 @@ def test_unlock_general_nao_consume_emergencia_enquanto_bloqueio_estiver_suspens
     )
     assert usuario.active_mode == "general"
     assert usuario.emergency_unlock_date is None
+
+
+def test_alterar_modo_permite_troca_livre_entre_general_e_soldier():
+    usuario = Usuario(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash=hash_password("segredo123"),
+        active_mode="general",
+    )
+    repositorio = RepositorioAuthFake(usuario=usuario)
+    service = AuthService(repositorio)
+
+    service.alterar_modo(1, "soldier")
+    service.alterar_modo(1, "general")
+
+    assert usuario.active_mode == "general"
 
     usuario.definir_modo("soldier")
     service_em(datetime(2026, 4, 24, 16, 0, tzinfo=timezone.utc), usuario).liberar_general(

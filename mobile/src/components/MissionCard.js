@@ -324,6 +324,30 @@ export default function MissionCard({
           )}
         </Pressable>
 
+        {canComplete ? (
+          <Pressable
+            disabled={completing}
+            onPress={onComplete}
+            style={styles.secondaryAction}
+          >
+            {completing ? (
+              <ActivityIndicator color={theme.colors.textMuted} />
+            ) : (
+              <Text style={styles.secondaryActionText}>EXECUTAR</Text>
+            )}
+          </Pressable>
+        ) : null}
+
+        {canJustify && !failureFormOpen ? (
+          <Pressable
+            disabled={disabled}
+            onPress={() => setFailureFormOpen(true)}
+            style={[styles.secondaryAction, styles.dangerAction]}
+          >
+            <Text style={styles.dangerActionText}>REGISTRAR FALHA</Text>
+          </Pressable>
+        ) : null}
+
         {can(mission, "can_edit") ? (
           <Pressable disabled={disabled} onPress={() => onEdit?.(mission)} style={styles.secondaryAction}>
             <Text style={styles.secondaryActionText}>EDITAR</Text>
@@ -355,6 +379,59 @@ export default function MissionCard({
           </View>
         ) : null}
       </View>
+
+      {canJustify && failureFormOpen ? (
+        <View style={styles.justification}>
+          <Text style={styles.failureWarning}>
+            Registro administrativo de falha. Para uma sequência mais limpa, use o foco operacional.
+          </Text>
+          <Text style={styles.dangerLabel}>REGISTRO DA FALHA</Text>
+          <View style={styles.reasonGrid}>
+            {failureReasonTypes.map((option) => {
+              const selected = option.value === failureReasonType;
+              return (
+                <Pressable
+                  disabled={justifying}
+                  key={option.value}
+                  onPress={() => setFailureReasonType(option.value)}
+                  style={[styles.reasonButton, selected && styles.reasonButtonSelected]}
+                >
+                  <Text style={[styles.reasonText, selected && styles.reasonTextSelected]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <TextInput
+            multiline
+            onChangeText={setFailureReason}
+            onFocus={onInputFocus}
+            placeholder="REGISTRE O MOTIVO SE NECESSÁRIO"
+            placeholderTextColor={theme.colors.textDim}
+            style={styles.justificationInput}
+            value={failureReason}
+          />
+          <Pressable
+            disabled={justifying}
+            onPress={submitJustification}
+            style={[styles.primaryAction, styles.justifyAction, justifying && styles.disabled]}
+          >
+            {justifying ? (
+              <ActivityIndicator color={theme.colors.black} />
+            ) : (
+              <Text style={styles.primaryActionText}>REGISTRAR FALHA</Text>
+            )}
+          </Pressable>
+          <Pressable
+            disabled={disabled}
+            onPress={() => setFailureFormOpen(false)}
+            style={styles.secondaryAction}
+          >
+            <Text style={styles.secondaryActionText}>CANCELAR FALHA</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }

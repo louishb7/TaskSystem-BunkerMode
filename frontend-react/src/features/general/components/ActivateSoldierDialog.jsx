@@ -9,22 +9,22 @@ export default function ActivateSoldierDialog({
   return (
     <div className="modal-backdrop" role="presentation">
       <section className="modal-card" role="dialog" aria-modal="true">
-        <p className="section-kicker fire">CAÇADA</p>
-        <h2>Iniciar caçada</h2>
+        <p className="section-kicker fire">FOCO OPERACIONAL</p>
+        <h2>Entrar em foco</h2>
         <p className="muted">
-          O plano está definido. Ao entrar em execução, planejamento fica bloqueado.
+          Abra uma interface mais simples para executar com menos ruído.
         </p>
         <div className="protocol-brief">
           <span>{orderCount === 1 ? "1 ordem disponível" : `${orderCount} ordens disponíveis`}</span>
-          <span>Sem criação, edição ou renegociação.</span>
-          <span>O Soldado executa apenas o que está no quadro.</span>
+          <span>Menos informação, mais ação imediata.</span>
+          <span>Você pode retornar ao comando quando precisar.</span>
         </div>
         <div className="actions-row">
           <button className="button secondary" type="button" onClick={onCancel}>
             CANCELAR
           </button>
           <button className="button fire" type="button" onClick={onConfirm} disabled={loading}>
-            {loading ? "ABRINDO" : "INICIAR CAÇADA"}
+            {loading ? "ABRINDO" : "ENTRAR EM FOCO"}
           </button>
         </div>
       </section>

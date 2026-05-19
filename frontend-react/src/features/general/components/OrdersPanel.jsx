@@ -18,10 +18,14 @@ function groupMissions(missions) {
 }
 
 export default function OrdersPanel({
+  completeLoadingId,
+  justificationLoadingId,
   loading,
+  onCompleteMission,
   onCreateOrder,
   onDeleteMission,
   onEditMission,
+  onJustifyMission,
   onTogglePin,
   pinLoadingId,
   selectedMissions,
@@ -45,9 +49,13 @@ export default function OrdersPanel({
           {missions.map((mission) => (
             <MissionCard
               key={mission.id}
+              completing={completeLoadingId === mission.id}
+              justifying={justificationLoadingId === mission.id}
               mission={mission}
+              onComplete={() => onCompleteMission(mission)}
               onDelete={() => onDeleteMission(mission)}
               onEdit={() => onEditMission(mission)}
+              onJustify={onJustifyMission}
               onTogglePin={() => onTogglePin(mission)}
               pinning={pinLoadingId === mission.id}
               variant="general"

@@ -8,7 +8,7 @@ export default function SoldierHeader({ currentDay, remainingCount = 0, totalCou
   return (
     <View style={styles.header}>
       <View style={styles.topline}>
-        <Text style={styles.kicker}>MODO SOLDADO</Text>
+        <Text style={styles.kicker}>FOCO OPERACIONAL</Text>
         <Text style={styles.count}>{remainingCount} RESTAM</Text>
       </View>
       <View style={styles.briefing}>
@@ -17,10 +17,10 @@ export default function SoldierHeader({ currentDay, remainingCount = 0, totalCou
           <Text style={styles.title}>LEÃO DO DIA</Text>
           <Text style={styles.subtitle}>{currentDay}</Text>
           <View style={styles.rule} />
-          <Text style={styles.lockNote}>Planejamento bloqueado. Somente execução.</Text>
+          <Text style={styles.focusNote}>Interface reduzida para manter ritmo e ação.</Text>
           <Text style={styles.directive}>
             {remainingCount === 0
-              ? "Caçada concluída. Aguarde o retorno ao comando."
+              ? "Execução do dia concluída."
               : remainingCount === 1
                 ? "1 ordem restante em execução."
                 : `${remainingCount} ordens restantes em execução.`}
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginTop: theme.spacing.sm,
   },
-  lockNote: {
+  focusNote: {
     ...theme.typography.small,
     color: theme.colors.textDim,
     marginTop: theme.spacing.sm,

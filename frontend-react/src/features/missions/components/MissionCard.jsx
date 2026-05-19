@@ -145,7 +145,7 @@ export default function MissionCard({
           <div className="soldier-failure-box">
             {canComplete && (
               <p className="soldier-failure-warning">
-                A ordem será retirada do quadro do Soldado e registrada como falha no relatório.
+                A ordem sai do foco operacional e entra no relatório como falha.
               </p>
             )}
             <FailureJustificationForm
@@ -221,8 +221,46 @@ export default function MissionCard({
         </div>
       )}
 
+      {failureFormOpen && canJustify && (
+        <div className="mission-details-inline">
+          <p className="mission-instruction">
+            Registro administrativo de falha. Para uma sequência mais limpa, use o foco operacional.
+          </p>
+          <FailureJustificationForm
+            loading={justifying}
+            mission={mission}
+            onSubmit={onJustify}
+            required={requiresJustification}
+            submitLabel={requiresJustification ? "REGISTRAR JUSTIFICATIVA" : "REGISTRAR FALHA"}
+          />
+          <button
+            className="button secondary compact"
+            disabled={disabled}
+            type="button"
+            onClick={() => setFailureFormOpen(false)}
+          >
+            CANCELAR
+          </button>
+        </div>
+      )}
+
       <div className="mission-actions primary-actions">
         {!completed && currentStatusText && <span className="meta-tag mission-footer-status">{currentStatusText}</span>}
+        {canComplete && (
+          <button className="button secondary compact" disabled={disabled} type="button" onClick={onComplete}>
+            {completing ? "AGUARDE" : "EXECUTAR"}
+          </button>
+        )}
+        {canJustify && !failureFormOpen && (
+          <button
+            className="button secondary compact subtle"
+            disabled={disabled}
+            type="button"
+            onClick={() => setFailureFormOpen(true)}
+          >
+            REGISTRAR FALHA
+          </button>
+        )}
         <button
           className="button secondary compact subtle"
           type="button"

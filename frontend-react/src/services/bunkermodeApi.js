@@ -59,13 +59,6 @@ export const api = {
       body: payload,
     });
   },
-  unlockGeneral(token, payload) {
-    return request("/session/unlock-general", {
-      token,
-      method: "POST",
-      body: payload,
-    });
-  },
   listMissions(token) {
     return requestMissionList("/missoes", { token });
   },

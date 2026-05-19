@@ -29,7 +29,7 @@ export default function TacticalSidePanel({
           <h2>{selectedDateLabel}</h2>
           <p>
             {totalCount > 0
-              ? "Após o General decidir, começa a execução."
+              ? "O comando organiza. O foco acelera a execução."
               : "Nenhuma caça definida para este dia."}
           </p>
         </div>
@@ -45,18 +45,18 @@ export default function TacticalSidePanel({
       <div className="side-block hunt-entry">
         <div className="mode-heading compact">
           <img src={generalModeAsset} alt="" />
-          <strong>General decide. Soldado executa.</strong>
+          <strong>Entrar em foco operacional</strong>
         </div>
         <p className="muted">
           {reviewCount > 0
-            ? "Há revisão pendente. Entre somente se as ordens do dia estiverem fechadas."
-            : "Planejamento bloqueia quando a execução começa."}
+            ? "Há revisão pendente. Ainda assim, você pode focar na execução do dia."
+            : "Use uma interface mais limpa quando quiser ritmo de ação."}
         </p>
         <p className="mode-transition-count">
           {totalCount === 1 ? "1 ordem no dia selecionado." : `${totalCount} ordens no dia selecionado.`}
         </p>
         <button className="button fire full" disabled={loading} type="button" onClick={onActivateSoldier}>
-          {loading ? "ABRINDO" : "INICIAR CAÇADA"}
+          {loading ? "ABRINDO" : "ENTRAR EM FOCO"}
         </button>
       </div>
     </section>

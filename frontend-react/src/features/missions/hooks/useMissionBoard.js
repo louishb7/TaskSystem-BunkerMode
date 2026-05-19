@@ -514,11 +514,19 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(result, "Não foi possível concluir a ordem."),
       });
-      await loadSoldierBoard();
+      if (activeMode === "soldier") {
+        await loadSoldierBoard();
+      } else {
+        await loadGeneralBoard();
+      }
       return false;
     }
 
-    await loadSoldierBoard("EXECUTADO");
+    if (activeMode === "soldier") {
+      await loadSoldierBoard("EXECUTADO");
+    } else {
+      await loadGeneralBoard("Ordem executada.");
+    }
     setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]));
     return true;
   }
@@ -536,11 +544,19 @@ export function useMissionBoard({
     if (!result.ok) {
       const message = getErrorMessage(result, "Não foi possível registrar a justificativa.");
       setStatus({ type: "error", message });
-      await loadSoldierBoard();
+      if (activeMode === "soldier") {
+        await loadSoldierBoard();
+      } else {
+        await loadGeneralBoard();
+      }
       return { error: message };
     }
 
-    await loadSoldierBoard("JUSTIFICATIVA REGISTRADA");
+    if (activeMode === "soldier") {
+      await loadSoldierBoard("JUSTIFICATIVA REGISTRADA");
+    } else {
+      await loadGeneralBoard("Falha registrada.");
+    }
     setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]));
     return { ok: true };
   }

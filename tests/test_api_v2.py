@@ -342,8 +342,8 @@ def test_api_confirma_active_mode_apos_ida_e_retorno_ao_general():
         )
     assert erro.value.status_code == 403
 
-    general = liberar_general(
-        UnlockGeneralPayload(senha="segredo123"),
+    general = atualizar_modo_sessao(
+        SessionModePayload(mode="general"),
         usuario=usuario,
         auth_service=auth,
     )
@@ -436,6 +436,68 @@ def test_soldado_pode_concluir_missao_vencida_como_execucao_atrasada():
     assert missao.status == StatusMissao.CONCLUIDA
     assert missao.completed_at is not None
     assert listar_missoes(usuario=usuario, missao_service=missoes) == []
+
+
+def test_general_pode_concluir_missao_sem_entrar_no_modo_soldado():
+    repo, auth, missoes, relatorios, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Executar pelo comando",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Registrar execução administrativa",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    concluida = concluir_missao(1, usuario=usuario, missao_service=missoes)
+    relatorio = obter_relatorio_semanal(
+        usuario=usuario,
+        relatorio_service=relatorios,
+        start_date="2026-04-20",
+        end_date="2026-04-26",
+    )
+
+    assert concluida["status_code"] == "CONCLUIDA"
+    assert concluida["completed_at"] is not None
+    assert relatorio["completed_missions"] == 1
+
+
+def test_general_pode_registrar_falha_sem_entrar_no_modo_soldado():
+    repo, auth, missoes, relatorios, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Falha pelo comando",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Registrar falha administrativa",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    falha = registrar_justificativa_falha(
+        1,
+        FailureJustificationPayload(
+            failure_reason_type="not_done",
+            failure_reason="Não executei.",
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    relatorio = obter_relatorio_semanal(
+        usuario=usuario,
+        relatorio_service=relatorios,
+        start_date="2026-04-20",
+        end_date="2026-04-26",
+    )
+
+    assert falha["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
+    assert falha["failure_reason"] == "Não executei."
+    assert relatorio["failed_missions"] == 1
 
 
 def test_api_retorna_403_quando_soldado_tenta_criar_missao():
@@ -687,7 +749,7 @@ def test_listagem_operacional_nao_retorna_concluidas_ou_falhas_revisadas():
     assert [missao["id"] for missao in resposta] == [1]
     assert_mission_contract(resposta[0])
     assert resposta[0]["permissions"]["can_edit"] is True
-    assert resposta[0]["permissions"]["can_complete"] is False
+    assert resposta[0]["permissions"]["can_complete"] is True
 
 
 def test_missoes_operacionais_repete_a_mesma_listagem_de_missoes():
@@ -965,7 +1027,7 @@ def test_historico_de_missoes_retorna_apenas_finalizadas():
     assert all(missao["permissions"]["can_delete"] is False for missao in resposta)
 
 
-def test_historico_de_missoes_bloqueado_no_modo_soldado():
+def test_historico_de_missoes_indisponivel_no_foco_operacional():
     _, auth, missoes, _, _, usuario = preparar_ambiente()
     usuario.definir_modo("soldier")
     auth.alterar_modo(usuario.usuario_id, "soldier")
@@ -978,7 +1040,7 @@ def test_historico_de_missoes_bloqueado_no_modo_soldado():
         raise AssertionError("Histórico de missões em modo Soldier deveria retornar 403.")
 
 
-def test_historico_unitario_bloqueado_no_modo_soldado():
+def test_historico_unitario_indisponivel_no_foco_operacional():
     _, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
     criar_missao(
         MissaoCreatePayload(
@@ -1002,7 +1064,7 @@ def test_historico_unitario_bloqueado_no_modo_soldado():
         raise AssertionError("Histórico unitário em modo Soldier deveria retornar 403.")
 
 
-def test_nome_do_general_bloqueado_no_modo_soldado():
+def test_nome_do_general_indisponivel_no_foco_operacional():
     _, auth, _, _, _, usuario = preparar_ambiente()
     usuario.definir_modo("soldier")
     auth.alterar_modo(usuario.usuario_id, "soldier")
@@ -1606,7 +1668,7 @@ def test_operacao_encerrada_indevidamente_e_reativada_ao_listar():
     assert repo.buscar_operacao_por_id(operacao["id"]).status == "ativa"
 
 
-def test_operacao_materializa_sem_bloqueio_de_dia_off_manual():
+def test_operacao_materializa_sem_impedir_dia_off_manual():
     repo, _, _, _, _, usuario = preparar_ambiente()
     operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
     criar_operacao(

@@ -22,16 +22,16 @@ export default function ModeSwitchButton({
       ]}
     >
       <View style={styles.copy}>
-        {!soldier ? <Text style={styles.kicker}>MODO SOLDADO</Text> : null}
+        {!soldier ? <Text style={styles.kicker}>FOCO OPERACIONAL</Text> : null}
         <Text style={[styles.label, soldier && styles.labelSoldier]}>
-          {soldier ? "RETORNAR AO COMANDO" : "ATIVAR SOLDADO"}
+          {soldier ? "RETORNAR AO COMANDO" : "ENTRAR EM FOCO"}
         </Text>
       </View>
       {loading ? (
         <ActivityIndicator color={soldier ? theme.colors.text : theme.colors.black} />
       ) : (
         <Text style={[styles.marker, soldier && styles.markerSoldier]}>
-          {soldier ? "VALIDAR" : "ENTRAR"}
+          {soldier ? "GENERAL" : "ENTRAR"}
         </Text>
       )}
     </Pressable>

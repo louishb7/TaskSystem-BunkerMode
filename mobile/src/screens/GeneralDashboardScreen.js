@@ -162,6 +162,8 @@ export default function GeneralDashboardScreen({
   const [showForm, setShowForm] = useState(false);
   const [formMission, setFormMission] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+  const [completingId, setCompletingId] = useState(null);
+  const [justifyingId, setJustifyingId] = useState(null);
   const [activatingSoldier, setActivatingSoldier] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [activeScreen, setActiveScreen] = useState("home");
@@ -476,6 +478,46 @@ export default function GeneralDashboardScreen({
     await loadAll();
   }
 
+  async function completeMission(mission) {
+    if (!mission?.id) {
+      setError("Ordem inválida para execução.");
+      return;
+    }
+
+    setCompletingId(mission.id);
+    setError("");
+    const result = await api.completeMission(token, mission.id);
+    setCompletingId(null);
+
+    if (await handleUnauthorized(result)) {
+      return;
+    }
+    if (!result.ok) {
+      setError(getErrorMessage(result, "Não foi possível executar a ordem."));
+    }
+    await loadAll();
+  }
+
+  async function justifyMission(mission, payload) {
+    if (!mission?.id) {
+      setError("Ordem inválida para registrar falha.");
+      return;
+    }
+
+    setJustifyingId(mission.id);
+    setError("");
+    const result = await api.submitFailureJustification(token, mission.id, payload);
+    setJustifyingId(null);
+
+    if (await handleUnauthorized(result)) {
+      return;
+    }
+    if (!result.ok) {
+      setError(getErrorMessage(result, "Não foi possível registrar a falha."));
+    }
+    await loadAll();
+  }
+
   function updateOperationField(field, value) {
     setOperationForm((current) => ({ ...current, [field]: value }));
   }
@@ -693,8 +735,12 @@ export default function GeneralDashboardScreen({
               <MissionGroup
                 label="Prioridade elevada"
                 missions={missionGroups.highPriority}
+                completingId={completingId}
+                justifyingId={justifyingId}
+                onComplete={completeMission}
                 onDelete={deleteMission}
                 onEdit={openEditForm}
+                onJustify={justifyMission}
                 onTogglePin={togglePin}
                 togglingId={togglingId}
                 tone="critical"
@@ -702,16 +748,24 @@ export default function GeneralDashboardScreen({
               <MissionGroup
                 label="Pendentes"
                 missions={missionGroups.pending}
+                completingId={completingId}
+                justifyingId={justifyingId}
+                onComplete={completeMission}
                 onDelete={deleteMission}
                 onEdit={openEditForm}
+                onJustify={justifyMission}
                 onTogglePin={togglePin}
                 togglingId={togglingId}
               />
               <MissionGroup
                 label="Falhas em leitura"
                 missions={missionGroups.failures}
+                completingId={completingId}
+                justifyingId={justifyingId}
+                onComplete={completeMission}
                 onDelete={deleteMission}
                 onEdit={openEditForm}
+                onJustify={justifyMission}
                 onTogglePin={togglePin}
                 togglingId={togglingId}
                 tone="danger"
@@ -719,8 +773,12 @@ export default function GeneralDashboardScreen({
               <MissionGroup
                 label="Cumpridas"
                 missions={missionGroups.completed}
+                completingId={completingId}
+                justifyingId={justifyingId}
+                onComplete={completeMission}
                 onDelete={deleteMission}
                 onEdit={openEditForm}
+                onJustify={justifyMission}
                 onTogglePin={togglePin}
                 togglingId={togglingId}
                 tone="completed"
@@ -741,13 +799,13 @@ export default function GeneralDashboardScreen({
         <TacticalPanel style={styles.transitionPanel}>
           <SectionHeader
             eyebrow="TRANSIÇÃO DE MODO"
-            title="Entregar ordens ao Soldado"
+            title="Entrar em foco operacional"
             meta={
               hasReview
-                ? "Há revisão pendente. Decida quando entrar no protocolo de execução."
+                ? "Há revisão pendente. Decida quando trocar para uma interface mais limpa."
                 : reviewState?.pending
                   ? "Há revisão semanal pendente. Feche o ciclo antes de abrir nova semana."
-                : "Ative somente quando o plano estiver pronto para ser executado."
+                : "Use quando quiser executar com menos ruído."
             }
           />
           <ModeSwitchButton
@@ -894,10 +952,10 @@ export default function GeneralDashboardScreen({
       {soldierConfirmOpen ? (
         <View style={styles.protocolOverlay}>
           <View style={styles.protocolBox}>
-            <Text style={styles.protocolKicker}>ATIVAR SOLDADO</Text>
-            <Text style={styles.protocolTitle}>Entrar em execução</Text>
+            <Text style={styles.protocolKicker}>FOCO OPERACIONAL</Text>
+            <Text style={styles.protocolTitle}>Entrar em foco</Text>
             <Text style={styles.protocolText}>
-              Ao entrar em execução, planejamento fica bloqueado. O Soldado não cria, edita ou renegocia ordens.
+              Abra uma interface mais simples para executar com menos ruído. Você pode retornar ao comando quando precisar.
             </Text>
             <Text style={styles.protocolMeta}>
               {selectedMissions.length === 1
@@ -918,7 +976,7 @@ export default function GeneralDashboardScreen({
                 style={[styles.protocolPrimary, activatingSoldier && styles.protocolDisabled]}
               >
                 <Text style={styles.protocolPrimaryText}>
-                  {activatingSoldier ? "ATIVANDO" : "ATIVAR SOLDADO"}
+                  {activatingSoldier ? "ABRINDO" : "ENTRAR EM FOCO"}
                 </Text>
               </Pressable>
             </View>
@@ -932,8 +990,12 @@ export default function GeneralDashboardScreen({
 function MissionGroup({
   label,
   missions,
+  completingId,
+  justifyingId,
+  onComplete,
   onDelete,
   onEdit,
+  onJustify,
   onTogglePin,
   togglingId,
   tone = "",
@@ -959,9 +1021,13 @@ function MissionGroup({
         {missions.map((mission, index) => (
           <MissionCard
             key={String(mission?.id ?? index)}
+            completing={completingId === mission?.id}
+            justifying={justifyingId === mission?.id}
             mission={mission}
+            onComplete={() => onComplete?.(mission)}
             onDelete={onDelete}
             onEdit={onEdit}
+            onJustify={(payload) => onJustify?.(mission, payload)}
             onTogglePin={onTogglePin}
             toggling={togglingId === mission?.id}
             variant="general"
