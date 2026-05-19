@@ -18,17 +18,17 @@ export default function WeekPanel({
         <div>
           <h1>CRONOGRAMA DE CAÇA</h1>
           <p className="muted">
-            Abata o leão do dia. Escolha onde o General dará ordens.
+            Navegue entre os dias e defina as ordens do General.
           </p>
         </div>
       </div>
       <div className="week-navigation" aria-label="Navegação de semanas">
         <button className="button secondary compact week-nav-button" type="button" onClick={onPreviousWeek}>
-          SEMANA ANTERIOR
+          ← SEMANA
         </button>
         <strong>{weekLabel}</strong>
         <button className="button secondary compact week-nav-button" type="button" onClick={onNextWeek}>
-          PRÓXIMA SEMANA
+          SEMANA →
         </button>
       </div>
       <DaySelector

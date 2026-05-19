@@ -53,7 +53,6 @@ export default function SoldierExecutionPage({
         <header className="soldier-header">
           <div className="soldier-topline">
             <span>FOCO OPERACIONAL</span>
-            <span>EXECUÇÃO</span>
           </div>
           <div className="soldier-briefing">
             <LionEmblem variant="hero" />
@@ -67,7 +66,6 @@ export default function SoldierExecutionPage({
                     : "ORDENS EM EXECUÇÃO"}
                 </strong>
               </div>
-              <p className="soldier-focus-note">Interface reduzida para manter ritmo, ação e continuidade.</p>
               <MissionProgress label="CAÇADA" missions={dailyMissions.length > 0 ? dailyMissions : missions} />
             </div>
           </div>

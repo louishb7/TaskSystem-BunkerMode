@@ -16,6 +16,7 @@ export default function TacticalSidePanel({
   const selectedTime = selectedDate?.getTime?.() || 0;
   const todayTime = todayDate?.getTime?.() || 0;
   const progressEmptyLabel = selectedTime > todayTime ? "SEM ORDENS" : selectedTime === todayTime ? "0%" : "DIA OFF";
+  const showTodayHuntCopy = selectedTime === todayTime && totalCount > 0;
 
   return (
     <section className="panel tactical-side-panel" aria-label="Painel tático do Leão do Dia">
@@ -46,7 +47,7 @@ export default function TacticalSidePanel({
           <img src={generalModeAsset} alt="" />
           <strong className="operational-focus-title">Entrar em foco operacional</strong>
         </div>
-        <p className="muted">O leão de hoje espera.</p>
+        {showTodayHuntCopy && <p className="muted">O leão de hoje espera.</p>}
         <p className="mode-transition-count">
           {totalCount === 1 ? "1 ordem no dia selecionado." : `${totalCount} ordens no dia selecionado.`}
         </p>

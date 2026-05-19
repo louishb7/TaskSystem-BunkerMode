@@ -108,7 +108,6 @@ export default function MissionForm({
     <section className="panel mission-form">
       <div className="section-heading compact">
         <div>
-          <p className="section-kicker">POSTO DE COMANDO</p>
           <h2>{isEditing ? "Editar ordem" : "Nova ordem"}</h2>
           <p className="muted">A ordem deve dizer exatamente o que será executado.</p>
         </div>
@@ -179,7 +178,7 @@ export default function MissionForm({
         {status.message && <p className={`feedback ${status.type}`}>{status.message}</p>}
 
         <div className="actions-row">
-          <button className="button danger" disabled={loading} type="submit">
+          <button className="button fire" disabled={loading} type="submit">
             {loading ? "AGUARDE" : isEditing ? "SALVAR EDIÇÃO" : "REGISTRAR ORDEM"}
           </button>
           <button className="button secondary" type="button" onClick={onCancel} disabled={loading}>

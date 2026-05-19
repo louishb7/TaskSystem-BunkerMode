@@ -241,9 +241,6 @@ export default function GeneralReviewPanel({
               </p>
               <h3>Semana operacional anterior</h3>
               <p className="muted">{formatOperationalPeriod(reviewState?.period)}</p>
-              <p className="review-info-note">
-                A revisão fecha o ciclo com os dados reais da semana. Não altera ordens nem recalcula histórico.
-              </p>
             </div>
             <strong>{weeklyTotal}</strong>
           </div>
@@ -424,7 +421,7 @@ export default function GeneralReviewPanel({
                             type="button"
                             onClick={() => onReview(mission.id, true)}
                           >
-                            {loadingMissionId === mission.id ? "AGUARDE" : "ACEITAR"}
+                            {loadingMissionId === mission.id ? "AGUARDE" : "JUSTIFICATIVA VÁLIDA"}
                           </button>
                           <button
                             className="button danger compact"
@@ -432,7 +429,7 @@ export default function GeneralReviewPanel({
                             type="button"
                             onClick={() => onReview(mission.id, false)}
                           >
-                            {loadingMissionId === mission.id ? "AGUARDE" : "REJEITAR"}
+                            {loadingMissionId === mission.id ? "AGUARDE" : "INSUFICIENTE"}
                           </button>
                         </div>
                       ) : (

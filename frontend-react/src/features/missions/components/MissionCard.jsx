@@ -60,7 +60,7 @@ function formatDeadline(value) {
 
 function statusText(mission) {
   if (isDoneNotMarked(mission)) {
-    return "EXECUTADA FORA DO APLICATIVO";
+    return "FORA DO APP";
   }
 
   const compact = {
@@ -128,7 +128,7 @@ export default function MissionCard({
 
         {canComplete && (
           <button
-            className="button fire full"
+            className="button success full"
             disabled={completing}
             type="button"
             onClick={onComplete}
@@ -152,7 +152,7 @@ export default function MissionCard({
           <div className="soldier-failure-box">
             {canComplete && (
               <p className="soldier-failure-warning">
-                A ordem sai do foco operacional e entra no relatório como falha.
+                A missão será registrada como falha no relatório.
               </p>
             )}
             <FailureJustificationForm
@@ -169,7 +169,7 @@ export default function MissionCard({
                 type="button"
                 onClick={() => setFailureFormOpen(false)}
               >
-                CANCELAR FALHA
+                CANCELAR
               </button>
             )}
           </div>
@@ -251,7 +251,7 @@ export default function MissionCard({
       <div className="mission-actions primary-actions">
         {!completed && currentStatusText && <span className="meta-tag mission-footer-status">{currentStatusText}</span>}
         {canComplete && (
-          <button className="button secondary compact" disabled={disabled} type="button" onClick={onComplete}>
+          <button className="button success compact" disabled={disabled} type="button" onClick={onComplete}>
             {completing ? "AGUARDE" : "ABATER"}
           </button>
         )}

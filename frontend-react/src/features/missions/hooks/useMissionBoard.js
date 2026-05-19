@@ -524,7 +524,7 @@ export function useMissionBoard({
     }
 
     if (activeMode === "soldier") {
-      await loadSoldierBoard("EXECUTADO");
+      await loadSoldierBoard("LEÃO ABATIDO");
     } else {
       await loadGeneralBoard("Ordem executada.");
     }
@@ -582,7 +582,7 @@ export function useMissionBoard({
     }
 
     if (activeMode === "soldier") {
-      await loadSoldierBoard("JUSTIFICATIVA REGISTRADA");
+      await loadSoldierBoard("FALHA REGISTRADA");
     } else {
       await loadGeneralBoard("Falha registrada.");
     }
