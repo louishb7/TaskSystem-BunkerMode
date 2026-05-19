@@ -36,6 +36,34 @@ Se houver conflito:
 
 ---
 
+## CONCEITO DO PRODUTO
+
+O arquivo `CONCEITO.md` na raiz do repositório contém a visão completa do produto: proposta, intenção, estrutura "A Montanha", loop operacional e princípios de design.
+
+Leia `CONCEITO.md` sempre que:
+* analisar UX, fluxo ou experiência do usuário
+* avaliar se uma feature pertence ao produto
+* tomar decisões de produto que não estejam cobertas pelo `AGENTS.md`
+
+`CONCEITO.md` é um arquivo local — não está no repositório público. Se não existir na máquina atual, ignore e siga com `AGENTS.md` como referência.
+
+---
+
+## DECISÕES DO PRODUTO
+
+O arquivo `DECISOES.md` na raiz do repositório contém o registro de decisões já tomadas sobre produto, UX e arquitetura.
+
+Leia `DECISOES.md` sempre que:
+* for propor uma mudança de UX ou arquitetura
+* avaliar se algo deve ou não ser implementado
+* houver dúvida sobre o que já foi decidido ou descartado
+
+Não re-discuta decisões marcadas como **ativo**. Sinalize decisões **revisáveis** antes de propor alteração.
+
+`DECISOES.md` é um arquivo local — não está no repositório público. Se não existir na máquina atual, ignore.
+
+---
+
 ## PRODUTO CENTRAL
 
 BunkerMode é um sistema pessoal de execução, não um gerenciador de tarefas.

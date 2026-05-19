@@ -87,8 +87,10 @@ export default function MissionCard({
   onDelete,
   onEdit,
   onJustify,
+  onReopen,
   onTogglePin,
   pinning = false,
+  reopening = false,
   variant = "general",
 }) {
   const [failureFormOpen, setFailureFormOpen] = useState(false);
@@ -97,7 +99,7 @@ export default function MissionCard({
   const title = mission?.titulo || "Sem título";
   const instruction = mission?.instrucao || "";
   const isPinned = mission?.is_pinned === true;
-  const disabled = pinning || completing || justifying;
+  const disabled = pinning || completing || justifying || reopening;
   const canComplete = can(mission, "can_complete");
   const canJustify = can(mission, "can_justify");
   const requiresJustification = mission?.requires_immediate_justification === true;
@@ -131,7 +133,7 @@ export default function MissionCard({
             type="button"
             onClick={onComplete}
           >
-            {completing ? "AGUARDE" : "EXECUTADA"}
+            {completing ? "AGUARDE" : "ABATER"}
           </button>
         )}
 
@@ -228,9 +230,6 @@ export default function MissionCard({
 
       {failureFormOpen && canJustify && (
         <div className="mission-details-inline">
-          <p className="mission-instruction">
-            Registro administrativo de falha. Para uma sequência mais limpa, use o foco operacional.
-          </p>
           <FailureJustificationForm
             loading={justifying}
             mission={mission}
@@ -253,7 +252,7 @@ export default function MissionCard({
         {!completed && currentStatusText && <span className="meta-tag mission-footer-status">{currentStatusText}</span>}
         {canComplete && (
           <button className="button secondary compact" disabled={disabled} type="button" onClick={onComplete}>
-            {completing ? "AGUARDE" : "EXECUTAR"}
+            {completing ? "AGUARDE" : "ABATER"}
           </button>
         )}
         {canJustify && !failureFormOpen && (
@@ -264,6 +263,11 @@ export default function MissionCard({
             onClick={() => setFailureFormOpen(true)}
           >
             REGISTRAR FALHA
+          </button>
+        )}
+        {completed && can(mission, "can_edit") && onReopen && (
+          <button className="button secondary compact" disabled={disabled} type="button" onClick={onReopen}>
+            {reopening ? "AGUARDE" : "REABRIR"}
           </button>
         )}
         <button

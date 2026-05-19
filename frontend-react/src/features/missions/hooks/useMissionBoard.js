@@ -42,6 +42,7 @@ export function useMissionBoard({
   const [reviewLoadingId, setReviewLoadingId] = useState(null);
   const [pinLoadingId, setPinLoadingId] = useState(null);
   const [completeLoadingId, setCompleteLoadingId] = useState(null);
+  const [reopenLoadingId, setReopenLoadingId] = useState(null);
   const [justificationLoadingId, setJustificationLoadingId] = useState(null);
   const [status, setStatus] = useState(emptyStatus);
   const [formStatus, setFormStatus] = useState(emptyStatus);
@@ -531,6 +532,34 @@ export function useMissionBoard({
     return true;
   }
 
+  async function reopenMission(mission) {
+    if (!mission?.id) {
+      setStatus({ type: "error", message: "Ordem inválida para reabertura." });
+      return false;
+    }
+
+    setReopenLoadingId(mission.id);
+    setStatus(emptyStatus);
+    const result = await api.updateMission(token, mission.id, { status: "Pendente" });
+    setReopenLoadingId(null);
+
+    if (onUnauthorized(result)) {
+      return false;
+    }
+
+    if (!result.ok) {
+      setStatus({
+        type: "error",
+        message: getErrorMessage(result, "Não foi possível reabrir a ordem."),
+      });
+      await loadGeneralBoard();
+      return false;
+    }
+
+    await loadGeneralBoard("Ordem reaberta.");
+    return true;
+  }
+
   async function submitFailureJustification(missionId, payload) {
     setJustificationLoadingId(missionId);
     setStatus(emptyStatus);
@@ -652,6 +681,8 @@ export function useMissionBoard({
     operationalTurnAcknowledged,
     operations,
     pinLoadingId,
+    reopenLoadingId,
+    reopenMission,
     reviewLoadingId,
     reviewMissions,
     reviewState,

@@ -126,8 +126,12 @@ export default function SoldierExecutionPage({
           </div>
         ) : (
           <EmptyState
-            title="Caçada concluída"
-            message="Nenhuma ordem disponível para execução agora."
+            title={dailyMissions.length > 0 ? "Caçada concluída" : "Nenhuma ordem para hoje"}
+            message={
+              dailyMissions.length > 0
+                ? "Todos os leões do dia foram abatidos."
+                : "O General não definiu missões para este dia."
+            }
           />
         )}
 

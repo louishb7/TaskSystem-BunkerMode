@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 
 import operationsAsset from "../../../assets/bunkermode/operations/operacoes.png";
+import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx";
 import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 
 const WEEKDAYS = [
@@ -87,7 +88,7 @@ function OperationItem({
   expanded,
   loading,
   onCloseOperation,
-  onDeleteOperation,
+  onRequestDelete,
   onToggleDetails,
   operation,
 }) {
@@ -100,16 +101,11 @@ function OperationItem({
   const failedMissions = Number(metrics.failed_missions || 0);
   const completionRate = formatMetric(metrics.completion_rate);
 
-  function confirmDelete() {
+  function requestDelete() {
     if (!canCancel || loading) {
       return;
     }
-    const confirmed = window.confirm(
-      `Cancelar a operação "${operation.nome}"?\n\nA operação e todas as ordens geradas por ela serão excluídas totalmente.`
-    );
-    if (confirmed) {
-      onDeleteOperation?.(operation.id);
-    }
+    onRequestDelete?.(operation);
   }
 
   return (
@@ -154,7 +150,7 @@ function OperationItem({
               className="button secondary compact danger"
               disabled={loading}
               type="button"
-              onClick={confirmDelete}
+              onClick={requestDelete}
             >
               CANCELAR OPERAÇÃO
             </button>
@@ -177,6 +173,7 @@ export default function OperationsPanel({
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [expandedOperationId, setExpandedOperationId] = useState(null);
+  const [deleteOperationTarget, setDeleteOperationTarget] = useState(null);
   const activeOperations = useMemo(
     () => operations.filter((operation) => operation.status === "ativa"),
     [operations]
@@ -327,7 +324,7 @@ export default function OperationsPanel({
             key={operation.id}
             loading={loading}
             onCloseOperation={onCloseOperation}
-            onDeleteOperation={onDeleteOperation}
+            onRequestDelete={setDeleteOperationTarget}
             onToggleDetails={() =>
               setExpandedOperationId((current) => (current === operation.id ? null : operation.id))
             }
@@ -343,6 +340,8 @@ export default function OperationsPanel({
           <OperationItem
             expanded={expandedOperationId === operation.id}
             key={operation.id}
+            loading={loading}
+            onRequestDelete={setDeleteOperationTarget}
             onToggleDetails={() =>
               setExpandedOperationId((current) => (current === operation.id ? null : operation.id))
             }
@@ -350,6 +349,19 @@ export default function OperationsPanel({
           />
         ))}
       </div>
+      {deleteOperationTarget !== null && (
+        <ConfirmDialog
+          title="Cancelar operação"
+          message={`"${deleteOperationTarget?.nome}" e todas as ordens geradas por ela serão excluídas.`}
+          confirmLabel="CANCELAR OPERAÇÃO"
+          variant="danger"
+          onCancel={() => setDeleteOperationTarget(null)}
+          onConfirm={() => {
+            onDeleteOperation(deleteOperationTarget.id);
+            setDeleteOperationTarget(null);
+          }}
+        />
+      )}
     </section>
   );
 }

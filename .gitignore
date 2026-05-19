@@ -56,3 +56,7 @@ frontend-react/.vite/
 *_draft.png
 *_export.png
 *_generated.png
+
+# Documentos locais — não publicar
+CONCEITO.md
+DECISOES.md

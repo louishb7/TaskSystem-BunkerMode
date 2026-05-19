@@ -46,7 +46,7 @@ export default function TacticalSidePanel({
           <img src={generalModeAsset} alt="" />
           <strong className="operational-focus-title">Entrar em foco operacional</strong>
         </div>
-        <p className="muted">Chega de planejamento! É hora de executar.</p>
+        <p className="muted">O leão de hoje espera.</p>
         <p className="mode-transition-count">
           {totalCount === 1 ? "1 ordem no dia selecionado." : `${totalCount} ordens no dia selecionado.`}
         </p>

@@ -26,8 +26,10 @@ export default function OrdersPanel({
   onDeleteMission,
   onEditMission,
   onJustifyMission,
+  onReopenMission,
   onTogglePin,
   pinLoadingId,
+  reopenLoadingId,
   selectedMissions,
 }) {
   const groups = groupMissions(selectedMissions);
@@ -56,8 +58,10 @@ export default function OrdersPanel({
               onDelete={() => onDeleteMission(mission)}
               onEdit={() => onEditMission(mission)}
               onJustify={onJustifyMission}
+              onReopen={() => onReopenMission(mission)}
               onTogglePin={() => onTogglePin(mission)}
               pinning={pinLoadingId === mission.id}
+              reopening={reopenLoadingId === mission.id}
               variant="general"
             />
           ))}
@@ -94,7 +98,7 @@ export default function OrdersPanel({
         <div className="mission-groups">
           {renderMissionGroup("Prioridade elevada", groups.highPriority, "critical")}
           {renderMissionGroup("Pendentes", groups.pending)}
-          {renderMissionGroup("Falhas em leitura", groups.failures, "danger")}
+          {renderMissionGroup("Aguardando justificativa", groups.failures, "danger")}
           {renderMissionGroup("Cumpridas", groups.completed, "completed")}
         </div>
       ) : (

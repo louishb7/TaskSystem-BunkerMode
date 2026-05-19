@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx";
 import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
 import { emptyStatus } from "../../../constants/uiState.js";
@@ -34,6 +35,7 @@ export default function GeneralCommandPage({
   const [editingMission, setEditingMission] = useState(null);
   const [operationsOpen, setOperationsOpen] = useState(false);
   const [showSoldierConfirm, setShowSoldierConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [modeLoading, setModeLoading] = useState(false);
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
@@ -60,6 +62,10 @@ export default function GeneralCommandPage({
   const selectedMissions = useMemo(
     () => board.dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === selectedDateApi),
     [board.dailyMissions, selectedDateApi]
+  );
+  const todayMissions = useMemo(
+    () => board.dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === formatDateForApi(todayDate)),
+    [board.dailyMissions, todayDate]
   );
   const reviewCount = board.reviewMissions.length + (board.reviewState?.pending ? 1 : 0);
 
@@ -98,11 +104,6 @@ export default function GeneralCommandPage({
   }
 
   async function deleteMission(mission) {
-    const confirmed = window.confirm("Remover esta ordem do quadro?");
-    if (!confirmed) {
-      return;
-    }
-
     const removed = await board.deleteMission(mission);
     if (removed && editingMission?.id === mission.id) {
       setEditingMission(null);
@@ -156,11 +157,13 @@ export default function GeneralCommandPage({
             loading={board.missionLoading}
             onCompleteMission={board.completeMission}
             onCreateOrder={openCreateForm}
-            onDeleteMission={deleteMission}
+            onDeleteMission={setDeleteTarget}
             onEditMission={openEditForm}
             onJustifyMission={board.submitFailureJustification}
+            onReopenMission={board.reopenMission}
             onTogglePin={board.toggleMissionPin}
             pinLoadingId={board.pinLoadingId}
+            reopenLoadingId={board.reopenLoadingId}
             selectedMissions={selectedMissions}
           />
         </section>
@@ -218,7 +221,21 @@ export default function GeneralCommandPage({
           loading={modeLoading}
           onCancel={() => setShowSoldierConfirm(false)}
           onConfirm={confirmActivateSoldier}
-          orderCount={selectedMissions.length}
+          todayMissions={todayMissions}
+        />
+      )}
+
+      {deleteTarget !== null && (
+        <ConfirmDialog
+          title="Remover ordem"
+          message={`"${deleteTarget?.titulo}" será removida do quadro.`}
+          confirmLabel="REMOVER"
+          variant="danger"
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            deleteMission(deleteTarget);
+            setDeleteTarget(null);
+          }}
         />
       )}
     </TacticalShell>

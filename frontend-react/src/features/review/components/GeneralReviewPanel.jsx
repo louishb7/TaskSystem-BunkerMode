@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 
 import archiveAsset from "../../../assets/bunkermode/archive/arquivo-missoes.png";
+import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx";
 import { formatDateTime, parseApiDate } from "../../../utils/date.js";
 import { STATUS_MISSAO, isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js";
 import { getWeekDays, normalizeMissionDate } from "../../calendar/calendarUtils.js";
@@ -108,6 +109,7 @@ export default function GeneralReviewPanel({
   const [selectedReviewId, setSelectedReviewId] = useState(null);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewClosing, setReviewClosing] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const today = useMemo(() => {
     const value = new Date();
     value.setHours(0, 0, 0, 0);
@@ -183,11 +185,6 @@ export default function GeneralReviewPanel({
 
   async function clearFailureReport() {
     if (!hasClearableFailure) {
-      return;
-    }
-
-    const confirmed = window.confirm("Limpar registros informativos de falha deste período?");
-    if (!confirmed) {
       return;
     }
 
@@ -388,7 +385,7 @@ export default function GeneralReviewPanel({
               className="button danger ghost compact"
               disabled={!hasClearableFailure}
               type="button"
-              onClick={clearFailureReport}
+              onClick={() => setClearConfirmOpen(true)}
             >
               LIMPAR
             </button>
@@ -518,6 +515,19 @@ export default function GeneralReviewPanel({
           <p className="muted">Nenhuma revisão semanal foi fechada ainda.</p>
         )}
       </div>
+      {clearConfirmOpen && (
+        <ConfirmDialog
+          title="Limpar relatório de falhas"
+          message="Os registros informativos deste período serão removidos."
+          confirmLabel="LIMPAR"
+          variant="danger"
+          onCancel={() => setClearConfirmOpen(false)}
+          onConfirm={() => {
+            clearFailureReport();
+            setClearConfirmOpen(false);
+          }}
+        />
+      )}
     </section>
   );
 }
