@@ -64,14 +64,19 @@ function statusText(mission) {
   }
 
   const compact = {
-    PENDENTE: "PENDENTE",
     CONCLUIDA: "",
     FALHA_PENDENTE_JUSTIFICATIVA: "FALHOU",
     FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHOU",
     FALHA_REVISADA: "FALHA REVISADA",
   };
+  const statusCode = String(mission?.status_code || "").toUpperCase();
+  const fallbackLabel = String(mission?.status_label || "").trim();
 
-  return compact[mission?.status_code] || mission?.status_label || "PENDENTE";
+  if (statusCode === "PENDENTE" || fallbackLabel.toUpperCase() === "PENDENTE") {
+    return "";
+  }
+
+  return compact[statusCode] || fallbackLabel || "";
 }
 
 export default function MissionCard({
@@ -113,7 +118,7 @@ export default function MissionCard({
         <div className="mission-badge-row">
           {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
           {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
-          <span className="meta-tag">{statusText(mission)}</span>
+          {currentStatusText && <span className="meta-tag">{currentStatusText}</span>}
         </div>
         <h3>{title}</h3>
         {operationName && <p className="mission-origin">Operação: {operationName}</p>}

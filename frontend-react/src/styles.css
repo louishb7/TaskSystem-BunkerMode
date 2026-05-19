@@ -1875,6 +1875,15 @@ h3 {
   text-transform: none;
 }
 
+.hunt-entry .operational-focus-title {
+  color: var(--text-main);
+  font-size: 0.98rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.08;
+  text-transform: uppercase;
+}
+
 .hunt-entry .mode-transition-count {
   margin: 0;
   color: var(--fire);

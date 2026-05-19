@@ -10,9 +10,9 @@ export default function ActivateSoldierDialog({
     <div className="modal-backdrop" role="presentation">
       <section className="modal-card" role="dialog" aria-modal="true">
         <p className="section-kicker fire">FOCO OPERACIONAL</p>
-        <h2>Entrar em foco</h2>
+        <h2>Entrar em foco operacional</h2>
         <p className="muted">
-          Abra uma interface mais simples para executar com menos ruído.
+          Chega de planejamento! É hora de executar.
         </p>
         <div className="protocol-brief">
           <span>{orderCount === 1 ? "1 ordem disponível" : `${orderCount} ordens disponíveis`}</span>
@@ -24,7 +24,7 @@ export default function ActivateSoldierDialog({
             CANCELAR
           </button>
           <button className="button fire" type="button" onClick={onConfirm} disabled={loading}>
-            {loading ? "ABRINDO" : "ENTRAR EM FOCO"}
+            {loading ? "ATIVANDO" : "ATIVAR MODO SOLDADO"}
           </button>
         </div>
       </section>

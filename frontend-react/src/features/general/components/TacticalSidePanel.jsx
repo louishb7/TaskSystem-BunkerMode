@@ -7,7 +7,6 @@ import { MissionProgress } from "../../missions/components/MissionCard.jsx";
 export default function TacticalSidePanel({
   loading,
   onActivateSoldier,
-  reviewCount,
   selectedDate,
   selectedDateLabel,
   selectedMissions,
@@ -45,18 +44,14 @@ export default function TacticalSidePanel({
       <div className="side-block hunt-entry">
         <div className="mode-heading compact">
           <img src={generalModeAsset} alt="" />
-          <strong>Entrar em foco operacional</strong>
+          <strong className="operational-focus-title">Entrar em foco operacional</strong>
         </div>
-        <p className="muted">
-          {reviewCount > 0
-            ? "Há revisão pendente. Ainda assim, você pode focar na execução do dia."
-            : "Use uma interface mais limpa quando quiser ritmo de ação."}
-        </p>
+        <p className="muted">Chega de planejamento! É hora de executar.</p>
         <p className="mode-transition-count">
           {totalCount === 1 ? "1 ordem no dia selecionado." : `${totalCount} ordens no dia selecionado.`}
         </p>
         <button className="button fire full" disabled={loading} type="button" onClick={onActivateSoldier}>
-          {loading ? "ABRINDO" : "ENTRAR EM FOCO"}
+          {loading ? "ATIVANDO" : "ATIVAR MODO SOLDADO"}
         </button>
       </div>
     </section>
