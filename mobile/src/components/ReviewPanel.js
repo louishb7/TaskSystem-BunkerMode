@@ -61,14 +61,15 @@ function formatRangeDate(date) {
 
 function isFailureMission(mission) {
   return String(mission?.status_code || "").startsWith("FALHA")
-    && !isDoneNotMarked(mission)
-    && !isClearedInformativeFailure(mission);
+    && !isDoneNotMarked(mission);
 }
 
-function isClearedInformativeFailure(mission) {
-  return mission?.status_code === STATUS.FALHA_REVISADA
-    && mission?.is_decided !== true
-    && mission?.general_verdict === "accepted";
+function isVisibleFailureRecord(mission) {
+  return [
+    STATUS.FALHA_PENDENTE_JUSTIFICATIVA,
+    STATUS.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+    STATUS.FALHA_REVISADA,
+  ].includes(mission?.status_code) && !isDoneNotMarked(mission);
 }
 
 function isPendingMission(mission) {
@@ -164,16 +165,15 @@ export default function ReviewPanel({
   const completed = scopedMissions.filter(isCompleted).length;
   const pending = scopedMissions.filter(isPendingMission).length;
   const failures = scopedMissions.filter(isFailureMission);
-  const decidedFailures = failures.filter((mission) => mission?.is_decided === true);
-  const failuresForList = uniqueMissions([...scopedReviewMissions, ...failures]);
-  const pendingDecisionCount = scopedReviewMissions.filter((mission) => mission?.is_decided === true).length;
+  const reviewMissionIds = new Set(missions.map((mission) => mission.id));
+  const failuresForList = uniqueMissions([...scopedReviewMissions, ...failures]).filter(isVisibleFailureRecord);
+  const pendingReviewCount = failuresForList.filter((mission) => reviewMissionIds.has(mission.id)).length;
   const huntRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   const remaining = Math.max(0, total - completed);
   const weeklyReport = reviewState?.reading?.report || {};
   const weeklyPending = reviewState?.reading?.pending_missions || 0;
   const weeklyTotal = (weeklyReport.total_missions || 0) + weeklyPending;
   const weeklyFailures = Array.isArray(reviewState?.reading?.failures) ? reviewState.reading.failures : [];
-  const brokenDecided = Array.isArray(reviewState?.reading?.broken_decided) ? reviewState.reading.broken_decided : [];
   const visibleWeeklyFailures = weeklyFailuresOpen ? weeklyFailures : weeklyFailures.slice(0, 4);
   const selectedReview = weeklyReviews.find((review) => review.id === selectedReviewId);
   const hasWeeklyReview = Boolean(reviewState?.pending);
@@ -182,12 +182,8 @@ export default function ReviewPanel({
       return "Sem ordens no período carregado. O relatório fica limpo até haver execução registrada.";
     }
 
-    if (decidedFailures.length > 0) {
-      return `${decidedFailures.length} ordem decidida falhou no período. Priorize a decisão do General antes de avançar.`;
-    }
-
     if (failures.length > 0) {
-      return `${failures.length} falha registrada no período. Use como leitura operacional; falhas normais não exigem decisão.`;
+      return `${failures.length} falha registrada no período. Use como leitura operacional da execução.`;
     }
 
     if (remaining > 0) {
@@ -224,11 +220,8 @@ export default function ReviewPanel({
             <Metric label="EXECUTADAS" value={weeklyReport.completed_missions || 0} />
             <Metric label="PENDENTES" value={weeklyPending} />
             <Metric label="FALHAS" value={weeklyReport.failed_missions || 0} purple />
+            <Metric label="PRIORIDADE ELEVADA" value={weeklyReport.high_priority_missions || 0} purple />
           </View>
-
-          <Text style={styles.meta}>
-            Decididas quebradas: {weeklyReport.committed_missions_failed || 0}
-          </Text>
 
           {reviewState?.pending ? (
             <View style={styles.closeBox}>
@@ -275,9 +268,9 @@ export default function ReviewPanel({
               ) : null}
             </View>
             {visibleWeeklyFailures.length > 0 ? visibleWeeklyFailures.map((mission, index) => (
-              <View key={String(mission?.id ?? index)} style={[styles.failureRow, mission?.is_decided && styles.failureRowCritical]}>
-                <Text style={[styles.failureRowType, mission?.is_decided && styles.dangerText]}>
-                  {mission?.is_decided ? "DECIDIDA" : "FALHA"}
+              <View key={String(mission?.id ?? index)} style={[styles.failureRow, mission?.is_pinned && styles.failureRowPriority]}>
+                <Text style={[styles.failureRowType, mission?.is_pinned && styles.priorityText]}>
+                  {mission?.is_pinned ? "PRIORIDADE" : "FALHA"}
                 </Text>
                 <Text style={styles.failureRowTitle}>{mission?.titulo || "Sem título"}</Text>
                 <Text style={styles.failureRowReason}>{mission?.failure_reason || "Justificativa não registrada."}</Text>
@@ -286,12 +279,6 @@ export default function ReviewPanel({
               null
             )}
           </View>
-
-          {brokenDecided.length > 0 ? (
-            <Text style={styles.criticalNote}>
-              {brokenDecided.length} Decidida quebrada nesta semana operacional.
-            </Text>
-          ) : null}
         </TacticalPanel>
       ) : null}
 
@@ -322,8 +309,8 @@ export default function ReviewPanel({
       </TacticalPanel>
 
       <TacticalPanel danger style={styles.failurePanel}>
-        <Text style={styles.failureKicker}>FALHAS AGUARDANDO DECISÃO</Text>
-        <Text style={styles.failureCount}>{pendingDecisionCount}</Text>
+        <Text style={styles.failureKicker}>FALHAS EM REVISÃO</Text>
+        <Text style={styles.failureCount}>{pendingReviewCount}</Text>
         <Text style={styles.failureMeta}>
           {failuresForList.length > 0
             ? `${failuresForList.length} registro no relatório de falhas.`
@@ -346,6 +333,7 @@ export default function ReviewPanel({
                   mission={mission}
                   onLogout={onLogout}
                   onReload={onReload}
+                  requiresReview={reviewMissionIds.has(mission.id)}
                   token={token}
                 />
               ))}
@@ -386,7 +374,7 @@ export default function ReviewPanel({
                   <Metric label="EXECUTADAS" value={selectedReview.completed_missions} />
                   <Metric label="PENDENTES" value={selectedReview.pending_missions} />
                   <Metric label="FALHAS" value={selectedReview.failed_missions} purple />
-                  <Metric label="QUEBRADAS" value={selectedReview.committed_missions_failed} purple />
+                  <Metric label="PRIORIDADE ELEVADA" value={selectedReview.high_priority_missions} purple />
                 </View>
                 <Text style={styles.reason}>{selectedReview.resumo_operacional}</Text>
                 {selectedReview.observacao ? (
@@ -427,12 +415,11 @@ function Metric({ label, purple = false, value }) {
   );
 }
 
-function ReviewItem({ mission, onLogout, onReload, token }) {
+function ReviewItem({ mission, onLogout, onReload, requiresReview, token }) {
   const [loadingAction, setLoadingAction] = useState("");
   const [error, setError] = useState("");
   const failedAt = mission?.failed_at ? `Falhou em ${formatDateTime(mission.failed_at)}` : "";
   const reasonTypeLabel = failureReasonLabels[mission?.failure_reason_type] || "Tipo não informado";
-  const requiresDecision = mission?.is_decided === true;
 
   async function review(accepted) {
     setLoadingAction(accepted ? "accept" : "reject");
@@ -455,8 +442,8 @@ function ReviewItem({ mission, onLogout, onReload, token }) {
 
   return (
     <View style={styles.item}>
-      <Text style={[styles.itemKicker, requiresDecision ? styles.itemKickerDanger : styles.itemKickerFire]}>
-        {requiresDecision ? "REVISÃO OBRIGATÓRIA" : "REGISTRO INFORMATIVO"}
+      <Text style={[styles.itemKicker, requiresReview ? styles.itemKickerDanger : styles.itemKickerFire]}>
+        {requiresReview ? "REVISÃO OBRIGATÓRIA" : "REGISTRO INFORMATIVO"}
       </Text>
       <Text style={styles.itemTitle}>{mission?.titulo || "Sem título"}</Text>
       <Text style={styles.itemMeta}>Prazo: {mission?.prazo || "Sem prazo"}{failedAt ? ` / ${failedAt}` : ""}</Text>
@@ -469,7 +456,7 @@ function ReviewItem({ mission, onLogout, onReload, token }) {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {requiresDecision ? (
+      {requiresReview ? (
         <View style={styles.actions}>
           <Pressable
             disabled={Boolean(loadingAction)}
@@ -679,8 +666,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     paddingTop: theme.spacing.sm,
   },
-  failureRowCritical: {
-    borderTopColor: "rgba(229,57,53,0.30)",
+  failureRowPriority: {
+    borderTopColor: theme.colors.purpleBorder,
+  },
+  priorityText: {
+    color: theme.colors.neonPurple,
   },
   failureRowType: {
     ...theme.typography.small,
@@ -693,14 +683,6 @@ const styles = StyleSheet.create({
   failureRowReason: {
     ...theme.typography.caption,
     color: theme.colors.textMuted,
-  },
-  criticalNote: {
-    ...theme.typography.caption,
-    backgroundColor: theme.colors.redWash,
-    borderColor: "rgba(229,57,53,0.30)",
-    borderWidth: 1,
-    color: theme.colors.red,
-    padding: theme.spacing.sm,
   },
   weekGrid: {
     flexDirection: "row",

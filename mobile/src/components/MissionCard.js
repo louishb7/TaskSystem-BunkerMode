@@ -121,12 +121,11 @@ export default function MissionCard({
   onEdit,
   onInputFocus,
   onJustify,
-  onToggleDecision,
+  onTogglePin,
   toggling = false,
   variant = "general",
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [confirmingToggle, setConfirmingToggle] = useState(false);
   const [failureFormOpen, setFailureFormOpen] = useState(false);
   const [failureReasonType, setFailureReasonType] = useState("not_done");
   const [failureReason, setFailureReason] = useState("");
@@ -134,20 +133,19 @@ export default function MissionCard({
   const title = mission?.titulo || "Sem título";
   const instruction = mission?.instrucao || "";
   const statusLabel = statusText(mission);
-  const isDecided = mission?.is_decided === true;
+  const isPinned = mission?.is_pinned === true;
   const completed = isCompleted(mission);
   const operationName = mission?.operacao_nome;
   const canComplete = can(mission, "can_complete");
   const canJustify = can(mission, "can_justify");
-  const requiresJustification = isDecided;
+  const requiresJustification = mission?.requires_immediate_justification === true;
   const disabled = toggling || completing || justifying;
   const failed = String(mission?.status_code || "").startsWith("FALHA");
 
   useEffect(() => {
-    setConfirmingToggle(false);
     setConfirmingDelete(false);
     setFailureFormOpen(false);
-  }, [mission?.id, mission?.is_decided]);
+  }, [mission?.id, mission?.is_pinned]);
 
   function submitJustification() {
     const trimmed = failureReason.trim();
@@ -164,15 +162,15 @@ export default function MissionCard({
         style={[
           styles.card,
           styles.soldierCard,
-          isDecided && styles.soldierDecidedCard,
+          isPinned && styles.soldierPriorityCard,
           failed && styles.dangerCard,
         ]}
       >
         <View style={styles.soldierCardTop}>
-          {isDecided ? (
+          {isPinned ? (
             <View style={[styles.orderCode, styles.orderCodeCritical]}>
               <Text style={[styles.orderCodeText, styles.orderCodeCriticalText]}>
-                INEGOCIÁVEL
+                PRIORIDADE ELEVADA
               </Text>
             </View>
           ) : null}
@@ -285,11 +283,13 @@ export default function MissionCard({
   }
 
   return (
-    <View style={[styles.card, isDecided && styles.decidedCard, completed && styles.completedCard]}>
+    <View style={[styles.card, isPinned && styles.priorityCard, completed && styles.completedCard]}>
       <View style={styles.badgeRow}>
-        <Text style={[styles.metaTag, isDecided && styles.metaTagCritical]}>
-          {isDecided ? "DECIDIDA" : "ORDEM"}
-        </Text>
+        {isPinned ? (
+          <Text style={[styles.metaTag, styles.metaTagCritical]}>PRIORIDADE ELEVADA</Text>
+        ) : (
+          <Text style={styles.metaTag}>ORDEM</Text>
+        )}
         {operationName ? <Text style={[styles.metaTag, styles.metaTagOperation]}>OPERAÇÃO</Text> : null}
         <Text style={styles.metaTag}>{formatDeadline(mission?.prazo)}</Text>
         <Text style={styles.metaTag}>{statusLabel}</Text>
@@ -310,53 +310,19 @@ export default function MissionCard({
       ) : null}
 
       <View style={styles.actions}>
-        {can(mission, "can_toggle_decided") ? (
-          confirmingToggle ? (
-            <View style={styles.confirmRow}>
-              <Pressable
-                disabled={disabled}
-                onPress={() => {
-                  setConfirmingToggle(false);
-                  onToggleDecision?.(mission);
-                }}
-                style={[styles.secondaryAction, styles.dangerAction]}
-              >
-                {toggling ? (
-                  <ActivityIndicator color={theme.colors.red} />
-                ) : (
-                  <Text style={styles.dangerActionText}>CONFIRMAR RETIRADA</Text>
-                )}
-              </Pressable>
-              <Pressable
-                disabled={disabled}
-                onPress={() => setConfirmingToggle(false)}
-                style={styles.secondaryAction}
-              >
-                <Text style={styles.secondaryActionText}>CANCELAR</Text>
-              </Pressable>
-            </View>
+        <Pressable
+          disabled={disabled}
+          onPress={() => onTogglePin?.(mission)}
+          style={[styles.secondaryAction, isPinned && styles.priorityAction]}
+        >
+          {toggling ? (
+            <ActivityIndicator color={theme.colors.neonPurple} />
           ) : (
-            <Pressable
-              disabled={disabled}
-              onPress={() => {
-                if (isDecided) {
-                  setConfirmingToggle(true);
-                  return;
-                }
-                onToggleDecision?.(mission);
-              }}
-              style={[styles.secondaryAction, isDecided && styles.committedAction]}
-            >
-              {toggling ? (
-                <ActivityIndicator color={theme.colors.red} />
-              ) : (
-                <Text style={[styles.secondaryActionText, isDecided && styles.committedActionText]}>
-                  {isDecided ? "REMOVER DECIDIDA" : "MARCAR DECIDIDA"}
-                </Text>
-              )}
-            </Pressable>
-          )
-        ) : null}
+            <Text style={[styles.secondaryActionText, isPinned && styles.priorityActionText]}>
+              {isPinned ? "REBAIXAR PRIORIDADE" : "ELEVAR PRIORIDADE"}
+            </Text>
+          )}
+        </Pressable>
 
         {can(mission, "can_edit") ? (
           <Pressable disabled={disabled} onPress={() => onEdit?.(mission)} style={styles.secondaryAction}>
@@ -413,7 +379,7 @@ const styles = StyleSheet.create({
     borderLeftColor: theme.colors.fire,
     borderLeftWidth: 2,
   },
-  soldierDecidedCard: {
+  soldierPriorityCard: {
     backgroundColor: theme.colors.surfaceDeep,
     borderColor: theme.colors.purpleBorder,
     borderLeftColor: theme.colors.neonPurple,
@@ -421,7 +387,7 @@ const styles = StyleSheet.create({
   dangerCard: {
     borderColor: theme.colors.red,
   },
-  decidedCard: {
+  priorityCard: {
     backgroundColor: "rgba(23,23,23,0.95)",
     borderColor: theme.colors.purpleBorder,
     borderLeftColor: theme.colors.neonPurple,
@@ -593,11 +559,11 @@ const styles = StyleSheet.create({
     color: theme.colors.red,
     fontWeight: "900",
   },
-  committedAction: {
+  priorityAction: {
     backgroundColor: theme.colors.purpleWash,
     borderColor: theme.colors.purpleBorder,
   },
-  committedActionText: {
+  priorityActionText: {
     color: theme.colors.neonPurple,
   },
   dangerAction: {

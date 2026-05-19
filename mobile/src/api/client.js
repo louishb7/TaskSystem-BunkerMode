@@ -160,8 +160,8 @@ export const api = {
       body: payload,
     });
   },
-  toggleMissionDecision(token, missionId) {
-    return requestMission(`/missoes/${missionId}/toggle-decided`, {
+  toggleMissionPin(token, missionId) {
+    return requestMission(`/missoes/${missionId}/toggle-pin`, {
       token,
       method: "PATCH",
     });

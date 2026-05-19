@@ -108,7 +108,6 @@ const initialOperationForm = {
   weekdays: [],
   ordem_titulo: "",
   ordem_instrucao: "",
-  is_decided: false,
 };
 
 function mergeMissionLists(...missionLists) {
@@ -131,10 +130,10 @@ function isFailureMission(mission) {
 
 function groupMissions(missions) {
   return {
-    critical: missions.filter((mission) => !isCompleted(mission) && mission?.is_decided === true),
-    pending: missions.filter((mission) => !isCompleted(mission) && mission?.is_decided !== true && !isFailureMission(mission)),
-    failures: missions.filter((mission) => !isCompleted(mission) && isFailureMission(mission)),
-    completed: missions.filter(isCompleted),
+    highPriority: missions.filter((mission) => mission?.is_pinned === true),
+    pending: missions.filter((mission) => !isCompleted(mission) && mission?.is_pinned !== true && !isFailureMission(mission)),
+    failures: missions.filter((mission) => !isCompleted(mission) && mission?.is_pinned !== true && isFailureMission(mission)),
+    completed: missions.filter((mission) => mission?.is_pinned !== true && isCompleted(mission)),
   };
 }
 
@@ -222,7 +221,7 @@ export default function GeneralDashboardScreen({
   );
   const selectedDayOff = dayOffDates.has(selectedDateApi) || selectedMissions.length === 0;
   const selectedRemainingCount = Math.max(0, selectedMissions.length - selectedCompletedCount);
-  const selectedDecidedCount = selectedMissions.filter((mission) => mission?.is_decided === true).length;
+  const selectedPriorityCount = selectedMissions.filter((mission) => mission?.is_pinned === true).length;
   const missionGroups = useMemo(() => groupMissions(selectedMissions), [selectedMissions]);
 
   useEffect(() => {
@@ -441,15 +440,15 @@ export default function GeneralDashboardScreen({
     await loadAll();
   }
 
-  async function toggleDecision(mission) {
+  async function togglePin(mission) {
     if (!mission?.id) {
-      setError("Ordem inválida para alterar Decidida.");
+      setError("Ordem inválida para alterar prioridade.");
       return;
     }
 
     setTogglingId(mission?.id);
     setError("");
-    const result = await api.toggleMissionDecision(token, mission?.id);
+    const result = await api.toggleMissionPin(token, mission?.id);
 
     if (await handleUnauthorized(result)) {
       setTogglingId(null);
@@ -457,7 +456,7 @@ export default function GeneralDashboardScreen({
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "Não foi possível alterar Decidida."));
+      setError(getErrorMessage(result, "Não foi possível alterar prioridade."));
     }
 
     await loadAll();
@@ -664,13 +663,13 @@ export default function GeneralDashboardScreen({
             <Metric label="EXECUTADAS" value={selectedCompletedCount} />
             <Metric label="RESTAM" value={selectedRemainingCount} />
           </View>
-          <View style={styles.decidedSummary}>
+          <View style={styles.prioritySummary}>
             <View>
-              <Text style={styles.decidedLabel}>DECIDIDAS</Text>
-              <Text style={styles.decidedValue}>{selectedDecidedCount}</Text>
+              <Text style={styles.priorityLabel}>PRIORIDADE ELEVADA</Text>
+              <Text style={styles.priorityValue}>{selectedPriorityCount}</Text>
             </View>
-            <Text style={styles.decidedText}>
-              {selectedDecidedCount === 1 ? "1 inegociável" : `${selectedDecidedCount} inegociáveis`}
+            <Text style={styles.priorityText}>
+              {selectedPriorityCount === 1 ? "1 ordem em destaque" : `${selectedPriorityCount} ordens em destaque`}
             </Text>
           </View>
         </TacticalPanel>
@@ -692,11 +691,11 @@ export default function GeneralDashboardScreen({
           {selectedMissions.length > 0 ? (
             <View style={styles.missionGroups}>
               <MissionGroup
-                label="Inegociáveis"
-                missions={missionGroups.critical}
+                label="Prioridade elevada"
+                missions={missionGroups.highPriority}
                 onDelete={deleteMission}
                 onEdit={openEditForm}
-                onToggleDecision={toggleDecision}
+                onTogglePin={togglePin}
                 togglingId={togglingId}
                 tone="critical"
               />
@@ -705,7 +704,7 @@ export default function GeneralDashboardScreen({
                 missions={missionGroups.pending}
                 onDelete={deleteMission}
                 onEdit={openEditForm}
-                onToggleDecision={toggleDecision}
+                onTogglePin={togglePin}
                 togglingId={togglingId}
               />
               <MissionGroup
@@ -713,7 +712,7 @@ export default function GeneralDashboardScreen({
                 missions={missionGroups.failures}
                 onDelete={deleteMission}
                 onEdit={openEditForm}
-                onToggleDecision={toggleDecision}
+                onTogglePin={togglePin}
                 togglingId={togglingId}
                 tone="danger"
               />
@@ -722,7 +721,7 @@ export default function GeneralDashboardScreen({
                 missions={missionGroups.completed}
                 onDelete={deleteMission}
                 onEdit={openEditForm}
-                onToggleDecision={toggleDecision}
+                onTogglePin={togglePin}
                 togglingId={togglingId}
                 tone="completed"
               />
@@ -853,22 +852,6 @@ export default function GeneralDashboardScreen({
                     value={operationForm.ordem_instrucao}
                   />
                   <Pressable
-                    onPress={() => updateOperationField("is_decided", !operationForm.is_decided)}
-                    style={[
-                      styles.operationDecision,
-                      operationForm.is_decided && styles.operationDecisionSelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.operationDecisionText,
-                        operationForm.is_decided && styles.operationDecisionTextSelected,
-                      ]}
-                    >
-                      {operationForm.is_decided ? "DECIDIDA ATIVA" : "MARCAR COMO DECIDIDA"}
-                    </Text>
-                  </Pressable>
-                  <Pressable
                     disabled={operationLoading}
                     onPress={createOperation}
                     style={[styles.operationPrimary, operationLoading && styles.operationDisabled]}
@@ -951,7 +934,7 @@ function MissionGroup({
   missions,
   onDelete,
   onEdit,
-  onToggleDecision,
+  onTogglePin,
   togglingId,
   tone = "",
 }) {
@@ -979,7 +962,7 @@ function MissionGroup({
             mission={mission}
             onDelete={onDelete}
             onEdit={onEdit}
-            onToggleDecision={onToggleDecision}
+            onTogglePin={onTogglePin}
             toggling={togglingId === mission?.id}
             variant="general"
           />
@@ -1115,7 +1098,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginTop: theme.spacing.xs,
   },
-  decidedSummary: {
+  prioritySummary: {
     alignItems: "center",
     backgroundColor: theme.colors.purpleWash,
     borderColor: theme.colors.purpleBorder,
@@ -1125,18 +1108,18 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     padding: theme.spacing.sm,
   },
-  decidedLabel: {
+  priorityLabel: {
     ...theme.typography.small,
     color: theme.colors.textDim,
     fontSize: 9,
   },
-  decidedValue: {
+  priorityValue: {
     color: theme.colors.neonPurple,
     fontSize: 21,
     fontWeight: "900",
     lineHeight: 23,
   },
-  decidedText: {
+  priorityText: {
     ...theme.typography.caption,
     color: theme.colors.textMuted,
     flexShrink: 1,
@@ -1250,24 +1233,6 @@ const styles = StyleSheet.create({
   },
   operationWeekdayTextSelected: {
     color: theme.colors.fire,
-  },
-  operationDecision: {
-    alignItems: "center",
-    borderColor: theme.colors.purpleBorder,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 40,
-  },
-  operationDecisionSelected: {
-    backgroundColor: theme.colors.purpleWash,
-  },
-  operationDecisionText: {
-    ...theme.typography.small,
-    color: theme.colors.textDim,
-  },
-  operationDecisionTextSelected: {
-    color: theme.colors.neonPurple,
   },
   operationPrimary: {
     alignItems: "center",

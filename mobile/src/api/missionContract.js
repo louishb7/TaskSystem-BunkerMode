@@ -2,7 +2,6 @@ const REQUIRED_PERMISSION_KEYS = Object.freeze([
   "can_complete",
   "can_edit",
   "can_delete",
-  "can_toggle_decided",
   "can_justify",
   "can_review",
   "can_view_history",
@@ -23,6 +22,10 @@ export function assertMissionContract(mission) {
 
   if (!mission.status_label) {
     throw buildContractError("missão sem status_label");
+  }
+
+  if (typeof mission.is_pinned !== "boolean") {
+    throw buildContractError("missão sem is_pinned booleano");
   }
 
   if (!mission.permissions || typeof mission.permissions !== "object") {
