@@ -49,6 +49,42 @@ export default function SoldierExecutionPage({
     setReturnLoading(false);
   }
 
+  function renderTurnWarning() {
+    if (!showTurnWarning) {
+      return null;
+    }
+
+    return (
+      <section className="operational-turn-panel" aria-label="Transição operacional de turno">
+        <div>
+          <span>TRANSIÇÃO DE TURNO</span>
+          <strong>Existem ordens pendentes do ciclo anterior.</strong>
+          <p>
+            O novo dia já tem ordens prontas. Continue o ciclo anterior ou encerre as pendências como falha para abrir a nova operação.
+          </p>
+        </div>
+        <div className="operational-turn-actions">
+          <button
+            className="button secondary compact"
+            disabled={board.missionLoading}
+            type="button"
+            onClick={board.continuePreviousOperationalTurn}
+          >
+            CONTINUAR CICLO ANTERIOR
+          </button>
+          <button
+            className="button fire compact"
+            disabled={board.missionLoading}
+            type="button"
+            onClick={board.closePreviousOperationalTurn}
+          >
+            ENCERRAR PENDÊNCIAS
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <TacticalShell mode="soldier">
       <section className="soldier-layout">
@@ -75,36 +111,6 @@ export default function SoldierExecutionPage({
 
         <StatusNotice status={board.status} />
 
-        {showTurnWarning && (
-          <section className="operational-turn-panel" aria-label="Transição operacional de turno">
-            <div>
-              <span>TRANSIÇÃO DE TURNO</span>
-              <strong>Existem ordens pendentes do ciclo anterior.</strong>
-              <p>
-                O novo dia já tem ordens prontas. Continue o ciclo anterior ou encerre as pendências como falha para abrir a nova operação.
-              </p>
-            </div>
-            <div className="operational-turn-actions">
-              <button
-                className="button secondary compact"
-                disabled={board.missionLoading}
-                type="button"
-                onClick={board.continuePreviousOperationalTurn}
-              >
-                CONTINUAR CICLO ANTERIOR
-              </button>
-              <button
-                className="button fire compact"
-                disabled={board.missionLoading}
-                type="button"
-                onClick={board.closePreviousOperationalTurn}
-              >
-                ENCERRAR PENDÊNCIAS
-              </button>
-            </div>
-          </section>
-        )}
-
         {board.missionLoading && (
           <EmptyState
             title="Sincronizando ordens"
@@ -114,6 +120,7 @@ export default function SoldierExecutionPage({
 
         {!board.missionLoading && actionMissions.length > 0 && (
           <div className="mission-list soldier-list">
+            {renderTurnWarning()}
             {actionMissions.map((mission) => (
               <MissionCard
                 key={mission.id}
@@ -129,22 +136,25 @@ export default function SoldierExecutionPage({
         )}
 
         {!board.missionLoading && actionMissions.length === 0 && (
-          dailyMissions.length === 0 ? (
-            <EmptyState
-              title="Nenhuma ordem para hoje"
-              message="O General não definiu missões para este dia."
-            />
-          ) : hasCompletedMissions ? (
-            <EmptyState
-              title="Caçada concluída"
-              message="Todos os leões do dia foram abatidos."
-            />
-          ) : (
-            <EmptyState
-              title="Sem ordens em aberto"
-              message="As missões do dia foram registradas como falha."
-            />
-          )
+          <>
+            {renderTurnWarning()}
+            {dailyMissions.length === 0 ? (
+              <EmptyState
+                title="Nenhuma ordem para hoje"
+                message="O General não definiu missões para este dia."
+              />
+            ) : hasCompletedMissions ? (
+              <EmptyState
+                title="Caçada concluída"
+                message="Todos os leões do dia foram abatidos."
+              />
+            ) : (
+              <EmptyState
+                title="Sem ordens em aberto"
+                message="As missões do dia foram registradas como falha."
+              />
+            )}
+          </>
         )}
 
         <footer className="soldier-footer">

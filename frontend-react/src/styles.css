@@ -979,6 +979,7 @@ h3 {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
+  margin-bottom: 8px;
   border: 1px solid rgba(255, 138, 42, 0.24);
   background:
     linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 58%),
@@ -2576,6 +2577,17 @@ h3 {
   background: transparent;
   box-shadow: none;
   padding: 0;
+}
+
+.mission-form input[type="date"] {
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.mission-form input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.72;
+  filter: invert(1);
 }
 
 .operations-modal-card {

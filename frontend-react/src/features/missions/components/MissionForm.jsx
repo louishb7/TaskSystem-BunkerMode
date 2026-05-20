@@ -30,6 +30,35 @@ function formatPrazoContext(prazo) {
   return `${day}/${month}`;
 }
 
+// Converte DD-MM-AAAA -> AAAA-MM-DD para o input type="date".
+function toDateInputValue(prazo) {
+  if (!prazo || typeof prazo !== "string") {
+    return "";
+  }
+  const parts = prazo.split("-");
+  if (parts.length !== 3) {
+    return "";
+  }
+  const [day, month, year] = parts;
+  if (!day || !month || !year || year.length !== 4) {
+    return "";
+  }
+  return `${year}-${month}-${day}`;
+}
+
+// Converte AAAA-MM-DD para DD-MM-AAAA, formato esperado pela API.
+function fromDateInputValue(value) {
+  if (!value || typeof value !== "string") {
+    return "";
+  }
+  const parts = value.split("-");
+  if (parts.length !== 3) {
+    return "";
+  }
+  const [year, month, day] = parts;
+  return `${day}-${month}-${year}`;
+}
+
 export default function MissionForm({
   currentUser,
   editingMission,
@@ -72,6 +101,13 @@ export default function MissionForm({
     setForm((current) => ({
       ...current,
       [event.target.name]: event.target.value,
+    }));
+  }
+
+  function handleDateChange(event) {
+    setForm((current) => ({
+      ...current,
+      prazo: fromDateInputValue(event.target.value),
     }));
   }
 
@@ -166,9 +202,9 @@ export default function MissionForm({
                 Data
                 <input
                   name="prazo"
-                  onChange={updateField}
-                  placeholder="DD-MM-AAAA"
-                  value={form.prazo}
+                  type="date"
+                  onChange={handleDateChange}
+                  value={toDateInputValue(form.prazo)}
                 />
               </label>
             )}
