@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 
+import MountainDialog from "./MountainDialog.jsx";
 import ObjetivoCard from "./ObjetivoCard.jsx";
 import ObjetivoForm from "./ObjetivoForm.jsx";
 
@@ -21,13 +22,17 @@ export default function ObjetivoList({
   sonhos,
 }) {
   const [formOpen, setFormOpen] = useState(false);
+  const objetivosIsolados = useMemo(
+    () => objetivos.filter((objetivo) => !objetivo.sonho_id),
+    [objetivos]
+  );
   const grouped = useMemo(
     () => groups.map(([status, label]) => ({
       status,
       label,
-      objetivos: objetivos.filter((objetivo) => objetivo.status === status),
+      objetivos: objetivosIsolados.filter((objetivo) => objetivo.status === status),
     })),
-    [objetivos]
+    [objetivosIsolados]
   );
 
   async function submit(payload) {
@@ -41,23 +46,28 @@ export default function ObjetivoList({
     <section className="mountain-section">
       <div className="mountain-section-head">
         <div>
-          <p className="section-kicker fire">OBJETIVOS</p>
-          <h2>Corpo da montanha</h2>
+          <p className="section-kicker fire">OBJETIVOS ISOLADOS</p>
+          <h2>Fora da árvore principal</h2>
         </div>
-        <button className="button fire compact" disabled={loading} type="button" onClick={() => setFormOpen(true)}>
-          NOVO OBJETIVO
+        <button className="button secondary compact" disabled={loading} type="button" onClick={() => setFormOpen(true)}>
+          NOVO OBJETIVO ISOLADO
         </button>
       </div>
 
       {formOpen && (
-        <div className="objetivo-form-panel">
+        <MountainDialog label="Novo objetivo isolado" onClose={() => setFormOpen(false)}>
+          <div className="section-heading compact">
+            <div>
+              <p className="section-kicker fire">OBJETIVO ISOLADO</p>
+              <h2>Registrar objetivo sem vínculo</h2>
+            </div>
+          </div>
           <ObjetivoForm
             loading={loading}
             onCancel={() => setFormOpen(false)}
             onSubmit={submit}
-            sonhos={sonhos}
           />
-        </div>
+        </MountainDialog>
       )}
 
       <div className="objetivo-groups">

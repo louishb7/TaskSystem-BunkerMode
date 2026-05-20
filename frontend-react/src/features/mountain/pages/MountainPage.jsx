@@ -35,8 +35,14 @@ export default function MountainPage({
       <SonhoPanel
         loading={busy}
         onArchive={mountain.archiveSonho}
+        onCreateObjetivo={mountain.createObjetivo}
         onCreate={mountain.createSonho}
+        objetivos={mountain.objetivos}
+        onDeleteObjetivo={mountain.deleteObjetivo}
         onPromote={mountain.promoteSonho}
+        onUpdateObjetivo={mountain.updateObjetivo}
+        onUpdateObjetivoProgress={mountain.updateObjetivoProgresso}
+        onUpdateObjetivoStatus={mountain.updateObjetivoStatus}
         onUpdate={mountain.updateSonho}
         sonhos={mountain.sonhos}
       />
