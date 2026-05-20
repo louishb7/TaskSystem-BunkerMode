@@ -4,6 +4,7 @@ import EmptyState from "../../../components/ui/EmptyState.jsx";
 import LionEmblem from "../../../components/ui/LionEmblem.jsx";
 import StatusNotice from "../../../components/ui/StatusNotice.jsx";
 import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
+import { isCompleted } from "../../../utils/missionStatus.js";
 import { formatCurrentDay } from "../../calendar/calendarUtils.js";
 import MissionCard, { MissionProgress } from "../../missions/components/MissionCard.jsx";
 
@@ -40,6 +41,7 @@ export default function SoldierExecutionPage({
   const turn = board.operationalTurn;
   const showTurnWarning = turn?.requires_decision === true && !board.operationalTurnAcknowledged;
   const turnDateLabel = formatOperationalTurnDate(turn?.active_date_label);
+  const hasCompletedMissions = dailyMissions.some(isCompleted);
 
   async function handleReturnToCommand() {
     setReturnLoading(true);
@@ -103,12 +105,14 @@ export default function SoldierExecutionPage({
           </section>
         )}
 
-        {board.missionLoading ? (
+        {board.missionLoading && (
           <EmptyState
             title="Sincronizando ordens"
             message="O foco operacional está sincronizando o quadro."
           />
-        ) : actionMissions.length > 0 ? (
+        )}
+
+        {!board.missionLoading && actionMissions.length > 0 && (
           <div className="mission-list soldier-list">
             {actionMissions.map((mission) => (
               <MissionCard
@@ -122,15 +126,25 @@ export default function SoldierExecutionPage({
               />
             ))}
           </div>
-        ) : (
-          <EmptyState
-            title={dailyMissions.length > 0 ? "Caçada concluída" : "Nenhuma ordem para hoje"}
-            message={
-              dailyMissions.length > 0
-                ? "Todos os leões do dia foram abatidos."
-                : "O General não definiu missões para este dia."
-            }
-          />
+        )}
+
+        {!board.missionLoading && actionMissions.length === 0 && (
+          dailyMissions.length === 0 ? (
+            <EmptyState
+              title="Nenhuma ordem para hoje"
+              message="O General não definiu missões para este dia."
+            />
+          ) : hasCompletedMissions ? (
+            <EmptyState
+              title="Caçada concluída"
+              message="Todos os leões do dia foram abatidos."
+            />
+          ) : (
+            <EmptyState
+              title="Sem ordens em aberto"
+              message="As missões do dia foram registradas como falha."
+            />
+          )
         )}
 
         <footer className="soldier-footer">

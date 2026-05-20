@@ -108,6 +108,7 @@ export default function MissionCard({
   const operationName = mission?.operacao_nome;
   const failed = String(mission?.status_code || "").startsWith("FALHA");
   const currentStatusText = statusText(mission);
+  const hasBadge = isPinned || operationName || currentStatusText;
 
   useEffect(() => {
     setFailureFormOpen(false);
@@ -117,11 +118,13 @@ export default function MissionCard({
   if (soldier) {
     return (
       <article className={`mission-card soldier-card ${isPinned ? "priority-high" : ""} ${failed ? "danger" : ""}`}>
-        <div className="mission-badge-row">
-          {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
-          {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
-          {currentStatusText && <span className="meta-tag">{currentStatusText}</span>}
-        </div>
+        {hasBadge && (
+          <div className="mission-badge-row">
+            {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
+            {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
+            {currentStatusText && <span className="meta-tag">{currentStatusText}</span>}
+          </div>
+        )}
         <h3>{title}</h3>
         {operationName && <p className="mission-origin">Operação: {operationName}</p>}
         {instruction && <p className="mission-instruction">{instruction}</p>}
