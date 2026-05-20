@@ -143,6 +143,8 @@ export default function App() {
       onActivateSoldier={activateSoldierMode}
       onLogout={clearSession}
       onOpenReview={() => setActiveRoute(APP_ROUTES.REVIEW)}
+      onUnauthorized={auth.handleUnauthorized}
+      token={auth.token}
       user={auth.user}
     />
   );

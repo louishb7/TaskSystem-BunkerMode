@@ -21,6 +21,7 @@ import OrdersPanel from "../components/OrdersPanel.jsx";
 import TacticalSidePanel from "../components/TacticalSidePanel.jsx";
 import WeekPanel from "../components/WeekPanel.jsx";
 import OperationsPanel from "../../operations/components/OperationsPanel.jsx";
+import MountainPage from "../../mountain/pages/MountainPage.jsx";
 
 export default function GeneralCommandPage({
   board,
@@ -28,12 +29,15 @@ export default function GeneralCommandPage({
   onActivateSoldier,
   onLogout,
   onOpenReview,
+  onUnauthorized,
+  token,
   user,
 }) {
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [formOpen, setFormOpen] = useState(false);
   const [editingMission, setEditingMission] = useState(null);
   const [operationsOpen, setOperationsOpen] = useState(false);
+  const [mountainOpen, setMountainOpen] = useState(false);
   const [showSoldierConfirm, setShowSoldierConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [modeLoading, setModeLoading] = useState(false);
@@ -172,6 +176,7 @@ export default function GeneralCommandPage({
           <CommandRail
             generalName={generalName}
             onLogout={onLogout}
+            onOpenMountain={() => setMountainOpen(true)}
             onOpenOperations={() => setOperationsOpen(true)}
             onOpenReview={onOpenReview}
             reviewCount={reviewCount}
@@ -187,6 +192,7 @@ export default function GeneralCommandPage({
               editingMission={editingMission}
               initialPrazo={editingMission ? undefined : selectedDateApi}
               loading={board.formLoading}
+              onUnauthorized={onUnauthorized}
               onCancel={() => {
                 setFormOpen(false);
                 setEditingMission(null);
@@ -195,6 +201,7 @@ export default function GeneralCommandPage({
               onCreate={createMission}
               onUpdate={updateMission}
               status={board.formStatus}
+              token={token}
             />
           </div>
         </div>
@@ -211,6 +218,19 @@ export default function GeneralCommandPage({
               onDeleteOperation={board.deleteOperation}
               operations={board.operations}
               status={board.operationStatus}
+            />
+          </div>
+        </div>
+      )}
+
+      {mountainOpen && (
+        <div className="modal-backdrop command-modal-backdrop" role="presentation">
+          <div className="command-modal-card mountain-modal-card" role="dialog" aria-modal="true" aria-label="A Montanha">
+            <MountainPage
+              embedded
+              onClose={() => setMountainOpen(false)}
+              onUnauthorized={onUnauthorized}
+              token={token}
             />
           </div>
         </div>

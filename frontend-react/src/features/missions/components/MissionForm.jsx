@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 
+import { getErrorMessage } from "../../../api/httpClient.js";
+import { api } from "../../../services/bunkermodeApi.js";
 import { formatDateForApi, getTomorrow } from "../../../utils/date.js";
 
 const emptyForm = {
   titulo: "",
   instrucao: "",
+  objetivo_id: "",
   prazoTipo: "hoje",
   prazo: "",
 };
@@ -66,14 +69,18 @@ export default function MissionForm({
   loading,
   onCancel,
   onCreate,
+  onUnauthorized,
   onUpdate,
   status,
+  token,
 }) {
   const [form, setForm] = useState({
     ...emptyForm,
     prazoTipo: initialPrazo ? "data_especifica" : emptyForm.prazoTipo,
     prazo: initialPrazo || "",
   });
+  const [objetivos, setObjetivos] = useState([]);
+  const [objetivoStatus, setObjetivoStatus] = useState("");
 
   const isEditing = Boolean(editingMission);
   const lockedInitialPrazo = Boolean(initialPrazo && !isEditing);
@@ -92,10 +99,34 @@ export default function MissionForm({
     setForm({
       titulo: editingMission.titulo || "",
       instrucao: editingMission.instrucao || "",
+      objetivo_id: editingMission.objetivo_id ? String(editingMission.objetivo_id) : "",
       prazoTipo: initialPrazoTipo(editingMission, initialPrazo),
       prazo: editingMission.prazo || initialPrazo || "",
     });
   }, [editingMission, initialPrazo]);
+
+  useEffect(() => {
+    async function loadObjetivos() {
+      if (!token) {
+        return;
+      }
+
+      const result = await api.listObjetivos(token);
+      if (onUnauthorized?.(result)) {
+        return;
+      }
+
+      if (!result.ok) {
+        setObjetivoStatus(getErrorMessage(result, "Não foi possível carregar objetivos."));
+        return;
+      }
+
+      setObjetivos((Array.isArray(result.data) ? result.data : []).filter((objetivo) => objetivo.status === "ativo"));
+      setObjetivoStatus("");
+    }
+
+    loadObjetivos();
+  }, [onUnauthorized, token]);
 
   function updateField(event) {
     setForm((current) => ({
@@ -128,6 +159,7 @@ export default function MissionForm({
     const payload = {
       titulo: form.titulo.trim(),
       instrucao: form.instrucao.trim(),
+      objetivo_id: form.objetivo_id ? Number(form.objetivo_id) : null,
       prazo: buildDeadline(),
     };
 
@@ -177,6 +209,19 @@ export default function MissionForm({
             value={form.instrucao}
           />
         </label>
+
+        <label>
+          Objetivo
+          <select name="objetivo_id" onChange={updateField} value={form.objetivo_id}>
+            <option value="">Sem objetivo</option>
+            {objetivos.map((objetivo) => (
+              <option key={objetivo.id} value={objetivo.id}>
+                {objetivo.titulo}
+              </option>
+            ))}
+          </select>
+        </label>
+        {objetivoStatus && <p className="feedback error">{objetivoStatus}</p>}
 
         {!lockedInitialPrazo && (
           <>

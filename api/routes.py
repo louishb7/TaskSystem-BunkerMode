@@ -9,12 +9,19 @@ from api.schemas import (
     MissaoCreatePayload,
     MissaoUpdatePayload,
     NomeGeneralPayload,
+    ObjetivoCreatePayload,
+    ObjetivoProgressoPayload,
+    ObjetivoStatusPayload,
+    ObjetivoUpdatePayload,
     OperacaoCreatePayload,
     OperacaoMaterializarPayload,
     PlanningWindowPayload,
     RevisaoJustificativaPayload,
     RegistroPayload,
     SessionModePayload,
+    SonhoArquivarPayload,
+    SonhoCreatePayload,
+    SonhoUpdatePayload,
     SoldierExcusePayload,
     TimezonePayload,
     UnlockGeneralPayload,
@@ -30,10 +37,12 @@ from services.exceptions import (
     UsuarioNaoEncontrado,
 )
 from services.missao_service import MissaoService
+from services.objetivo_service import ObjetivoService
 from services.operacao_service import OperacaoService
 from services.operational_day import parse_iso_date
 from services.relatorio_service import RelatorioService
 from services.revisao_service import RevisaoService
+from services.sonho_service import SonhoService
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 
@@ -56,6 +65,14 @@ def get_revisao_service() -> RevisaoService:
 
 def get_operacao_service() -> OperacaoService:
     return OperacaoService(RepositorioPostgres(get_connection_string()))
+
+
+def get_sonho_service() -> SonhoService:
+    return SonhoService(RepositorioPostgres(get_connection_string()))
+
+
+def get_objetivo_service() -> ObjetivoService:
+    return ObjetivoService(RepositorioPostgres(get_connection_string()))
 
 
 def get_current_user(
@@ -234,6 +251,149 @@ def alterar_timezone(
         _raise_http_from_domain_error(erro)
 
     return _usuario_to_response(usuario_atualizado)
+
+
+@router.get("/sonhos")
+def listar_sonhos(
+    usuario=Depends(get_current_user),
+    sonho_service: SonhoService = Depends(get_sonho_service),
+):
+    try:
+        return sonho_service.listar_sonhos(usuario)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.post("/sonhos", status_code=status.HTTP_201_CREATED)
+def criar_sonho(
+    payload: SonhoCreatePayload,
+    usuario=Depends(get_current_user),
+    sonho_service: SonhoService = Depends(get_sonho_service),
+):
+    try:
+        return sonho_service.criar_sonho(usuario, payload.model_dump())
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.patch("/sonhos/{sonho_id}")
+def atualizar_sonho(
+    sonho_id: int,
+    payload: SonhoUpdatePayload,
+    usuario=Depends(get_current_user),
+    sonho_service: SonhoService = Depends(get_sonho_service),
+):
+    try:
+        return sonho_service.atualizar_sonho(
+            usuario,
+            sonho_id,
+            payload.model_dump(exclude_unset=True),
+        )
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.post("/sonhos/{sonho_id}/arquivar")
+def arquivar_sonho(
+    sonho_id: int,
+    payload: SonhoArquivarPayload,
+    usuario=Depends(get_current_user),
+    sonho_service: SonhoService = Depends(get_sonho_service),
+):
+    try:
+        return sonho_service.arquivar_sonho(usuario, sonho_id, payload.justificativa)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.post("/sonhos/{sonho_id}/promover")
+def promover_sonho(
+    sonho_id: int,
+    usuario=Depends(get_current_user),
+    sonho_service: SonhoService = Depends(get_sonho_service),
+):
+    try:
+        return sonho_service.promover_para_principal(usuario, sonho_id)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.get("/objetivos")
+def listar_objetivos(
+    usuario=Depends(get_current_user),
+    objetivo_service: ObjetivoService = Depends(get_objetivo_service),
+):
+    try:
+        return objetivo_service.listar_objetivos(usuario)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.post("/objetivos", status_code=status.HTTP_201_CREATED)
+def criar_objetivo(
+    payload: ObjetivoCreatePayload,
+    usuario=Depends(get_current_user),
+    objetivo_service: ObjetivoService = Depends(get_objetivo_service),
+):
+    try:
+        return objetivo_service.criar_objetivo(usuario, payload.model_dump())
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.patch("/objetivos/{objetivo_id}")
+def atualizar_objetivo(
+    objetivo_id: int,
+    payload: ObjetivoUpdatePayload,
+    usuario=Depends(get_current_user),
+    objetivo_service: ObjetivoService = Depends(get_objetivo_service),
+):
+    try:
+        return objetivo_service.atualizar_objetivo(
+            usuario,
+            objetivo_id,
+            payload.model_dump(exclude_unset=True),
+        )
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.patch("/objetivos/{objetivo_id}/progresso")
+def atualizar_progresso_objetivo(
+    objetivo_id: int,
+    payload: ObjetivoProgressoPayload,
+    usuario=Depends(get_current_user),
+    objetivo_service: ObjetivoService = Depends(get_objetivo_service),
+):
+    try:
+        return objetivo_service.atualizar_progresso(usuario, objetivo_id, payload.progresso)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.patch("/objetivos/{objetivo_id}/status")
+def atualizar_status_objetivo(
+    objetivo_id: int,
+    payload: ObjetivoStatusPayload,
+    usuario=Depends(get_current_user),
+    objetivo_service: ObjetivoService = Depends(get_objetivo_service),
+):
+    try:
+        return objetivo_service.atualizar_status(usuario, objetivo_id, payload.status)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
+@router.delete("/objetivos/{objetivo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def deletar_objetivo(
+    objetivo_id: int,
+    usuario=Depends(get_current_user),
+    objetivo_service: ObjetivoService = Depends(get_objetivo_service),
+):
+    try:
+        objetivo_service.deletar_objetivo(usuario, objetivo_id)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
 
 
 @router.post("/missoes", status_code=status.HTTP_201_CREATED)

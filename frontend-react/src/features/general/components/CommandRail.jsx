@@ -7,6 +7,7 @@ import BrandSymbol from "../../../components/ui/BrandSymbol.jsx";
 export default function CommandRail({
   generalName,
   onLogout,
+  onOpenMountain,
   onOpenOperations,
   onOpenReview,
   reviewCount,
@@ -22,18 +23,24 @@ export default function CommandRail({
       </div>
       <p className="rail-note">Revise o quadro, abra o relatório e mantenha o comando limpo.</p>
       <div className="rail-actions">
-        <button className="button secondary" type="button" onClick={onOpenReview}>
+        <button className="button secondary" type="button" onClick={onOpenMountain}>
           <span className="button-asset-label">
-            <img src={reviewAsset} alt="" />
-            ABRIR RELATÓRIO
+            <span className="rail-symbol" aria-hidden="true">▲</span>
+            A MONTANHA
           </span>
-          {reviewCount > 0 && <span className="count-badge">{reviewCount}</span>}
         </button>
         <button className="button secondary" type="button" onClick={onOpenOperations}>
           <span className="button-asset-label">
             <img src={operationsAsset} alt="" />
             OPERAÇÕES
           </span>
+        </button>
+        <button className="button secondary" type="button" onClick={onOpenReview}>
+          <span className="button-asset-label">
+            <img src={reviewAsset} alt="" />
+            ABRIR RELATÓRIO
+          </span>
+          {reviewCount > 0 && <span className="count-badge">{reviewCount}</span>}
         </button>
         <button className="button secondary" type="button" onClick={onLogout}>
           SAIR

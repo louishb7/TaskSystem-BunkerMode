@@ -22,6 +22,7 @@ class MissaoService:
     def criar_missao(self, dados: dict, usuario=None) -> Missao:
         self._garantir_modo_general(usuario)
         responsavel_id = dados.get("responsavel_id") or getattr(usuario, "usuario_id", None)
+        self._garantir_objetivo_do_usuario(usuario, dados.get("objetivo_id"))
         campos_missao = {
             "titulo": dados["titulo"],
             # Compatibilidade legada do banco/API.
@@ -29,6 +30,7 @@ class MissaoService:
             "prazo": dados.get("prazo"),
             "instrucao": dados.get("instrucao"),
             "user_id": responsavel_id,
+            "objetivo_id": dados.get("objetivo_id"),
         }
         if dados.get("status") is not None:
             campos_missao["status"] = dados["status"]
@@ -165,6 +167,9 @@ class MissaoService:
             missao.atualizar_prazo(dados["prazo"])
         if "status" in dados:
             self._aplicar_status_editavel_pelo_general(missao, dados["status"])
+        if "objetivo_id" in dados:
+            self._garantir_objetivo_do_usuario(usuario, dados["objetivo_id"])
+            missao.objetivo_id = missao._validar_objetivo_id(dados["objetivo_id"])
 
         self._reconciliar_estado_apos_edicao(missao)
         self.repositorio.atualizar_missao(missao)
@@ -404,6 +409,16 @@ class MissaoService:
                 if contexto is not None:
                     missao.atualizar_user_id(contexto.get("responsavel_id"))
         return missoes
+
+    def _garantir_objetivo_do_usuario(self, usuario, objetivo_id: int | None) -> None:
+        if objetivo_id is None or usuario is None:
+            return
+        buscar_objetivo = getattr(self.repositorio, "buscar_objetivo_por_id", None)
+        if not callable(buscar_objetivo):
+            return
+        objetivo = buscar_objetivo(objetivo_id)
+        if objetivo is None or objetivo.usuario_id != usuario.usuario_id:
+            raise ValueError("Objetivo vinculado não encontrado.")
 
     def _registrar_auditoria(
         self,

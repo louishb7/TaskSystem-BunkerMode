@@ -7,8 +7,10 @@ import json
 
 from auditoria import EventoAuditoria
 from missao import Missao
+from objetivo import Objetivo
 from operacao import Operacao
 from revisao import RevisaoSemanal
+from sonho import Sonho
 from usuario import Usuario
 
 
@@ -158,6 +160,40 @@ class RepositorioPostgres:
             ADD COLUMN IF NOT EXISTS general_verdict TEXT NULL;
             """,
             """
+            CREATE TABLE IF NOT EXISTS sonhos (
+                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+                titulo VARCHAR(200) NOT NULL,
+                descricao TEXT NULL,
+                tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('principal', 'secundario')),
+                status VARCHAR(20) NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'arquivado', 'concluido')),
+                justificativa_arquivamento TEXT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                archived_at TIMESTAMP NULL,
+                concluded_at TIMESTAMP NULL
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS objetivos (
+                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+                sonho_id INTEGER NULL REFERENCES sonhos(id) ON DELETE SET NULL,
+                titulo VARCHAR(200) NOT NULL,
+                descricao TEXT NULL,
+                data_alvo DATE NULL,
+                progresso INTEGER NOT NULL DEFAULT 0 CHECK (progresso >= 0 AND progresso <= 100),
+                status VARCHAR(20) NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'concluido', 'pausado', 'abandonado')),
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                concluded_at TIMESTAMP NULL
+            );
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS objetivo_id INTEGER NULL REFERENCES objetivos(id) ON DELETE SET NULL;
+            """,
+            """
             CREATE TABLE IF NOT EXISTS operacoes (
                 operacao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                 usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
@@ -287,6 +323,7 @@ class RepositorioPostgres:
             general_verdict = None
             operacao_id = None
             operacao_nome = None
+            objetivo_id = None
         elif len(linha) == 6:
             (
                 missao_id,
@@ -305,6 +342,7 @@ class RepositorioPostgres:
             general_verdict = None
             operacao_id = None
             operacao_nome = None
+            objetivo_id = None
         elif len(linha) == 10:
             (
                 missao_id,
@@ -325,6 +363,7 @@ class RepositorioPostgres:
             failure_reason = soldier_excuse
             operacao_id = None
             operacao_nome = None
+            objetivo_id = None
         elif len(linha) == 9:
             (
                 missao_id,
@@ -343,6 +382,7 @@ class RepositorioPostgres:
             failure_reason = soldier_excuse
             operacao_id = None
             operacao_nome = None
+            objetivo_id = None
         elif len(linha) == 13:
             (
                 missao_id,
@@ -363,6 +403,7 @@ class RepositorioPostgres:
             failure_reason_type = None
             operacao_id = None
             operacao_nome = None
+            objetivo_id = None
         elif len(linha) == 12:
             (
                 missao_id,
@@ -381,6 +422,7 @@ class RepositorioPostgres:
             failure_reason_type = None
             operacao_id = None
             operacao_nome = None
+            objetivo_id = None
         elif len(linha) == 15:
             (
                 missao_id,
@@ -399,7 +441,51 @@ class RepositorioPostgres:
                 operacao_id,
                 operacao_nome,
             ) = linha
+            objetivo_id = None
         elif len(linha) == 17:
+            if isinstance(linha[7], bool):
+                (
+                    missao_id,
+                    titulo,
+                    prioridade,
+                    prazo,
+                    instrucao,
+                    status,
+                    legacy_priority_marker,
+                    is_pinned,
+                    created_at,
+                    completed_at,
+                    failed_at,
+                    failure_reason_type,
+                    failure_reason,
+                    soldier_excuse,
+                    general_verdict,
+                    operacao_id,
+                    operacao_nome,
+                ) = linha
+                objetivo_id = None
+                is_pinned = bool(is_pinned or legacy_priority_marker)
+            else:
+                (
+                    missao_id,
+                    titulo,
+                    prioridade,
+                    prazo,
+                    instrucao,
+                    status,
+                    is_pinned,
+                    created_at,
+                    completed_at,
+                    failed_at,
+                    failure_reason_type,
+                    failure_reason,
+                    soldier_excuse,
+                    general_verdict,
+                    operacao_id,
+                    operacao_nome,
+                    objetivo_id,
+                ) = linha
+        elif len(linha) == 18:
             (
                 missao_id,
                 titulo,
@@ -418,6 +504,7 @@ class RepositorioPostgres:
                 general_verdict,
                 operacao_id,
                 operacao_nome,
+                objetivo_id,
             ) = linha
             is_pinned = bool(is_pinned or legacy_priority_marker)
         elif len(linha) == 16:
@@ -439,6 +526,7 @@ class RepositorioPostgres:
                 operacao_id,
                 operacao_nome,
             ) = linha
+            objetivo_id = None
         else:
             (
                 missao_id,
@@ -457,6 +545,7 @@ class RepositorioPostgres:
             ) = linha
             operacao_id = None
             operacao_nome = None
+            objetivo_id = None
         return Missao(
             missao_id=missao_id,
             titulo=titulo,
@@ -473,6 +562,7 @@ class RepositorioPostgres:
             general_verdict=general_verdict,
             operacao_id=operacao_id,
             operacao_nome=operacao_nome,
+            objetivo_id=objetivo_id,
             is_pinned=is_pinned,
         )
 
@@ -594,6 +684,62 @@ class RepositorioPostgres:
             created_at=created_at,
         )
 
+    def _reconstruir_sonho(self, linha: tuple) -> Sonho:
+        (
+            sonho_id,
+            usuario_id,
+            titulo,
+            descricao,
+            tipo,
+            status,
+            justificativa_arquivamento,
+            created_at,
+            updated_at,
+            archived_at,
+            concluded_at,
+        ) = linha
+        return Sonho(
+            sonho_id=sonho_id,
+            usuario_id=usuario_id,
+            titulo=titulo,
+            descricao=descricao,
+            tipo=tipo,
+            status=status,
+            justificativa_arquivamento=justificativa_arquivamento,
+            created_at=created_at,
+            updated_at=updated_at,
+            archived_at=archived_at,
+            concluded_at=concluded_at,
+        )
+
+    def _reconstruir_objetivo(self, linha: tuple) -> Objetivo:
+        (
+            objetivo_id,
+            usuario_id,
+            sonho_id,
+            titulo,
+            descricao,
+            data_alvo,
+            progresso,
+            status,
+            created_at,
+            updated_at,
+            concluded_at,
+        ) = linha
+        return Objetivo(
+            objetivo_id=objetivo_id,
+            usuario_id=usuario_id,
+            sonho_id=sonho_id,
+            titulo=titulo,
+            descricao=descricao,
+            data_alvo=data_alvo,
+            progresso=progresso,
+            status=status,
+            created_at=created_at,
+            updated_at=updated_at,
+            concluded_at=concluded_at,
+        )
+
     def carregar_dados(self) -> list[Missao]:
         self.inicializar_schema()
         try:
@@ -603,7 +749,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id
                         FROM missoes m
                         LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
                         LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
@@ -628,7 +774,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
                         LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
@@ -655,7 +801,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id
                         FROM missoes m
                         LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
                         LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
@@ -681,9 +827,10 @@ class RepositorioPostgres:
                         """
                         INSERT INTO missoes (
                             titulo, prioridade, prazo, instrucao, status, is_pinned,
-                            created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
+                            created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict,
+                            objetivo_id
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
                         (
@@ -700,6 +847,7 @@ class RepositorioPostgres:
                             missao.failure_reason,
                             missao.soldier_excuse,
                             missao.general_verdict,
+                            missao.objetivo_id,
                         ),
                     )
                     missao_id = cursor.fetchone()[0]
@@ -732,7 +880,8 @@ class RepositorioPostgres:
                             failure_reason_type = %s,
                             failure_reason = %s,
                             soldier_excuse = %s,
-                            general_verdict = %s
+                            general_verdict = %s,
+                            objetivo_id = %s
                         WHERE missao_id = %s;
                         """,
                         (
@@ -749,6 +898,7 @@ class RepositorioPostgres:
                             missao.failure_reason,
                             missao.soldier_excuse,
                             missao.general_verdict,
+                            missao.objetivo_id,
                             missao.missao_id,
                         ),
                     )
@@ -1263,7 +1413,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
                         LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
@@ -1290,7 +1440,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
                         LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
@@ -1327,9 +1477,10 @@ class RepositorioPostgres:
                         """
                         INSERT INTO missoes (
                             titulo, prioridade, prazo, instrucao, status, is_pinned,
-                            created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict
+                            created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict,
+                            objetivo_id
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
                         (
@@ -1346,6 +1497,7 @@ class RepositorioPostgres:
                             missao.failure_reason,
                             missao.soldier_excuse,
                             missao.general_verdict,
+                            missao.objetivo_id,
                         ),
                     )
                     missao_id = cursor.fetchone()[0]
@@ -1369,6 +1521,316 @@ class RepositorioPostgres:
                 "Erro ao criar ordem de operação no banco de dados."
             ) from erro
         return missao
+
+    def criar_sonho(self, sonho: Sonho) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO sonhos (
+                            usuario_id, titulo, descricao, tipo, status, justificativa_arquivamento,
+                            created_at, updated_at, archived_at, concluded_at
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id;
+                        """,
+                        (
+                            sonho.usuario_id,
+                            sonho.titulo,
+                            sonho.descricao,
+                            sonho.tipo.value,
+                            sonho.status.value,
+                            sonho.justificativa_arquivamento,
+                            sonho.created_at,
+                            sonho.updated_at,
+                            sonho.archived_at,
+                            sonho.concluded_at,
+                        ),
+                    )
+                    sonho.atualizar_sonho_id(cursor.fetchone()[0])
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError("Erro ao criar sonho no banco de dados.") from erro
+
+    def atualizar_sonho(self, sonho: Sonho) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        UPDATE sonhos
+                        SET titulo = %s,
+                            descricao = %s,
+                            tipo = %s,
+                            status = %s,
+                            justificativa_arquivamento = %s,
+                            updated_at = %s,
+                            archived_at = %s,
+                            concluded_at = %s
+                        WHERE id = %s AND usuario_id = %s;
+                        """,
+                        (
+                            sonho.titulo,
+                            sonho.descricao,
+                            sonho.tipo.value,
+                            sonho.status.value,
+                            sonho.justificativa_arquivamento,
+                            sonho.updated_at,
+                            sonho.archived_at,
+                            sonho.concluded_at,
+                            sonho.sonho_id,
+                            sonho.usuario_id,
+                        ),
+                    )
+                    if cursor.rowcount == 0:
+                        raise EscritaRepositorioError(f"Sonho {sonho.sonho_id} não encontrado para atualização.")
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError("Erro ao atualizar sonho no banco de dados.") from erro
+
+    def promover_sonho_para_principal(self, usuario_id: int, sonho_id: int, instante) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT 1 FROM sonhos
+                        WHERE id = %s AND usuario_id = %s AND status = 'ativo';
+                        """,
+                        (sonho_id, usuario_id),
+                    )
+                    if cursor.fetchone() is None:
+                        raise EscritaRepositorioError("Sonho não encontrado.")
+                    cursor.execute(
+                        """
+                        UPDATE sonhos
+                        SET tipo = 'secundario',
+                            updated_at = %s
+                        WHERE usuario_id = %s AND status = 'ativo' AND tipo = 'principal';
+                        """,
+                        (instante, usuario_id),
+                    )
+                    cursor.execute(
+                        """
+                        UPDATE sonhos
+                        SET tipo = 'principal',
+                            updated_at = %s
+                        WHERE id = %s AND usuario_id = %s AND status = 'ativo';
+                        """,
+                        (instante, sonho_id, usuario_id),
+                    )
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError("Erro ao promover sonho no banco de dados.") from erro
+
+    def buscar_sonho_por_id(self, sonho_id: int) -> Sonho | None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT id, usuario_id, titulo, descricao, tipo, status, justificativa_arquivamento,
+                               created_at, updated_at, archived_at, concluded_at
+                        FROM sonhos
+                        WHERE id = %s;
+                        """,
+                        (sonho_id,),
+                    )
+                    linha = cursor.fetchone()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError("Erro ao buscar sonho no banco de dados.") from erro
+        return None if linha is None else self._reconstruir_sonho(linha)
+
+    def listar_sonhos_por_usuario(self, usuario_id: int) -> list[Sonho]:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT id, usuario_id, titulo, descricao, tipo, status, justificativa_arquivamento,
+                               created_at, updated_at, archived_at, concluded_at
+                        FROM sonhos
+                        WHERE usuario_id = %s
+                        ORDER BY status ASC, tipo ASC, updated_at DESC, id DESC;
+                        """,
+                        (usuario_id,),
+                    )
+                    linhas = cursor.fetchall()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError("Erro ao listar sonhos no banco de dados.") from erro
+        return [self._reconstruir_sonho(linha) for linha in linhas]
+
+    def contar_sonhos_ativos_por_usuario(self, usuario_id: int) -> dict:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT
+                            COUNT(*) AS total,
+                            COUNT(*) FILTER (WHERE tipo = 'principal') AS principal,
+                            COUNT(*) FILTER (WHERE tipo = 'secundario') AS secundario
+                        FROM sonhos
+                        WHERE usuario_id = %s AND status = 'ativo';
+                        """,
+                        (usuario_id,),
+                    )
+                    total, principal, secundario = cursor.fetchone()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError("Erro ao contar sonhos no banco de dados.") from erro
+        return {"total": total, "principal": principal, "secundario": secundario}
+
+    def criar_objetivo(self, objetivo: Objetivo) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO objetivos (
+                            usuario_id, sonho_id, titulo, descricao, data_alvo, progresso,
+                            status, created_at, updated_at, concluded_at
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id;
+                        """,
+                        (
+                            objetivo.usuario_id,
+                            objetivo.sonho_id,
+                            objetivo.titulo,
+                            objetivo.descricao,
+                            objetivo.data_alvo,
+                            objetivo.progresso,
+                            objetivo.status.value,
+                            objetivo.created_at,
+                            objetivo.updated_at,
+                            objetivo.concluded_at,
+                        ),
+                    )
+                    objetivo.atualizar_objetivo_id(cursor.fetchone()[0])
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError("Erro ao criar objetivo no banco de dados.") from erro
+
+    def atualizar_objetivo(self, objetivo: Objetivo) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        UPDATE objetivos
+                        SET sonho_id = %s,
+                            titulo = %s,
+                            descricao = %s,
+                            data_alvo = %s,
+                            progresso = %s,
+                            status = %s,
+                            updated_at = %s,
+                            concluded_at = %s
+                        WHERE id = %s AND usuario_id = %s;
+                        """,
+                        (
+                            objetivo.sonho_id,
+                            objetivo.titulo,
+                            objetivo.descricao,
+                            objetivo.data_alvo,
+                            objetivo.progresso,
+                            objetivo.status.value,
+                            objetivo.updated_at,
+                            objetivo.concluded_at,
+                            objetivo.objetivo_id,
+                            objetivo.usuario_id,
+                        ),
+                    )
+                    if cursor.rowcount == 0:
+                        raise EscritaRepositorioError(f"Objetivo {objetivo.objetivo_id} não encontrado para atualização.")
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError("Erro ao atualizar objetivo no banco de dados.") from erro
+
+    def buscar_objetivo_por_id(self, objetivo_id: int) -> Objetivo | None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT id, usuario_id, sonho_id, titulo, descricao, data_alvo, progresso,
+                               status, created_at, updated_at, concluded_at
+                        FROM objetivos
+                        WHERE id = %s;
+                        """,
+                        (objetivo_id,),
+                    )
+                    linha = cursor.fetchone()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError("Erro ao buscar objetivo no banco de dados.") from erro
+        return None if linha is None else self._reconstruir_objetivo(linha)
+
+    def listar_objetivos_por_usuario(self, usuario_id: int) -> list[Objetivo]:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT id, usuario_id, sonho_id, titulo, descricao, data_alvo, progresso,
+                               status, created_at, updated_at, concluded_at
+                        FROM objetivos
+                        WHERE usuario_id = %s
+                        ORDER BY status ASC, data_alvo NULLS LAST, updated_at DESC, id DESC;
+                        """,
+                        (usuario_id,),
+                    )
+                    linhas = cursor.fetchall()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError("Erro ao listar objetivos no banco de dados.") from erro
+        return [self._reconstruir_objetivo(linha) for linha in linhas]
+
+    def deletar_objetivo(self, objetivo_id: int, usuario_id: int) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        "DELETE FROM objetivos WHERE id = %s AND usuario_id = %s;",
+                        (objetivo_id, usuario_id),
+                    )
+                    if cursor.rowcount == 0:
+                        raise EscritaRepositorioError(f"Objetivo {objetivo_id} não encontrado para remoção.")
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError("Erro ao remover objetivo no banco de dados.") from erro
 
     def registrar_auditoria(self, evento: EventoAuditoria) -> None:
         self.inicializar_schema()

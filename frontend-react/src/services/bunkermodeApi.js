@@ -146,4 +146,37 @@ export const api = {
   getMissionHistory(token, missionId) {
     return request(`/missoes/${missionId}/historico`, { token });
   },
+  listSonhos(token) {
+    return request("/sonhos", { token });
+  },
+  createSonho(token, payload) {
+    return request("/sonhos", { token, method: "POST", body: payload });
+  },
+  updateSonho(token, sonhoId, payload) {
+    return request(`/sonhos/${sonhoId}`, { token, method: "PATCH", body: payload });
+  },
+  archiveSonho(token, sonhoId, payload) {
+    return request(`/sonhos/${sonhoId}/arquivar`, { token, method: "POST", body: payload });
+  },
+  promoteSonho(token, sonhoId) {
+    return request(`/sonhos/${sonhoId}/promover`, { token, method: "POST" });
+  },
+  listObjetivos(token) {
+    return request("/objetivos", { token });
+  },
+  createObjetivo(token, payload) {
+    return request("/objetivos", { token, method: "POST", body: payload });
+  },
+  updateObjetivo(token, objetivoId, payload) {
+    return request(`/objetivos/${objetivoId}`, { token, method: "PATCH", body: payload });
+  },
+  updateObjetivoProgresso(token, objetivoId, payload) {
+    return request(`/objetivos/${objetivoId}/progresso`, { token, method: "PATCH", body: payload });
+  },
+  updateObjetivoStatus(token, objetivoId, payload) {
+    return request(`/objetivos/${objetivoId}/status`, { token, method: "PATCH", body: payload });
+  },
+  deleteObjetivo(token, objetivoId) {
+    return request(`/objetivos/${objetivoId}`, { token, method: "DELETE" });
+  },
 };

@@ -62,6 +62,7 @@ class Missao:
         user_id=None,
         operacao_id=None,
         operacao_nome=None,
+        objetivo_id=None,
         is_pinned=False,
     ):
         self.missao_id = self._validar_missao_id(missao_id)
@@ -85,6 +86,7 @@ class Missao:
             operacao_nome,
             "Nome da operação não pode ser vazio.",
         )
+        self.objetivo_id = self._validar_objetivo_id(objetivo_id)
         self.is_pinned = self._validar_is_pinned(is_pinned)
         self._normalizar_consistencia_inicial()
 
@@ -118,6 +120,7 @@ class Missao:
             "user_id": self.user_id,
             "operacao_id": self.operacao_id,
             "operacao_nome": self.operacao_nome,
+            "objetivo_id": self.objetivo_id,
             "requires_immediate_justification": self.requires_immediate_justification(),
             "has_pending_non_blocking_justification": self.has_pending_non_blocking_justification(),
             "permissions": permissions or {
@@ -430,6 +433,13 @@ class Missao:
         if not isinstance(operacao_id, int) or operacao_id < 1:
             raise ValueError("ID da operação da missão deve ser um inteiro positivo.")
         return operacao_id
+
+    def _validar_objetivo_id(self, objetivo_id):
+        if objetivo_id is None:
+            return None
+        if not isinstance(objetivo_id, int) or objetivo_id < 1:
+            raise ValueError("ID do objetivo da missão deve ser um inteiro positivo.")
+        return objetivo_id
 
     def _validar_prioridade(self, prioridade):
         if isinstance(prioridade, PrioridadeMissao):

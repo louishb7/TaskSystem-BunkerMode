@@ -55,6 +55,7 @@ button {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   min-height: 48px;
@@ -72,12 +73,14 @@ textarea {
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   border-color: var(--fire);
 }
 
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible {
   outline: 1px solid rgba(255, 138, 42, 0.7);
   outline-offset: 2px;
@@ -642,6 +645,16 @@ h3 {
   border-radius: 50%;
   object-fit: contain;
   opacity: 0.78;
+}
+
+.rail-symbol {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--fire);
+  font-size: 0.74rem;
+  line-height: 1;
 }
 
 .asset-heading,
@@ -2599,6 +2612,187 @@ h3 {
   padding: 0;
 }
 
+.mountain-modal-card {
+  width: min(1120px, 100%);
+}
+
+.mountain-page {
+  display: grid;
+  gap: 22px;
+}
+
+.mountain-header,
+.mountain-section-head,
+.objetivo-card-head,
+.objetivo-group-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.mountain-header h1 {
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+}
+
+.mountain-section {
+  display: grid;
+  gap: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+}
+
+.sonho-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.1fr) minmax(260px, 0.9fr);
+  gap: 14px;
+}
+
+.sonho-secondary-list,
+.objetivo-list,
+.objetivo-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.sonho-card,
+.objetivo-card,
+.objetivo-form-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 86px),
+    rgba(12, 12, 12, 0.45);
+  padding: 16px;
+}
+
+.sonho-card.principal {
+  min-height: 220px;
+  border-color: var(--fire-border);
+  background:
+    linear-gradient(135deg, var(--fire-wash), transparent 54%),
+    rgba(13, 13, 13, 0.62);
+}
+
+.sonho-card h3,
+.objetivo-card h3 {
+  margin-bottom: 8px;
+}
+
+.mountain-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr);
+  gap: 12px;
+}
+
+.objetivo-group {
+  display: grid;
+  gap: 10px;
+}
+
+.objetivo-group-title {
+  align-items: center;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 8px;
+}
+
+.objetivo-group-title h3 {
+  margin-bottom: 0;
+  font-size: 0.84rem;
+}
+
+.objetivo-group-title span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.objetivo-card.status-abandonado {
+  opacity: 0.72;
+}
+
+.objetivo-card-head strong {
+  color: var(--fire);
+  font-size: 0.86rem;
+}
+
+.objetivo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.target-date.past {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 138, 42, 0.52);
+  text-underline-offset: 4px;
+}
+
+.progress-track {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--surface-deep);
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--fire-dark), var(--fire));
+}
+
+.objetivo-empty-orders {
+  margin-bottom: 0;
+  font-size: 0.78rem;
+}
+
+.compact-slider {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.status-tag.ativo {
+  color: var(--success);
+}
+
+.status-tag.pausado {
+  color: var(--fire);
+}
+
+.status-tag.abandonado {
+  color: var(--text-dim);
+}
+
+.status-tag.concluido {
+  color: var(--text);
+}
+
+.objetivo-form input[type="date"],
+.mission-form input[type="date"] {
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.objetivo-form input[type="date"]::-webkit-calendar-picker-indicator,
+.mission-form input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.72;
+  filter: invert(1);
+}
+
 @media (max-width: 1180px) {
   .general-layout {
     grid-template-columns: 220px minmax(0, 1fr);
@@ -2615,6 +2809,18 @@ h3 {
 }
 
 @media (max-width: 900px) {
+  .sonho-grid,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mountain-header,
+  .mountain-section-head,
+  .objetivo-card-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .auth-page,
   .general-layout {
     grid-template-columns: 1fr;
