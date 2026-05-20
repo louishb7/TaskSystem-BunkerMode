@@ -53,6 +53,7 @@ class MissaoService:
 
     def listar_missoes(self, usuario=None) -> list[Missao]:
         missoes = self._carregar_missoes_do_usuario(usuario)
+        self._reconciliar_falhas(usuario=usuario, missoes=missoes)
         missoes = self.sort_missions_for_board(missoes)
 
         if usuario is not None and getattr(usuario, "active_mode", "general") == "soldier":
@@ -63,6 +64,7 @@ class MissaoService:
     def listar_missoes_historicas(self, usuario=None) -> list[Missao]:
         self._garantir_modo_general(usuario)
         missoes = self._carregar_missoes_do_usuario(usuario)
+        self._reconciliar_falhas(usuario=usuario, missoes=missoes)
         return self.sort_missions_for_board(
             [
                 missao
@@ -73,9 +75,11 @@ class MissaoService:
 
     def listar_missoes_para_revisao(self, usuario=None) -> list[Missao]:
         self._garantir_modo_general(usuario)
+        missoes = self._carregar_missoes_do_usuario(usuario)
+        self._reconciliar_falhas(usuario=usuario, missoes=missoes)
         return [
             missao
-            for missao in self.sort_missions_for_board(self._carregar_missoes_do_usuario(usuario))
+            for missao in self.sort_missions_for_board(missoes)
             if missao.requires_general_review()
         ]
 
@@ -136,6 +140,7 @@ class MissaoService:
 
     def listar_missoes_por_dia_operacional(self, dia: date, usuario=None) -> list[Missao]:
         missoes = self._carregar_missoes_do_usuario(usuario)
+        self._reconciliar_falhas(usuario=usuario, missoes=missoes)
         return self.sort_missions_for_board(
             [
                 missao
@@ -180,6 +185,7 @@ class MissaoService:
         if missao.user_id is not None and usuario is not None and missao.user_id != usuario.usuario_id:
             raise MissaoNaoEncontrada(f"Missão {missao_id} não encontrada")
 
+        self._marcar_falha_se_vencida(missao, usuario)
         if not missao.can_be_completed(reference_date=self._today()):
             raise ValueError("Missão não pode ser concluída neste estado.")
 

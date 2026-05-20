@@ -36,9 +36,6 @@ export default function DaySelector({
         const hasExecutionLabel = !future && (today || past || stats.total > 0);
         const executionLabel = isDayOff ? "DIA OFF" : hasExecutionLabel ? `${percent}%` : "";
         const tone = isDayOff ? "off" : hasExecutionLabel ? executionTone(percent) : "neutral";
-        const dayNumber = String(date.getDate()).padStart(2, "0");
-        const monthNumber = String(date.getMonth() + 1).padStart(2, "0");
-
         return (
           <div
             key={date.toISOString()}
@@ -46,7 +43,6 @@ export default function DaySelector({
           >
             <button className="day-select-button" type="button" onClick={() => onSelectDate(date)}>
               <span className="day-week">{WEEK_LABELS[date.getDay()]}</span>
-              <span className="day-date">{dayNumber}/{monthNumber}</span>
               {today && <span className="day-status day-today">HOJE</span>}
               {executionLabel && (
                 <span

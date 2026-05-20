@@ -1211,9 +1211,11 @@ class RepositorioPostgres:
                         )
                     cursor.execute(
                         """
-                        SELECT missao_id
-                        FROM missao_contextos
-                        WHERE operacao_id = %s;
+                        SELECT mc.missao_id
+                        FROM missao_contextos mc
+                        JOIN missoes m ON m.missao_id = mc.missao_id
+                        WHERE mc.operacao_id = %s
+                          AND (m.prazo IS NULL OR m.prazo >= CURRENT_DATE);
                         """,
                         (operacao_id,),
                     )
@@ -1231,6 +1233,15 @@ class RepositorioPostgres:
                             "DELETE FROM missoes WHERE missao_id = ANY(%s);",
                             (missao_ids,),
                         )
+                    cursor.execute(
+                        """
+                        UPDATE missao_contextos
+                        SET operacao_id = NULL,
+                            operacao_dia = NULL
+                        WHERE operacao_id = %s;
+                        """,
+                        (operacao_id,),
+                    )
                     cursor.execute(
                         "DELETE FROM operacoes WHERE operacao_id = %s AND usuario_id = %s;",
                         (operacao_id, usuario_id),

@@ -602,19 +602,24 @@ def test_usuario_pode_concluir_apenas_missao_propria():
     assert repositorio.missao_atualizada is missao
 
 
-def test_soldado_pode_concluir_missao_vencida_como_execucao_atrasada():
+def test_soldado_nao_conclui_missao_vencida_apos_corte_operacional():
     repositorio = RepositorioOwnershipFake()
-    repositorio.missao.atualizar_prazo("01-01-2020")
-    service = MissaoService(repositorio)
+    repositorio.missao.atualizar_prazo("24-04-2026")
+    service = MissaoService(
+        repositorio,
+        now_provider=lambda: datetime(2026, 4, 25, 4, 1, 0),
+    )
     usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
 
-    missao = service.concluir_missao(10, usuario=usuario)
+    with pytest.raises(ValueError, match="Missão não pode ser concluída neste estado."):
+        service.concluir_missao(10, usuario=usuario)
 
-    assert missao.status == StatusMissao.CONCLUIDA
-    assert missao.completed_at is not None
+    assert repositorio.missao.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA
+    assert repositorio.missao.failed_at == datetime(2026, 4, 25, 4, 1, 0)
+    assert repositorio.auditoria_registrada[-1].acao == "missao_falhou"
 
 
-def test_missao_pendente_vencida_nao_falha_automaticamente_apos_quatro_da_manha():
+def test_missao_pendente_vencida_falha_automaticamente_apos_quatro_da_manha():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao.atualizar_prazo("24-04-2026")
     usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
@@ -637,8 +642,8 @@ def test_missao_pendente_vencida_nao_falha_automaticamente_apos_quatro_da_manha(
     missoes = service_0401.listar_missoes(usuario=usuario)
 
     assert [missao.missao_id for missao in missoes] == [10]
-    assert repositorio.missao.status == StatusMissao.PENDENTE
-    assert repositorio.missao.failed_at is None
+    assert repositorio.missao.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA
+    assert repositorio.missao.failed_at == datetime(2026, 4, 25, 4, 1, 0)
 
 
 def test_soldado_conclui_missao_do_dia_anterior_antes_das_quatro():

@@ -78,6 +78,7 @@ class RepositorioV2Fake:
         self.proximo_usuario_id = 1
         self.proximo_evento_id = 1
         self.proximo_operacao_id = 1
+        self.current_date = DATA_TESTE.date()
 
     def carregar_dados(self):
         return sorted(self.missoes, key=lambda m: (m.prioridade.value, m.missao_id))
@@ -218,9 +219,10 @@ class RepositorioV2Fake:
 
     def remover_operacao(self, operacao_id, usuario_id):
         missao_ids = [
-            missao_id
-            for missao_id, contexto in self.contextos.items()
-            if contexto.get("operacao_id") == operacao_id
+            missao.missao_id
+            for missao in self.missoes
+            if self.contextos.get(missao.missao_id, {}).get("operacao_id") == operacao_id
+            and (missao.due_date is None or missao.due_date >= self.current_date)
         ]
         self.operacoes = [
             operacao
@@ -230,6 +232,14 @@ class RepositorioV2Fake:
         self.missoes = [missao for missao in self.missoes if missao.missao_id not in missao_ids]
         for missao_id in missao_ids:
             self.contextos.pop(missao_id, None)
+        for missao_id, contexto in self.contextos.items():
+            if contexto.get("operacao_id") == operacao_id:
+                contexto["operacao_id"] = None
+                contexto["operacao_dia"] = None
+                missao = self.buscar_por_id(missao_id)
+                if missao is not None:
+                    missao.operacao_id = None
+                    missao.operacao_nome = None
         self.auditoria = [evento for evento in self.auditoria if evento.missao_id not in missao_ids]
 
     def buscar_missao_de_operacao_por_data(self, operacao_id, prazo):
@@ -415,7 +425,7 @@ def test_api_rejeita_timezone_invalido():
     assert "Fuso horário inválido" in erro.value.detail
 
 
-def test_soldado_pode_concluir_missao_vencida_como_execucao_atrasada():
+def test_soldado_nao_conclui_missao_vencida_apos_corte_operacional():
     repo, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
     criar_missao(
         MissaoCreatePayload(
@@ -431,11 +441,14 @@ def test_soldado_pode_concluir_missao_vencida_como_execucao_atrasada():
     usuario.definir_modo("soldier")
     auth.alterar_modo(usuario.usuario_id, "soldier")
 
-    missao = missoes.concluir_missao(1, usuario=usuario)
+    with pytest.raises(HTTPException) as erro:
+        concluir_missao(1, usuario=usuario, missao_service=missoes)
 
-    assert missao.status == StatusMissao.CONCLUIDA
-    assert missao.completed_at is not None
-    assert listar_missoes(usuario=usuario, missao_service=missoes) == []
+    missoes_operacionais = listar_missoes(usuario=usuario, missao_service=missoes)
+
+    assert erro.value.status_code == 400
+    assert missoes_operacionais[0]["status_code"] == "FALHA_PENDENTE_JUSTIFICATIVA"
+    assert missoes_operacionais[0]["failed_at"] is not None
 
 
 def test_general_pode_concluir_missao_sem_entrar_no_modo_soldado():
@@ -1494,32 +1507,36 @@ def test_operacao_encerrada_lista_metricas_reais_de_execucao():
     }
 
 
-def test_operacao_cancelada_e_removida_da_listagem():
+def test_operacao_cancelada_remove_ordens_atuais_e_preserva_historico():
     repo, _, missoes, _, _, usuario = preparar_ambiente()
     operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
     operacao = criar_operacao(
         OperacaoCreatePayload(
             nome="Criar disciplina",
-            start_date="2026-04-20",
-            end_date="2026-04-30",
-            weekdays=[0, 1, 2, 3, 4],
+            start_date="2026-04-23",
+            end_date="2026-04-27",
+            weekdays=[0, 3, 4],
             ordem_titulo="Executar bloco de disciplina",
         ),
         usuario=usuario,
         operacao_service=operacoes,
     )
     materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
+        OperacaoMaterializarPayload(start_date="2026-04-23", end_date="2026-04-27"),
         usuario=usuario,
         operacao_service=operacoes,
     )
 
-    assert len(listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)) == 1
+    assert len(listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)) == 3
 
     cancelar_operacao(operacao["id"], usuario=usuario, operacao_service=operacoes)
 
+    missoes_restantes = listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)
+
     assert listar_operacoes(usuario=usuario, operacao_service=operacoes) == []
-    assert listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes) == []
+    assert len(missoes_restantes) == 1
+    assert missoes_restantes[0]["prazo"] == "23-04-2026"
+    assert missoes_restantes[0]["operacao_id"] is None
 
 
 def test_soldado_migra_para_dia_atual_antes_das_quatro_sem_pendencias_anteriores():

@@ -51,10 +51,6 @@ function formatDeadline(value) {
     return "HOJE";
   }
 
-  if (parsed.getTime() < todayStart().getTime()) {
-    return "ATRASADA";
-  }
-
   return `${day}/${month}`;
 }
 
@@ -147,7 +143,7 @@ export default function MissionCard({
             type="button"
             onClick={() => setFailureFormOpen(true)}
           >
-            Registrar falha
+            REGISTRAR FALHA
           </button>
         )}
 
@@ -260,7 +256,7 @@ export default function MissionCard({
         )}
         {canJustify && !failureFormOpen && (
           <button
-            className="button secondary compact subtle"
+            className="button danger ghost compact"
             disabled={disabled}
             type="button"
             onClick={() => setFailureFormOpen(true)}
@@ -274,7 +270,7 @@ export default function MissionCard({
           </button>
         )}
         <button
-          className="button secondary compact subtle"
+          className="button secondary compact"
           type="button"
           onClick={() => setDetailsOpen((current) => !current)}
         >
