@@ -31,19 +31,20 @@ export default function TacticalPanel({
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: "rgba(23,23,23,0.94)",
+    backgroundColor: theme.colors.surfaceCommand,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     overflow: "hidden",
     padding: theme.spacing.md,
+    ...theme.shadow.raised,
   },
   danger: {
     borderColor: theme.colors.red,
   },
   fire: {
-    backgroundColor: "rgba(20,20,20,0.95)",
-    borderColor: "rgba(255,138,42,0.32)",
+    backgroundColor: "rgba(14,14,14,0.96)",
+    borderColor: theme.colors.borderOperational,
     ...theme.shadow.fire,
   },
   purple: {
@@ -55,8 +56,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.borderSoft,
   },
   elevated: {
-    backgroundColor: "rgba(32,32,32,0.96)",
-    borderColor: theme.colors.borderStrong,
+    backgroundColor: "rgba(20,20,20,0.96)",
+    borderColor: "rgba(255,138,42,0.30)",
     ...theme.shadow.raised,
   },
 });

@@ -4,12 +4,12 @@ import { ImageBackground, StyleSheet, View } from "react-native";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 
 const backgrounds = {
-  general: require("../assets/bunkermode/backgrounds/general/bg_general_concrete.png"),
+  general: require("../assets/bunkermode/web/backgrounds/bg-global-bunker-16x9.png"),
   login: require("../assets/bunkermode/backgrounds/login/bg_login_main.png"),
-  soldier: require("../assets/bunkermode/backgrounds/soldier/bg_soldier_tactical.png"),
+  soldier: require("../assets/bunkermode/web/backgrounds/bg-global-bunker-16x9.png"),
 };
 const grid = require("../assets/bunkermode/effects/tactical_grid.png");
-const noise = require("../assets/bunkermode/effects/noise_texture.png");
+const noise = require("../assets/bunkermode/web/textures/texture-overlay.png");
 
 export default function BunkerBackground({ dense = false, variant = "general" }) {
   const soldier = variant === "soldier";
@@ -76,13 +76,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   textureImage: {
-    opacity: 0.18,
+    opacity: 0.22,
   },
   textureDense: {
     opacity: 0.22,
   },
   soldierTexture: {
-    opacity: 0.06,
+    opacity: 0.16,
   },
   loginTexture: {
     opacity: 0.12,
@@ -98,10 +98,10 @@ const styles = StyleSheet.create({
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.scrim,
+    backgroundColor: "rgba(12,12,12,0.86)",
   },
   soldierScrim: {
-    backgroundColor: theme.colors.soldierScrim,
+    backgroundColor: "rgba(14,14,14,0.90)",
   },
   loginScrim: {
     backgroundColor: theme.colors.loginScrim,

@@ -5,7 +5,7 @@ import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 import BrandSymbol from "./BrandSymbol";
 
 export default function EmptyState({
-  message = "O General ainda não definiu missões para hoje.",
+  message = "O General ainda não definiu ordens para hoje.",
   title = "Sem ordens no momento",
 }) {
   return (

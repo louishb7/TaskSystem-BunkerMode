@@ -124,7 +124,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
     }
 
     if (!result.ok) {
-      setError(getErrorMessage(result, "Não foi possível carregar missões."));
+      setError(getErrorMessage(result, "Não foi possível carregar ordens."));
       return;
     }
 
@@ -268,7 +268,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
             ListEmptyComponent={
               <EmptyState
                 title="Sem ordens pendentes"
-                message="Nenhuma missão operacional está disponível para execução agora."
+                message="Nenhuma ordem operacional está disponível para execução agora."
               />
             }
             onScrollToIndexFailed={() => {}}

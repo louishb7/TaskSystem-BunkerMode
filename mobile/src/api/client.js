@@ -216,4 +216,37 @@ export const api = {
     const suffix = search.toString() ? `?${search.toString()}` : "";
     return request(`/relatorios/semanal${suffix}`, { token });
   },
+  listSonhos(token) {
+    return request("/sonhos", { token });
+  },
+  createSonho(token, payload) {
+    return request("/sonhos", { token, method: "POST", body: payload });
+  },
+  updateSonho(token, sonhoId, payload) {
+    return request(`/sonhos/${sonhoId}`, { token, method: "PATCH", body: payload });
+  },
+  promoteSonho(token, sonhoId) {
+    return request(`/sonhos/${sonhoId}/promover`, { token, method: "POST" });
+  },
+  archiveSonho(token, sonhoId, payload) {
+    return request(`/sonhos/${sonhoId}/arquivar`, { token, method: "POST", body: payload });
+  },
+  listObjetivos(token) {
+    return request("/objetivos", { token });
+  },
+  createObjetivo(token, payload) {
+    return request("/objetivos", { token, method: "POST", body: payload });
+  },
+  updateObjetivo(token, objetivoId, payload) {
+    return request(`/objetivos/${objetivoId}`, { token, method: "PATCH", body: payload });
+  },
+  updateObjetivoProgresso(token, objetivoId, payload) {
+    return request(`/objetivos/${objetivoId}/progresso`, { token, method: "PATCH", body: payload });
+  },
+  updateObjetivoStatus(token, objetivoId, payload) {
+    return request(`/objetivos/${objetivoId}/status`, { token, method: "PATCH", body: payload });
+  },
+  deleteObjetivo(token, objetivoId) {
+    return request(`/objetivos/${objetivoId}`, { token, method: "DELETE" });
+  },
 };

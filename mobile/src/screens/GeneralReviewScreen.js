@@ -27,9 +27,11 @@ export default function GeneralReviewScreen({
           { paddingBottom: bottomPadding + theme.spacing.xl },
         ]}
       >
-        <Pressable onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>VOLTAR AO COMANDO</Text>
-        </Pressable>
+        {onBack ? (
+          <Pressable onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backText}>VOLTAR AO COMANDO</Text>
+          </Pressable>
+        ) : null}
 
         <TacticalPanel elevated style={styles.headerPanel}>
           <SectionHeader

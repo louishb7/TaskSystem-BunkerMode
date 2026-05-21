@@ -220,7 +220,7 @@ export default function ReviewPanel({
             <Metric label="EXECUTADAS" value={weeklyReport.completed_missions || 0} />
             <Metric label="PENDENTES" value={weeklyPending} />
             <Metric label="FALHAS" value={weeklyReport.failed_missions || 0} purple />
-            <Metric label="PRIORIDADE ELEVADA" value={weeklyReport.high_priority_missions || 0} purple />
+            <Metric label="INEGOCIÁVEIS" value={weeklyReport.high_priority_missions || 0} purple />
           </View>
 
           {reviewState?.pending ? (
@@ -374,7 +374,7 @@ export default function ReviewPanel({
                   <Metric label="EXECUTADAS" value={selectedReview.completed_missions} />
                   <Metric label="PENDENTES" value={selectedReview.pending_missions} />
                   <Metric label="FALHAS" value={selectedReview.failed_missions} purple />
-                  <Metric label="PRIORIDADE ELEVADA" value={selectedReview.high_priority_missions} purple />
+                  <Metric label="INEGOCIÁVEIS" value={selectedReview.high_priority_missions} purple />
                 </View>
                 <Text style={styles.reason}>{selectedReview.resumo_operacional}</Text>
                 {selectedReview.observacao ? (

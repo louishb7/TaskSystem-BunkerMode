@@ -13,10 +13,6 @@ function isSameCalendarDay(left, right) {
   );
 }
 
-function formatDayNumber(date) {
-  return String(date.getDate()).padStart(2, "0");
-}
-
 function formatApiDate(date) {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -46,8 +42,6 @@ export default function DaySelector({
 }) {
   return (
     <View style={styles.container}>
-      <View pointerEvents="none" style={styles.boardPlate} />
-      <View pointerEvents="none" style={styles.line} />
       {weekDays.map((date) => {
         const selected = isSameCalendarDay(date, selectedDate);
         const today = isSameCalendarDay(date, todayDate);
@@ -64,42 +58,28 @@ export default function DaySelector({
         return (
           <Pressable
             key={date.toISOString()}
+            onLongPress={() => onToggleDayOff?.(date)}
             onPress={() => onSelectDate(date)}
-            style={styles.day}
+            style={[
+              styles.day,
+              total > 0 && styles.dayWithMission,
+              complete && styles.dayComplete,
+              today && styles.dayToday,
+              selected && styles.daySelected,
+            ]}
           >
             <Text style={[styles.weekday, selected && styles.weekdaySelected]}>
               {weekDayLabels[date.getDay()]}
             </Text>
-            <View
-              style={[
-                styles.node,
-                total > 0 && styles.nodeWithMission,
-                complete && styles.nodeComplete,
-                today && styles.nodeToday,
-                selected && styles.nodeSelected,
-              ]}
-            >
-              <Text style={[styles.number, complete && styles.numberComplete, selected && styles.numberSelected]}>
-                {formatDayNumber(date)}
-              </Text>
-            </View>
             <Text style={[styles.today, !today && styles.hiddenToday]}>
               {today ? "HOJE" : " "}
             </Text>
             <View style={styles.countRow}>
-              <View style={[styles.countDot, styles[`countDot${tone}`]]} />
               <Text style={[styles.count, styles[`count${tone}`]]}>
                 {isDayOff ? "OFF" : `${percent}%`}
               </Text>
             </View>
-            <Pressable
-              onPress={() => onToggleDayOff?.(date)}
-              style={[styles.offButton, persistedDayOff && styles.offButtonActive]}
-            >
-              <Text style={[styles.offButtonText, persistedDayOff && styles.offButtonTextActive]}>
-                {persistedDayOff ? "DESFAZER" : "OFF"}
-              </Text>
-            </Pressable>
+            {persistedDayOff ? <Text style={styles.offMark}>OFF</Text> : null}
           </Pressable>
         );
       })}
@@ -110,114 +90,55 @@ export default function DaySelector({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    minHeight: 112,
-    paddingHorizontal: theme.spacing.xs,
-    paddingTop: theme.spacing.sm,
-    position: "relative",
-  },
-  boardPlate: {
-    backgroundColor: "rgba(17,17,17,0.58)",
-    borderColor: theme.colors.borderSoft,
-    borderWidth: 1,
-    bottom: 10,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 28,
-  },
-  line: {
-    backgroundColor: theme.colors.borderStrong,
-    height: 1,
-    left: 20,
-    position: "absolute",
-    right: 20,
-    top: 45,
+    gap: theme.spacing.xs,
+    minHeight: 72,
   },
   day: {
     alignItems: "center",
-    flex: 1,
-  },
-  weekday: {
-    ...theme.typography.small,
-    color: theme.colors.textMuted,
-    marginBottom: theme.spacing.sm,
-  },
-  weekdaySelected: {
-    color: theme.colors.white,
-  },
-  node: {
-    alignItems: "center",
-    backgroundColor: theme.colors.surfaceRaised,
-    borderColor: theme.colors.borderStrong,
-    borderRadius: theme.radius.none,
+    backgroundColor: "rgba(0,0,0,0.24)",
+    borderColor: theme.colors.border,
     borderWidth: 1,
-    height: 38,
+    flex: 1,
     justifyContent: "center",
-    width: 38,
+    minHeight: 72,
+    paddingHorizontal: 3,
+    paddingVertical: theme.spacing.xs,
   },
-  nodeWithMission: {
-    borderColor: theme.colors.textMuted,
+  dayWithMission: {
+    borderColor: theme.colors.borderStrong,
   },
-  nodeComplete: {
+  dayComplete: {
     backgroundColor: theme.colors.successWash,
     borderColor: theme.colors.successBorder,
   },
-  nodeToday: {
+  dayToday: {
     borderColor: theme.colors.fireBorder,
-    borderWidth: 2,
   },
-  nodeSelected: {
+  daySelected: {
     backgroundColor: theme.colors.fireWash,
     borderColor: theme.colors.fire,
   },
-  number: {
-    ...theme.typography.label,
-    color: theme.colors.white,
-    fontSize: 14,
+  weekday: {
+    ...theme.typography.small,
+    color: theme.colors.text,
+    fontSize: 11,
   },
-  numberSelected: {
-    color: theme.colors.white,
-  },
-  numberComplete: {
+  weekdaySelected: {
     color: theme.colors.white,
   },
   today: {
     ...theme.typography.small,
     color: theme.colors.fire,
-    marginTop: theme.spacing.xs,
+    fontSize: 8,
+    marginTop: 2,
   },
   hiddenToday: {
     color: theme.colors.transparent,
   },
   countRow: {
     alignItems: "center",
-    flexDirection: "row",
-    gap: 3,
     justifyContent: "center",
-    marginTop: theme.spacing.xs,
-  },
-  countDot: {
-    backgroundColor: theme.colors.borderStrong,
-    height: 5,
-    width: 5,
-  },
-  countDotActive: {
-    backgroundColor: theme.colors.fire,
-  },
-  countDotComplete: {
-    backgroundColor: theme.colors.success,
-  },
-  countDothigh: {
-    backgroundColor: theme.colors.success,
-  },
-  countDotmedium: {
-    backgroundColor: theme.colors.fire,
-  },
-  countDotlow: {
-    backgroundColor: theme.colors.red,
-  },
-  countDotneutral: {
-    backgroundColor: theme.colors.borderStrong,
+    marginTop: 2,
   },
   count: {
     ...theme.typography.small,
@@ -242,18 +163,7 @@ const styles = StyleSheet.create({
   countneutral: {
     color: theme.colors.textDim,
   },
-  offButton: {
-    borderColor: theme.colors.borderSoft,
-    borderWidth: 1,
-    marginTop: theme.spacing.xs,
-    minHeight: 22,
-    paddingHorizontal: 4,
-    justifyContent: "center",
-  },
-  offButtonActive: {
-    borderColor: theme.colors.borderStrong,
-  },
-  offButtonText: {
+  offMark: {
     ...theme.typography.small,
     color: theme.colors.textDim,
     fontSize: 8,

@@ -90,7 +90,7 @@ function formatDeadline(value) {
   }
 
   if (parsed.getTime() < todayStart().getTime()) {
-    return "ATRASADA";
+    return `${day}/${month}`;
   }
 
   return `${day}/${month}`;
@@ -98,12 +98,12 @@ function formatDeadline(value) {
 
 function statusText(mission) {
   if (isDoneNotMarked(mission)) {
-    return "EXECUTADA FORA DO APLICATIVO";
+    return "FORA DO APP";
   }
 
   const compact = {
     PENDENTE: "PENDENTE",
-    CONCLUIDA: "EXECUTADA",
+    CONCLUIDA: "CONCLUÍDA",
     FALHA_PENDENTE_JUSTIFICATIVA: "FALHOU",
     FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHOU",
     FALHA_REVISADA: "FALHA REVISADA",
@@ -170,7 +170,7 @@ export default function MissionCard({
           {isPinned ? (
             <View style={[styles.orderCode, styles.orderCodeCritical]}>
               <Text style={[styles.orderCodeText, styles.orderCodeCriticalText]}>
-                PRIORIDADE ELEVADA
+                INEGOCIÁVEL
               </Text>
             </View>
           ) : null}
@@ -199,7 +199,7 @@ export default function MissionCard({
             {completing ? (
               <ActivityIndicator color={theme.colors.black} />
             ) : (
-              <Text style={styles.primaryActionText}>EXECUTADA</Text>
+              <Text style={styles.primaryActionText}>ABATER</Text>
             )}
           </Pressable>
         ) : null}
@@ -210,7 +210,7 @@ export default function MissionCard({
             onPress={() => setFailureFormOpen(true)}
             style={styles.manualFailureAction}
           >
-            <Text style={styles.manualFailureText}>Registrar falha</Text>
+            <Text style={styles.manualFailureText}>REGISTRAR FALHA</Text>
           </Pressable>
         ) : null}
 
@@ -286,26 +286,24 @@ export default function MissionCard({
     <View style={[styles.card, isPinned && styles.priorityCard, completed && styles.completedCard]}>
       <View style={styles.badgeRow}>
         {isPinned ? (
-          <Text style={[styles.metaTag, styles.metaTagCritical]}>PRIORIDADE ELEVADA</Text>
-        ) : (
-          <Text style={styles.metaTag}>ORDEM</Text>
-        )}
+          <Text style={[styles.metaTag, styles.metaTagCritical]}>INEGOCIÁVEL</Text>
+        ) : null}
         {operationName ? <Text style={[styles.metaTag, styles.metaTagOperation]}>OPERAÇÃO</Text> : null}
-        <Text style={styles.metaTag}>{formatDeadline(mission?.prazo)}</Text>
+        {formatDeadline(mission?.prazo) !== "HOJE" ? <Text style={styles.metaTag}>{formatDeadline(mission?.prazo)}</Text> : null}
         <Text style={styles.metaTag}>{statusLabel}</Text>
       </View>
 
-      <Text style={styles.title}>{title}</Text>
+      <Text numberOfLines={2} style={styles.title}>{title}</Text>
       {operationName ? (
         <Text numberOfLines={1} style={styles.origin}>Operação: {operationName}</Text>
       ) : null}
       {instruction ? (
-        <Text numberOfLines={3} style={styles.instruction}>{instruction}</Text>
+        <Text numberOfLines={2} style={styles.instruction}>{instruction}</Text>
       ) : null}
 
       {completed ? (
         <View style={styles.statusRow}>
-          <Text style={styles.done}>CUMPRIDA</Text>
+          <Text style={styles.done}>CONCLUÍDA</Text>
         </View>
       ) : null}
 
@@ -319,7 +317,7 @@ export default function MissionCard({
             <ActivityIndicator color={theme.colors.neonPurple} />
           ) : (
             <Text style={[styles.secondaryActionText, isPinned && styles.priorityActionText]}>
-              {isPinned ? "REBAIXAR PRIORIDADE" : "ELEVAR PRIORIDADE"}
+              {isPinned ? "REBAIXAR" : "INEGOCIÁVEL"}
             </Text>
           )}
         </Pressable>
@@ -333,7 +331,7 @@ export default function MissionCard({
             {completing ? (
               <ActivityIndicator color={theme.colors.textMuted} />
             ) : (
-              <Text style={styles.secondaryActionText}>EXECUTAR</Text>
+              <Text style={styles.secondaryActionText}>ABATER</Text>
             )}
           </Pressable>
         ) : null}
@@ -443,13 +441,15 @@ export function MissionProgress({ label = "PROGRESSO", missions }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(23,23,23,0.94)",
+    backgroundColor: "rgba(14,14,14,0.72)",
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
+    borderLeftColor: "rgba(237,237,237,0.16)",
+    borderLeftWidth: 2,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     minHeight: theme.layout.missionMinHeight,
     overflow: "hidden",
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
   },
   soldierCard: {
     backgroundColor: theme.colors.surface,
@@ -521,13 +521,13 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.heading,
     color: theme.colors.white,
-    fontSize: 18,
-    marginTop: theme.spacing.md,
+    fontSize: 15,
+    marginTop: theme.spacing.xs,
   },
   instruction: {
-    ...theme.typography.body,
-    color: theme.colors.text,
-    marginTop: theme.spacing.sm,
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
   },
   origin: {
     ...theme.typography.small,
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   metaTag: {
     ...theme.typography.small,
@@ -545,8 +545,10 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderWidth: 1,
     color: theme.colors.textMuted,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
+    fontSize: 9,
+    minHeight: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
   },
   metaTagCritical: {
     backgroundColor: theme.colors.purpleDark,
@@ -579,9 +581,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
   },
   primaryAction: {
     alignItems: "center",
@@ -590,7 +592,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     justifyContent: "center",
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.sm,
     minHeight: theme.layout.actionHeight,
     paddingHorizontal: theme.spacing.md,
     ...theme.shadow.fire,
@@ -610,9 +612,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 36,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    minHeight: theme.layout.compactActionHeight,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
   },
   secondaryActionText: {
     ...theme.typography.small,

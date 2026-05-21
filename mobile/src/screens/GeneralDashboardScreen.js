@@ -8,17 +8,17 @@ import MissionGroup from "../components/general/MissionGroup";
 import Metric from "../components/general/Metric";
 import OperationsSheet from "../components/general/OperationsSheet";
 import BrandSymbol from "../components/BrandSymbol";
-import CommandActionDock from "../components/CommandActionDock";
 import DaySelector from "../components/DaySelector";
 import EmptyState from "../components/EmptyState";
 import LionEmblem from "../components/LionEmblem";
-import MissionCard, { MissionProgress } from "../components/MissionCard";
-import ModeSwitchButton from "../components/ModeSwitchButton";
+import { MissionProgress } from "../components/MissionCard";
 import SectionHeader from "../components/SectionHeader";
 import StatusNotice from "../components/StatusNotice";
 import TacticalPanel from "../components/TacticalPanel";
 import TacticalScreen from "../components/TacticalScreen";
+import GeneralTabs from "../navigation/GeneralTabs";
 import GeneralReviewScreen from "./GeneralReviewScreen";
+import MountainScreen from "./MountainScreen";
 import MissionFormScreen from "./MissionFormScreen";
 import { bunkerTheme as theme } from "../theme/bunkermodeTheme";
 import { isCompleted, isDoneNotMarked } from "../utils/missionStatus";
@@ -106,8 +106,7 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
   const [justifyingId, setJustifyingId] = useState(null);
   const [activatingSoldier, setActivatingSoldier] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
-  const [activeScreen, setActiveScreen] = useState("home");
-  const [commandDockHeight, setCommandDockHeight] = useState(112);
+  const [activeTab, setActiveTab] = useState("today");
   const [soldierConfirmOpen, setSoldierConfirmOpen] = useState(false);
 
   const materializedWeekRef = useRef("");
@@ -128,7 +127,6 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
     () => reviewMissions.filter((m) => !isDoneNotMarked(m)),
     [reviewMissions],
   );
-  const hasReview = visibleReviewMissions.length > 0;
   const reviewCount = visibleReviewMissions.length + (reviewState?.pending ? 1 : 0);
 
   const dailyMissions = useMemo(
@@ -473,39 +471,27 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Shared dock
-  // ---------------------------------------------------------------------------
-
-  const commandDock = (
-    <CommandActionDock
-      active={activeScreen === "reviews"}
+  const bottomNavigationPadding = Math.max(insets.bottom, theme.spacing.sm) + 72;
+  const generalTabs = (
+    <GeneralTabs
+      activeTab={activeTab}
       bottomInset={insets.bottom}
-      count={reviewCount}
-      generalName={generalName}
-      onLayout={(event) => {
-        const nextHeight = Math.ceil(event.nativeEvent.layout.height);
-        setCommandDockHeight((current) => (current === nextHeight ? current : nextHeight));
-      }}
-      onLogout={onLogout}
-      onOperationsPress={() => setOperationsOpen(true)}
-      onReviewPress={() => setActiveScreen("reviews")}
-      weekLabel={weekLabel}
+      onChangeTab={setActiveTab}
+      reportCount={reviewCount}
     />
   );
 
   // ---------------------------------------------------------------------------
-  // Review screen
+  // Tab screens
   // ---------------------------------------------------------------------------
 
-  if (activeScreen === "reviews") {
+  if (activeTab === "report") {
     return (
       <>
         <GeneralReviewScreen
           allMissions={dailyMissions}
-          bottomPadding={commandDockHeight}
+          bottomPadding={bottomNavigationPadding}
           missions={visibleReviewMissions}
-          onBack={() => setActiveScreen("home")}
           onLogout={onLogout}
           onReload={() => loadAll()}
           onCloseReview={closeWeeklyReview}
@@ -513,7 +499,16 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
           token={token}
           weeklyReviews={weeklyReviews}
         />
-        {commandDock}
+        {generalTabs}
+      </>
+    );
+  }
+
+  if (activeTab === "mountain") {
+    return (
+      <>
+        <MountainScreen bottomPadding={bottomNavigationPadding} onLogout={onLogout} token={token} />
+        {generalTabs}
       </>
     );
   }
@@ -527,30 +522,56 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: commandDockHeight + theme.spacing.xl },
+          { paddingBottom: bottomNavigationPadding + theme.spacing.xxl },
         ]}
       >
-        {/* Calendário */}
+        <View style={styles.commandHeader}>
+          <View style={styles.identity}>
+            <BrandSymbol muted size={34} />
+            <View style={styles.identityCopy}>
+              <Text style={styles.kicker}>POSTO DE COMANDO</Text>
+              <Text numberOfLines={1} style={styles.generalName}>{generalName}</Text>
+            </View>
+          </View>
+          <Pressable
+            disabled={activatingSoldier}
+            onPress={() => setSoldierConfirmOpen(true)}
+            style={[styles.headerSoldierButton, activatingSoldier && styles.disabledHeaderButton]}
+          >
+            <Text style={styles.headerSoldierKicker}>FOCO OPERACIONAL</Text>
+            <Text style={styles.headerSoldierText}>{activatingSoldier ? "ATIVANDO" : "MODO SOLDADO"}</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.quickActions}>
+          <Pressable onPress={() => setOperationsOpen(true)} style={styles.headerButton}>
+            <Text style={styles.headerButtonText}>OPERAÇÕES</Text>
+          </Pressable>
+          <Pressable onPress={onLogout} style={styles.headerButton}>
+            <Text style={styles.headerButtonText}>SAIR</Text>
+          </Pressable>
+        </View>
+
         <TacticalPanel elevated style={styles.calendarPanel}>
           <SectionHeader
             eyebrow="SEMANA OPERACIONAL"
             tone="fire"
-            title="A semana na parede"
-            meta="Cada marca é um dia de caça. Escolha onde o General dará ordens."
+            title="Cronograma de caça"
+            meta=""
           />
           <View style={styles.weekNavigation}>
             <Pressable
               onPress={() => setSelectedDate((current) => addDays(current, -7))}
               style={styles.weekButton}
             >
-              <Text style={styles.weekButtonText}>ANTERIOR</Text>
+              <Text style={styles.weekButtonText}>← SEMANA</Text>
             </Pressable>
             <Text numberOfLines={1} style={styles.weekLabel}>{weekLabel}</Text>
             <Pressable
               onPress={() => setSelectedDate((current) => addDays(current, 7))}
               style={styles.weekButton}
             >
-              <Text style={styles.weekButtonText}>PRÓXIMA</Text>
+              <Text style={styles.weekButtonText}>SEMANA →</Text>
             </Pressable>
           </View>
           <DaySelector
@@ -566,25 +587,22 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
 
         <StatusNotice type="error" message={error} />
 
-        {/* Leão do Dia */}
-        <TacticalPanel fire style={styles.lionPanel}>
-          <View style={styles.lionTop}>
-            <View style={styles.lionCopy}>
-              <Text style={styles.lionEyebrow}>LEÃO DO DIA</Text>
-              <Text style={styles.lionTitle}>{selectedDateLabel}</Text>
-              <Text style={styles.lionBrief}>
+        <TacticalPanel fire style={styles.summaryPanel}>
+          <View style={styles.summaryTop}>
+            <View style={styles.summaryCopy}>
+              <Text style={styles.summaryEyebrow}>LEÃO DO DIA</Text>
+              <Text style={styles.summaryTitle}>{selectedDateLabel}</Text>
+              <Text style={styles.summaryBrief}>
                 {selectedRemainingCount > 0
-                  ? selectedRemainingCount === 1
-                    ? "1 ordem ainda resiste à caçada."
-                    : `${selectedRemainingCount} ordens ainda resistem à caçada.`
+                  ? `${selectedRemainingCount} em aberto.`
                   : selectedMissions.length > 0
-                    ? "Caçada concluída para o dia selecionado."
+                    ? "Caçada concluída."
                     : selectedDayOff
-                      ? "Dia off. Sem expectativa de execução."
-                      : "Nenhuma caça definida para este dia."}
+                      ? "Dia off."
+                      : "Sem caça definida."}
               </Text>
             </View>
-            <LionEmblem size={94} />
+            <LionEmblem compact size={62} />
           </View>
           <MissionProgress label="CAÇADA" missions={selectedMissions} />
           <View style={styles.sideMetrics}>
@@ -594,11 +612,11 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
           </View>
           <View style={styles.prioritySummary}>
             <View>
-              <Text style={styles.priorityLabel}>PRIORIDADE ELEVADA</Text>
+              <Text style={styles.priorityLabel}>INEGOCIÁVEIS</Text>
               <Text style={styles.priorityValue}>{selectedPriorityCount}</Text>
             </View>
             <Text style={styles.priorityText}>
-              {selectedPriorityCount === 1 ? "1 ordem em destaque" : `${selectedPriorityCount} ordens em destaque`}
+              {selectedPriorityCount === 1 ? "1 ordem inegociável" : `${selectedPriorityCount} ordens inegociáveis`}
             </Text>
           </View>
         </TacticalPanel>
@@ -606,9 +624,9 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
         {/* Quadro do Dia */}
         <TacticalPanel fire style={styles.ordersPanel}>
           <SectionHeader
-            eyebrow="ORDENS DO DIA"
+            eyebrow="QUADRO DO DIA"
             tone="fire"
-            title="Plano da caça"
+            title="Mesa operacional"
             meta={
               selectedRemainingCount > 0
                 ? `${selectedRemainingCount} em aberto. ${selectedCompletedCount} cumpridas no arquivo do dia.`
@@ -621,7 +639,7 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
           {selectedMissions.length > 0 ? (
             <View style={styles.missionGroups}>
               <MissionGroup
-                label="Prioridade elevada"
+                label="Inegociáveis"
                 missions={missionGroups.highPriority}
                 completingId={completingId}
                 justifyingId={justifyingId}
@@ -646,7 +664,7 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
                 togglingId={togglingId}
               />
               <MissionGroup
-                label="Falhas em leitura"
+                label="Aguardando justificativa"
                 missions={missionGroups.failures}
                 completingId={completingId}
                 justifyingId={justifyingId}
@@ -678,34 +696,14 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
               message="Nenhuma ordem foi definida para o dia selecionado."
             />
           )}
-
-          <Pressable onPress={openCreateForm} style={styles.createButton}>
-            <Text style={styles.createText}>CRIAR NOVA ORDEM</Text>
-          </Pressable>
-        </TacticalPanel>
-
-        {/* Transição de Modo */}
-        <TacticalPanel style={styles.transitionPanel}>
-          <SectionHeader
-            eyebrow="TRANSIÇÃO DE MODO"
-            title="Entrar em foco operacional"
-            meta={
-              hasReview
-                ? "Há revisão pendente. Decida quando trocar para uma interface mais limpa."
-                : reviewState?.pending
-                  ? "Há revisão semanal pendente. Feche o ciclo antes de abrir nova semana."
-                  : "Use quando quiser executar com menos ruído."
-            }
-          />
-          <ModeSwitchButton
-            loading={activatingSoldier}
-            mode="general"
-            onPress={() => setSoldierConfirmOpen(true)}
-          />
         </TacticalPanel>
       </ScrollView>
 
-      {commandDock}
+      <Pressable onPress={openCreateForm} style={[styles.fab, { bottom: bottomNavigationPadding + theme.spacing.md }]}>
+        <Text style={styles.fabText}>+ ORDEM</Text>
+      </Pressable>
+
+      {generalTabs}
 
       {operationsOpen ? (
         <OperationsSheet
@@ -752,6 +750,88 @@ const styles = StyleSheet.create({
   content: {
     padding: theme.spacing.screen,
   },
+  commandHeader: {
+    alignItems: "center",
+    backgroundColor: "rgba(17,17,17,0.72)",
+    borderColor: theme.colors.borderSoft,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.md,
+    padding: theme.spacing.sm,
+  },
+  identity: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    minWidth: 0,
+  },
+  identityCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  kicker: {
+    ...theme.typography.small,
+    color: theme.colors.textDim,
+  },
+  generalName: {
+    ...theme.typography.label,
+    color: theme.colors.text,
+    fontSize: 14,
+    marginTop: 1,
+  },
+  headerActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: theme.spacing.xs,
+  },
+  quickActions: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  headerButton: {
+    alignItems: "center",
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 34,
+    flex: 1,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  headerButtonText: {
+    ...theme.typography.small,
+    color: theme.colors.textMuted,
+    fontSize: 9,
+  },
+  headerSoldierButton: {
+    alignItems: "flex-end",
+    backgroundColor: theme.colors.fire,
+    borderColor: theme.colors.fire,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 42,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    ...theme.shadow.fire,
+  },
+  headerSoldierKicker: {
+    ...theme.typography.small,
+    color: theme.colors.fireDark,
+    fontSize: 8,
+  },
+  headerSoldierText: {
+    ...theme.typography.label,
+    color: theme.colors.black,
+    fontSize: 11,
+  },
+  disabledHeaderButton: {
+    opacity: 0.55,
+  },
   calendarPanel: {
     marginBottom: theme.spacing.md,
   },
@@ -763,7 +843,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
-    padding: theme.spacing.sm,
+    padding: theme.spacing.xs,
   },
   weekButton: {
     alignItems: "center",
@@ -784,33 +864,34 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
-  lionPanel: {
+  summaryPanel: {
     marginTop: theme.spacing.md,
   },
-  lionTop: {
+  summaryTop: {
     alignItems: "center",
     flexDirection: "row",
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
-  lionCopy: {
+  summaryCopy: {
     flex: 1,
     minWidth: 0,
   },
-  lionEyebrow: {
+  summaryEyebrow: {
     ...theme.typography.small,
     color: theme.colors.fire,
   },
-  lionTitle: {
+  summaryTitle: {
     ...theme.typography.heading,
     color: theme.colors.white,
-    fontSize: 21,
+    fontSize: 18,
     marginTop: 2,
   },
-  lionBrief: {
+  summaryBrief: {
     ...theme.typography.body,
     color: theme.colors.textMuted,
-    marginTop: theme.spacing.sm,
+    marginBottom: 0,
+    marginTop: theme.spacing.xs,
   },
   sideMetrics: {
     flexDirection: "row",
@@ -851,24 +932,24 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
     marginTop: theme.spacing.md,
   },
-  createButton: {
+  fab: {
     alignItems: "center",
     backgroundColor: theme.colors.fire,
     borderColor: theme.colors.fire,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
+    height: 52,
     justifyContent: "center",
-    marginTop: theme.spacing.md,
-    minHeight: 54,
+    position: "absolute",
+    right: theme.spacing.screen,
+    width: 124,
+    zIndex: 18,
     paddingHorizontal: theme.spacing.md,
     ...theme.shadow.fire,
   },
-  createText: {
+  fabText: {
     ...theme.typography.label,
     color: theme.colors.black,
-    fontSize: 14,
-  },
-  transitionPanel: {
-    marginTop: theme.spacing.md,
+    fontSize: 13,
   },
 });
