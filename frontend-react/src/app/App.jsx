@@ -7,6 +7,7 @@ import AuthScreen from "../features/auth/components/AuthScreen.jsx";
 import { useAuthSession } from "../features/auth/hooks/useAuthSession.js";
 import GeneralCommandPage from "../features/general/pages/GeneralCommandPage.jsx";
 import { useMissionBoard } from "../features/missions/hooks/useMissionBoard.js";
+import MountainPage from "../features/mountain/pages/MountainPage.jsx";
 import ReviewPage from "../features/review/pages/ReviewPage.jsx";
 import SoldierExecutionPage from "../features/soldier/pages/SoldierExecutionPage.jsx";
 import { APP_ROUTES } from "../routes/routeConstants.js";
@@ -136,16 +137,37 @@ export default function App() {
     );
   }
 
+  if (activeRoute === APP_ROUTES.MOUNTAIN) {
+    return (
+      <TacticalMountainRoute
+        onBack={() => setActiveRoute(APP_ROUTES.GENERAL_HOME)}
+        onUnauthorized={auth.handleUnauthorized}
+        token={auth.token}
+      />
+    );
+  }
+
   return (
     <GeneralCommandPage
       board={board}
       generalName={generalName}
       onActivateSoldier={activateSoldierMode}
       onLogout={clearSession}
+      onOpenMountain={() => setActiveRoute(APP_ROUTES.MOUNTAIN)}
       onOpenReview={() => setActiveRoute(APP_ROUTES.REVIEW)}
       onUnauthorized={auth.handleUnauthorized}
       token={auth.token}
       user={auth.user}
+    />
+  );
+}
+
+function TacticalMountainRoute({ onBack, onUnauthorized, token }) {
+  return (
+    <MountainPage
+      onClose={onBack}
+      onUnauthorized={onUnauthorized}
+      token={token}
     />
   );
 }

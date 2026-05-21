@@ -89,7 +89,7 @@ Soldado:
 Estes princípios governam decisões de UI, UX e arquitetura:
 
 * A tensão psicológica vem dos dados, não de truques visuais.
-* "Comprometida" significa responsabilidade, não punição. Preserve conclusão, exija motivo.
+* "Comprometida" significa responsabilidade, não punição. Preserve conclusão e registre falhas sem exigir escrita manual.
 * Clareza de execução > riqueza conceitual. Quando houver conflito, simplifique.
 
 ---
@@ -227,8 +227,8 @@ Não adicione: username, roles
 ### Missões Comprometidas
 * Não podem ser ignoradas
 * Não podem ser apagadas silenciosamente
-* Falha exige justificativa
-* Falha deve ser registrada
+* Falha não exige justificativa
+* Falha deve ser registrada objetivamente
 
 ### Revisão Semanal
 * Obrigatória

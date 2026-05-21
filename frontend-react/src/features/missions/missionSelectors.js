@@ -8,7 +8,7 @@ export function canCompleteInSoldier(mission) {
 }
 
 export function canJustifyInSoldier(mission) {
-  return mission?.permissions?.can_justify === true;
+  return mission?.permissions?.can_fail === true;
 }
 
 export function getActionMissions(missions) {

@@ -37,6 +37,7 @@ export default function MountainPage({
         onArchive={mountain.archiveSonho}
         onCreateObjetivo={mountain.createObjetivo}
         onCreate={mountain.createSonho}
+        missions={mountain.missions}
         objetivos={mountain.objetivos}
         onDeleteObjetivo={mountain.deleteObjetivo}
         onPromote={mountain.promoteSonho}
@@ -49,6 +50,7 @@ export default function MountainPage({
 
       <ObjetivoList
         loading={busy}
+        missions={mountain.missions}
         objetivos={mountain.objetivos}
         onCreate={mountain.createObjetivo}
         onDelete={mountain.deleteObjetivo}

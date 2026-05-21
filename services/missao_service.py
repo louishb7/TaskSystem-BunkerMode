@@ -31,6 +31,9 @@ class MissaoService:
             "instrucao": dados.get("instrucao"),
             "user_id": responsavel_id,
             "objetivo_id": dados.get("objetivo_id"),
+            "recurrence_weekdays": dados.get("recurrence_weekdays"),
+            "recurrence_end_date": dados.get("recurrence_end_date"),
+            "duration_type": dados.get("duration_type"),
         }
         if dados.get("status") is not None:
             campos_missao["status"] = dados["status"]
@@ -77,13 +80,7 @@ class MissaoService:
 
     def listar_missoes_para_revisao(self, usuario=None) -> list[Missao]:
         self._garantir_modo_general(usuario)
-        missoes = self._carregar_missoes_do_usuario(usuario)
-        self._reconciliar_falhas(usuario=usuario, missoes=missoes)
-        return [
-            missao
-            for missao in self.sort_missions_for_board(missoes)
-            if missao.requires_general_review()
-        ]
+        return []
 
     def listar_missoes_do_dia_operacional(self, usuario=None) -> list[Missao]:
         return self.listar_missoes_por_dia_operacional(self._today(), usuario=usuario)
@@ -95,15 +92,9 @@ class MissaoService:
     def listar_acoes_do_turno_soldado(self, usuario=None) -> list[Missao]:
         estado = self.estado_turno_soldado(usuario=usuario)
         acoes_do_turno = self.listar_missoes_por_dia_operacional(estado["active_date"], usuario=usuario)
-        justificativas_pendentes = [
-            missao
-            for missao in self._carregar_missoes_do_usuario(usuario)
-            if missao.requires_soldier_justification()
-            and all(missao.missao_id != existente.missao_id for existente in acoes_do_turno)
-        ]
         return [
             missao
-            for missao in self.sort_missions_for_board(justificativas_pendentes + acoes_do_turno)
+            for missao in self.sort_missions_for_board(acoes_do_turno)
             if missao.is_visible_to_soldier(estado["active_date"])
         ]
 
@@ -170,6 +161,12 @@ class MissaoService:
         if "objetivo_id" in dados:
             self._garantir_objetivo_do_usuario(usuario, dados["objetivo_id"])
             missao.objetivo_id = missao._validar_objetivo_id(dados["objetivo_id"])
+        if "recurrence_weekdays" in dados:
+            missao.recurrence_weekdays = missao._validar_recurrence_weekdays(dados["recurrence_weekdays"])
+        if "recurrence_end_date" in dados:
+            missao.recurrence_end_date = missao._validar_prazo(dados["recurrence_end_date"])
+        if "duration_type" in dados:
+            missao.duration_type = missao._validar_duration_type(dados["duration_type"])
 
         self._reconciliar_estado_apos_edicao(missao)
         self.repositorio.atualizar_missao(missao)
@@ -208,7 +205,7 @@ class MissaoService:
         return missao
 
     def alternar_prioridade_fixada(self, missao_id: int, usuario=None) -> Missao:
-        self._garantir_modo_general(usuario)
+        self._garantir_contexto_de_execucao(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
         missao.alternar_prioridade_fixada()
         self.repositorio.atualizar_missao(missao)
@@ -239,22 +236,22 @@ class MissaoService:
         motivo: str,
         usuario=None,
     ) -> Missao:
+        return self.registrar_falha_missao(missao_id, usuario=usuario)
+
+    def registrar_falha_missao(self, missao_id: int, usuario=None) -> Missao:
         self._garantir_contexto_de_execucao(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
-        if missao.is_pending():
-            missao.marcar_como_falha(self._now())
-        missao.registrar_justificativa_soldado(motivo, tipo=tipo)
+        if not missao.is_pending():
+            raise ValueError("Apenas missão pendente pode ser registrada como falha.")
+        missao.marcar_como_falha(self._now())
         self.repositorio.atualizar_missao(missao)
 
         if usuario is not None:
             self._registrar_auditoria(
                 missao_id=missao.missao_id,
                 usuario_id=usuario.usuario_id,
-                acao="justificativa_registrada",
-                detalhes=(
-                    "Soldado registrou justificativa "
-                    f"({missao.failure_reason_type.value}): {missao.failure_reason}"
-                ),
+                acao="missao_nao_realizada",
+                detalhes=f"Missão '{missao.titulo}' registrada como não realizada.",
             )
 
         return missao
@@ -270,22 +267,6 @@ class MissaoService:
     def revisar_justificativa(self, missao_id: int, accepted: bool, usuario=None) -> Missao:
         self._garantir_modo_general(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
-        veredito = "accepted" if accepted else "rejected"
-        missao.registrar_veredito_general(veredito)
-        self.repositorio.atualizar_missao(missao)
-
-        if usuario is not None:
-            self._registrar_auditoria(
-                missao_id=missao.missao_id,
-                usuario_id=usuario.usuario_id,
-                acao="justificativa_aceita" if accepted else "justificativa_recusada",
-                detalhes=(
-                    "General aceitou a justificativa da falha."
-                    if accepted
-                    else "General rejeitou a justificativa da falha."
-                ),
-            )
-
         return missao
 
     def limpar_relatorio_falhas(
@@ -305,8 +286,6 @@ class MissaoService:
             if not self._pode_limpar_falha_do_relatorio(missao, start_date, end_date):
                 continue
 
-            missao.registrar_veredito_general("accepted")
-            self.repositorio.atualizar_missao(missao)
             limpas.append(missao)
 
             if usuario is not None:
@@ -377,9 +356,16 @@ class MissaoService:
         return missao
 
     def to_response(self, missao: Missao, usuario=None, reference_date: date | None = None) -> dict:
-        return missao.to_dict(
+        payload = missao.to_dict(
             permissions=self._build_permissions(missao, usuario=usuario, reference_date=reference_date).to_dict()
         )
+        payload["is_previous_operational_pending"] = bool(
+            reference_date is not None
+            and missao.is_pending()
+            and missao.due_date == reference_date
+            and self._now().date() != reference_date
+        )
+        return payload
 
     def to_response_list(self, missoes: list[Missao], usuario=None, reference_date: date | None = None) -> list[dict]:
         return [self.to_response(missao, usuario=usuario, reference_date=reference_date) for missao in missoes]
@@ -483,7 +469,7 @@ class MissaoService:
         start_date: date | None,
         end_date: date | None,
     ) -> bool:
-        if not missao.requires_general_review() or not missao.failure_reason:
+        if not missao.is_failed():
             return False
         if start_date is None or end_date is None:
             return True
@@ -512,8 +498,7 @@ class MissaoService:
             missoes,
             key=lambda missao: (
                 0 if missao.is_pinned else 1,
-                0 if missao.requires_soldier_justification() else 1,
-                1 if missao.is_completed() or missao.is_failed_waiting_review() or missao.is_failed_reviewed() else 0,
+                1 if missao.is_completed() or missao.is_failed() else 0,
                 missao.due_date or date.max,
                 missao.missao_id or 0,
             ),
@@ -531,8 +516,10 @@ class MissaoService:
             can_complete=can_execute and missao.can_be_completed(reference_date=referencia),
             can_edit=is_general and missao.can_be_edited_by_general(),
             can_delete=is_general and missao.can_be_deleted_by_general(),
-            can_justify=can_execute and (missao.is_pending() or missao.requires_soldier_justification()),
-            can_review=is_general and missao.requires_general_review(),
+            can_justify=False,
+            can_fail=can_execute and missao.is_pending(),
+            can_pin=can_execute and missao.is_pending(),
+            can_review=False,
             can_view_history=can_view_history,
         )
 

@@ -6,18 +6,6 @@ import { formatDateTime, parseApiDate } from "../../../utils/date.js";
 import { STATUS_MISSAO, isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js";
 import { getWeekDays, normalizeMissionDate } from "../../calendar/calendarUtils.js";
 
-const FAILURE_REASON_LABELS = Object.freeze({
-  not_done: "Não fez",
-  done_not_marked: "Fez, mas não registrou",
-  partially_done: "Fez parcialmente",
-  external_blocker: "Imprevisto real",
-  other: "Outro motivo",
-});
-
-function getFailureReasonLabel(type) {
-  return FAILURE_REASON_LABELS[type] || "Tipo não informado";
-}
-
 function isFailureMission(mission) {
   return String(mission?.status_code || "").startsWith("FALHA")
     && !isDoneNotMarked(mission);
@@ -159,9 +147,7 @@ export default function GeneralReviewPanel({
   const reviewMissionIds = new Set(missions.map((mission) => mission.id));
   const visibleFailuresForList = uniqueMissions([...scopedReviewMissions, ...failures])
     .filter(isVisibleFailureRecord);
-  const hasClearableFailure = visibleFailuresForList.some(
-    (mission) => mission?.failure_reason
-  );
+  const hasClearableFailure = visibleFailuresForList.length > 0;
   const visiblePendingReviewCount = visibleFailuresForList.filter(
     (mission) => reviewMissionIds.has(mission.id)
   ).length;
@@ -314,7 +300,7 @@ export default function GeneralReviewPanel({
                   <div key={mission.id} className={`failure-row ${mission.is_pinned ? "critical" : ""}`}>
                     <span>{mission.is_pinned ? "PRIORIDADE" : "FALHA"}</span>
                     <strong>{mission.titulo || "Sem título"}</strong>
-                    <p>{mission.failure_reason || "Justificativa não registrada."}</p>
+                    <p>Falha registrada no ciclo operacional.</p>
                   </div>
                 ))}
               </div>
@@ -363,7 +349,7 @@ export default function GeneralReviewPanel({
         </div>
 
         <div className="review-failure-panel">
-          <p className="section-kicker danger">FALHAS EM REVISÃO</p>
+          <p className="section-kicker danger">FALHAS REGISTRADAS</p>
           <strong>{visiblePendingReviewCount}</strong>
           <p className="muted">
             {visibleFailuresForList.length > 0
@@ -400,7 +386,7 @@ export default function GeneralReviewPanel({
                   return (
                     <article key={mission.id} className="review-card">
                       <p className={`section-kicker ${requiresReview ? "danger" : "fire"}`}>
-                        {requiresReview ? "REVISÃO OBRIGATÓRIA" : "REGISTRO INFORMATIVO"}
+                        {requiresReview ? "FALHA REGISTRADA" : "REGISTRO INFORMATIVO"}
                       </p>
                       <h3>{mission.titulo || "Sem título"}</h3>
                       <p className="muted">
@@ -408,9 +394,9 @@ export default function GeneralReviewPanel({
                       </p>
 
                       <div className="review-reason">
-                        <span>JUSTIFICATIVA DA EXECUÇÃO</span>
-                        <strong>{getFailureReasonLabel(mission.failure_reason_type)}</strong>
-                        <p>{mission.failure_reason || "Justificativa não registrada."}</p>
+                        <span>EVENTO OPERACIONAL</span>
+                        <strong>Falha registrada</strong>
+                        <p>A missão foi encerrada sem execução registrada.</p>
                       </div>
 
                       {requiresReview ? (
@@ -421,7 +407,7 @@ export default function GeneralReviewPanel({
                             type="button"
                             onClick={() => onReview(mission.id, true)}
                           >
-                            {loadingMissionId === mission.id ? "AGUARDE" : "JUSTIFICATIVA VÁLIDA"}
+                            {loadingMissionId === mission.id ? "AGUARDE" : "REGISTRAR LEITURA"}
                           </button>
                           <button
                             className="button danger compact"
@@ -429,7 +415,7 @@ export default function GeneralReviewPanel({
                             type="button"
                             onClick={() => onReview(mission.id, false)}
                           >
-                            {loadingMissionId === mission.id ? "AGUARDE" : "INSUFICIENTE"}
+                            {loadingMissionId === mission.id ? "AGUARDE" : "MANTER FALHA"}
                           </button>
                         </div>
                       ) : (

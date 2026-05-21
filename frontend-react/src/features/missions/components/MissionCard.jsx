@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 
 import { isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js";
-import FailureJustificationForm from "./FailureJustificationForm.jsx";
 
 function can(mission, key) {
   return Boolean(mission?.permissions?.[key]) && mission?.id !== undefined && mission?.id !== null;
@@ -61,6 +60,7 @@ function statusText(mission) {
 
   const compact = {
     CONCLUIDA: "",
+    FALHA: "FALHOU",
     FALHA_PENDENTE_JUSTIFICATIVA: "FALHOU",
     FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHOU",
     FALHA_REVISADA: "FALHA REVISADA",
@@ -89,7 +89,6 @@ export default function MissionCard({
   reopening = false,
   variant = "general",
 }) {
-  const [failureFormOpen, setFailureFormOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const soldier = variant === "soldier";
   const title = mission?.titulo || "Sem título";
@@ -97,82 +96,79 @@ export default function MissionCard({
   const isPinned = mission?.is_pinned === true;
   const disabled = pinning || completing || justifying || reopening;
   const canComplete = can(mission, "can_complete");
-  const canJustify = can(mission, "can_justify");
-  const requiresJustification = mission?.requires_immediate_justification === true;
+  const canFail = can(mission, "can_fail");
   const completed = isCompleted(mission);
   const deadlineLabel = formatDeadline(mission?.prazo);
   const operationName = mission?.operacao_nome;
   const failed = String(mission?.status_code || "").startsWith("FALHA");
+  const previousPending = mission?.is_previous_operational_pending === true;
   const currentStatusText = statusText(mission);
-  const hasBadge = isPinned || operationName || currentStatusText;
+  const hasBadge = isPinned || operationName || currentStatusText || previousPending;
 
   useEffect(() => {
-    setFailureFormOpen(false);
     setDetailsOpen(false);
   }, [mission?.id, mission?.is_pinned]);
 
   if (soldier) {
     return (
       <article className={`mission-card soldier-card ${isPinned ? "priority-high" : ""} ${failed ? "danger" : ""}`}>
-        {hasBadge && (
-          <div className="mission-badge-row">
-            {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
-            {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
-            {currentStatusText && <span className="meta-tag">{currentStatusText}</span>}
-          </div>
-        )}
-        <h3>{title}</h3>
-        {operationName && <p className="mission-origin">Operação: {operationName}</p>}
-        {instruction && <p className="mission-instruction">{instruction}</p>}
-
-        {canComplete && (
-          <button
-            className="button success full"
-            disabled={completing}
-            type="button"
-            onClick={onComplete}
-          >
-            {completing ? "AGUARDE" : "ABATER"}
-          </button>
-        )}
-
-        {canJustify && canComplete && !failureFormOpen && (
-          <button
-            className="soldier-failure-trigger"
-            disabled={disabled}
-            type="button"
-            onClick={() => setFailureFormOpen(true)}
-          >
-            REGISTRAR FALHA
-          </button>
-        )}
-
-        {canJustify && (!canComplete || failureFormOpen) && (
-          <div className="soldier-failure-box">
-            {canComplete && (
-              <p className="soldier-failure-warning">
-                A missão será registrada como falha no relatório.
+        <div className="soldier-card-inner">
+          <div className="soldier-card-info">
+            {hasBadge && (
+              <div className="mission-badge-row">
+                {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
+                {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
+                {previousPending && <span className="meta-tag warning">PENDÊNCIA DO DIA ANTERIOR</span>}
+                {currentStatusText && <span className="meta-tag">{currentStatusText}</span>}
+              </div>
+            )}
+            <div className="soldier-card-title-row">
+              <h3>{title}</h3>
+              {can(mission, "can_pin") && onTogglePin && (
+                <button
+                  className={`priority-icon-button ${isPinned ? "active" : ""}`}
+                  aria-label={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
+                  disabled={disabled}
+                  title={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
+                  type="button"
+                  onClick={() => onTogglePin(mission)}
+                >
+                  <span aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            {operationName && <p className="mission-origin">Operação: {operationName}</p>}
+            {instruction && <p className="mission-instruction">{instruction}</p>}
+            {previousPending && (
+              <p className="mission-instruction previous-pending-note">
+                Esta ordem ainda pertence ao ciclo operacional anterior.
               </p>
             )}
-            <FailureJustificationForm
-              loading={justifying}
-              mission={mission}
-              onSubmit={onJustify}
-              required={requiresJustification}
-              submitLabel={requiresJustification ? "REGISTRAR JUSTIFICATIVA" : "REGISTRAR FALHA"}
-            />
-            {canComplete && (
+            {canFail && (
               <button
-                className="button secondary compact"
+                className="soldier-failure-trigger"
                 disabled={disabled}
                 type="button"
-                onClick={() => setFailureFormOpen(false)}
+                onClick={() => onJustify?.(mission.id)}
               >
-                CANCELAR
+                {justifying ? "Aguarde" : "Falhei."}
               </button>
             )}
           </div>
-        )}
+
+          {canComplete && (
+            <div className="soldier-card-action">
+              <button
+                className="soldier-abate-btn"
+                disabled={completing}
+                type="button"
+                onClick={onComplete}
+              >
+                {completing ? "…" : "ABATER"}
+              </button>
+            </div>
+          )}
+        </div>
       </article>
     );
   }
@@ -227,26 +223,6 @@ export default function MissionCard({
         </div>
       )}
 
-      {failureFormOpen && canJustify && (
-        <div className="mission-details-inline">
-          <FailureJustificationForm
-            loading={justifying}
-            mission={mission}
-            onSubmit={onJustify}
-            required={requiresJustification}
-            submitLabel={requiresJustification ? "REGISTRAR JUSTIFICATIVA" : "REGISTRAR FALHA"}
-          />
-          <button
-            className="button secondary compact"
-            disabled={disabled}
-            type="button"
-            onClick={() => setFailureFormOpen(false)}
-          >
-            CANCELAR
-          </button>
-        </div>
-      )}
-
       <div className="mission-actions primary-actions">
         {!completed && currentStatusText && <span className="meta-tag mission-footer-status">{currentStatusText}</span>}
         {canComplete && (
@@ -254,14 +230,14 @@ export default function MissionCard({
             {completing ? "AGUARDE" : "ABATER"}
           </button>
         )}
-        {canJustify && !failureFormOpen && (
+        {canFail && (
           <button
             className="button danger ghost compact"
             disabled={disabled}
             type="button"
-            onClick={() => setFailureFormOpen(true)}
+            onClick={() => onJustify?.(mission.id)}
           >
-            REGISTRAR FALHA
+            {justifying ? "AGUARDE" : "REGISTRAR FALHA"}
           </button>
         )}
         {completed && can(mission, "can_edit") && onReopen && (

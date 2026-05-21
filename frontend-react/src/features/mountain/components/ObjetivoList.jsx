@@ -13,6 +13,7 @@ const groups = [
 
 export default function ObjetivoList({
   loading,
+  missions = [],
   objetivos,
   onCreate,
   onDelete,
@@ -86,6 +87,7 @@ export default function ObjetivoList({
                   <ObjetivoCard
                     key={objetivo.id}
                     loading={loading}
+                    missions={missions.filter((mission) => mission.objetivo_id === objetivo.id)}
                     objetivo={objetivo}
                     onDelete={onDelete}
                     onUpdate={onUpdate}

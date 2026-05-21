@@ -360,7 +360,7 @@ export default function GeneralDashboardScreen({ token, user, onLogout, onUserCh
     if (!mission?.id) { setError("Ordem inválida para registrar falha."); return; }
     setJustifyingId(mission.id);
     setError("");
-    const result = await api.submitFailureJustification(token, mission.id, payload);
+    const result = await api.failMission(token, mission.id);
     setJustifyingId(null);
     if (await handleUnauthorized(result)) return;
     if (!result.ok) setError(getErrorMessage(result, "Não foi possível registrar a falha."));

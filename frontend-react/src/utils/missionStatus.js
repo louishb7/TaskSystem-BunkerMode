@@ -1,6 +1,7 @@
 export const STATUS_MISSAO = Object.freeze({
   PENDENTE: "PENDENTE",
   CONCLUIDA: "CONCLUIDA",
+  FALHA: "FALHA",
   FALHA_PENDENTE_JUSTIFICATIVA: "FALHA_PENDENTE_JUSTIFICATIVA",
   FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHA_JUSTIFICADA_PENDENTE_REVISAO",
   FALHA_REVISADA: "FALHA_REVISADA",
@@ -9,9 +10,10 @@ export const STATUS_MISSAO = Object.freeze({
 const STATUS_LABELS = Object.freeze({
   [STATUS_MISSAO.PENDENTE]: "Pendente",
   [STATUS_MISSAO.CONCLUIDA]: "Concluída",
-  [STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA]: "Falha aguardando justificativa",
-  [STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO]: "Falha justificada aguardando revisão",
-  [STATUS_MISSAO.FALHA_REVISADA]: "Falha revisada",
+  [STATUS_MISSAO.FALHA]: "Falha",
+  [STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA]: "Falha",
+  [STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO]: "Falha",
+  [STATUS_MISSAO.FALHA_REVISADA]: "Falha",
 });
 
 function getMissionStatusCode(mission) {
@@ -43,7 +45,10 @@ export function isCompleted(mission) {
 }
 
 export function isReviewedFailure(mission) {
-  return getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_REVISADA;
+  return getMissionStatusCode(mission) === STATUS_MISSAO.FALHA
+    || getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_REVISADA
+    || getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA
+    || getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO;
 }
 
 export function isFailedWaitingJustification(mission) {
@@ -59,11 +64,11 @@ export function isFinalizedMission(mission) {
 }
 
 export function requiresSoldierJustification(mission) {
-  return isFailedWaitingJustification(mission);
+  return false;
 }
 
 export function requiresGeneralReview(mission) {
-  return isFailedWaitingReview(mission);
+  return false;
 }
 
 export function isOperationalMission(mission) {

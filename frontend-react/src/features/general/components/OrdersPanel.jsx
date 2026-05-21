@@ -98,7 +98,7 @@ export default function OrdersPanel({
         <div className="mission-groups">
           {renderMissionGroup("Prioridade elevada", groups.highPriority, "critical")}
           {renderMissionGroup("Pendentes", groups.pending)}
-          {renderMissionGroup("Aguardando justificativa", groups.failures, "danger")}
+          {renderMissionGroup("Falhas registradas", groups.failures, "danger")}
           {renderMissionGroup("Cumpridas", groups.completed, "completed")}
         </div>
       ) : (

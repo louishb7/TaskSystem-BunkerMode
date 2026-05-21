@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from api.routes import (
     alterar_timezone,
@@ -55,7 +56,7 @@ from api.schemas import (
     FecharRevisaoPayload,
     UnlockGeneralPayload,
 )
-from missao import Missao, StatusMissao
+from missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, StatusMissao
 from services.auth_service import AuthService
 from services.missao_service import MissaoService
 from services.operacao_service import OperacaoService
@@ -309,6 +310,8 @@ def assert_mission_contract(payload):
         "can_edit": payload["permissions"]["can_edit"],
         "can_delete": payload["permissions"]["can_delete"],
         "can_justify": payload["permissions"]["can_justify"],
+        "can_fail": payload["permissions"]["can_fail"],
+        "can_pin": payload["permissions"]["can_pin"],
         "can_review": payload["permissions"]["can_review"],
         "can_view_history": payload["permissions"]["can_view_history"],
     }
@@ -447,8 +450,9 @@ def test_soldado_nao_conclui_missao_vencida_apos_corte_operacional():
     missoes_operacionais = listar_missoes(usuario=usuario, missao_service=missoes)
 
     assert erro.value.status_code == 400
-    assert missoes_operacionais[0]["status_code"] == "FALHA_PENDENTE_JUSTIFICATIVA"
-    assert missoes_operacionais[0]["failed_at"] is not None
+    assert missoes_operacionais == []
+    assert missoes.buscar_por_id(1).status == StatusMissao.FALHA
+    assert missoes.buscar_por_id(1).failed_at is not None
 
 
 def test_general_pode_concluir_missao_sem_entrar_no_modo_soldado():
@@ -508,8 +512,8 @@ def test_general_pode_registrar_falha_sem_entrar_no_modo_soldado():
         end_date="2026-04-26",
     )
 
-    assert falha["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
-    assert falha["failure_reason"] == "Não executei."
+    assert falha["status_code"] == "FALHA"
+    assert falha["failure_reason"] is None
     assert relatorio["failed_missions"] == 1
 
 
@@ -536,7 +540,7 @@ def test_api_retorna_403_quando_soldado_tenta_criar_missao():
         raise AssertionError("Criar missão em modo Soldier deveria retornar 403.")
 
 
-def test_soldado_pode_justificar_e_general_revisar():
+def test_soldado_registra_falha_sem_justificativa_e_general_nao_revisa():
     repo, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
     criar_missao(
         MissaoCreatePayload(
@@ -559,18 +563,16 @@ def test_soldado_pode_justificar_e_general_revisar():
         missao_service=missoes,
     )
     assert_mission_contract(justificativa)
-    assert justificativa["status"] == "Falha justificada aguardando revisão"
-    assert justificativa["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
-    assert justificativa["status_label"] == "Falha justificada aguardando revisão"
+    assert justificativa["status"] == "Falha"
+    assert justificativa["status_code"] == "FALHA"
+    assert justificativa["status_label"] == "Falha"
     assert justificativa["permissions"]["can_justify"] is False
     assert justificativa["permissions"]["can_review"] is False
 
     usuario.definir_modo("general")
     repo.atualizar_modo_ativo(usuario.usuario_id, "general")
     revisoes = listar_missoes_em_revisao(usuario=usuario, missao_service=missoes)
-    assert [item["id"] for item in revisoes] == [1]
-    assert_mission_contract(revisoes[0])
-    assert revisoes[0]["permissions"]["can_review"] is True
+    assert revisoes == []
 
     resposta = revisar_justificativa(
         1,
@@ -579,14 +581,14 @@ def test_soldado_pode_justificar_e_general_revisar():
         missao_service=missoes,
     )
     assert_mission_contract(resposta)
-    assert resposta["status"] == "Falha revisada"
-    assert resposta["status_code"] == "FALHA_REVISADA"
-    assert resposta["general_verdict"] == "accepted"
-    assert resposta["permissions"]["can_edit"] is False
+    assert resposta["status"] == "Falha"
+    assert resposta["status_code"] == "FALHA"
+    assert resposta["general_verdict"] is None
+    assert resposta["permissions"]["can_edit"] is True
     assert resposta["permissions"]["can_delete"] is False
 
 
-def test_rota_justification_persiste_tipo_e_texto_da_justificativa():
+def test_rota_justification_mantem_compatibilidade_sem_persistir_texto():
     _, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
     criar_missao(
         MissaoCreatePayload(
@@ -613,11 +615,11 @@ def test_rota_justification_persiste_tipo_e_texto_da_justificativa():
     )
     recarregada = missoes.buscar_por_id(1)
 
-    assert resposta["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
-    assert resposta["failure_reason_type"] == "done_not_marked"
-    assert resposta["failure_reason"] == "Executei, mas não registrei no prazo."
+    assert resposta["status_code"] == "FALHA"
+    assert resposta["failure_reason_type"] is None
+    assert resposta["failure_reason"] is None
     assert resposta["completed_at"] is None
-    assert recarregada.failure_reason_type.value == "done_not_marked"
+    assert recarregada.failure_reason_type is None
     assert recarregada.completed_at is None
 
 
@@ -658,16 +660,17 @@ def test_soldado_registra_falha_manual_antes_do_prazo_e_ordem_sai_do_quadro():
     )
 
     assert quadro_inicial[0]["permissions"]["can_complete"] is True
-    assert quadro_inicial[0]["permissions"]["can_justify"] is True
-    assert resposta["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
+    assert quadro_inicial[0]["permissions"]["can_justify"] is False
+    assert quadro_inicial[0]["permissions"]["can_fail"] is True
+    assert resposta["status_code"] == "FALHA"
     assert resposta["completed_at"] is None
-    assert resposta["failure_reason"] == "Acordei às 10h."
+    assert resposta["failure_reason"] is None
     assert quadro_final == []
     assert relatorio["failed_missions"] == 1
     assert relatorio["completed_missions"] == 0
 
 
-def test_fluxo_lifecycle_expirada_justificada_revisada_reflete_no_relatorio():
+def test_fluxo_lifecycle_expirada_falhada_reflete_no_relatorio():
     _, auth, missoes, relatorios, usuario_dict, usuario = preparar_ambiente()
     criar_missao(
         MissaoCreatePayload(
@@ -689,8 +692,8 @@ def test_fluxo_lifecycle_expirada_justificada_revisada_reflete_no_relatorio():
         usuario=usuario,
         missao_service=missoes,
     )
-    assert justificativa["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
-    assert justificativa["failure_reason"] == "Perdi a janela por bloqueio externo."
+    assert justificativa["status_code"] == "FALHA"
+    assert justificativa["failure_reason"] is None
 
     usuario.definir_modo("general")
     auth.liberar_general(usuario.usuario_id, "segredo123")
@@ -700,8 +703,8 @@ def test_fluxo_lifecycle_expirada_justificada_revisada_reflete_no_relatorio():
         usuario=usuario,
         missao_service=missoes,
     )
-    assert revisao["status_code"] == "FALHA_REVISADA"
-    assert revisao["general_verdict"] == "rejected"
+    assert revisao["status_code"] == "FALHA"
+    assert revisao["general_verdict"] is None
 
     relatorio = obter_relatorio_semanal(
         start_date="2026-04-20",
@@ -712,7 +715,7 @@ def test_fluxo_lifecycle_expirada_justificada_revisada_reflete_no_relatorio():
     assert relatorio["total_missions"] == 1
     assert relatorio["failed_missions"] == 1
     assert relatorio["reviewed_failures"] == 1
-    assert relatorio["failure_reasons"] == ["Perdi a janela por bloqueio externo."]
+    assert relatorio["failure_reasons"] == []
 
 
 def test_listagem_operacional_nao_retorna_concluidas_ou_falhas_revisadas():
@@ -857,12 +860,12 @@ def test_listagem_soldado_retorna_apenas_executaveis_ou_justificaveis():
 
     resposta = listar_missoes(usuario=usuario, missao_service=missoes)
 
-    assert [missao["id"] for missao in resposta] == [4, 1]
+    assert [missao["id"] for missao in resposta] == [1]
     assert all(assert_mission_contract(missao) is None for missao in resposta)
-    assert resposta[0]["permissions"]["can_justify"] is True
-    assert resposta[0]["permissions"]["can_complete"] is False
-    assert resposta[1]["permissions"]["can_complete"] is True
-    assert resposta[1]["permissions"]["can_edit"] is False
+    assert resposta[0]["permissions"]["can_justify"] is False
+    assert resposta[0]["permissions"]["can_fail"] is True
+    assert resposta[0]["permissions"]["can_complete"] is True
+    assert resposta[0]["permissions"]["can_edit"] is False
 
 
 def test_dia_operacional_preserva_progresso_quatro_ordens_duas_executadas():
@@ -910,17 +913,14 @@ def test_api_retorna_400_para_revisao_em_estado_invalido():
         missao_service=missoes,
     )
 
-    try:
-        revisar_justificativa(
-            1,
-            RevisaoJustificativaPayload(accepted=True),
-            usuario=usuario,
-            missao_service=missoes,
-        )
-    except HTTPException as erro:
-        assert erro.status_code == 400
-    else:
-        raise AssertionError("Revisão fora do estado correto deveria retornar 400.")
+    resposta = revisar_justificativa(
+        1,
+        RevisaoJustificativaPayload(accepted=True),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+
+    assert resposta["status_code"] == "PENDENTE"
 
 
 def test_general_pode_reabrir_missao_concluida():
@@ -1181,8 +1181,8 @@ def test_relatorio_semanal_retorna_payload_esperado():
     assert payload["completion_rate"] == 50.0
     assert payload["high_priority_missions"] == 1
     assert payload["missions_waiting_justification"] == 0
-    assert payload["missions_waiting_review"] == 1
-    assert payload["failure_reasons"] == ["Perdi o prazo por bloqueio externo."]
+    assert payload["missions_waiting_review"] == 0
+    assert payload["failure_reasons"] == []
 
 
 def test_criar_missao_retorna_contrato_completo():
@@ -1219,6 +1219,15 @@ def test_criar_missao_permite_payload_sem_instrucao():
     assert_mission_contract(resposta)
     assert resposta["titulo"] == "Treinar"
     assert resposta["instrucao"] is None
+
+
+def test_payload_missao_rejeita_instrucao_acima_do_limite():
+    with pytest.raises(ValidationError):
+        MissaoCreatePayload(
+            titulo="Treinar",
+            prazo="30-04-2099",
+            instrucao="x" * (MISSAO_INSTRUCAO_MAX_LENGTH + 1),
+        )
 
 
 def test_criar_missao_sem_prioridade_visivel_preserva_fallback_legacy():
@@ -1308,8 +1317,8 @@ def test_limpar_relatorio_falhas_persiste_no_backend():
         missao_service=missoes,
     )
 
-    assert resposta[0]["status_code"] == "FALHA_REVISADA"
-    assert repo.buscar_por_id(1).general_verdict == "accepted"
+    assert resposta[0]["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
+    assert repo.buscar_por_id(1).general_verdict is None
 
     relatorio = obter_relatorio_semanal(
         start_date="2026-04-24",
@@ -1320,7 +1329,7 @@ def test_limpar_relatorio_falhas_persiste_no_backend():
     historico = listar_missoes_historicas(usuario=usuario, missao_service=missoes)
 
     assert relatorio["failed_missions"] == 1
-    assert relatorio["failure_reasons"] == ["Não executei."]
+    assert relatorio["failure_reasons"] == []
     assert [missao["id"] for missao in historico] == [1]
 
 
@@ -1527,16 +1536,14 @@ def test_operacao_cancelada_remove_ordens_atuais_e_preserva_historico():
         operacao_service=operacoes,
     )
 
-    assert len(listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)) == 3
+    assert len(listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)) == 2
 
     cancelar_operacao(operacao["id"], usuario=usuario, operacao_service=operacoes)
 
     missoes_restantes = listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)
 
     assert listar_operacoes(usuario=usuario, operacao_service=operacoes) == []
-    assert len(missoes_restantes) == 1
-    assert missoes_restantes[0]["prazo"] == "23-04-2026"
-    assert missoes_restantes[0]["operacao_id"] is None
+    assert len(missoes_restantes) == 0
 
 
 def test_soldado_migra_para_dia_atual_antes_das_quatro_sem_pendencias_anteriores():

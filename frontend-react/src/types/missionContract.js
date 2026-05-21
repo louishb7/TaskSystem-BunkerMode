@@ -3,6 +3,7 @@ const REQUIRED_PERMISSION_KEYS = Object.freeze([
   "can_edit",
   "can_delete",
   "can_justify",
+  "can_fail",
   "can_review",
   "can_view_history",
 ]);

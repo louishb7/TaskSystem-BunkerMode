@@ -7,6 +7,7 @@ import { api } from "../../../services/bunkermodeApi.js";
 export function useMountain({ onUnauthorized, token }) {
   const [sonhos, setSonhos] = useState([]);
   const [objetivos, setObjetivos] = useState([]);
+  const [missions, setMissions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mutating, setMutating] = useState(false);
   const [status, setStatus] = useState(emptyStatus);
@@ -25,13 +26,14 @@ export function useMountain({ onUnauthorized, token }) {
       return false;
     }
     setLoading(true);
-    const [sonhosResult, objetivosResult] = await Promise.all([
+    const [sonhosResult, objetivosResult, missionsResult] = await Promise.all([
       api.listSonhos(token),
       api.listObjetivos(token),
+      api.listMissions(token),
     ]);
     setLoading(false);
 
-    if (onUnauthorized?.(sonhosResult) || onUnauthorized?.(objetivosResult)) {
+    if (onUnauthorized?.(sonhosResult) || onUnauthorized?.(objetivosResult) || onUnauthorized?.(missionsResult)) {
       return false;
     }
 
@@ -43,9 +45,14 @@ export function useMountain({ onUnauthorized, token }) {
       setStatus({ type: "error", message: getErrorMessage(objetivosResult, "Não foi possível carregar objetivos.") });
       return false;
     }
+    if (!missionsResult.ok) {
+      setStatus({ type: "error", message: getErrorMessage(missionsResult, "Não foi possível carregar missões da montanha.") });
+      return false;
+    }
 
     setSonhos(Array.isArray(sonhosResult.data) ? sonhosResult.data : []);
     setObjetivos(Array.isArray(objetivosResult.data) ? objetivosResult.data : []);
+    setMissions(Array.isArray(missionsResult.data) ? missionsResult.data : []);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
     return true;
   }
@@ -75,6 +82,7 @@ export function useMountain({ onUnauthorized, token }) {
 
   return {
     loading,
+    missions,
     mutating,
     objetivos,
     sonhos,
@@ -128,4 +136,3 @@ export function useMountain({ onUnauthorized, token }) {
     ),
   };
 }
-

@@ -1,6 +1,5 @@
 from datetime import date, datetime
 
-from missao import StatusMissao
 from services.exceptions import PermissaoNegadaError
 from services.operational_day import operational_date_for, operational_week_bounds
 
@@ -35,16 +34,8 @@ class RelatorioService:
         ]
 
         total = len(consideradas)
-        concluidas = [m for m in consideradas if m.is_completed() or self._feita_sem_registro(m)]
-        falhas = [m for m in consideradas if m.status in {
-            StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
-            StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
-            StatusMissao.FALHA_REVISADA,
-        } and not self._feita_sem_registro(m)]
-        aguardando_justificativa = [m for m in consideradas if m.requires_soldier_justification()]
-        aguardando_revisao = [m for m in consideradas if m.requires_general_review()]
-        falhas_revisadas = [m for m in consideradas if m.is_failed_reviewed()]
-        motivos = [m.failure_reason for m in falhas if m.failure_reason]
+        concluidas = [m for m in consideradas if m.is_completed()]
+        falhas = [m for m in consideradas if m.is_failed()]
 
         return {
             "start_date": inicio.isoformat(),
@@ -54,10 +45,10 @@ class RelatorioService:
             "failed_missions": len(falhas),
             "completion_rate": 0 if total == 0 else round((len(concluidas) / total) * 100, 2),
             "high_priority_missions": sum(1 for m in consideradas if m.is_pinned),
-            "missions_waiting_justification": len(aguardando_justificativa),
-            "missions_waiting_review": len(aguardando_revisao),
-            "reviewed_failures": len(falhas_revisadas),
-            "failure_reasons": motivos,
+            "missions_waiting_justification": 0,
+            "missions_waiting_review": 0,
+            "reviewed_failures": len(falhas),
+            "failure_reasons": [],
         }
 
     def _pertence_a_semana(self, missao, inicio: date, fim: date) -> bool:
@@ -65,9 +56,6 @@ class RelatorioService:
         if data_evento is None:
             return False
         return inicio <= operational_date_for(data_evento) <= fim
-
-    def _feita_sem_registro(self, missao) -> bool:
-        return getattr(missao.failure_reason_type, "value", None) == "done_not_marked"
 
     def _resolve_intervalo(self, start_date: date | None, end_date: date | None) -> tuple[date, date]:
         if (start_date is None) != (end_date is None):

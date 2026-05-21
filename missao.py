@@ -1,10 +1,13 @@
 from datetime import date, datetime
 from enum import Enum
 
+MISSAO_INSTRUCAO_MAX_LENGTH = 120
+
 
 class StatusMissao(Enum):
     PENDENTE = "Pendente"
     CONCLUIDA = "Concluída"
+    FALHA = "Falha"
     FALHA_PENDENTE_JUSTIFICATIVA = "Falha aguardando justificativa"
     FALHA_JUSTIFICADA_PENDENTE_REVISAO = "Falha justificada aguardando revisão"
     FALHA_REVISADA = "Falha revisada"
@@ -28,6 +31,7 @@ _STATUS_ALIAS = {
     "Aguardando Recruta!": StatusMissao.PENDENTE,
     "Concluída": StatusMissao.CONCLUIDA,
     "Pendente": StatusMissao.PENDENTE,
+    "Falha": StatusMissao.FALHA,
     "Falha aguardando justificativa": StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
     "Falha justificada aguardando revisão": StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
     "Falha revisada": StatusMissao.FALHA_REVISADA,
@@ -63,6 +67,9 @@ class Missao:
         operacao_id=None,
         operacao_nome=None,
         objetivo_id=None,
+        recurrence_weekdays=None,
+        recurrence_end_date=None,
+        duration_type=None,
         is_pinned=False,
     ):
         self.missao_id = self._validar_missao_id(missao_id)
@@ -87,6 +94,9 @@ class Missao:
             "Nome da operação não pode ser vazio.",
         )
         self.objetivo_id = self._validar_objetivo_id(objetivo_id)
+        self.recurrence_weekdays = self._validar_recurrence_weekdays(recurrence_weekdays)
+        self.recurrence_end_date = self._validar_prazo(recurrence_end_date)
+        self.duration_type = self._validar_duration_type(duration_type)
         self.is_pinned = self._validar_is_pinned(is_pinned)
         self._normalizar_consistencia_inicial()
 
@@ -121,6 +131,9 @@ class Missao:
             "operacao_id": self.operacao_id,
             "operacao_nome": self.operacao_nome,
             "objetivo_id": self.objetivo_id,
+            "recurrence_weekdays": self.recurrence_weekdays,
+            "recurrence_end_date": None if self.recurrence_end_date is None else self.recurrence_end_date.isoformat(),
+            "duration_type": self.duration_type,
             "requires_immediate_justification": self.requires_immediate_justification(),
             "has_pending_non_blocking_justification": self.has_pending_non_blocking_justification(),
             "permissions": permissions or {
@@ -128,6 +141,8 @@ class Missao:
                 "can_edit": False,
                 "can_delete": False,
                 "can_justify": False,
+                "can_fail": False,
+                "can_pin": False,
                 "can_review": False,
                 "can_view_history": False,
             },
@@ -181,11 +196,19 @@ class Missao:
     def is_falha_revisada(self):
         return self.is_failed_reviewed()
 
+    def is_failed(self):
+        return self.status in {
+            StatusMissao.FALHA,
+            StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
+            StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+            StatusMissao.FALHA_REVISADA,
+        }
+
     def is_finalized(self):
-        return self.is_completed() or self.is_failed_reviewed()
+        return self.is_completed() or self.is_failed()
 
     def is_operational(self):
-        return self.is_pending() or self.is_failed_waiting_justification()
+        return self.is_pending()
 
     def is_finalizada(self):
         return self.is_finalized()
@@ -205,11 +228,7 @@ class Missao:
     def can_be_edited_by_general(self):
         if self.operacao_id is not None:
             return False
-        return (
-            self.is_pending()
-            or self.is_completed()
-            or self.is_failed_waiting_justification()
-        )
+        return self.is_pending() or self.is_completed() or self.is_failed()
 
     def can_be_deleted_by_general(self):
         if self.operacao_id is not None:
@@ -217,7 +236,7 @@ class Missao:
         return self.is_operational()
 
     def requires_soldier_justification(self):
-        return self.is_failed_waiting_justification()
+        return False
 
     def requires_immediate_justification(self):
         return self.requires_soldier_justification()
@@ -226,16 +245,14 @@ class Missao:
         return False
 
     def pode_ser_justificada(self):
-        return self.requires_soldier_justification()
+        return False
 
     def requires_general_review(self):
-        return self.is_failed_waiting_review()
+        return False
 
     def is_visible_to_soldier(self, reference_date=None):
-        if self.is_finalized() or self.requires_general_review():
+        if self.is_finalized():
             return False
-        if self.requires_soldier_justification():
-            return True
         return self.due_date is None or self.due_date <= (reference_date or date.today())
 
     def is_visible_to_general_board(self):
@@ -298,6 +315,14 @@ class Missao:
         if novo_status == StatusMissao.CONCLUIDA:
             self.concluir()
             return
+        if novo_status in {
+            StatusMissao.FALHA,
+            StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA,
+            StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+            StatusMissao.FALHA_REVISADA,
+        }:
+            self.marcar_como_falha()
+            return
         if novo_status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA:
             self.status = novo_status
             self.completed_at = None
@@ -340,7 +365,7 @@ class Missao:
     def marcar_como_falha(self, instante=None):
         if self.is_completed():
             raise ValueError("Missão concluída não entra em fluxo de falha.")
-        self.status = StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA
+        self.status = StatusMissao.FALHA
         self.completed_at = None
         if self.failed_at is None:
             self.failed_at = self._validar_datetime(instante, "Data de falha inválida.", default_now=True)
@@ -349,23 +374,12 @@ class Missao:
         self.general_verdict = None
 
     def registrar_justificativa_soldado(self, motivo, tipo=TipoJustificativaFalha.OTHER):
-        if not self.requires_soldier_justification():
-            raise ValueError("A missão não está aguardando justificativa.")
-        self.failure_reason_type = self._validar_failure_reason_type(tipo, obrigatorio=True)
-        self.failure_reason = self._validar_texto_opcional(
-            motivo,
-            "Justificativa da falha não pode ser vazia.",
-            obrigatorio=True,
-        )
-        self.status = StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+        self.marcar_como_falha()
 
     def registrar_veredito_general(self, veredito):
-        if not self.requires_general_review():
-            raise ValueError("Não há justificativa pendente de revisão.")
-        if not self.failure_reason:
-            raise ValueError("Não é possível revisar sem justificativa prévia do Soldado.")
-        self.general_verdict = self._validar_general_verdict(veredito, obrigatorio=True)
-        self.status = StatusMissao.FALHA_REVISADA
+        if not self.is_failed():
+            raise ValueError("Não há falha registrada para revisar.")
+        self.status = StatusMissao.FALHA
 
     def _normalizar_consistencia_inicial(self):
         if self.is_completed():
@@ -389,7 +403,7 @@ class Missao:
         if self.failed_at is None:
             self.failed_at = self.created_at
 
-        if self.is_failed_waiting_justification():
+        if self.is_failed():
             self.failure_reason_type = None
             self.failure_reason = None
             self.general_verdict = None
@@ -477,6 +491,29 @@ class Missao:
             raise ValueError("Marcador de prioridade deve ser booleano.")
         return is_pinned
 
+    def _validar_recurrence_weekdays(self, weekdays):
+        if weekdays is None:
+            return None
+        if not isinstance(weekdays, list):
+            raise ValueError("Frequência semanal da missão deve ser uma lista.")
+        normalizados = []
+        for weekday in weekdays:
+            if not isinstance(weekday, int) or weekday < 0 or weekday > 6:
+                raise ValueError("Dias da frequência semanal devem estar entre 0 e 6.")
+            if weekday not in normalizados:
+                normalizados.append(weekday)
+        return normalizados or None
+
+    def _validar_duration_type(self, duration_type):
+        if duration_type is None:
+            return None
+        if not isinstance(duration_type, str):
+            raise ValueError("Duração da missão vinculada é inválida.")
+        normalizado = duration_type.strip().lower()
+        if normalizado not in {"pontual", "ate_objetivo", "prazo"}:
+            raise ValueError("Duração da missão vinculada é inválida.")
+        return normalizado
+
     def _validar_datetime(self, valor, mensagem_erro, default_now=False):
         if valor is None:
             return datetime.now() if default_now else None
@@ -545,4 +582,6 @@ class Missao:
         instrucao = instrucao.strip()
         if not instrucao:
             return None
+        if len(instrucao) > MISSAO_INSTRUCAO_MAX_LENGTH:
+            raise ValueError(f"Instrução da missão deve ter no máximo {MISSAO_INSTRUCAO_MAX_LENGTH} caracteres.")
         return instrucao

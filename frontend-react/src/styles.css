@@ -72,6 +72,15 @@ textarea {
   resize: vertical;
 }
 
+.field-counter {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: right;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -1170,7 +1179,6 @@ h3 {
 
 .mission-card.soldier-card {
   border-left: 2px solid var(--fire);
-  min-height: 88px;
 }
 
 .mission-card.soldier-card.priority-high {
@@ -1183,10 +1191,6 @@ h3 {
 
 .soldier-list {
   gap: 8px;
-}
-
-.soldier-list .mission-card h3 {
-  font-size: 1.02rem;
 }
 
 .mission-badge-row {
@@ -1231,6 +1235,12 @@ h3 {
   border-color: rgba(255, 138, 42, 0.42);
   background: rgba(255, 138, 42, 0.08);
   color: var(--fire);
+}
+
+.meta-tag.warning {
+  border-color: rgba(255, 201, 92, 0.38);
+  background: rgba(255, 201, 92, 0.08);
+  color: #ffd27a;
 }
 
 .mission-compact-head {
@@ -2453,62 +2463,173 @@ h3 {
 }
 
 .mission-card.soldier-card {
-  min-height: 76px;
+  min-height: 80px;
   border-left-width: 3px;
   background:
     linear-gradient(90deg, rgba(255, 138, 42, 0.055), transparent 42%),
     rgba(11, 11, 11, 0.74);
-  gap: 8px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.soldier-card-inner {
+  display: flex;
+  align-items: stretch;
+  min-height: 80px;
+}
+
+.soldier-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
   padding: 12px 14px;
+  min-width: 0;
+}
+
+.soldier-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.soldier-card-title-row h3 {
+  flex: 1;
+  min-width: 0;
+}
+
+.soldier-card-title-row .priority-icon-button {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.soldier-card-action {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex-shrink: 0;
+  width: 52px;
+  border-left: 1px solid rgba(72, 230, 126, 0.42);
+  background:
+    linear-gradient(180deg, rgba(72, 230, 126, 0.18), rgba(23, 118, 61, 0.22)),
+    rgba(10, 38, 21, 0.82);
+  box-shadow: inset 1px 0 0 rgba(208, 255, 220, 0.08);
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.mission-card.soldier-card.priority-high .soldier-card-action {
+  border-left-color: rgba(72, 230, 126, 0.52);
+  background:
+    linear-gradient(180deg, rgba(72, 230, 126, 0.2), rgba(23, 118, 61, 0.24)),
+    linear-gradient(90deg, rgba(155, 92, 255, 0.12), transparent),
+    rgba(10, 38, 21, 0.86);
+}
+
+.mission-card.soldier-card.danger .soldier-card-action {
+  border-left-color: rgba(72, 230, 126, 0.36);
+  background:
+    linear-gradient(180deg, rgba(72, 230, 126, 0.14), rgba(23, 118, 61, 0.18)),
+    rgba(10, 38, 21, 0.72);
+}
+
+.soldier-abate-btn {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background:
+    linear-gradient(180deg, rgba(103, 197, 135, 0.2), rgba(17, 89, 45, 0.3)),
+    rgba(8, 45, 24, 0.76);
+  color: #effff3;
+  cursor: pointer;
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transition: background var(--motion-fast), color var(--motion-fast), text-shadow var(--motion-fast), box-shadow var(--motion-fast);
+  padding: 12px 0;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(184, 255, 204, 0.06);
+}
+
+.soldier-abate-btn:hover:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(124, 235, 158, 0.34), rgba(26, 132, 68, 0.42)),
+    rgba(9, 58, 29, 0.9);
+  color: #ffffff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+  box-shadow:
+    inset 0 0 0 1px rgba(213, 255, 225, 0.16),
+    inset 0 12px 24px rgba(103, 197, 135, 0.12);
+}
+
+.soldier-abate-btn:active:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(80, 206, 120, 0.36), rgba(16, 92, 46, 0.48)),
+    rgba(6, 42, 21, 0.94);
+}
+
+.soldier-abate-btn:disabled {
+  color: var(--text-dim);
+  text-shadow: none;
+  cursor: not-allowed;
 }
 
 .mission-card.soldier-card h3 {
-  color: var(--text);
+  color: #f4f1ea;
   font-size: 1.08rem;
   letter-spacing: 0.01em;
   line-height: 1.16;
+  margin: 0;
+}
+
+.mission-card.soldier-card.priority-high h3,
+.mission-card.soldier-card.danger h3 {
+  color: #f4f1ea;
 }
 
 .mission-card.soldier-card .mission-instruction {
-  max-width: 58ch;
+  max-width: 52ch;
   display: -webkit-box;
   overflow: hidden;
-  color: rgba(237, 237, 237, 0.68);
+  color: rgba(237, 237, 237, 0.88);
   font-size: 0.78rem;
   line-height: 1.32;
+  margin: 0;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
 .mission-card.soldier-card .mission-badge-row {
   justify-content: flex-start;
-  margin-bottom: 4px;
-}
-
-.mission-card.soldier-card .button.success.full {
-  min-height: 34px;
-  padding: 7px 10px;
-  font-size: 0.72rem;
+  margin-bottom: 2px;
 }
 
 .soldier-failure-trigger {
-  justify-self: end;
+  align-self: flex-start;
+  margin-top: 4px;
+  margin-left: 18px;
   width: auto;
-  min-height: 26px;
-  border: 1px solid rgba(229, 57, 53, 0.55);
+  min-height: 20px;
+  border: 1px solid rgba(229, 57, 53, 0.32);
   border-radius: var(--radius-sm);
-  background: rgba(229, 57, 53, 0.06);
-  color: var(--red);
+  background: transparent;
+  color: rgba(229, 57, 53, 0.65);
   cursor: pointer;
-  padding: 4px 7px;
-  font-size: 0.64rem;
+  padding: 2px 7px;
+  font-size: 0.58rem;
   font-weight: 800;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  transition: color var(--motion-fast), border-color var(--motion-fast), background var(--motion-fast);
 }
 
 .soldier-failure-trigger:hover:not(:disabled) {
-  background: rgba(229, 57, 53, 0.08);
-  border-color: rgba(229, 57, 53, 0.48);
+  color: var(--red);
+  border-color: rgba(229, 57, 53, 0.52);
+  background: rgba(229, 57, 53, 0.05);
 }
 
 .soldier-failure-box {
@@ -2870,6 +2991,83 @@ h3 {
 .objetivo-empty-orders {
   margin-bottom: 0;
   font-size: 0.78rem;
+}
+
+.linked-mission-options,
+.weekday-fieldset,
+.objective-linked-missions {
+  display: grid;
+  gap: 10px;
+}
+
+.linked-mission-options {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.weekday-fieldset {
+  border: 0;
+  padding: 0;
+}
+
+.weekday-fieldset legend {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.weekday-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.weekday-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.weekday-options label.active {
+  border-color: var(--fire-border);
+  color: var(--fire);
+}
+
+.objective-linked-missions {
+  border-top: 1px solid var(--border-soft);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.objective-linked-mission {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
+.objective-linked-mission strong,
+.objective-linked-mission span {
+  min-width: 0;
+  font-size: 0.74rem;
+}
+
+.objective-linked-mission span {
+  color: var(--text-muted);
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .compact-slider {

@@ -37,6 +37,7 @@ function isPastDate(value) {
 
 export default function ObjetivoCard({
   loading,
+  missions = [],
   objetivo,
   onDelete,
   onUpdate,
@@ -59,6 +60,7 @@ export default function ObjetivoCard({
   const progressChanged = progressDraft !== Number(objetivo.progresso ?? 0);
   const active = objetivo.status === "ativo";
   const expanded = !active && detailsOpen;
+  const linkedMissions = Array.isArray(missions) ? missions : [];
 
   useEffect(() => {
     setProgressDraft(Number(objetivo.progresso ?? 0));
@@ -210,6 +212,18 @@ export default function ObjetivoCard({
             <span style={{ width: `${objetivo.progresso}%` }} />
           </div>
           <strong className="objective-progress-number">{objetivo.progresso}%</strong>
+          {linkedMissions.length > 0 ? (
+            <div className="objective-linked-missions compact">
+              {linkedMissions.map((mission) => (
+                <div className="objective-linked-mission" key={mission.id}>
+                  <strong>{mission.titulo || "Sem título"}</strong>
+                  <span>{mission.status_label || mission.status_code || "Status indisponível"}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted objetivo-empty-orders">Objetivo sem ordens operacionais.</p>
+          )}
         </>
       )}
 
@@ -229,7 +243,19 @@ export default function ObjetivoCard({
             <span style={{ width: `${objetivo.progresso}%` }} />
           </div>
 
-          <p className="muted objetivo-empty-orders">Objetivo sem ordens operacionais.</p>
+          {linkedMissions.length > 0 ? (
+            <div className="objective-linked-missions">
+              <p className="section-kicker fire">MISSÕES</p>
+              {linkedMissions.map((mission) => (
+                <div className="objective-linked-mission" key={mission.id}>
+                  <strong>{mission.titulo || "Sem título"}</strong>
+                  <span>{mission.status_label || mission.status_code || "Status indisponível"}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted objetivo-empty-orders">Objetivo sem ordens operacionais.</p>
+          )}
 
           {renderManagementActions({ includeHide: true })}
         </>

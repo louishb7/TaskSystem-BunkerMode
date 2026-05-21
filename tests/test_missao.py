@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from missao import Missao, PrioridadeMissao, StatusMissao
+from missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, PrioridadeMissao, StatusMissao
 
 
 @pytest.fixture
@@ -88,6 +88,17 @@ def test_instrucao_invalida(instrucao_invalida):
         )
 
 
+def test_instrucao_tem_limite_operacional():
+    with pytest.raises(ValueError, match="no máximo"):
+        Missao(
+            missao_id=1,
+            titulo="Teste",
+            prioridade=1,
+            prazo="10-04-2026",
+            instrucao="x" * (MISSAO_INSTRUCAO_MAX_LENGTH + 1),
+        )
+
+
 @pytest.mark.parametrize("prioridade_invalida", [10, 0, -1, "alta", None])
 def test_prioridade_invalida(prioridade_invalida):
     with pytest.raises(ValueError):
@@ -126,50 +137,41 @@ def test_status_legado_e_aceito_como_pendente():
     assert missao.status == StatusMissao.PENDENTE
 
 
-def test_estado_em_revisao_exige_justificativa():
-    with pytest.raises(ValueError, match="justificativa do Soldado"):
-        Missao(
-            missao_id=1,
-            titulo="Falha sem motivo",
-            prioridade=1,
-            prazo="01-01-2020",
-            instrucao="Executar",
-            status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
-            failed_at=datetime(2026, 4, 24, 10, 0, 0),
-        )
+def test_estado_legado_de_revisao_nao_exige_justificativa():
+    missao = Missao(
+        missao_id=1,
+        titulo="Falha sem motivo",
+        prioridade=1,
+        prazo="01-01-2020",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+    )
+
+    assert missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert missao.failure_reason is None
 
 
-def test_falha_revisada_exige_justificativa_e_veredito():
-    with pytest.raises(ValueError, match="justificativa do Soldado"):
-        Missao(
-            missao_id=1,
-            titulo="Revisada sem motivo",
-            prioridade=1,
-            prazo="01-01-2020",
-            instrucao="Executar",
-            status=StatusMissao.FALHA_REVISADA,
-            failed_at=datetime(2026, 4, 24, 10, 0, 0),
-            general_verdict="accepted",
-        )
+def test_falha_revisada_legada_nao_exige_justificativa_ou_veredito():
+    missao = Missao(
+        missao_id=1,
+        titulo="Revisada sem motivo",
+        prioridade=1,
+        prazo="01-01-2020",
+        instrucao="Executar",
+        status=StatusMissao.FALHA_REVISADA,
+        failed_at=datetime(2026, 4, 24, 10, 0, 0),
+        general_verdict="accepted",
+    )
 
-    with pytest.raises(ValueError, match="resultado da revisão"):
-        Missao(
-            missao_id=1,
-            titulo="Revisada sem veredito",
-            prioridade=1,
-            prazo="01-01-2020",
-            instrucao="Executar",
-            status=StatusMissao.FALHA_REVISADA,
-            failed_at=datetime(2026, 4, 24, 10, 0, 0),
-            failure_reason="Falhou.",
-        )
+    assert missao.status == StatusMissao.FALHA_REVISADA
+    assert missao.failure_reason is None
 
 
-def test_atualizar_status_nao_cria_estado_parcial_de_revisao(missao_base):
-    with pytest.raises(ValueError, match="justificativa do Soldado"):
-        missao_base.atualizar_status(StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO)
+def test_atualizar_status_de_falha_legada_registra_falha_simples(missao_base):
+    missao_base.atualizar_status(StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO)
 
-    assert missao_base.status == StatusMissao.PENDENTE
+    assert missao_base.status == StatusMissao.FALHA
 
 
 def test_concluir_missao_define_completed_at(missao_base):
@@ -200,15 +202,15 @@ def test_permitir_concluir_missao_vencida_como_execucao_atrasada():
     assert missao.completed_at == datetime(2026, 4, 24, 10, 0, 0)
 
 
-def test_marcar_como_falha_move_para_fluxo_de_justificativa(missao_base):
+def test_marcar_como_falha_registra_falha_sem_justificativa(missao_base):
     missao_base.marcar_como_falha(instante=datetime(2026, 4, 24, 9, 0, 0))
 
-    assert missao_base.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA
+    assert missao_base.status == StatusMissao.FALHA
     assert missao_base.failed_at == datetime(2026, 4, 24, 9, 0, 0)
     assert missao_base.failure_reason is None
 
 
-def test_justificativa_move_para_revisao(missao_base):
+def test_registrar_justificativa_soldado_e_compatibilidade_sem_efeito(missao_base):
     missao_base.marcar_como_falha()
 
     missao_base.registrar_justificativa_soldado(
@@ -216,12 +218,12 @@ def test_justificativa_move_para_revisao(missao_base):
         tipo="external_blocker",
     )
 
-    assert missao_base.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
-    assert missao_base.failure_reason_type.value == "external_blocker"
-    assert missao_base.failure_reason == "Perdi a janela por consulta médica."
+    assert missao_base.status == StatusMissao.FALHA
+    assert missao_base.failure_reason_type is None
+    assert missao_base.failure_reason is None
 
 
-def test_tipo_done_not_marked_nao_conclui_missao(missao_base):
+def test_tipo_done_not_marked_nao_cria_fluxo_especial(missao_base):
     missao_base.marcar_como_falha()
 
     missao_base.registrar_justificativa_soldado(
@@ -229,29 +231,31 @@ def test_tipo_done_not_marked_nao_conclui_missao(missao_base):
         tipo="done_not_marked",
     )
 
-    assert missao_base.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert missao_base.status == StatusMissao.FALHA
     assert missao_base.completed_at is None
-    assert missao_base.failure_reason_type.value == "done_not_marked"
+    assert missao_base.failure_reason_type is None
 
 
-def test_tipo_de_justificativa_invalido_e_rejeitado(missao_base):
+def test_tipo_de_justificativa_invalido_e_ignorado_por_compatibilidade(missao_base):
     missao_base.marcar_como_falha()
 
-    with pytest.raises(ValueError, match="Tipo da justificativa"):
-        missao_base.registrar_justificativa_soldado(
-            "Motivo inválido.",
-            tipo="motivo_inexistente",
-        )
+    missao_base.registrar_justificativa_soldado(
+        "Motivo inválido.",
+        tipo="motivo_inexistente",
+    )
+
+    assert missao_base.status == StatusMissao.FALHA
+    assert missao_base.failure_reason is None
 
 
-def test_revisao_do_general_encerra_falha(missao_base):
+def test_revisao_do_general_e_compatibilidade_sem_fluxo(missao_base):
     missao_base.marcar_como_falha()
     missao_base.registrar_justificativa_soldado("Houve bloqueio externo.")
 
     missao_base.registrar_veredito_general("accepted")
 
-    assert missao_base.status == StatusMissao.FALHA_REVISADA
-    assert missao_base.general_verdict == "accepted"
+    assert missao_base.status == StatusMissao.FALHA
+    assert missao_base.general_verdict is None
 
 
 def test_helpers_de_estado_refletem_ciclo_da_missao():
@@ -297,17 +301,17 @@ def test_helpers_de_estado_refletem_ciclo_da_missao():
     assert pendente.is_operational() is True
     assert pendente.is_finalized() is False
 
-    assert aguardando_justificativa.requires_soldier_justification() is True
-    assert aguardando_justificativa.is_operational() is True
+    assert aguardando_justificativa.requires_soldier_justification() is False
+    assert aguardando_justificativa.is_operational() is False
 
-    assert aguardando_revisao.requires_general_review() is True
+    assert aguardando_revisao.requires_general_review() is False
     assert aguardando_revisao.is_operational() is False
-    assert aguardando_revisao.is_finalized() is False
+    assert aguardando_revisao.is_finalized() is True
 
     assert falha_revisada.is_failed_reviewed() is True
     assert falha_revisada.is_finalized() is True
     assert falha_revisada.is_operational() is False
-    assert falha_revisada.can_be_edited_by_general() is False
+    assert falha_revisada.can_be_edited_by_general() is True
 
 
 def test_to_dict_expoe_status_canonico_e_permissions_padrao(missao_base):
@@ -324,6 +328,8 @@ def test_to_dict_expoe_status_canonico_e_permissions_padrao(missao_base):
         "can_edit": False,
         "can_delete": False,
         "can_justify": False,
+        "can_fail": False,
+        "can_pin": False,
         "can_review": False,
         "can_view_history": False,
     }
@@ -361,8 +367,8 @@ def test_aliases_em_portugues_refletem_regras_de_dominio():
 
     missao.marcar_como_falha()
 
-    assert missao.is_falhada() is True
-    assert missao.pode_ser_justificada() is True
+    assert missao.is_failed() is True
+    assert missao.pode_ser_justificada() is False
 
 
 def test_completed_e_failed_reviewed_nao_sao_operacionais():

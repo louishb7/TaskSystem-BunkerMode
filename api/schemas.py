@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from missao import MISSAO_INSTRUCAO_MAX_LENGTH
+
 
 class RegistroPayload(BaseModel):
     usuario: str = Field(min_length=3)
@@ -35,7 +37,7 @@ class TimezonePayload(BaseModel):
 
 
 class SoldierExcusePayload(BaseModel):
-    reason: str = Field(min_length=1)
+    reason: str | None = None
 
 
 class FailureJustificationPayload(BaseModel):
@@ -45,8 +47,8 @@ class FailureJustificationPayload(BaseModel):
         "partially_done",
         "external_blocker",
         "other",
-    ]
-    failure_reason: str = Field(min_length=1)
+    ] | None = None
+    failure_reason: str | None = None
 
 
 class GeneralVerdictPayload(BaseModel):
@@ -66,18 +68,24 @@ class MissaoCreatePayload(BaseModel):
     titulo: str = Field(min_length=1)
     prioridade: int = LEGACY_DEFAULT_PRIORITY
     prazo: str | None = None
-    instrucao: str | None = None
+    instrucao: str | None = Field(default=None, max_length=MISSAO_INSTRUCAO_MAX_LENGTH)
     responsavel_id: int | None = None
     objetivo_id: int | None = None
+    recurrence_weekdays: list[int] | None = None
+    recurrence_end_date: str | None = None
+    duration_type: Literal["pontual", "ate_objetivo", "prazo"] | None = None
 
 
 class MissaoUpdatePayload(BaseModel):
     titulo: str | None = Field(default=None, min_length=1)
     prioridade: int | None = None
     prazo: str | None = None
-    instrucao: str | None = None
+    instrucao: str | None = Field(default=None, max_length=MISSAO_INSTRUCAO_MAX_LENGTH)
     status: str | None = None
     objetivo_id: int | None = None
+    recurrence_weekdays: list[int] | None = None
+    recurrence_end_date: str | None = None
+    duration_type: Literal["pontual", "ate_objetivo", "prazo"] | None = None
 
 
 class SonhoCreatePayload(BaseModel):

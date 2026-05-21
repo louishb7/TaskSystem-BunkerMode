@@ -8,6 +8,14 @@ export default function ActivateSoldierDialog({
   onConfirm,
   todayMissions = [],
 }) {
+  const completedMissions = todayMissions.filter(
+    (mission) => String(mission?.status_code || "").toUpperCase() === "CONCLUIDA"
+  );
+  const pendingMissions = todayMissions.filter((mission) => {
+    const statusCode = String(mission?.status_code || "").toUpperCase();
+    return !statusCode.startsWith("FALHA") && statusCode !== "CONCLUIDA";
+  });
+
   return (
     <div className="modal-backdrop" role="presentation">
       <section className="modal-card" role="dialog" aria-modal="true">
@@ -15,8 +23,13 @@ export default function ActivateSoldierDialog({
         <h2>{formatCurrentDay()}</h2>
         {todayMissions.length > 0 ? (
           <ul className="protocol-brief">
-            {todayMissions.map((mission) => (
+            {pendingMissions.map((mission) => (
               <li key={mission.id}>{mission?.titulo || "Missão sem título"}</li>
+            ))}
+            {completedMissions.map((mission) => (
+              <li key={mission.id} style={{ opacity: 0.5, textDecoration: "line-through" }}>
+                {mission?.titulo || "Missão sem título"}
+              </li>
             ))}
           </ul>
         ) : (

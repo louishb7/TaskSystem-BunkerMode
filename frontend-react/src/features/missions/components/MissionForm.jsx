@@ -8,9 +8,24 @@ const emptyForm = {
   titulo: "",
   instrucao: "",
   objetivo_id: "",
+  recurrence_weekdays: [],
+  duration_type: "pontual",
+  recurrence_end_date: "",
   prazoTipo: "hoje",
   prazo: "",
 };
+
+const MISSION_INSTRUCTION_MAX_LENGTH = 120;
+
+const weekdayOptions = [
+  [0, "Seg"],
+  [1, "Ter"],
+  [2, "Qua"],
+  [3, "Qui"],
+  [4, "Sex"],
+  [5, "Sáb"],
+  [6, "Dom"],
+];
 
 function getUserId(user) {
   return user?.usuario_id ?? user?.id;
@@ -100,6 +115,9 @@ export default function MissionForm({
       titulo: editingMission.titulo || "",
       instrucao: editingMission.instrucao || "",
       objetivo_id: editingMission.objetivo_id ? String(editingMission.objetivo_id) : "",
+      recurrence_weekdays: Array.isArray(editingMission.recurrence_weekdays) ? editingMission.recurrence_weekdays : [],
+      duration_type: editingMission.duration_type || "pontual",
+      recurrence_end_date: editingMission.recurrence_end_date || "",
       prazoTipo: initialPrazoTipo(editingMission, initialPrazo),
       prazo: editingMission.prazo || initialPrazo || "",
     });
@@ -129,9 +147,10 @@ export default function MissionForm({
   }, [onUnauthorized, token]);
 
   function updateField(event) {
+    const { name, value } = event.target;
     setForm((current) => ({
       ...current,
-      [event.target.name]: event.target.value,
+      [name]: name === "instrucao" ? value.slice(0, MISSION_INSTRUCTION_MAX_LENGTH) : value,
     }));
   }
 
@@ -140,6 +159,22 @@ export default function MissionForm({
       ...current,
       prazo: fromDateInputValue(event.target.value),
     }));
+  }
+
+  function handleRecurrenceEndDateChange(event) {
+    setForm((current) => ({
+      ...current,
+      recurrence_end_date: fromDateInputValue(event.target.value),
+    }));
+  }
+
+  function toggleWeekday(weekday) {
+    setForm((current) => {
+      const selected = current.recurrence_weekdays.includes(weekday)
+        ? current.recurrence_weekdays.filter((item) => item !== weekday)
+        : [...current.recurrence_weekdays, weekday].sort();
+      return { ...current, recurrence_weekdays: selected };
+    });
   }
 
   function buildDeadline() {
@@ -156,12 +191,25 @@ export default function MissionForm({
 
   function submit(event) {
     event.preventDefault();
+    const linkedToObjective = Boolean(form.objetivo_id);
     const payload = {
       titulo: form.titulo.trim(),
       instrucao: form.instrucao.trim(),
-      objetivo_id: form.objetivo_id ? Number(form.objetivo_id) : null,
+      objetivo_id: linkedToObjective ? Number(form.objetivo_id) : null,
       prazo: buildDeadline(),
     };
+
+    if (linkedToObjective) {
+      payload.recurrence_weekdays = form.recurrence_weekdays.length > 0 ? form.recurrence_weekdays : null;
+      payload.duration_type = form.duration_type;
+      payload.recurrence_end_date = form.duration_type === "prazo" && form.recurrence_end_date
+        ? form.recurrence_end_date
+        : null;
+    } else {
+      payload.recurrence_weekdays = null;
+      payload.duration_type = null;
+      payload.recurrence_end_date = null;
+    }
 
     if (isEditing) {
       onUpdate(editingMission.id, payload);
@@ -202,12 +250,16 @@ export default function MissionForm({
         <label>
           Instrução opcional
           <textarea
+            maxLength={MISSION_INSTRUCTION_MAX_LENGTH}
             name="instrucao"
             onChange={updateField}
             placeholder="Detalhe apenas se a ordem precisar de contexto"
             rows="5"
             value={form.instrucao}
           />
+          <span className="field-counter">
+            {form.instrucao.length}/{MISSION_INSTRUCTION_MAX_LENGTH}
+          </span>
         </label>
 
         <label>
@@ -222,6 +274,47 @@ export default function MissionForm({
           </select>
         </label>
         {objetivoStatus && <p className="feedback error">{objetivoStatus}</p>}
+
+        {form.objetivo_id && (
+          <div className="linked-mission-options">
+            <label>
+              Duração
+              <select name="duration_type" onChange={updateField} value={form.duration_type}>
+                <option value="pontual">Pontual</option>
+                <option value="ate_objetivo">Até atingir o objetivo</option>
+                <option value="prazo">Prazo determinado</option>
+              </select>
+            </label>
+
+            {form.duration_type === "prazo" && (
+              <label>
+                Encerrar em
+                <input
+                  name="recurrence_end_date"
+                  type="date"
+                  onChange={handleRecurrenceEndDateChange}
+                  value={toDateInputValue(form.recurrence_end_date)}
+                />
+              </label>
+            )}
+
+            <fieldset className="weekday-fieldset">
+              <legend>Frequência semanal</legend>
+              <div className="weekday-options">
+                {weekdayOptions.map(([value, label]) => (
+                  <label key={value} className={form.recurrence_weekdays.includes(value) ? "active" : ""}>
+                    <input
+                      checked={form.recurrence_weekdays.includes(value)}
+                      onChange={() => toggleWeekday(value)}
+                      type="checkbox"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
+        )}
 
         {!lockedInitialPrazo && (
           <>

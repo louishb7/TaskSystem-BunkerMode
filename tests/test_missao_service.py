@@ -153,6 +153,7 @@ class RepositorioOwnershipFake:
 class RepositorioFluxoFake:
     def __init__(self):
         self.missoes = []
+        self.objetivos = {}
         self.contextos = {}
         self.auditoria_registrada = []
         self.revisoes = []
@@ -163,6 +164,9 @@ class RepositorioFluxoFake:
 
     def buscar_contexto_missao(self, missao_id):
         return self.contextos.get(missao_id)
+
+    def buscar_objetivo_por_id(self, objetivo_id):
+        return self.objetivos.get(objetivo_id)
 
     def carregar_dados(self):
         return list(self.missoes)
@@ -229,6 +233,8 @@ def test_mission_permissions_to_dict_expoe_todas_as_chaves_booleanas():
         can_edit=False,
         can_delete=False,
         can_justify=False,
+        can_fail=True,
+        can_pin=True,
         can_review=False,
         can_view_history=True,
     )
@@ -238,6 +244,8 @@ def test_mission_permissions_to_dict_expoe_todas_as_chaves_booleanas():
         "can_edit": False,
         "can_delete": False,
         "can_justify": False,
+        "can_fail": True,
+        "can_pin": True,
         "can_review": False,
         "can_view_history": True,
     }
@@ -350,7 +358,7 @@ def test_listar_missoes_prioriza_prioridade_elevada():
     assert [missao.titulo for missao in missoes] == ["Prioridade elevada", "Normal"]
 
 
-def test_listar_missoes_prioriza_justificativa_antes_de_prioridade_elevada():
+def test_listar_missoes_nao_exibe_falha_no_quadro_operacional():
     repositorio = RepositorioListagemFake()
     repositorio.carregar_dados = lambda: [
         Missao(
@@ -376,10 +384,7 @@ def test_listar_missoes_prioriza_justificativa_antes_de_prioridade_elevada():
 
     missoes = service.listar_missoes()
 
-    assert [missao.titulo for missao in missoes] == [
-        "Prioridade elevada",
-        "Aguardando justificativa",
-    ]
+    assert [missao.titulo for missao in missoes] == ["Prioridade elevada"]
 
 
 def test_fluxo_execucao_com_sucesso_preserva_prioridade_como_marcador():
@@ -414,7 +419,7 @@ def test_fluxo_execucao_com_sucesso_preserva_prioridade_como_marcador():
     assert relatorio["high_priority_missions"] == 1
 
 
-def test_fluxo_falha_justificativa_revisao_e_relatorio_nao_ressuscita_falha():
+def test_fluxo_falha_sem_justificativa_e_relatorio_nao_ressuscita_falha():
     repositorio = RepositorioFluxoFake()
     momento = {"agora": datetime(2026, 4, 24, 10, 0, 0)}
     service = MissaoService(repositorio, now_provider=lambda: momento["agora"])
@@ -450,12 +455,12 @@ def test_fluxo_falha_justificativa_revisao_e_relatorio_nao_ressuscita_falha():
         end_date=date(2026, 4, 26),
     )
 
-    assert status_apos_justificativa == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert status_apos_justificativa == StatusMissao.FALHA
     assert failed_at_apos_justificativa == datetime(2026, 4, 24, 22, 0, 0)
-    assert [missao.missao_id for missao in pendentes_revisao] == [missao.missao_id]
-    assert revisada.status == StatusMissao.FALHA_REVISADA
+    assert pendentes_revisao == []
+    assert revisada.status == StatusMissao.FALHA
     assert relatorio["failed_missions"] == 1
-    assert limpas == []
+    assert [missao.missao_id for missao in limpas] == [missao.missao_id]
     assert service.listar_missoes_para_revisao(usuario=usuario) == []
 
 
@@ -472,13 +477,15 @@ def test_to_response_soldier_define_permissions_corretas():
         "can_complete": True,
         "can_edit": False,
         "can_delete": False,
-        "can_justify": True,
+        "can_justify": False,
+        "can_fail": True,
+        "can_pin": True,
         "can_review": False,
         "can_view_history": False,
     }
 
 
-def test_to_response_general_define_permissions_para_revisao():
+def test_to_response_general_define_permissions_para_falha_simples():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao.failed_at = datetime(2026, 4, 24, 10, 0, 0)
     repositorio.missao.failure_reason = "Bloqueio externo."
@@ -488,9 +495,9 @@ def test_to_response_general_define_permissions_para_revisao():
 
     payload = service.to_response(repositorio.missao, usuario=usuario)
 
-    assert payload["status_code"] == "FALHA_JUSTIFICADA_PENDENTE_REVISAO"
-    assert payload["permissions"]["can_review"] is True
-    assert payload["permissions"]["can_edit"] is False
+    assert payload["status_code"] == "FALHA"
+    assert payload["permissions"]["can_review"] is False
+    assert payload["permissions"]["can_edit"] is True
     assert payload["permissions"]["can_delete"] is False
 
 
@@ -509,7 +516,7 @@ def test_to_response_general_define_permissions_para_missao_concluida_historica(
     assert payload["permissions"]["can_view_history"] is True
 
 
-def test_to_response_general_define_permissions_para_falha_revisada():
+def test_to_response_general_define_permissions_para_falha_legada_revisada():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao.failed_at = datetime(2026, 4, 24, 10, 0, 0)
     repositorio.missao.failure_reason = "Falhou."
@@ -520,7 +527,7 @@ def test_to_response_general_define_permissions_para_falha_revisada():
 
     payload = service.to_response(repositorio.missao, usuario=usuario)
 
-    assert payload["permissions"]["can_edit"] is False
+    assert payload["permissions"]["can_edit"] is True
     assert payload["permissions"]["can_delete"] is False
     assert payload["permissions"]["can_review"] is False
     assert payload["permissions"]["can_view_history"] is True
@@ -614,7 +621,7 @@ def test_soldado_nao_conclui_missao_vencida_apos_corte_operacional():
     with pytest.raises(ValueError, match="Missão não pode ser concluída neste estado."):
         service.concluir_missao(10, usuario=usuario)
 
-    assert repositorio.missao.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA
+    assert repositorio.missao.status == StatusMissao.FALHA
     assert repositorio.missao.failed_at == datetime(2026, 4, 25, 4, 1, 0)
     assert repositorio.auditoria_registrada[-1].acao == "missao_falhou"
 
@@ -641,8 +648,8 @@ def test_missao_pendente_vencida_falha_automaticamente_apos_quatro_da_manha():
     )
     missoes = service_0401.listar_missoes(usuario=usuario)
 
-    assert [missao.missao_id for missao in missoes] == [10]
-    assert repositorio.missao.status == StatusMissao.FALHA_PENDENTE_JUSTIFICATIVA
+    assert missoes == []
+    assert repositorio.missao.status == StatusMissao.FALHA
     assert repositorio.missao.failed_at == datetime(2026, 4, 25, 4, 1, 0)
 
 
@@ -719,8 +726,8 @@ def test_usuario_em_modo_general_pode_registrar_falha_administrativa():
         usuario=usuario,
     )
 
-    assert missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
-    assert missao.failure_reason == "Não executei."
+    assert missao.status == StatusMissao.FALHA
+    assert missao.failure_reason is None
 
 
 def test_usuario_em_modo_soldado_nao_pode_criar_missao():
@@ -778,6 +785,71 @@ def test_criar_missao_permite_apenas_titulo_sem_instrucao():
     assert missao.titulo == "Treinar"
     assert missao.instrucao is None
     assert repositorio.missao_adicionada == missao
+
+
+def test_criar_missao_sem_vinculo_nao_exige_arvore():
+    repositorio = RepositorioFluxoFake()
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {
+            "titulo": "Beber água amanhã",
+            "prazo": "25-04-2026",
+        },
+        usuario=usuario,
+    )
+
+    assert missao.objetivo_id is None
+    assert missao.recurrence_weekdays is None
+    assert missao.duration_type is None
+
+
+def test_criar_missao_vinculada_a_objetivo_com_frequencia_e_duracao_infinita():
+    repositorio = RepositorioFluxoFake()
+    repositorio.objetivos[7] = SimpleNamespace(objetivo_id=7, usuario_id=1)
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {
+            "titulo": "Treinar escrita",
+            "prazo": "24-04-2026",
+            "objetivo_id": 7,
+            "recurrence_weekdays": [0, 2, 4],
+            "duration_type": "ate_objetivo",
+        },
+        usuario=usuario,
+    )
+
+    assert missao.objetivo_id == 7
+    assert missao.recurrence_weekdays == [0, 2, 4]
+    assert missao.duration_type == "ate_objetivo"
+    assert missao.recurrence_end_date is None
+
+
+def test_criar_missao_vinculada_a_objetivo_com_prazo_determinado():
+    repositorio = RepositorioFluxoFake()
+    repositorio.objetivos[9] = SimpleNamespace(objetivo_id=9, usuario_id=1)
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {
+            "titulo": "Revisar portfolio",
+            "prazo": "24-04-2026",
+            "objetivo_id": 9,
+            "recurrence_weekdays": [1],
+            "duration_type": "prazo",
+            "recurrence_end_date": "30-05-2026",
+        },
+        usuario=usuario,
+    )
+
+    assert missao.objetivo_id == 9
+    assert missao.recurrence_weekdays == [1]
+    assert missao.duration_type == "prazo"
+    assert missao.recurrence_end_date.isoformat() == "2026-05-30"
 
 
 def test_usuario_pode_remover_apenas_missao_propria():
@@ -859,33 +931,30 @@ def test_usuario_em_modo_soldado_nao_pode_remover_missao():
         service.remover_missao(10, usuario=usuario)
 
 
-def test_usuario_em_modo_soldado_nao_pode_alternar_prioridade():
+def test_usuario_em_modo_soldado_pode_alternar_prioridade():
     repositorio = RepositorioOwnershipFake()
     service = MissaoService(repositorio)
     usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
 
-    with pytest.raises(PermissionError):
-        service.alternar_prioridade_fixada(10, usuario=usuario)
+    missao = service.alternar_prioridade_fixada(10, usuario=usuario)
+
+    assert missao.is_pinned is True
 
 
-def test_missao_pendente_pode_receber_justificativa_do_soldado_e_aparece_em_revisao():
+def test_missao_pendente_pode_registrar_falha_sem_justificativa():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao.atualizar_prazo("01-01-2020")
     service = MissaoService(repositorio)
     soldado = SimpleNamespace(usuario_id=1, active_mode="soldier")
-    general = SimpleNamespace(usuario_id=1, active_mode="general")
 
     missao = service.registrar_justificativa_soldado(10, "Perdi a janela de execução.", usuario=soldado)
 
-    assert missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
-    assert missao.failure_reason == "Perdi a janela de execução."
-    assert repositorio.auditoria_registrada[-1].acao == "justificativa_registrada"
-
-    missoes_em_revisao = service.listar_missoes_para_revisao(usuario=general)
-    assert [item.missao_id for item in missoes_em_revisao] == [10]
+    assert missao.status == StatusMissao.FALHA
+    assert missao.failure_reason is None
+    assert repositorio.auditoria_registrada[-1].acao == "missao_nao_realizada"
 
 
-def test_missao_expirada_recebe_justificativa_tipificada_e_persiste_estado():
+def test_missao_expirada_registra_falha_sem_justificativa_tipificada():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao.atualizar_prazo("01-01-2020")
     service = criar_missao_service(repositorio)
@@ -898,9 +967,9 @@ def test_missao_expirada_recebe_justificativa_tipificada_e_persiste_estado():
         usuario=soldado,
     )
 
-    assert missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
-    assert missao.failure_reason_type.value == "partially_done"
-    assert missao.failure_reason == "Executei apenas metade antes do prazo."
+    assert missao.status == StatusMissao.FALHA
+    assert missao.failure_reason_type is None
+    assert missao.failure_reason is None
     assert repositorio.missao_atualizada is missao
 
 
@@ -910,7 +979,7 @@ def test_missao_concluida_nao_recebe_justificativa_de_falha():
     service = criar_missao_service(repositorio)
     soldado = SimpleNamespace(usuario_id=1, active_mode="soldier")
 
-    with pytest.raises(ValueError, match="aguardando justificativa"):
+    with pytest.raises(ValueError, match="Apenas missão pendente"):
         service.registrar_justificativa_falha(
             10,
             "not_done",
@@ -921,7 +990,7 @@ def test_missao_concluida_nao_recebe_justificativa_de_falha():
     assert repositorio.missao.status == StatusMissao.CONCLUIDA
 
 
-def test_done_not_marked_permanece_fluxo_de_justificativa_no_servico():
+def test_done_not_marked_nao_cria_fluxo_especial_no_servico():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao.atualizar_prazo("01-01-2020")
     service = criar_missao_service(repositorio)
@@ -934,12 +1003,12 @@ def test_done_not_marked_permanece_fluxo_de_justificativa_no_servico():
         usuario=soldado,
     )
 
-    assert missao.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert missao.status == StatusMissao.FALHA
     assert missao.completed_at is None
-    assert missao.failure_reason_type.value == "done_not_marked"
+    assert missao.failure_reason_type is None
 
 
-def test_falha_expoe_justificativa_imediata():
+def test_falha_nao_expoe_justificativa_imediata():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao.atualizar_prazo("01-01-2020")
     service = criar_missao_service(repositorio)
@@ -948,9 +1017,9 @@ def test_falha_expoe_justificativa_imediata():
     repositorio.missao.marcar_como_falha(INSTANTE_TESTE)
     resposta = service.to_response(repositorio.missao, usuario=soldado)
 
-    assert resposta["status_code"] == "FALHA_PENDENTE_JUSTIFICATIVA"
-    assert resposta["permissions"]["can_justify"] is True
-    assert resposta["requires_immediate_justification"] is True
+    assert resposta["status_code"] == "FALHA"
+    assert resposta["permissions"]["can_justify"] is False
+    assert resposta["requires_immediate_justification"] is False
     assert resposta["has_pending_non_blocking_justification"] is False
 
 
@@ -1019,7 +1088,7 @@ def test_listar_missoes_historicas_retorna_apenas_finalizadas():
     assert [missao.missao_id for missao in missoes] == [2, 1]
 
 
-def test_general_pode_aceitar_ou_rejeitar_justificativa():
+def test_revisao_de_justificativa_legada_nao_altera_falha_simples():
     repositorio = RepositorioOwnershipFake()
     repositorio.missao.atualizar_prazo("01-01-2020")
     service = MissaoService(repositorio)
@@ -1029,16 +1098,16 @@ def test_general_pode_aceitar_ou_rejeitar_justificativa():
     service.registrar_justificativa_soldado(10, "Houve interrupção externa.", usuario=soldado)
     missao = service.revisar_justificativa(10, True, usuario=general)
 
-    assert missao.status == StatusMissao.FALHA_REVISADA
-    assert missao.general_verdict == "accepted"
+    assert missao.status == StatusMissao.FALHA
+    assert missao.general_verdict is None
 
     repositorio.missao.reabrir()
     repositorio.missao.atualizar_prazo("01-01-2020")
     service.registrar_justificativa_soldado(10, "Eu procrastinei.", usuario=soldado)
     missao = service.revisar_justificativa(10, False, usuario=general)
 
-    assert missao.status == StatusMissao.FALHA_REVISADA
-    assert missao.general_verdict == "rejected"
+    assert missao.status == StatusMissao.FALHA
+    assert missao.general_verdict is None
 
 
 def test_usuario_de_outro_contexto_nao_pode_justificar_missao():
@@ -1057,7 +1126,7 @@ def test_soldado_nao_pode_justificar_missao_concluida():
     service = MissaoService(repositorio)
     usuario = SimpleNamespace(usuario_id=1, active_mode="soldier")
 
-    with pytest.raises(ValueError, match="aguardando justificativa"):
+    with pytest.raises(ValueError, match="Apenas missão pendente"):
         service.registrar_justificativa_soldado(10, "Tentativa inválida.", usuario=usuario)
 
 
@@ -1066,8 +1135,9 @@ def test_general_so_pode_revisar_estado_correto():
     service = MissaoService(repositorio)
     usuario = SimpleNamespace(usuario_id=1, active_mode="general")
 
-    with pytest.raises(ValueError, match="pendente de revisão"):
-        service.revisar_justificativa(10, True, usuario=usuario)
+    missao = service.revisar_justificativa(10, True, usuario=usuario)
+
+    assert missao.status == StatusMissao.PENDENTE
 
 
 def test_soldado_nao_pode_acessar_revisao_do_general():
@@ -1172,13 +1242,10 @@ def test_relatorio_semanal_calcula_metricas():
     assert relatorio["failed_missions"] == 3
     assert relatorio["completion_rate"] == 25.0
     assert relatorio["high_priority_missions"] == 2
-    assert relatorio["missions_waiting_justification"] == 1
-    assert relatorio["missions_waiting_review"] == 1
-    assert relatorio["reviewed_failures"] == 1
-    assert relatorio["failure_reasons"] == [
-        "Perdi o horário por atraso externo.",
-        "Subestimei o tempo necessário.",
-    ]
+    assert relatorio["missions_waiting_justification"] == 0
+    assert relatorio["missions_waiting_review"] == 0
+    assert relatorio["reviewed_failures"] == 3
+    assert relatorio["failure_reasons"] == []
 
 
 def test_relatorio_semanal_ignora_outro_usuario_e_semana_vazia():
@@ -1322,7 +1389,7 @@ def test_relatorio_default_usa_semana_da_data_operacional_antes_do_corte():
     assert relatorio["completed_missions"] == 1
 
 
-def test_relatorio_conta_done_not_marked_como_executada():
+def test_relatorio_nao_trata_done_not_marked_como_executada():
     missao = Missao(
         missao_id=1,
         titulo="Feita sem registro",
@@ -1343,13 +1410,13 @@ def test_relatorio_conta_done_not_marked_como_executada():
         end_date=date(2026, 4, 24),
     )
 
-    assert relatorio["completed_missions"] == 1
-    assert relatorio["failed_missions"] == 0
-    assert relatorio["completion_rate"] == 100.0
+    assert relatorio["completed_missions"] == 0
+    assert relatorio["failed_missions"] == 1
+    assert relatorio["completion_rate"] == 0.0
     assert relatorio["failure_reasons"] == []
 
 
-def test_limpar_relatorio_falhas_persiste_registros_informativos():
+def test_limpar_relatorio_falhas_nao_altera_registros_objetivos():
     informativa = Missao(
         missao_id=1,
         titulo="Falha informativa",
@@ -1385,11 +1452,11 @@ def test_limpar_relatorio_falhas_persiste_registros_informativos():
     )
 
     assert [missao.missao_id for missao in limpas] == [1, 2]
-    assert informativa.status == StatusMissao.FALHA_REVISADA
-    assert informativa.general_verdict == "accepted"
-    assert prioritária.status == StatusMissao.FALHA_REVISADA
-    assert prioritária.general_verdict == "accepted"
-    assert repositorio.missao_atualizada is prioritária
+    assert informativa.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert informativa.general_verdict is None
+    assert prioritária.status == StatusMissao.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+    assert prioritária.general_verdict is None
+    assert repositorio.missao_atualizada is None
 
     relatorio = RelatorioService(RepositorioRelatorioFake([informativa, prioritária])).get_weekly_report(
         1,
@@ -1399,7 +1466,7 @@ def test_limpar_relatorio_falhas_persiste_registros_informativos():
     historicas = service.listar_missoes_historicas(usuario=usuario)
 
     assert relatorio["failed_missions"] == 2
-    assert relatorio["failure_reasons"] == ["Não executei.", "Não executei."]
+    assert relatorio["failure_reasons"] == []
     assert [missao.missao_id for missao in historicas] == [2, 1]
 
 

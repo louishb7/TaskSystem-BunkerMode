@@ -37,7 +37,6 @@ export default function SoldierExecutionPage({
   onReturnToCommand,
 }) {
   const [returnLoading, setReturnLoading] = useState(false);
-  const remainingOrders = actionMissions.length;
   const turn = board.operationalTurn;
   const showTurnWarning = turn?.requires_decision === true && !board.operationalTurnAcknowledged;
   const turnDateLabel = formatOperationalTurnDate(turn?.active_date_label);
@@ -98,11 +97,6 @@ export default function SoldierExecutionPage({
               <h1>LEÃO DO DIA</h1>
               <div className="soldier-briefing-meta">
                 <span>{turnDateLabel}</span>
-                <strong>
-                  {remainingOrders === 0
-                    ? "CAÇADA CONCLUÍDA"
-                    : "ORDENS EM EXECUÇÃO"}
-                </strong>
               </div>
               <MissionProgress label="CAÇADA" missions={dailyMissions.length > 0 ? dailyMissions : missions} />
             </div>
@@ -129,6 +123,8 @@ export default function SoldierExecutionPage({
                 mission={mission}
                 onComplete={() => board.completeMission(mission)}
                 onJustify={board.submitFailureJustification}
+                onTogglePin={() => board.toggleMissionPin(mission)}
+                pinning={board.pinLoadingId === mission.id}
                 variant="soldier"
               />
             ))}

@@ -95,12 +95,14 @@ export const api = {
       method: "PATCH",
     });
   },
-  submitFailureJustification(token, missionId, payload) {
-    return requestMission(`/missoes/${missionId}/justification`, {
+  failMission(token, missionId) {
+    return requestMission(`/missoes/${missionId}/falhar`, {
       token,
       method: "POST",
-      body: payload,
     });
+  },
+  submitFailureJustification(token, missionId, payload) {
+    return this.failMission(token, missionId);
   },
   submitGeneralReview(token, missionId, payload) {
     return requestMission(`/missoes/${missionId}/revisar`, {

@@ -78,7 +78,7 @@ export default function SoldierDashboard({ token, onLogout, onUserChange }) {
         (mission) =>
           (mission?.status_code === STATUS.PENDENTE &&
             mission?.permissions?.can_complete === true) ||
-          mission?.permissions?.can_justify === true
+          mission?.permissions?.can_fail === true
       ),
     [missions]
   );

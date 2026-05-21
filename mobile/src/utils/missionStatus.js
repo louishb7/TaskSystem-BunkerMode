@@ -1,6 +1,7 @@
 export const STATUS = {
   PENDENTE: "PENDENTE",
   CONCLUIDA: "CONCLUIDA",
+  FALHA: "FALHA",
   FALHA_PENDENTE_JUSTIFICATIVA: "FALHA_PENDENTE_JUSTIFICATIVA",
   FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHA_JUSTIFICADA_PENDENTE_REVISAO",
   FALHA_REVISADA: "FALHA_REVISADA",
@@ -27,7 +28,7 @@ export function isFailedWaitingReview(mission) {
 }
 
 export function isFinalizedMission(mission) {
-  return isCompleted(mission) || (hasStatus(mission) && mission.status_code === STATUS.FALHA_REVISADA);
+  return isCompleted(mission) || (hasStatus(mission) && String(mission.status_code).startsWith("FALHA"));
 }
 
 export function isOperationalMission(mission) {
@@ -35,5 +36,5 @@ export function isOperationalMission(mission) {
 }
 
 export function requiresGeneralReview(mission) {
-  return hasStatus(mission) && mission.status_code === STATUS.FALHA_JUSTIFICADA_PENDENTE_REVISAO;
+  return false;
 }

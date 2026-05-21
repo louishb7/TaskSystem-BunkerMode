@@ -8,6 +8,7 @@ import SonhoForm from "./SonhoForm.jsx";
 
 export default function SonhoPanel({
   loading,
+  missions = [],
   onArchive,
   onCreateObjetivo,
   onCreate,
@@ -91,6 +92,7 @@ export default function SonhoPanel({
               <ObjetivoCard
                 key={objetivo.id}
                 loading={loading}
+                missions={missions.filter((mission) => mission.objetivo_id === objetivo.id)}
                 objetivo={objetivo}
                 onDelete={onDeleteObjetivo}
                 onUpdate={onUpdateObjetivo}

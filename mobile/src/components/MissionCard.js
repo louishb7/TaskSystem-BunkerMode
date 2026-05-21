@@ -137,7 +137,7 @@ export default function MissionCard({
   const completed = isCompleted(mission);
   const operationName = mission?.operacao_nome;
   const canComplete = can(mission, "can_complete");
-  const canJustify = can(mission, "can_justify");
+  const canJustify = can(mission, "can_fail");
   const requiresJustification = mission?.requires_immediate_justification === true;
   const disabled = toggling || completing || justifying;
   const failed = String(mission?.status_code || "").startsWith("FALHA");
@@ -150,10 +150,7 @@ export default function MissionCard({
   function submitJustification() {
     const trimmed = failureReason.trim();
 
-    onJustify?.({
-      failure_reason_type: failureReasonType,
-      failure_reason: trimmed || fallbackReasonByType[failureReasonType],
-    });
+    onJustify?.();
   }
 
   if (soldier) {
@@ -204,17 +201,17 @@ export default function MissionCard({
           </Pressable>
         ) : null}
 
-        {canJustify && canComplete && !failureFormOpen ? (
+        {canJustify ? (
           <Pressable
             disabled={disabled}
-            onPress={() => setFailureFormOpen(true)}
+            onPress={onJustify}
             style={styles.manualFailureAction}
           >
             <Text style={styles.manualFailureText}>REGISTRAR FALHA</Text>
           </Pressable>
         ) : null}
 
-        {canJustify && (!canComplete || failureFormOpen) ? (
+        {false && canJustify && (!canComplete || failureFormOpen) ? (
           <View style={styles.justification}>
             {canComplete ? (
               <Text style={styles.failureWarning}>
@@ -336,10 +333,10 @@ export default function MissionCard({
           </Pressable>
         ) : null}
 
-        {canJustify && !failureFormOpen ? (
+        {canJustify ? (
           <Pressable
             disabled={disabled}
-            onPress={() => setFailureFormOpen(true)}
+            onPress={onJustify}
             style={[styles.secondaryAction, styles.dangerAction]}
           >
             <Text style={styles.dangerActionText}>REGISTRAR FALHA</Text>
@@ -378,7 +375,7 @@ export default function MissionCard({
         ) : null}
       </View>
 
-      {canJustify && failureFormOpen ? (
+      {false && canJustify && failureFormOpen ? (
         <View style={styles.justification}>
           <Text style={styles.failureWarning}>
             Registro administrativo de falha. Para uma sequência mais limpa, use o foco operacional.

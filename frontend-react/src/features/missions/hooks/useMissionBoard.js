@@ -571,7 +571,7 @@ export function useMissionBoard({
     }
 
     if (!result.ok) {
-      const message = getErrorMessage(result, "Não foi possível registrar a justificativa.");
+      const message = getErrorMessage(result, "Não foi possível registrar a falha.");
       setStatus({ type: "error", message });
       if (activeMode === "soldier") {
         await loadSoldierBoard();

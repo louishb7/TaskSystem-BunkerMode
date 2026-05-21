@@ -7,6 +7,8 @@ class MissionPermissions:
     can_edit: bool
     can_delete: bool
     can_justify: bool
+    can_fail: bool
+    can_pin: bool
     can_review: bool
     can_view_history: bool
 
