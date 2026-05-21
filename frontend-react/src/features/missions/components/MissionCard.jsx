@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js";
 
@@ -90,6 +90,8 @@ export default function MissionCard({
   variant = "general",
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [instructionOverflow, setInstructionOverflow] = useState(false);
+  const instructionRef = useRef(null);
   const soldier = variant === "soldier";
   const title = mission?.titulo || "Sem título";
   const instruction = mission?.instrucao || "";
@@ -108,6 +110,26 @@ export default function MissionCard({
   useEffect(() => {
     setDetailsOpen(false);
   }, [mission?.id, mission?.is_pinned]);
+
+  useLayoutEffect(() => {
+    if (!soldier || !instruction) {
+      setInstructionOverflow(false);
+      return undefined;
+    }
+
+    function measureInstruction() {
+      const element = instructionRef.current;
+      if (!element) {
+        setInstructionOverflow(false);
+        return;
+      }
+      setInstructionOverflow(element.scrollHeight > element.clientHeight + 1);
+    }
+
+    measureInstruction();
+    window.addEventListener("resize", measureInstruction);
+    return () => window.removeEventListener("resize", measureInstruction);
+  }, [instruction, soldier]);
 
   if (soldier) {
     return (
@@ -138,7 +160,23 @@ export default function MissionCard({
               )}
             </div>
             {operationName && <p className="mission-origin">Operação: {operationName}</p>}
-            {instruction && <p className="mission-instruction">{instruction}</p>}
+            {instruction && (
+              <p
+                ref={instructionRef}
+                className={`mission-instruction ${detailsOpen ? "expanded" : ""}`}
+              >
+                {instruction}
+              </p>
+            )}
+            {instructionOverflow && (
+              <button
+                className="soldier-details-toggle"
+                type="button"
+                onClick={() => setDetailsOpen((current) => !current)}
+              >
+                {detailsOpen ? "Ocultar detalhes" : "Ver detalhes"}
+              </button>
+            )}
             {previousPending && (
               <p className="mission-instruction previous-pending-note">
                 Esta ordem ainda pertence ao ciclo operacional anterior.

@@ -99,6 +99,31 @@ def test_instrucao_tem_limite_operacional():
         )
 
 
+def test_instrucao_aceita_limite_operacional_exato():
+    missao = Missao(
+        missao_id=1,
+        titulo="Teste",
+        prioridade=1,
+        prazo="10-04-2026",
+        instrucao="x" * MISSAO_INSTRUCAO_MAX_LENGTH,
+    )
+
+    assert len(missao.instrucao) == MISSAO_INSTRUCAO_MAX_LENGTH
+
+
+def test_hidratacao_legada_nao_rejeita_instrucao_antiga_acima_do_limite():
+    missao = Missao(
+        missao_id=1,
+        titulo="Teste",
+        prioridade=1,
+        prazo="10-04-2026",
+        instrucao="x" * (MISSAO_INSTRUCAO_MAX_LENGTH + 1),
+        validar_instrucao=False,
+    )
+
+    assert len(missao.instrucao) == MISSAO_INSTRUCAO_MAX_LENGTH + 1
+
+
 @pytest.mark.parametrize("prioridade_invalida", [10, 0, -1, "alta", None])
 def test_prioridade_invalida(prioridade_invalida):
     with pytest.raises(ValueError):
@@ -395,7 +420,8 @@ def test_completed_e_failed_reviewed_nao_sao_operacionais():
 
     assert concluida.is_operational() is False
     assert revisada.is_operational() is False
-    assert revisada.can_be_deleted_by_general() is False
+    assert concluida.can_be_deleted_by_general() is False
+    assert revisada.can_be_deleted_by_general() is True
 
 
 def test_reabrir_missao_limpa_estado_de_conclusao():

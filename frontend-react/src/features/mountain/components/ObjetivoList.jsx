@@ -4,13 +4,6 @@ import MountainDialog from "./MountainDialog.jsx";
 import ObjetivoCard from "./ObjetivoCard.jsx";
 import ObjetivoForm from "./ObjetivoForm.jsx";
 
-const groups = [
-  ["ativo", "ATIVO"],
-  ["pausado", "PAUSADO"],
-  ["abandonado", "ABANDONADO"],
-  ["concluido", "CONCLUÍDO"],
-];
-
 export default function ObjetivoList({
   loading,
   missions = [],
@@ -27,14 +20,6 @@ export default function ObjetivoList({
     () => objetivos.filter((objetivo) => !objetivo.sonho_id),
     [objetivos]
   );
-  const grouped = useMemo(
-    () => groups.map(([status, label]) => ({
-      status,
-      label,
-      objetivos: objetivosIsolados.filter((objetivo) => objetivo.status === status),
-    })),
-    [objetivosIsolados]
-  );
 
   async function submit(payload) {
     const saved = await onCreate?.(payload);
@@ -44,13 +29,13 @@ export default function ObjetivoList({
   }
 
   return (
-    <section className="mountain-section">
+    <section className="mountain-section isolated-objectives-section">
       <div className="mountain-section-head">
         <div>
-          <p className="section-kicker fire">OBJETIVOS ISOLADOS</p>
+          <p className="section-kicker">OBJETIVOS ISOLADOS</p>
           <h2>Fora da árvore principal</h2>
         </div>
-        <button className="button secondary compact" disabled={loading} type="button" onClick={() => setFormOpen(true)}>
+        <button className="button secondary compact isolated-objective-action" disabled={loading} type="button" onClick={() => setFormOpen(true)}>
           NOVO OBJETIVO ISOLADO
         </button>
       </div>
@@ -71,36 +56,25 @@ export default function ObjetivoList({
         </MountainDialog>
       )}
 
-      <div className="objetivo-groups">
-        {grouped.map((group) => (
-          <section className={`objetivo-group group-${group.status}`} key={group.status}>
-            <div className="objetivo-group-title">
-              <h3>{group.label}</h3>
-              <span>{group.objetivos.length}</span>
-            </div>
-
-            {group.objetivos.length === 0 ? (
-              <p className="muted">Nenhum objetivo neste estado.</p>
-            ) : (
-              <div className="objetivo-list">
-                {group.objetivos.map((objetivo) => (
-                  <ObjetivoCard
-                    key={objetivo.id}
-                    loading={loading}
-                    missions={missions.filter((mission) => mission.objetivo_id === objetivo.id)}
-                    objetivo={objetivo}
-                    onDelete={onDelete}
-                    onUpdate={onUpdate}
-                    onUpdateProgress={onUpdateProgress}
-                    onUpdateStatus={onUpdateStatus}
-                    sonhos={sonhos}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        ))}
-      </div>
+      {objetivosIsolados.length === 0 ? (
+        <p className="muted isolated-objectives-empty">Nenhum objetivo isolado registrado.</p>
+      ) : (
+        <div className="objetivo-list isolated-objectives-list">
+          {objetivosIsolados.map((objetivo) => (
+            <ObjetivoCard
+              key={objetivo.id}
+              loading={loading}
+              missions={missions.filter((mission) => mission.objetivo_id === objetivo.id)}
+              objetivo={objetivo}
+              onDelete={onDelete}
+              onUpdate={onUpdate}
+              onUpdateProgress={onUpdateProgress}
+              onUpdateStatus={onUpdateStatus}
+              sonhos={sonhos}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

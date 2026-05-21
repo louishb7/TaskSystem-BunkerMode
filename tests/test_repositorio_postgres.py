@@ -4,7 +4,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 import repositorio_postgres as rp
-from missao import Missao, PrioridadeMissao, StatusMissao
+from missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, PrioridadeMissao, StatusMissao
 
 
 class FakeCursor:
@@ -140,6 +140,24 @@ def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
     assert missoes[1].status == StatusMissao.CONCLUIDA
     assert missoes[1].is_pinned is True
     assert "ORDER BY m.prioridade, m.missao_id" in cursor.executions[-1][0]
+
+
+def test_reconstruir_missao_preserva_instrucao_legada_acima_do_limite(repositorio):
+    instrucao_legada = "x" * (MISSAO_INSTRUCAO_MAX_LENGTH + 1)
+
+    missao = repositorio._reconstruir_missao(
+        (
+            1,
+            "Missão legada",
+            1,
+            date(2026, 4, 20),
+            instrucao_legada,
+            "Pendente",
+            False,
+        )
+    )
+
+    assert missao.instrucao == instrucao_legada
 
 
 def test_buscar_por_id_retorna_none_quando_nao_encontra(monkeypatch, repositorio):

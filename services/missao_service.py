@@ -333,7 +333,7 @@ class MissaoService:
         self._garantir_modo_general(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
         if not missao.can_be_deleted_by_general():
-            raise ValueError("Apenas missões operacionais podem ser removidas pelo General.")
+            raise ValueError("Apenas ordens pendentes ou falhas podem ser removidas pelo General.")
         self.repositorio.remover_missao(missao_id)
 
         if usuario is not None:

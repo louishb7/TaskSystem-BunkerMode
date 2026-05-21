@@ -609,6 +609,7 @@ class RepositorioPostgres:
             recurrence_end_date=recurrence_end_date,
             duration_type=duration_type,
             is_pinned=is_pinned,
+            validar_instrucao=False,
         )
 
     def _reconstruir_usuario(self, linha: tuple) -> Usuario:

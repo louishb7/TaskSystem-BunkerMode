@@ -15,7 +15,7 @@ const emptyForm = {
   prazo: "",
 };
 
-const MISSION_INSTRUCTION_MAX_LENGTH = 120;
+const MISSION_INSTRUCTION_MAX_LENGTH = 280;
 
 const weekdayOptions = [
   [0, "Seg"],

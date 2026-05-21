@@ -36,6 +36,7 @@ from api.routes import (
     obter_usuario_atual,
     registrar_justificativa_falha,
     registrar_usuario,
+    remover_missao,
     revisar_justificativa,
 )
 from api.schemas import (
@@ -585,7 +586,28 @@ def test_soldado_registra_falha_sem_justificativa_e_general_nao_revisa():
     assert resposta["status_code"] == "FALHA"
     assert resposta["general_verdict"] is None
     assert resposta["permissions"]["can_edit"] is True
-    assert resposta["permissions"]["can_delete"] is False
+    assert resposta["permissions"]["can_delete"] is True
+
+
+def test_general_pode_remover_relato_de_falha():
+    repo, _, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Falha criada por engano",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Registrar falha para remoção",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    repo.missoes[0].marcar_como_falha(datetime(2026, 4, 24, 10, 0, 0))
+
+    resposta = remover_missao(1, usuario=usuario, missao_service=missoes)
+
+    assert resposta is None
+    assert repo.buscar_por_id(1) is None
 
 
 def test_rota_justification_mantem_compatibilidade_sem_persistir_texto():
@@ -1037,7 +1059,8 @@ def test_historico_de_missoes_retorna_apenas_finalizadas():
     assert [missao["id"] for missao in resposta] == [2, 1]
     assert all(assert_mission_contract(missao) is None for missao in resposta)
     assert all(missao["permissions"]["can_view_history"] is True for missao in resposta)
-    assert all(missao["permissions"]["can_delete"] is False for missao in resposta)
+    assert resposta[0]["permissions"]["can_delete"] is True
+    assert resposta[1]["permissions"]["can_delete"] is False
 
 
 def test_historico_de_missoes_indisponivel_no_foco_operacional():
@@ -1228,6 +1251,16 @@ def test_payload_missao_rejeita_instrucao_acima_do_limite():
             prazo="30-04-2099",
             instrucao="x" * (MISSAO_INSTRUCAO_MAX_LENGTH + 1),
         )
+
+
+def test_payload_missao_aceita_instrucao_no_limite():
+    payload = MissaoCreatePayload(
+        titulo="Treinar",
+        prazo="30-04-2099",
+        instrucao="x" * MISSAO_INSTRUCAO_MAX_LENGTH,
+    )
+
+    assert len(payload.instrucao) == MISSAO_INSTRUCAO_MAX_LENGTH
 
 
 def test_criar_missao_sem_prioridade_visivel_preserva_fallback_legacy():

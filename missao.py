@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from enum import Enum
 
-MISSAO_INSTRUCAO_MAX_LENGTH = 120
+MISSAO_INSTRUCAO_MAX_LENGTH = 280
 
 
 class StatusMissao(Enum):
@@ -71,12 +71,13 @@ class Missao:
         recurrence_end_date=None,
         duration_type=None,
         is_pinned=False,
+        validar_instrucao=True,
     ):
         self.missao_id = self._validar_missao_id(missao_id)
         self.titulo = self._validar_titulo(titulo)
         self.prioridade = self._validar_prioridade(prioridade)
         self._prazo = self._validar_prazo(prazo)
-        self.instrucao = self._validar_instrucao(instrucao)
+        self.instrucao = self._validar_instrucao(instrucao, validar_tamanho=validar_instrucao)
         self.status = self._validar_status(status)
         self.created_at = self._validar_datetime(created_at, "Data de criação inválida.", default_now=True)
         self.completed_at = self._validar_datetime(completed_at, "Data de conclusão inválida.")
@@ -233,7 +234,7 @@ class Missao:
     def can_be_deleted_by_general(self):
         if self.operacao_id is not None:
             return False
-        return self.is_operational()
+        return self.is_operational() or self.is_failed()
 
     def requires_soldier_justification(self):
         return False
@@ -574,7 +575,7 @@ class Missao:
             raise ValueError("Título da missão é obrigatório.")
         return titulo
 
-    def _validar_instrucao(self, instrucao):
+    def _validar_instrucao(self, instrucao, validar_tamanho=True):
         if instrucao is None:
             return None
         if not isinstance(instrucao, str):
@@ -582,6 +583,6 @@ class Missao:
         instrucao = instrucao.strip()
         if not instrucao:
             return None
-        if len(instrucao) > MISSAO_INSTRUCAO_MAX_LENGTH:
+        if validar_tamanho and len(instrucao) > MISSAO_INSTRUCAO_MAX_LENGTH:
             raise ValueError(f"Instrução da missão deve ter no máximo {MISSAO_INSTRUCAO_MAX_LENGTH} caracteres.")
         return instrucao

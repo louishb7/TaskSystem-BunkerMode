@@ -2511,20 +2511,20 @@ h3 {
   align-items: stretch;
   flex-shrink: 0;
   width: 52px;
-  border-left: 1px solid rgba(72, 230, 126, 0.42);
+  border-left: 1px solid rgba(96, 242, 144, 0.56);
   background:
-    linear-gradient(180deg, rgba(72, 230, 126, 0.18), rgba(23, 118, 61, 0.22)),
-    rgba(10, 38, 21, 0.82);
-  box-shadow: inset 1px 0 0 rgba(208, 255, 220, 0.08);
+    linear-gradient(180deg, rgba(84, 235, 132, 0.28), rgba(21, 125, 61, 0.32)),
+    rgba(8, 52, 25, 0.9);
+  box-shadow: inset 1px 0 0 rgba(218, 255, 228, 0.12);
   transition: background var(--motion-fast), border-color var(--motion-fast);
 }
 
 .mission-card.soldier-card.priority-high .soldier-card-action {
-  border-left-color: rgba(72, 230, 126, 0.52);
+  border-left-color: rgba(96, 242, 144, 0.62);
   background:
-    linear-gradient(180deg, rgba(72, 230, 126, 0.2), rgba(23, 118, 61, 0.24)),
+    linear-gradient(180deg, rgba(84, 235, 132, 0.3), rgba(21, 125, 61, 0.34)),
     linear-gradient(90deg, rgba(155, 92, 255, 0.12), transparent),
-    rgba(10, 38, 21, 0.86);
+    rgba(8, 52, 25, 0.92);
 }
 
 .mission-card.soldier-card.danger .soldier-card-action {
@@ -2539,9 +2539,9 @@ h3 {
   width: 100%;
   border: none;
   background:
-    linear-gradient(180deg, rgba(103, 197, 135, 0.2), rgba(17, 89, 45, 0.3)),
-    rgba(8, 45, 24, 0.76);
-  color: #effff3;
+    linear-gradient(180deg, rgba(116, 245, 154, 0.32), rgba(24, 142, 69, 0.48)),
+    rgba(6, 58, 28, 0.92);
+  color: #f6fff8;
   cursor: pointer;
   font-size: 0.52rem;
   font-weight: 900;
@@ -2552,18 +2552,20 @@ h3 {
   transition: background var(--motion-fast), color var(--motion-fast), text-shadow var(--motion-fast), box-shadow var(--motion-fast);
   padding: 12px 0;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(184, 255, 204, 0.06);
+  box-shadow:
+    inset 0 0 0 1px rgba(221, 255, 230, 0.12),
+    inset 0 -16px 26px rgba(11, 72, 34, 0.42);
 }
 
 .soldier-abate-btn:hover:not(:disabled) {
   background:
-    linear-gradient(180deg, rgba(124, 235, 158, 0.34), rgba(26, 132, 68, 0.42)),
-    rgba(9, 58, 29, 0.9);
+    linear-gradient(180deg, rgba(132, 255, 168, 0.46), rgba(30, 166, 80, 0.58)),
+    rgba(7, 72, 35, 0.96);
   color: #ffffff;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
   box-shadow:
     inset 0 0 0 1px rgba(213, 255, 225, 0.16),
-    inset 0 12px 24px rgba(103, 197, 135, 0.12);
+    inset 0 12px 24px rgba(124, 235, 158, 0.18);
 }
 
 .soldier-abate-btn:active:not(:disabled) {
@@ -2603,23 +2605,45 @@ h3 {
   -webkit-line-clamp: 2;
 }
 
+.mission-card.soldier-card .mission-instruction.expanded {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+.soldier-details-toggle {
+  align-self: flex-start;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 138, 42, 0.76);
+  cursor: pointer;
+  padding: 1px 0;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.soldier-details-toggle:hover {
+  color: var(--fire);
+}
+
 .mission-card.soldier-card .mission-badge-row {
   justify-content: flex-start;
   margin-bottom: 2px;
 }
 
 .soldier-failure-trigger {
-  align-self: flex-start;
-  margin-top: 4px;
-  margin-left: 18px;
+  align-self: flex-end;
+  margin-top: auto;
   width: auto;
   min-height: 20px;
-  border: 1px solid rgba(229, 57, 53, 0.32);
+  border: 1px solid rgba(229, 57, 53, 0.46);
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: rgba(229, 57, 53, 0.65);
+  background: rgba(229, 57, 53, 0.10);
+  color: #ff8b86;
   cursor: pointer;
-  padding: 2px 7px;
+  padding: 2px 8px;
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0;
@@ -2627,9 +2651,9 @@ h3 {
 }
 
 .soldier-failure-trigger:hover:not(:disabled) {
-  color: var(--red);
-  border-color: rgba(229, 57, 53, 0.52);
-  background: rgba(229, 57, 53, 0.05);
+  color: #ffd0cc;
+  border-color: rgba(255, 123, 118, 0.68);
+  background: rgba(229, 57, 53, 0.18);
 }
 
 .soldier-failure-box {
@@ -2743,7 +2767,9 @@ h3 {
 
 .mountain-page {
   display: grid;
-  gap: 22px;
+  width: min(1040px, 100%);
+  gap: 16px;
+  margin: 0 auto;
 }
 
 .mountain-header,
@@ -2757,14 +2783,15 @@ h3 {
 }
 
 .mountain-header h1 {
-  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  font-size: clamp(1.55rem, 2.4vw, 2.25rem);
+  line-height: 1.05;
 }
 
 .mountain-section {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   border-top: 1px solid var(--border);
-  padding-top: 18px;
+  padding-top: 14px;
 }
 
 .mountain-tree {
@@ -2774,12 +2801,13 @@ h3 {
 
 .sonho-principal-spotlight {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   z-index: 1;
 }
 
 .sonho-principal-spotlight h3 {
-  font-size: clamp(1.45rem, 2.6vw, 2.35rem);
+  font-size: clamp(1.22rem, 2vw, 1.8rem);
+  line-height: 1.12;
 }
 
 .sonho-principal-spotlight.empty {
@@ -2788,16 +2816,16 @@ h3 {
 
 .sonho-secondary-section {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   border-top: 1px solid var(--border);
-  padding-top: 16px;
+  padding-top: 12px;
 }
 
 .sonho-secondary-list,
 .objetivo-list,
 .objetivo-groups {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .sonho-card,
@@ -2808,11 +2836,11 @@ h3 {
   background:
     linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 86px),
     rgba(12, 12, 12, 0.45);
-  padding: 16px;
+  padding: 18px;
 }
 
 .sonho-card.principal {
-  min-height: 220px;
+  min-height: 168px;
   border-color: var(--fire-border);
   background:
     linear-gradient(135deg, var(--fire-wash), transparent 54%),
@@ -2820,7 +2848,7 @@ h3 {
 }
 
 .sonho-card.secondary {
-  padding: 14px;
+  padding: 16px;
 }
 
 .sonho-card.secondary h3 {
@@ -2830,14 +2858,14 @@ h3 {
 .sonho-objective-branch {
   position: relative;
   display: grid;
-  gap: 10px;
-  margin-left: 28px;
-  padding: 18px 0 4px 22px;
+  gap: 8px;
+  margin-left: 22px;
+  padding: 14px 0 2px 18px;
 }
 
 .sonho-card.secondary .sonho-objective-branch {
-  margin-left: 14px;
-  padding-top: 14px;
+  margin-left: 12px;
+  padding-top: 12px;
 }
 
 .branch-line {
@@ -2867,7 +2895,7 @@ h3 {
 }
 
 .objetivo-list.nested {
-  gap: 10px;
+  gap: 8px;
 }
 
 .objetivo-list.nested .objetivo-card {
@@ -2876,14 +2904,15 @@ h3 {
 
 .sonho-card h3,
 .objetivo-card h3 {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  line-height: 1.18;
 }
 
 .mountain-card-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .form-grid {
@@ -2918,6 +2947,48 @@ h3 {
 .objetivo-group {
   display: grid;
   gap: 10px;
+}
+
+.isolated-objectives-section {
+  gap: 10px;
+  border-top-color: var(--border-soft);
+  padding-top: 10px;
+}
+
+.isolated-objectives-section .mountain-section-head {
+  align-items: center;
+}
+
+.isolated-objectives-section .mountain-section-head h2 {
+  margin-bottom: 0;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.isolated-objective-action {
+  min-height: 32px;
+  border-color: var(--border-soft);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  padding: 6px 10px;
+}
+
+.isolated-objectives-list {
+  gap: 8px;
+}
+
+.isolated-objectives-list .objetivo-card {
+  border-color: var(--border-soft);
+  background:
+    linear-gradient(180deg, rgba(237, 237, 237, 0.018), transparent 72px),
+    rgba(10, 10, 10, 0.32);
+}
+
+.isolated-objectives-empty {
+  border: 1px dashed var(--border-soft);
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 0.78rem;
 }
 
 .objetivo-group-title {
@@ -2956,7 +3027,7 @@ h3 {
 }
 
 .objetivo-meta.compact {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .objective-progress-number {
@@ -3044,8 +3115,8 @@ h3 {
 
 .objective-linked-missions {
   border-top: 1px solid var(--border-soft);
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
 }
 
 .objective-linked-mission {

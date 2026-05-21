@@ -498,7 +498,7 @@ def test_to_response_general_define_permissions_para_falha_simples():
     assert payload["status_code"] == "FALHA"
     assert payload["permissions"]["can_review"] is False
     assert payload["permissions"]["can_edit"] is True
-    assert payload["permissions"]["can_delete"] is False
+    assert payload["permissions"]["can_delete"] is True
 
 
 def test_to_response_general_define_permissions_para_missao_concluida_historica():
@@ -528,7 +528,7 @@ def test_to_response_general_define_permissions_para_falha_legada_revisada():
     payload = service.to_response(repositorio.missao, usuario=usuario)
 
     assert payload["permissions"]["can_edit"] is True
-    assert payload["permissions"]["can_delete"] is False
+    assert payload["permissions"]["can_delete"] is True
     assert payload["permissions"]["can_review"] is False
     assert payload["permissions"]["can_view_history"] is True
 
@@ -868,8 +868,19 @@ def test_general_nao_remove_missao_finalizada():
     service = MissaoService(repositorio)
     usuario = SimpleNamespace(usuario_id=1, active_mode="general")
 
-    with pytest.raises(ValueError, match="operacionais"):
+    with pytest.raises(ValueError, match="pendentes ou falhas"):
         service.remover_missao(10, usuario=usuario)
+
+
+def test_general_pode_remover_missao_falhada():
+    repositorio = RepositorioOwnershipFake()
+    repositorio.missao.marcar_como_falha(datetime(2026, 4, 24, 10, 0, 0))
+    service = MissaoService(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    service.remover_missao(10, usuario=usuario)
+
+    assert repositorio.missao_removida_id == 10
 
 
 def test_usuario_nao_pode_ver_historico_de_missao_de_outro_usuario():
