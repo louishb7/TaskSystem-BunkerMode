@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx";
+import { formatDateForApi } from "../../../utils/date.js";
 import MissionForm from "../../missions/components/MissionForm.jsx";
 import MountainDialog from "./MountainDialog.jsx";
 import ObjetivoForm from "./ObjetivoForm.jsx";
@@ -36,6 +37,82 @@ function isPastDate(value) {
   return new Date(year, month - 1, day).getTime() < current;
 }
 
+function isRecurringMission(mission) {
+  return Array.isArray(mission?.recurrence_weekdays) && mission.recurrence_weekdays.length > 0;
+}
+
+function recurringMissionKey(mission) {
+  if (!isRecurringMission(mission)) {
+    return `missao:${mission?.id}`;
+  }
+  return [
+    "recorrente",
+    mission.objetivo_id || "",
+    mission.titulo || "",
+    mission.instrucao || "",
+    [...mission.recurrence_weekdays].sort().join(","),
+    mission.duration_type || "",
+    mission.recurrence_end_date || "",
+  ].join("|");
+}
+
+function missionDateValue(mission) {
+  const [day, month, year] = String(mission?.prazo || "").split("-").map(Number);
+  if (!day || !month || !year) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return new Date(year, month - 1, day).getTime();
+}
+
+function missionIsCompleted(mission) {
+  return mission?.status_code === "CONCLUIDA";
+}
+
+function missionStatusLabel(mission, pendingToday = false) {
+  if (missionIsCompleted(mission)) {
+    return "Cumprida hoje";
+  }
+  if (pendingToday) {
+    return "Pendente hoje";
+  }
+  return mission?.status_label || mission?.status_code || "Pendente";
+}
+
+function summarizeLinkedMissions(missions) {
+  const today = formatDateForApi(new Date());
+  const groups = new Map();
+
+  missions.forEach((mission) => {
+    const key = recurringMissionKey(mission);
+    const current = groups.get(key) || [];
+    current.push(mission);
+    groups.set(key, current);
+  });
+
+  return Array.from(groups.entries())
+    .map(([key, group]) => {
+      const todayMission = group.find((mission) => mission.prazo === today);
+      const completedToday = todayMission && missionIsCompleted(todayMission);
+      const pendingToday = todayMission && !completedToday;
+      const sorted = [...group].sort((a, b) => missionDateValue(a) - missionDateValue(b));
+      const representative = todayMission || sorted.find((mission) => !missionIsCompleted(mission)) || sorted[0];
+
+      return {
+        key,
+        completedToday,
+        pendingToday,
+        mission: representative,
+        recurring: group.some(isRecurringMission),
+      };
+    })
+    .sort((a, b) => {
+      if (a.completedToday !== b.completedToday) {
+        return a.completedToday ? 1 : -1;
+      }
+      return missionDateValue(a.mission) - missionDateValue(b.mission);
+    });
+}
+
 export default function ObjetivoCard({
   loading,
   missions = [],
@@ -63,7 +140,10 @@ export default function ObjetivoCard({
   const progressChanged = progressDraft !== Number(objetivo.progresso ?? 0);
   const active = objetivo.status === "ativo";
   const expanded = !active && detailsOpen;
-  const linkedMissions = Array.isArray(missions) ? missions : [];
+  const linkedMissions = useMemo(
+    () => summarizeLinkedMissions(Array.isArray(missions) ? missions : []),
+    [missions]
+  );
 
   useEffect(() => {
     setProgressDraft(Number(objetivo.progresso ?? 0));
@@ -232,10 +312,13 @@ export default function ObjetivoCard({
           <strong className="objective-progress-number">{objetivo.progresso}%</strong>
           {linkedMissions.length > 0 ? (
             <div className="objective-linked-missions compact">
-              {linkedMissions.map((mission) => (
-                <div className="objective-linked-mission" key={mission.id}>
+              {linkedMissions.map(({ completedToday, key, mission, pendingToday, recurring }) => (
+                <div
+                  className={`objective-linked-mission${completedToday ? " completed-today" : ""}${pendingToday ? " pending-today" : ""}`}
+                  key={key}
+                >
                   <strong>{mission.titulo || "Sem título"}</strong>
-                  <span>{mission.status_label || mission.status_code || "Status indisponível"}</span>
+                  <span>{recurring && !completedToday && !pendingToday ? "Recorrente" : missionStatusLabel(mission, pendingToday)}</span>
                 </div>
               ))}
             </div>
@@ -264,10 +347,13 @@ export default function ObjetivoCard({
           {linkedMissions.length > 0 ? (
             <div className="objective-linked-missions">
               <p className="section-kicker fire">MISSÕES</p>
-              {linkedMissions.map((mission) => (
-                <div className="objective-linked-mission" key={mission.id}>
+              {linkedMissions.map(({ completedToday, key, mission, pendingToday, recurring }) => (
+                <div
+                  className={`objective-linked-mission${completedToday ? " completed-today" : ""}${pendingToday ? " pending-today" : ""}`}
+                  key={key}
+                >
                   <strong>{mission.titulo || "Sem título"}</strong>
-                  <span>{mission.status_label || mission.status_code || "Status indisponível"}</span>
+                  <span>{recurring && !completedToday && !pendingToday ? "Recorrente" : missionStatusLabel(mission, pendingToday)}</span>
                 </div>
               ))}
             </div>

@@ -105,6 +105,70 @@ class MissaoService:
             if missao.is_visible_to_soldier(estado["active_date"])
         ]
 
+    def quadro_turno_soldado(self, usuario=None) -> dict:
+        self._garantir_modo_soldado(usuario)
+        agora = self._now()
+        dia_operacional = operational_date_for(agora)
+        dia_calendario = agora.date()
+        missoes = self._carregar_missoes_do_usuario(usuario)
+        materializou = self._materializar_recorrencias_do_usuario(
+            usuario=usuario,
+            missoes=missoes,
+            start_date=dia_operacional,
+            end_date=dia_operacional,
+        )
+        if dia_calendario != dia_operacional:
+            materializou = (
+                self._materializar_recorrencias_do_usuario(
+                    usuario=usuario,
+                    missoes=missoes,
+                    start_date=dia_calendario,
+                    end_date=dia_calendario,
+                )
+                or materializou
+            )
+        if materializou:
+            missoes = self._carregar_missoes_do_usuario(usuario)
+        self._reconciliar_falhas(usuario=usuario, missoes=missoes)
+
+        missoes_ciclo_anterior = self.sort_missions_for_board(
+            [missao for missao in missoes if self._pertence_ao_dia_operacional(missao, dia_operacional)]
+        )
+        missoes_dia_atual = (
+            []
+            if dia_calendario == dia_operacional
+            else self.sort_missions_for_board(
+                [missao for missao in missoes if self._pertence_ao_dia_operacional(missao, dia_calendario)]
+            )
+        )
+        pendencias_anteriores = [missao for missao in missoes_ciclo_anterior if missao.is_pending()]
+        novo_dia_disponivel = dia_calendario != dia_operacional and len(missoes_dia_atual) > 0
+        exige_decisao = novo_dia_disponivel and len(pendencias_anteriores) > 0
+        migrou_automaticamente = novo_dia_disponivel and len(pendencias_anteriores) == 0
+        dia_ativo = dia_calendario if migrou_automaticamente else dia_operacional
+        missoes_dia_ativo = missoes_dia_atual if migrou_automaticamente else missoes_ciclo_anterior
+        estado = {
+            "active_date": dia_ativo,
+            "active_date_label": dia_ativo.isoformat(),
+            "previous_operational_date": dia_operacional.isoformat(),
+            "current_calendar_date": dia_calendario.isoformat(),
+            "before_cutoff": dia_calendario != dia_operacional,
+            "current_day_available": novo_dia_disponivel,
+            "requires_decision": exige_decisao,
+            "auto_advanced": migrou_automaticamente,
+            "previous_pending_count": len(pendencias_anteriores),
+            "current_missions_count": len(missoes_dia_atual),
+        }
+        return {
+            "turn": estado,
+            "daily_missions": missoes_dia_ativo,
+            "action_missions": [
+                missao
+                for missao in self.sort_missions_for_board(missoes_dia_ativo)
+                if missao.is_visible_to_soldier(dia_ativo)
+            ],
+        }
+
     def estado_turno_soldado(self, usuario=None) -> dict:
         self._garantir_modo_soldado(usuario)
         agora = self._now()

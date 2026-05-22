@@ -87,27 +87,14 @@ export function useMissionBoard({
     loadGeneralBoard();
   }, [authenticated, activeMode, token]);
 
-  async function loadGeneralBoard(successMessage = "") {
-    if (!token) {
-      return;
-    }
-
-    const requestId = loadRequestRef.current + 1;
-    loadRequestRef.current = requestId;
-    setMissionLoading(true);
-    setDailyProgressMissions([]);
-    setRegisteredOutcomeMissions([]);
-    setOperationalTurn(null);
-    setOperationalTurnAcknowledged(false);
+  async function loadGeneralSupport(requestId) {
     const [
-      missionsResult,
       reviewResult,
       historicalResult,
       reviewStateResult,
       weeklyReviewsResult,
       operationsResult,
     ] = await Promise.all([
-      api.listMissions(token),
       api.listReviewMissions(token),
       api.listHistoricalMissions(token),
       api.getReviewState(token),
@@ -117,11 +104,9 @@ export function useMissionBoard({
     if (requestId !== loadRequestRef.current) {
       return false;
     }
-    setMissionLoading(false);
 
     if (
-      onUnauthorized(missionsResult)
-      || onUnauthorized(reviewResult)
+      onUnauthorized(reviewResult)
       || onUnauthorized(historicalResult)
       || onUnauthorized(reviewStateResult)
       || onUnauthorized(weeklyReviewsResult)
@@ -129,16 +114,6 @@ export function useMissionBoard({
     ) {
       return false;
     }
-
-    if (!missionsResult.ok) {
-      setStatus({
-        type: "error",
-        message: getErrorMessage(missionsResult, "Não foi possível carregar ordens."),
-      });
-      return false;
-    }
-
-    setMissions(missionsResult.data);
 
     if (reviewResult.ok) {
       setReviewMissions(reviewResult.data);
@@ -192,10 +167,68 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(operationsResult, "Não foi possível carregar operações."),
       });
+      return false;
+    }
+
+    return true;
+  }
+
+  async function refreshMissionsOnly(successMessage = "", requestId = loadRequestRef.current) {
+    if (!token) {
+      return false;
+    }
+    const result = await api.listMissions(token);
+    if (requestId !== loadRequestRef.current) {
+      return false;
+    }
+    if (onUnauthorized(result)) {
+      return false;
+    }
+    if (!result.ok) {
+      setStatus({
+        type: "error",
+        message: getErrorMessage(result, "Não foi possível carregar ordens."),
+      });
+      return false;
+    }
+    setMissions(result.data);
+    setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
+    return true;
+  }
+
+  async function loadGeneralBoard(successMessage = "") {
+    if (!token) {
       return;
     }
 
+    const requestId = loadRequestRef.current + 1;
+    loadRequestRef.current = requestId;
+    setMissionLoading(true);
+    setDailyProgressMissions([]);
+    setRegisteredOutcomeMissions([]);
+    setOperationalTurn(null);
+    setOperationalTurnAcknowledged(false);
+    const missionsResult = await api.listMissions(token);
+    if (requestId !== loadRequestRef.current) {
+      return false;
+    }
+    setMissionLoading(false);
+
+    if (onUnauthorized(missionsResult)) {
+      return false;
+    }
+
+    if (!missionsResult.ok) {
+      setStatus({
+        type: "error",
+        message: getErrorMessage(missionsResult, "Não foi possível carregar ordens."),
+      });
+      return false;
+    }
+
+    setMissions(missionsResult.data);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
+    loadGeneralSupport(requestId);
     return true;
   }
 
@@ -217,17 +250,13 @@ export function useMissionBoard({
     setOperations([]);
     setOperationStatus(emptyStatus);
     setOperationalTurn(null);
-    const [result, dailyResult, turnResult] = await Promise.all([
-      api.listOperationalMissions(token),
-      api.listDailyMissions(token),
-      api.getOperationalTurn(token),
-    ]);
+    const result = await api.getSoldierBoard(token);
     if (requestId !== loadRequestRef.current) {
       return false;
     }
     setMissionLoading(false);
 
-    if (onUnauthorized(result) || onUnauthorized(dailyResult) || onUnauthorized(turnResult)) {
+    if (onUnauthorized(result)) {
       return false;
     }
 
@@ -239,33 +268,15 @@ export function useMissionBoard({
       return false;
     }
 
-    setMissions(result.data);
-    if (dailyResult.ok) {
-      setDailyProgressMissions(dailyResult.data);
-    } else {
-      setDailyProgressMissions(result.data);
-      setStatus({
-        type: "error",
-        message: getErrorMessage(dailyResult, "Não foi possível carregar a caçada do dia."),
-      });
-      return false;
-    }
-    if (turnResult.ok) {
-      setOperationalTurn(turnResult.data);
-      setOperationalTurnAcknowledged((current) => {
-        if (!current) {
-          return false;
-        }
-        return turnResult.data?.requires_decision === true;
-      });
-    } else {
-      setOperationalTurn(null);
-      setStatus({
-        type: "error",
-        message: getErrorMessage(turnResult, "Não foi possível ler o turno operacional."),
-      });
-      return false;
-    }
+    setMissions(result.data.missions);
+    setDailyProgressMissions(result.data.daily_missions);
+    setOperationalTurn(result.data.turn);
+    setOperationalTurnAcknowledged((current) => {
+      if (!current) {
+        return false;
+      }
+      return result.data.turn?.requires_decision === true;
+    });
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
     return true;
   }
@@ -313,8 +324,12 @@ export function useMissionBoard({
     }
 
     materializingOperationsRef.current.add(key);
+    const requestId = loadRequestRef.current;
     try {
       const result = await api.materializeOperations(token, payload);
+      if (requestId !== loadRequestRef.current) {
+        return false;
+      }
       if (onUnauthorized(result)) {
         return false;
       }
@@ -325,7 +340,10 @@ export function useMissionBoard({
         });
         return false;
       }
-      await loadGeneralBoard();
+      const generated = Number(result.data?.generated || 0);
+      if (generated > 0) {
+        await refreshMissionsOnly("", requestId);
+      }
       return true;
     } finally {
       materializingOperationsRef.current.delete(key);

@@ -30,6 +30,7 @@ from api.routes import (
     materializar_operacoes,
     obter_relatorio_semanal,
     obter_estado_revisao,
+    obter_quadro_soldado,
     listar_revisoes,
     fechar_revisao,
     liberar_general,
@@ -1609,6 +1610,39 @@ def test_soldado_migra_para_dia_atual_antes_das_quatro_sem_pendencias_anteriores
     assert estado["auto_advanced"] is True
     assert estado["requires_decision"] is False
     assert [missao["titulo"] for missao in cacada] == ["Ordem de sábado"]
+
+
+def test_quadro_soldado_retorna_turno_acoes_e_progresso_em_uma_chamada():
+    repo, _, missoes, _, _, usuario = preparar_ambiente()
+    criar_missao(
+        MissaoCreatePayload(titulo="Pendente de sexta", prazo="24-04-2026"),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    criar_missao(
+        MissaoCreatePayload(titulo="Ordem de sábado", prazo="25-04-2026"),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    usuario.definir_modo("soldier")
+    agora = datetime(2026, 4, 25, 2, 0, 0)
+    missoes_madrugada = MissaoService(
+        repo,
+        today_provider=lambda: agora.date(),
+        now_provider=lambda: agora,
+    )
+    operacoes_madrugada = OperacaoService(repo, now_provider=lambda: agora)
+
+    quadro = obter_quadro_soldado(
+        usuario=usuario,
+        missao_service=missoes_madrugada,
+        operacao_service=operacoes_madrugada,
+    )
+
+    assert quadro["turn"]["active_date_label"] == "2026-04-24"
+    assert quadro["turn"]["requires_decision"] is True
+    assert [missao["titulo"] for missao in quadro["missions"]] == ["Pendente de sexta"]
+    assert [missao["titulo"] for missao in quadro["daily_missions"]] == ["Pendente de sexta"]
 
 
 def test_soldado_mostra_transicao_com_pendencias_e_pode_encerrar_ciclo_anterior():

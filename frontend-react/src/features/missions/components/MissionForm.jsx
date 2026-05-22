@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 
 import { getErrorMessage } from "../../../api/httpClient.js";
 import { api } from "../../../services/bunkermodeApi.js";
-import { formatDateForApi, getTomorrow } from "../../../utils/date.js";
 
 const emptyForm = {
   titulo: "",
@@ -11,7 +10,6 @@ const emptyForm = {
   recurrence_weekdays: [],
   duration_type: "ate_objetivo",
   recurrence_end_date: "",
-  prazoTipo: "hoje",
   prazo: "",
 };
 
@@ -29,10 +27,6 @@ const weekdayOptions = [
 
 function getUserId(user) {
   return user?.usuario_id ?? user?.id;
-}
-
-function initialPrazoTipo(mission, initialPrazo) {
-  return mission?.prazo || initialPrazo ? "data_especifica" : "amanha";
 }
 
 function formatPrazoContext(prazo) {
@@ -95,7 +89,6 @@ export default function MissionForm({
   const [form, setForm] = useState({
     ...emptyForm,
     objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
-    prazoTipo: initialPrazo ? "data_especifica" : emptyForm.prazoTipo,
     prazo: initialPrazo || "",
   });
   const [objetivos, setObjetivos] = useState([]);
@@ -110,7 +103,6 @@ export default function MissionForm({
       setForm({
         ...emptyForm,
         objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
-        prazoTipo: initialPrazo ? "data_especifica" : emptyForm.prazoTipo,
         prazo: initialPrazo || "",
       });
       return;
@@ -123,7 +115,6 @@ export default function MissionForm({
       recurrence_weekdays: Array.isArray(editingMission.recurrence_weekdays) ? editingMission.recurrence_weekdays : [],
       duration_type: editingMission.duration_type === "prazo" ? "prazo" : "ate_objetivo",
       recurrence_end_date: editingMission.recurrence_end_date || "",
-      prazoTipo: initialPrazoTipo(editingMission, initialPrazo),
       prazo: editingMission.prazo || initialPrazo || "",
     });
   }, [editingMission, initialObjetivoId, initialPrazo]);
@@ -159,13 +150,6 @@ export default function MissionForm({
     }));
   }
 
-  function handleDateChange(event) {
-    setForm((current) => ({
-      ...current,
-      prazo: fromDateInputValue(event.target.value),
-    }));
-  }
-
   function handleRecurrenceEndDateChange(event) {
     setForm((current) => ({
       ...current,
@@ -182,18 +166,6 @@ export default function MissionForm({
     });
   }
 
-  function buildDeadline() {
-    if (form.prazoTipo === "data_especifica") {
-      return form.prazo.trim();
-    }
-
-    if (form.prazoTipo === "amanha") {
-      return formatDateForApi(getTomorrow());
-    }
-
-    return formatDateForApi(new Date());
-  }
-
   function submit(event) {
     event.preventDefault();
     const linkedToObjective = Boolean(form.objetivo_id);
@@ -201,7 +173,7 @@ export default function MissionForm({
       titulo: form.titulo.trim(),
       instrucao: form.instrucao.trim(),
       objetivo_id: linkedToObjective ? Number(form.objetivo_id) : null,
-      prazo: buildDeadline(),
+      prazo: form.prazo ? form.prazo.trim() : null,
     };
 
     if (linkedToObjective) {
@@ -329,39 +301,6 @@ export default function MissionForm({
               </div>
             </fieldset>
           </div>
-        )}
-
-        {!lockedInitialPrazo && (
-          <>
-            <div className="segmented-control deadline-control">
-              {[
-                ["hoje", "Hoje"],
-                ["amanha", "Amanhã"],
-                ["data_especifica", "Data específica"],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  className={form.prazoTipo === value ? "active" : ""}
-                  type="button"
-                  onClick={() => setForm((current) => ({ ...current, prazoTipo: value }))}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {form.prazoTipo === "data_especifica" && (
-              <label>
-                Data
-                <input
-                  name="prazo"
-                  type="date"
-                  onChange={handleDateChange}
-                  value={toDateInputValue(form.prazo)}
-                />
-              </label>
-            )}
-          </>
         )}
 
         {status.message && <p className={`feedback ${status.type}`}>{status.message}</p>}

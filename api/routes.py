@@ -510,6 +510,37 @@ def obter_turno_operacional(
         _raise_http_from_domain_error(erro)
 
 
+@router.get("/missoes/quadro-soldado")
+def obter_quadro_soldado(
+    usuario=Depends(get_current_user),
+    missao_service: MissaoService = Depends(get_missao_service),
+    operacao_service: OperacaoService = Depends(get_operacao_service),
+):
+    materializar = getattr(operacao_service, "materializar_turno_soldado", None)
+    if callable(materializar):
+        try:
+            materializar(usuario=usuario)
+        except (PermissaoNegadaError, ValueError) as erro:
+            _raise_http_from_domain_error(erro)
+    try:
+        quadro = missao_service.quadro_turno_soldado(usuario=usuario)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+    return {
+        "turn": quadro["turn"],
+        "missions": missao_service.to_response_list(
+            quadro["action_missions"],
+            usuario=usuario,
+            reference_date=quadro["turn"]["active_date"],
+        ),
+        "daily_missions": missao_service.to_response_list(
+            quadro["daily_missions"],
+            usuario=usuario,
+            reference_date=quadro["turn"]["active_date"],
+        ),
+    }
+
+
 @router.post("/missoes/turno-operacional/encerrar-pendencias")
 def encerrar_pendencias_turno_operacional(
     usuario=Depends(get_current_user),

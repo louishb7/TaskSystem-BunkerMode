@@ -35,6 +35,30 @@ async function requestMissionList(path, options = {}) {
   }
 }
 
+async function requestSoldierBoard(path, options = {}) {
+  const result = await request(path, options);
+  if (!result.ok) {
+    return result;
+  }
+
+  try {
+    return {
+      ...result,
+      data: {
+        ...result.data,
+        missions: assertMissionListContract(result.data?.missions),
+        daily_missions: assertMissionListContract(result.data?.daily_missions),
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      data: { detail: error.message },
+    };
+  }
+}
+
 export const api = {
   register(payload) {
     return request("/auth/register", { method: "POST", body: payload });
@@ -70,6 +94,9 @@ export const api = {
   },
   getOperationalTurn(token) {
     return request("/missoes/turno-operacional", { token });
+  },
+  getSoldierBoard(token) {
+    return requestSoldierBoard("/missoes/quadro-soldado", { token });
   },
   closePreviousOperationalTurn(token) {
     return request("/missoes/turno-operacional/encerrar-pendencias", { token, method: "POST" });

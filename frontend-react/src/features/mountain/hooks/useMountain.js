@@ -4,6 +4,17 @@ import { getErrorMessage } from "../../../api/httpClient.js";
 import { emptyStatus } from "../../../constants/uiState.js";
 import { api } from "../../../services/bunkermodeApi.js";
 
+function mergeMissions(...missionLists) {
+  const byId = new Map();
+  missionLists.flat().forEach((mission) => {
+    if (!mission?.id) {
+      return;
+    }
+    byId.set(mission.id, mission);
+  });
+  return Array.from(byId.values());
+}
+
 export function useMountain({ onUnauthorized, token }) {
   const [sonhos, setSonhos] = useState([]);
   const [objetivos, setObjetivos] = useState([]);
@@ -26,14 +37,20 @@ export function useMountain({ onUnauthorized, token }) {
       return false;
     }
     setLoading(true);
-    const [sonhosResult, objetivosResult, missionsResult] = await Promise.all([
+    const [sonhosResult, objetivosResult, missionsResult, dailyMissionsResult] = await Promise.all([
       api.listSonhos(token),
       api.listObjetivos(token),
       api.listMissions(token),
+      api.listDailyMissions(token),
     ]);
     setLoading(false);
 
-    if (onUnauthorized?.(sonhosResult) || onUnauthorized?.(objetivosResult) || onUnauthorized?.(missionsResult)) {
+    if (
+      onUnauthorized?.(sonhosResult)
+      || onUnauthorized?.(objetivosResult)
+      || onUnauthorized?.(missionsResult)
+      || onUnauthorized?.(dailyMissionsResult)
+    ) {
       return false;
     }
 
@@ -49,10 +66,17 @@ export function useMountain({ onUnauthorized, token }) {
       setStatus({ type: "error", message: getErrorMessage(missionsResult, "Não foi possível carregar missões da montanha.") });
       return false;
     }
+    if (!dailyMissionsResult.ok) {
+      setStatus({ type: "error", message: getErrorMessage(dailyMissionsResult, "Não foi possível carregar ordens do dia.") });
+      return false;
+    }
 
     setSonhos(Array.isArray(sonhosResult.data) ? sonhosResult.data : []);
     setObjetivos(Array.isArray(objetivosResult.data) ? objetivosResult.data : []);
-    setMissions(Array.isArray(missionsResult.data) ? missionsResult.data : []);
+    setMissions(mergeMissions(
+      Array.isArray(missionsResult.data) ? missionsResult.data : [],
+      Array.isArray(dailyMissionsResult.data) ? dailyMissionsResult.data : []
+    ));
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
     return true;
   }
