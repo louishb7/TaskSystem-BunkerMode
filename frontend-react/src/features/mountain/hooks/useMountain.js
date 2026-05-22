@@ -63,7 +63,7 @@ export function useMountain({ onUnauthorized, token }) {
       return false;
     }
     if (!missionsResult.ok) {
-      setStatus({ type: "error", message: getErrorMessage(missionsResult, "Não foi possível carregar missões da montanha.") });
+      setStatus({ type: "error", message: getErrorMessage(missionsResult, "Não foi possível carregar ordens da montanha.") });
       return false;
     }
     if (!dailyMissionsResult.ok) {

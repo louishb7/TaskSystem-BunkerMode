@@ -20,7 +20,7 @@ export default function MountainPage({
       <div className="mountain-header">
         <div>
           <p className="section-kicker fire">A MONTANHA</p>
-          <h1>Sonho → Objetivos → Missões</h1>
+          <h1>Sonho → Objetivos → Ordens</h1>
           <p className="muted">Estrutura estratégica para orientar o que entra no quadro de execução.</p>
         </div>
         {onClose && (

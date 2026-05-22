@@ -346,7 +346,7 @@ export default function ObjetivoCard({
 
           {linkedMissions.length > 0 ? (
             <div className="objective-linked-missions">
-              <p className="section-kicker fire">MISSÕES</p>
+              <p className="section-kicker fire">ORDENS</p>
               {linkedMissions.map(({ completedToday, key, mission, pendingToday, recurring }) => (
                 <div
                   className={`objective-linked-mission${completedToday ? " completed-today" : ""}${pendingToday ? " pending-today" : ""}`}
@@ -431,7 +431,7 @@ export default function ObjetivoCard({
       {confirmAction === "remover" && (
         <ConfirmDialog
           title="Remover objetivo"
-          message={`"${objetivo.titulo}" será removido. As missões vinculadas perdem o vínculo com este objetivo.`}
+          message={`"${objetivo.titulo}" será removido. As ordens vinculadas perdem o vínculo com este objetivo.`}
           confirmLabel="REMOVER"
           variant="danger"
           onCancel={() => setConfirmAction(null)}

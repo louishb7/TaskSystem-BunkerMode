@@ -2996,13 +2996,6 @@ h3 {
     rgba(10, 10, 10, 0.32);
 }
 
-.isolated-objectives-empty {
-  border: 1px dashed var(--border-soft);
-  margin: 0;
-  padding: 12px 14px;
-  font-size: 0.78rem;
-}
-
 .objetivo-group-title {
   align-items: center;
   border-bottom: 1px solid var(--border-soft);

@@ -29,6 +29,10 @@ export default function ObjetivoList({
     }
   }
 
+  if (objetivosIsolados.length === 0) {
+    return null;
+  }
+
   return (
     <section className="mountain-section isolated-objectives-section">
       <div className="mountain-section-head">
@@ -57,26 +61,22 @@ export default function ObjetivoList({
         </MountainDialog>
       )}
 
-      {objetivosIsolados.length === 0 ? (
-        <p className="muted isolated-objectives-empty">Nenhum objetivo isolado registrado.</p>
-      ) : (
-        <div className="objetivo-list isolated-objectives-list">
-          {objetivosIsolados.map((objetivo) => (
-            <ObjetivoCard
-              key={objetivo.id}
-              loading={loading}
-              missions={missions.filter((mission) => mission.objetivo_id === objetivo.id)}
-              objetivo={objetivo}
-              onCreateMission={onCreateMission}
-              onDelete={onDelete}
-              onUpdate={onUpdate}
-              onUpdateProgress={onUpdateProgress}
-              onUpdateStatus={onUpdateStatus}
-              sonhos={sonhos}
-            />
-          ))}
-        </div>
-      )}
+      <div className="objetivo-list isolated-objectives-list">
+        {objetivosIsolados.map((objetivo) => (
+          <ObjetivoCard
+            key={objetivo.id}
+            loading={loading}
+            missions={missions.filter((mission) => mission.objetivo_id === objetivo.id)}
+            objetivo={objetivo}
+            onCreateMission={onCreateMission}
+            onDelete={onDelete}
+            onUpdate={onUpdate}
+            onUpdateProgress={onUpdateProgress}
+            onUpdateStatus={onUpdateStatus}
+            sonhos={sonhos}
+          />
+        ))}
+      </div>
     </section>
   );
 }
