@@ -9,7 +9,7 @@ const emptyForm = {
   instrucao: "",
   objetivo_id: "",
   recurrence_weekdays: [],
-  duration_type: "pontual",
+  duration_type: "ate_objetivo",
   recurrence_end_date: "",
   prazoTipo: "hoje",
   prazo: "",
@@ -80,7 +80,10 @@ function fromDateInputValue(value) {
 export default function MissionForm({
   currentUser,
   editingMission,
+  initialObjetivoId,
+  initialObjetivoTitulo,
   initialPrazo,
+  lockObjetivo = false,
   loading,
   onCancel,
   onCreate,
@@ -91,6 +94,7 @@ export default function MissionForm({
 }) {
   const [form, setForm] = useState({
     ...emptyForm,
+    objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
     prazoTipo: initialPrazo ? "data_especifica" : emptyForm.prazoTipo,
     prazo: initialPrazo || "",
   });
@@ -105,6 +109,7 @@ export default function MissionForm({
     if (!editingMission) {
       setForm({
         ...emptyForm,
+        objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
         prazoTipo: initialPrazo ? "data_especifica" : emptyForm.prazoTipo,
         prazo: initialPrazo || "",
       });
@@ -116,12 +121,12 @@ export default function MissionForm({
       instrucao: editingMission.instrucao || "",
       objetivo_id: editingMission.objetivo_id ? String(editingMission.objetivo_id) : "",
       recurrence_weekdays: Array.isArray(editingMission.recurrence_weekdays) ? editingMission.recurrence_weekdays : [],
-      duration_type: editingMission.duration_type || "pontual",
+      duration_type: editingMission.duration_type === "prazo" ? "prazo" : "ate_objetivo",
       recurrence_end_date: editingMission.recurrence_end_date || "",
       prazoTipo: initialPrazoTipo(editingMission, initialPrazo),
       prazo: editingMission.prazo || initialPrazo || "",
     });
-  }, [editingMission, initialPrazo]);
+  }, [editingMission, initialObjetivoId, initialPrazo]);
 
   useEffect(() => {
     async function loadObjetivos() {
@@ -201,8 +206,12 @@ export default function MissionForm({
 
     if (linkedToObjective) {
       payload.recurrence_weekdays = form.recurrence_weekdays.length > 0 ? form.recurrence_weekdays : null;
-      payload.duration_type = form.duration_type;
-      payload.recurrence_end_date = form.duration_type === "prazo" && form.recurrence_end_date
+      payload.duration_type = form.recurrence_weekdays.length > 0 ? form.duration_type : null;
+      payload.recurrence_end_date = (
+        form.recurrence_weekdays.length > 0
+        && form.duration_type === "prazo"
+        && form.recurrence_end_date
+      )
         ? form.recurrence_end_date
         : null;
     } else {
@@ -262,17 +271,24 @@ export default function MissionForm({
           </span>
         </label>
 
-        <label>
-          Objetivo
-          <select name="objetivo_id" onChange={updateField} value={form.objetivo_id}>
-            <option value="">Sem objetivo</option>
-            {objetivos.map((objetivo) => (
-              <option key={objetivo.id} value={objetivo.id}>
-                {objetivo.titulo}
-              </option>
-            ))}
-          </select>
-        </label>
+        {lockObjetivo ? (
+          <div className="deadline-context objective-context">
+            <span>OBJETIVO VINCULADO</span>
+            <strong>{initialObjetivoTitulo || "Objetivo selecionado"}</strong>
+          </div>
+        ) : (
+          <label>
+            Objetivo
+            <select name="objetivo_id" onChange={updateField} value={form.objetivo_id}>
+              <option value="">Sem objetivo</option>
+              {objetivos.map((objetivo) => (
+                <option key={objetivo.id} value={objetivo.id}>
+                  {objetivo.titulo}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {objetivoStatus && <p className="feedback error">{objetivoStatus}</p>}
 
         {form.objetivo_id && (
@@ -280,7 +296,6 @@ export default function MissionForm({
             <label>
               Duração
               <select name="duration_type" onChange={updateField} value={form.duration_type}>
-                <option value="pontual">Pontual</option>
                 <option value="ate_objetivo">Até atingir o objetivo</option>
                 <option value="prazo">Prazo determinado</option>
               </select>

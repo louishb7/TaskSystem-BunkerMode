@@ -9,6 +9,7 @@ export default function ObjetivoList({
   missions = [],
   objetivos,
   onCreate,
+  onCreateMission,
   onDelete,
   onUpdate,
   onUpdateProgress,
@@ -66,6 +67,7 @@ export default function ObjetivoList({
               loading={loading}
               missions={missions.filter((mission) => mission.objetivo_id === objetivo.id)}
               objetivo={objetivo}
+              onCreateMission={onCreateMission}
               onDelete={onDelete}
               onUpdate={onUpdate}
               onUpdateProgress={onUpdateProgress}

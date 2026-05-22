@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx";
+import MissionForm from "../../missions/components/MissionForm.jsx";
 import MountainDialog from "./MountainDialog.jsx";
 import ObjetivoForm from "./ObjetivoForm.jsx";
 
@@ -39,6 +40,7 @@ export default function ObjetivoCard({
   loading,
   missions = [],
   objetivo,
+  onCreateMission,
   onDelete,
   onUpdate,
   onUpdateProgress,
@@ -46,6 +48,7 @@ export default function ObjetivoCard({
   sonhos,
 }) {
   const [editing, setEditing] = useState(false);
+  const [creatingMission, setCreatingMission] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
@@ -93,6 +96,16 @@ export default function ObjetivoCard({
     if (removed) {
       setManageOpen(false);
       setDetailsOpen(false);
+    }
+  }
+
+  async function submitMission(payload) {
+    const saved = await onCreateMission?.({
+      ...payload,
+      objetivo_id: objetivo.id,
+    });
+    if (saved) {
+      setCreatingMission(false);
     }
   }
 
@@ -191,9 +204,14 @@ export default function ObjetivoCard({
           <h3>{objetivo.titulo}</h3>
         </div>
         {active ? (
-          <button className="button fire compact" type="button" onClick={() => setManageOpen(true)}>
-            GERENCIAR
-          </button>
+          <div className="objective-card-actions">
+            <button className="button fire compact" type="button" onClick={() => setCreatingMission(true)}>
+              NOVA ORDEM
+            </button>
+            <button className="button secondary compact" type="button" onClick={() => setManageOpen(true)}>
+              GERENCIAR
+            </button>
+          </div>
         ) : expanded ? <strong>{objetivo.progresso}%</strong> : (
           <button className="button secondary compact" type="button" onClick={() => setDetailsOpen(true)}>
             DETALHES
@@ -276,6 +294,20 @@ export default function ObjetivoCard({
             </span>
           </div>
           {renderManagementActions()}
+        </MountainDialog>
+      )}
+
+      {creatingMission && (
+        <MountainDialog label="Nova ordem" onClose={() => setCreatingMission(false)}>
+          <MissionForm
+            initialObjetivoId={objetivo.id}
+            initialObjetivoTitulo={objetivo.titulo}
+            lockObjetivo
+            loading={loading}
+            onCancel={() => setCreatingMission(false)}
+            onCreate={submitMission}
+            status={{ type: "", message: "" }}
+          />
         </MountainDialog>
       )}
 

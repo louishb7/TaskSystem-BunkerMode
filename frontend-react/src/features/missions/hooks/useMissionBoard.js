@@ -46,6 +46,7 @@ export function useMissionBoard({
   const [justificationLoadingId, setJustificationLoadingId] = useState(null);
   const [status, setStatus] = useState(emptyStatus);
   const [formStatus, setFormStatus] = useState(emptyStatus);
+  const loadRequestRef = useRef(0);
   const materializingOperationsRef = useRef(new Set());
 
   const actionMissions = useMemo(() => getActionMissions(missions), [missions]);
@@ -91,7 +92,13 @@ export function useMissionBoard({
       return;
     }
 
+    const requestId = loadRequestRef.current + 1;
+    loadRequestRef.current = requestId;
     setMissionLoading(true);
+    setDailyProgressMissions([]);
+    setRegisteredOutcomeMissions([]);
+    setOperationalTurn(null);
+    setOperationalTurnAcknowledged(false);
     const [
       missionsResult,
       reviewResult,
@@ -107,6 +114,9 @@ export function useMissionBoard({
       api.listWeeklyReviews(token),
       api.listOperations(token),
     ]);
+    if (requestId !== loadRequestRef.current) {
+      return false;
+    }
     setMissionLoading(false);
 
     if (
@@ -117,7 +127,7 @@ export function useMissionBoard({
       || onUnauthorized(weeklyReviewsResult)
       || onUnauthorized(operationsResult)
     ) {
-      return;
+      return false;
     }
 
     if (!missionsResult.ok) {
@@ -125,7 +135,7 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(missionsResult, "Não foi possível carregar ordens."),
       });
-      return;
+      return false;
     }
 
     setMissions(missionsResult.data);
@@ -138,7 +148,7 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(reviewResult, "Não foi possível carregar relatório."),
       });
-      return;
+      return false;
     }
 
     if (historicalResult.ok) {
@@ -149,7 +159,7 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(historicalResult, "Não foi possível carregar histórico."),
       });
-      return;
+      return false;
     }
 
     if (reviewStateResult.ok) {
@@ -160,7 +170,7 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(reviewStateResult, "Não foi possível carregar a revisão semanal."),
       });
-      return;
+      return false;
     }
 
     if (weeklyReviewsResult.ok) {
@@ -171,7 +181,7 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(weeklyReviewsResult, "Não foi possível carregar o histórico de revisões."),
       });
-      return;
+      return false;
     }
 
     if (operationsResult.ok) {
@@ -185,11 +195,8 @@ export function useMissionBoard({
       return;
     }
 
-    setDailyProgressMissions([]);
-    setRegisteredOutcomeMissions([]);
-    setOperationalTurn(null);
-    setOperationalTurnAcknowledged(false);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
+    return true;
   }
 
   async function loadSoldierBoard(successMessage = "") {
@@ -197,16 +204,31 @@ export function useMissionBoard({
       return;
     }
 
+    const requestId = loadRequestRef.current + 1;
+    loadRequestRef.current = requestId;
     setMissionLoading(true);
+    setMissions([]);
+    setDailyProgressMissions([]);
+    setReviewMissions([]);
+    setHistoricalMissions([]);
+    setRegisteredOutcomeMissions([]);
+    setReviewState(null);
+    setWeeklyReviews([]);
+    setOperations([]);
+    setOperationStatus(emptyStatus);
+    setOperationalTurn(null);
     const [result, dailyResult, turnResult] = await Promise.all([
       api.listOperationalMissions(token),
       api.listDailyMissions(token),
       api.getOperationalTurn(token),
     ]);
+    if (requestId !== loadRequestRef.current) {
+      return false;
+    }
     setMissionLoading(false);
 
     if (onUnauthorized(result) || onUnauthorized(dailyResult) || onUnauthorized(turnResult)) {
-      return;
+      return false;
     }
 
     if (!result.ok) {
@@ -214,7 +236,7 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(result, "Não foi possível carregar ordens."),
       });
-      return;
+      return false;
     }
 
     setMissions(result.data);
@@ -226,7 +248,7 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(dailyResult, "Não foi possível carregar a caçada do dia."),
       });
-      return;
+      return false;
     }
     if (turnResult.ok) {
       setOperationalTurn(turnResult.data);
@@ -242,15 +264,10 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(turnResult, "Não foi possível ler o turno operacional."),
       });
-      return;
+      return false;
     }
-    setReviewMissions([]);
-    setHistoricalMissions([]);
-    setReviewState(null);
-    setWeeklyReviews([]);
-    setOperations([]);
-    setOperationStatus(emptyStatus);
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
+    return true;
   }
 
   function continuePreviousOperationalTurn() {
@@ -467,11 +484,19 @@ export function useMissionBoard({
         type: "error",
         message: getErrorMessage(result, "Não foi possível subir prioridade."),
       });
-      await loadGeneralBoard();
+      if (activeMode === "soldier") {
+        await loadSoldierBoard();
+      } else {
+        await loadGeneralBoard();
+      }
       return false;
     }
 
-    await loadGeneralBoard();
+    if (activeMode === "soldier") {
+      await loadSoldierBoard();
+    } else {
+      await loadGeneralBoard();
+    }
     return true;
   }
 
@@ -681,6 +706,7 @@ export function useMissionBoard({
     operationalTurnAcknowledged,
     operations,
     pinLoadingId,
+    refreshGeneralBoard: loadGeneralBoard,
     reopenLoadingId,
     reopenMission,
     reviewLoadingId,

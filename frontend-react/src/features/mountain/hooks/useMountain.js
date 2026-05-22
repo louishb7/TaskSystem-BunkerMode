@@ -134,5 +134,10 @@ export function useMountain({ onUnauthorized, token }) {
       "Objetivo removido.",
       "Não foi possível remover o objetivo."
     ),
+    createMission: (payload) => mutate(
+      () => api.createMission(token, payload),
+      "Ordem registrada.",
+      "Não foi possível registrar a ordem."
+    ),
   };
 }

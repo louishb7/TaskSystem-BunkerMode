@@ -12,6 +12,7 @@ export default function SonhoPanel({
   onArchive,
   onCreateObjetivo,
   onCreate,
+  onCreateMission,
   objetivos,
   onDeleteObjetivo,
   onPromote,
@@ -95,6 +96,7 @@ export default function SonhoPanel({
                 missions={missions.filter((mission) => mission.objetivo_id === objetivo.id)}
                 objetivo={objetivo}
                 onDelete={onDeleteObjetivo}
+                onCreateMission={onCreateMission}
                 onUpdate={onUpdateObjetivo}
                 onUpdateProgress={onUpdateObjetivoProgress}
                 onUpdateStatus={onUpdateObjetivoStatus}
@@ -115,7 +117,7 @@ export default function SonhoPanel({
           <h2>Topo da montanha</h2>
         </div>
         <button className="button fire compact" disabled={loading} type="button" onClick={() => openCreateForm()}>
-          NOVO SONHO
+          {hasActivePrincipal ? "ADICIONAR SONHO SECUNDÁRIO" : "NOVO SONHO"}
         </button>
       </div>
 
@@ -178,34 +180,35 @@ export default function SonhoPanel({
         {principal && renderObjetivosDoSonho(principal)}
       </div>
 
-      <section className="sonho-secondary-section">
-        <div className="objetivo-group-title">
-          <h3>SONHOS SECUNDÁRIOS</h3>
-          <span>{secundarios.length}</span>
-        </div>
-        <div className="sonho-secondary-list">
-          {secundarios.length === 0 && <p className="muted">Nenhum sonho secundário ativo.</p>}
-          {secundarios.map((sonho) => (
-            <article className="sonho-card secondary" key={sonho.id}>
-              <span className="meta-tag">SECUNDÁRIO</span>
-              <h3>{sonho.titulo}</h3>
-              {sonho.descricao && <p>{sonho.descricao}</p>}
-              <div className="mountain-card-actions">
-                <button className="button fire compact" disabled={loading} type="button" onClick={() => setObjetivoSonho(sonho)}>
-                  + NOVO OBJETIVO
-                </button>
-                <button className="button secondary compact" disabled={loading} type="button" onClick={() => {
-                  setEditingSonho(sonho);
-                  setFormOpen(true);
-                }}>
-                  EDITAR
-                </button>
-              </div>
-              {renderObjetivosDoSonho(sonho)}
-            </article>
-          ))}
-        </div>
-      </section>
+      {secundarios.length > 0 && (
+        <section className="sonho-secondary-section">
+          <div className="objetivo-group-title">
+            <h3>SONHOS SECUNDÁRIOS</h3>
+            <span>{secundarios.length}</span>
+          </div>
+          <div className="sonho-secondary-list">
+            {secundarios.map((sonho) => (
+              <article className="sonho-card secondary" key={sonho.id}>
+                <span className="meta-tag">SECUNDÁRIO</span>
+                <h3>{sonho.titulo}</h3>
+                {sonho.descricao && <p>{sonho.descricao}</p>}
+                <div className="mountain-card-actions">
+                  <button className="button fire compact" disabled={loading} type="button" onClick={() => setObjetivoSonho(sonho)}>
+                    + NOVO OBJETIVO
+                  </button>
+                  <button className="button secondary compact" disabled={loading} type="button" onClick={() => {
+                    setEditingSonho(sonho);
+                    setFormOpen(true);
+                  }}>
+                    EDITAR
+                  </button>
+                </div>
+                {renderObjetivosDoSonho(sonho)}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {objetivoSonho && (
         <MountainDialog label="Novo objetivo" onClose={() => setObjetivoSonho(null)}>

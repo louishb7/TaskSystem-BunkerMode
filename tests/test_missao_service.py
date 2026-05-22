@@ -158,6 +158,7 @@ class RepositorioFluxoFake:
         self.auditoria_registrada = []
         self.revisoes = []
         self._next_id = 1
+        self.carregamentos_por_responsavel = 0
 
     def buscar_por_id(self, missao_id):
         return next((missao for missao in self.missoes if missao.missao_id == missao_id), None)
@@ -172,6 +173,7 @@ class RepositorioFluxoFake:
         return list(self.missoes)
 
     def carregar_dados_por_responsavel(self, responsavel_id):
+        self.carregamentos_por_responsavel += 1
         return [
             missao
             for missao in self.missoes
@@ -826,6 +828,15 @@ def test_criar_missao_vinculada_a_objetivo_com_frequencia_e_duracao_infinita():
     assert missao.recurrence_weekdays == [0, 2, 4]
     assert missao.duration_type == "ate_objetivo"
     assert missao.recurrence_end_date is None
+    assert [ordem.due_date for ordem in repositorio.missoes] == [
+        date(2026, 4, 24),
+        date(2026, 4, 27),
+        date(2026, 4, 29),
+        date(2026, 5, 1),
+        date(2026, 5, 4),
+        date(2026, 5, 6),
+    ]
+    assert repositorio.carregamentos_por_responsavel == 1
 
 
 def test_criar_missao_vinculada_a_objetivo_com_prazo_determinado():
@@ -850,6 +861,89 @@ def test_criar_missao_vinculada_a_objetivo_com_prazo_determinado():
     assert missao.recurrence_weekdays == [1]
     assert missao.duration_type == "prazo"
     assert missao.recurrence_end_date.isoformat() == "2026-05-30"
+    assert [ordem.due_date for ordem in repositorio.missoes] == [
+        date(2026, 4, 28),
+        date(2026, 5, 5),
+    ]
+
+
+def test_criar_missao_recorrente_com_prazo_nao_ultrapassa_data_final():
+    repositorio = RepositorioFluxoFake()
+    repositorio.objetivos[9] = SimpleNamespace(objetivo_id=9, usuario_id=1)
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    service.criar_missao(
+        {
+            "titulo": "Revisar portfolio",
+            "prazo": "24-04-2026",
+            "objetivo_id": 9,
+            "recurrence_weekdays": [1, 4],
+            "duration_type": "prazo",
+            "recurrence_end_date": "28-04-2026",
+        },
+        usuario=usuario,
+    )
+
+    assert [ordem.due_date for ordem in repositorio.missoes] == [
+        date(2026, 4, 24),
+        date(2026, 4, 28),
+    ]
+
+
+def test_listagem_mantem_janela_recorrente_de_duas_semanas_sem_duplicar():
+    repositorio = RepositorioFluxoFake()
+    repositorio.objetivos[7] = SimpleNamespace(objetivo_id=7, usuario_id=1, status="ativo")
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+    service.criar_missao(
+        {
+            "titulo": "Treinar escrita",
+            "prazo": "24-04-2026",
+            "objetivo_id": 7,
+            "recurrence_weekdays": [0, 2, 4],
+            "duration_type": "ate_objetivo",
+        },
+        usuario=usuario,
+    )
+    service_futuro = MissaoService(
+        repositorio,
+        now_provider=lambda: datetime(2026, 5, 8, 10, 0, 0),
+    )
+
+    service_futuro.listar_missoes(usuario=usuario)
+    service_futuro.listar_missoes(usuario=usuario)
+
+    datas = [ordem.due_date for ordem in repositorio.missoes]
+    assert datas.count(date(2026, 5, 8)) == 1
+    assert datas.count(date(2026, 5, 20)) == 1
+    assert date(2026, 5, 22) not in datas
+
+
+def test_historico_nao_materializa_recorrencia_futura():
+    repositorio = RepositorioFluxoFake()
+    repositorio.objetivos[7] = SimpleNamespace(objetivo_id=7, usuario_id=1, status="ativo")
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+    service.criar_missao(
+        {
+            "titulo": "Treinar escrita",
+            "prazo": "24-04-2026",
+            "objetivo_id": 7,
+            "recurrence_weekdays": [0, 2, 4],
+            "duration_type": "ate_objetivo",
+        },
+        usuario=usuario,
+    )
+    total_apos_criacao = len(repositorio.missoes)
+
+    service_futuro = MissaoService(
+        repositorio,
+        now_provider=lambda: datetime(2026, 5, 8, 10, 0, 0),
+    )
+    service_futuro.listar_missoes_historicas(usuario=usuario)
+
+    assert len(repositorio.missoes) == total_apos_criacao
 
 
 def test_usuario_pode_remover_apenas_missao_propria():

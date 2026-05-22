@@ -2797,16 +2797,18 @@ h3 {
 .mountain-tree {
   display: grid;
   gap: 0;
+  position: relative;
 }
 
 .sonho-principal-spotlight {
   display: grid;
   gap: 10px;
   z-index: 1;
+  padding: 22px;
 }
 
 .sonho-principal-spotlight h3 {
-  font-size: clamp(1.22rem, 2vw, 1.8rem);
+  font-size: clamp(1.45rem, 2vw, 2rem);
   line-height: 1.12;
 }
 
@@ -2858,9 +2860,9 @@ h3 {
 .sonho-objective-branch {
   position: relative;
   display: grid;
-  gap: 8px;
-  margin-left: 22px;
-  padding: 14px 0 2px 18px;
+  gap: 10px;
+  margin-left: 30px;
+  padding: 18px 0 2px 22px;
 }
 
 .sonho-card.secondary .sonho-objective-branch {
@@ -2873,8 +2875,8 @@ h3 {
   top: 0;
   bottom: 8px;
   left: 0;
-  width: 1px;
-  background: linear-gradient(180deg, var(--fire-border), var(--border-soft));
+  width: 2px;
+  background: linear-gradient(180deg, var(--fire), rgba(126, 87, 194, 0.48), var(--border-soft));
 }
 
 .branch-line::after {
@@ -2895,11 +2897,14 @@ h3 {
 }
 
 .objetivo-list.nested {
-  gap: 8px;
+  gap: 10px;
 }
 
 .objetivo-list.nested .objetivo-card {
-  border-left-color: var(--fire-border);
+  border-left: 3px solid var(--fire-border);
+  background:
+    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 34%),
+    rgba(12, 12, 12, 0.42);
 }
 
 .sonho-card h3,
@@ -2913,6 +2918,13 @@ h3 {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+
+.objective-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .form-grid {
@@ -3115,8 +3127,19 @@ h3 {
 
 .objective-linked-missions {
   border-top: 1px solid var(--border-soft);
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 10px;
+  padding: 10px 0 0 16px;
+  position: relative;
+}
+
+.objective-linked-missions::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 2px;
+  left: 0;
+  width: 1px;
+  background: rgba(96, 211, 148, 0.35);
 }
 
 .objective-linked-mission {
@@ -3124,9 +3147,11 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-  padding: 8px;
+  border: 1px solid rgba(96, 211, 148, 0.16);
+  border-left-color: rgba(96, 211, 148, 0.55);
+  border-radius: 4px;
+  padding: 7px 9px;
+  background: rgba(96, 211, 148, 0.035);
 }
 
 .objective-linked-mission strong,

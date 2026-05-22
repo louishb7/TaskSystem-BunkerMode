@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from auditoria import EventoAuditoria
 from core_exceptions import MissaoNaoEncontrada
@@ -14,6 +14,8 @@ LEGACY_DEFAULT_PRIORITY = 2
 class MissaoService:
     """Centraliza os casos de uso de missão da API."""
 
+    RECURRENCE_WINDOW_DAYS = 14
+
     def __init__(self, repositorio, today_provider=None, now_provider=None):
         self.repositorio = repositorio
         self._today_provider = today_provider
@@ -23,6 +25,9 @@ class MissaoService:
         self._garantir_modo_general(usuario)
         responsavel_id = dados.get("responsavel_id") or getattr(usuario, "usuario_id", None)
         self._garantir_objetivo_do_usuario(usuario, dados.get("objetivo_id"))
+        if self._deve_materializar_recorrencia(dados):
+            return self._criar_missoes_recorrentes(dados, usuario=usuario, responsavel_id=responsavel_id)
+
         campos_missao = {
             "titulo": dados["titulo"],
             # Compatibilidade legada do banco/API.
@@ -58,6 +63,8 @@ class MissaoService:
 
     def listar_missoes(self, usuario=None) -> list[Missao]:
         missoes = self._carregar_missoes_do_usuario(usuario)
+        if self._materializar_recorrencias_do_usuario(usuario=usuario, missoes=missoes):
+            missoes = self._carregar_missoes_do_usuario(usuario)
         self._reconciliar_falhas(usuario=usuario, missoes=missoes)
         missoes = self.sort_missions_for_board(missoes)
 
@@ -133,6 +140,13 @@ class MissaoService:
 
     def listar_missoes_por_dia_operacional(self, dia: date, usuario=None) -> list[Missao]:
         missoes = self._carregar_missoes_do_usuario(usuario)
+        if self._materializar_recorrencias_do_usuario(
+            usuario=usuario,
+            missoes=missoes,
+            start_date=dia,
+            end_date=dia,
+        ):
+            missoes = self._carregar_missoes_do_usuario(usuario)
         self._reconciliar_falhas(usuario=usuario, missoes=missoes)
         return self.sort_missions_for_board(
             [
@@ -207,6 +221,10 @@ class MissaoService:
     def alternar_prioridade_fixada(self, missao_id: int, usuario=None) -> Missao:
         self._garantir_contexto_de_execucao(usuario)
         missao = self._buscar_por_id_do_usuario(missao_id, usuario)
+        if getattr(usuario, "active_mode", "general") == "soldier":
+            estado = self.estado_turno_soldado(usuario=usuario)
+            if not missao.is_visible_to_soldier(estado["active_date"]):
+                raise PermissaoNegadaError("Prioridade disponível apenas para ordens do turno.")
         missao.alternar_prioridade_fixada()
         self.repositorio.atualizar_missao(missao)
 
@@ -421,6 +439,240 @@ class MissaoService:
                 acao=acao,
                 detalhes=detalhes,
             )
+        )
+
+    def _deve_materializar_recorrencia(self, dados: dict) -> bool:
+        return bool(
+            dados.get("objetivo_id")
+            and dados.get("recurrence_weekdays")
+            and dados.get("duration_type") in {"ate_objetivo", "prazo"}
+        )
+
+    def _criar_missoes_recorrentes(self, dados: dict, usuario=None, responsavel_id=None) -> Missao:
+        weekdays = Missao(
+            recurrence_weekdays=dados.get("recurrence_weekdays"),
+            titulo=dados["titulo"],
+            prioridade=dados.get("prioridade", LEGACY_DEFAULT_PRIORITY),
+        ).recurrence_weekdays
+        if not weekdays:
+            raise ValueError("Selecione ao menos um dia da frequência semanal.")
+
+        end_date = self._limite_recorrencia(dados)
+        start_date = self._inicio_recorrencia(dados)
+        if end_date < start_date:
+            raise ValueError("Prazo da recorrência não pode ser anterior à data inicial.")
+
+        existentes = self._carregar_missoes_do_usuario(usuario)
+        chaves_existentes = self._chaves_recorrentes_existentes(existentes)
+        criadas = []
+        for prazo in self._datas_da_recorrencia(start_date, end_date, weekdays):
+            missao = self._criar_ocorrencia_recorrente(
+                dados,
+                usuario=usuario,
+                responsavel_id=responsavel_id,
+                prazo=prazo,
+                chaves_existentes=chaves_existentes,
+                base=existentes,
+            )
+            if missao is not None:
+                criadas.append(missao)
+
+        if not criadas:
+            raise ValueError("A frequência semanal não gera ordens dentro da janela permitida.")
+        return criadas[0]
+
+    def _criar_ocorrencia_recorrente(
+        self,
+        dados: dict,
+        usuario=None,
+        responsavel_id=None,
+        prazo: date | None = None,
+        chaves_existentes: set | None = None,
+        base: list[Missao] | None = None,
+    ) -> Missao | None:
+        if chaves_existentes is None:
+            base = self._carregar_missoes_do_usuario(usuario)
+            chaves_existentes = self._chaves_recorrentes_existentes(base)
+        chave = self._chave_recorrente(dados, prazo)
+        if chave in chaves_existentes:
+            return None
+
+        missao = Missao(
+            titulo=dados["titulo"],
+            prioridade=dados.get("prioridade", LEGACY_DEFAULT_PRIORITY),
+            prazo=prazo,
+            instrucao=dados.get("instrucao"),
+            user_id=responsavel_id,
+            objetivo_id=dados.get("objetivo_id"),
+            recurrence_weekdays=dados.get("recurrence_weekdays"),
+            recurrence_end_date=dados.get("recurrence_end_date"),
+            duration_type=dados.get("duration_type"),
+        )
+        self.repositorio.adicionar_missao(missao)
+
+        if usuario is not None:
+            self.repositorio.salvar_contexto_missao(
+                missao.missao_id,
+                usuario.usuario_id,
+                responsavel_id,
+            )
+            self._registrar_auditoria(
+                missao_id=missao.missao_id,
+                usuario_id=usuario.usuario_id,
+                acao="missao_recorrente_criada",
+                detalhes=f"Recorrência gerou a ordem '{missao.titulo}'.",
+            )
+        chaves_existentes.add(chave)
+        if base is not None:
+            base.append(missao)
+        return missao
+
+    def _materializar_recorrencias_do_usuario(
+        self,
+        usuario=None,
+        missoes=None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> bool:
+        if usuario is None:
+            return False
+        base = list(missoes) if missoes is not None else self._carregar_missoes_do_usuario(usuario)
+        chaves_existentes = self._chaves_recorrentes_existentes(base)
+        materializou = False
+        objetivos_validos = {}
+        recorrentes = [
+            missao for missao in base
+            if missao.objetivo_id is not None
+            and missao.recurrence_weekdays
+            and missao.duration_type in {"ate_objetivo", "prazo"}
+            and self._objetivo_aceita_recorrencia(usuario, missao.objetivo_id, objetivos_validos)
+        ]
+        assinaturas_processadas = set()
+        for missao in recorrentes:
+            assinatura = (
+                missao.objetivo_id,
+                missao.titulo,
+                missao.instrucao,
+                tuple(missao.recurrence_weekdays or []),
+                missao.duration_type,
+                None if missao.recurrence_end_date is None else missao.recurrence_end_date.isoformat(),
+                missao.user_id,
+            )
+            if assinatura in assinaturas_processadas:
+                continue
+            assinaturas_processadas.add(assinatura)
+
+            inicio = start_date or self._today()
+            fim = min(
+                end_date or (inicio + timedelta(days=self.RECURRENCE_WINDOW_DAYS - 1)),
+                self._limite_recorrencia_missao(missao),
+            )
+            if fim < inicio:
+                continue
+            for prazo in self._datas_da_recorrencia(inicio, fim, missao.recurrence_weekdays):
+                dados = {
+                    "titulo": missao.titulo,
+                    "prioridade": missao.prioridade.value,
+                    "instrucao": missao.instrucao,
+                    "objetivo_id": missao.objetivo_id,
+                    "recurrence_weekdays": missao.recurrence_weekdays,
+                    "recurrence_end_date": (
+                        None
+                        if missao.recurrence_end_date is None
+                        else missao.recurrence_end_date.strftime("%d-%m-%Y")
+                    ),
+                    "duration_type": missao.duration_type,
+                }
+                nova = self._criar_ocorrencia_recorrente(
+                    dados,
+                    usuario=usuario,
+                    responsavel_id=missao.user_id or usuario.usuario_id,
+                    prazo=prazo,
+                    chaves_existentes=chaves_existentes,
+                    base=base,
+                )
+                if nova is not None:
+                    materializou = True
+        return materializou
+
+    def _objetivo_aceita_recorrencia(self, usuario, objetivo_id: int, cache: dict | None = None) -> bool:
+        if cache is not None and objetivo_id in cache:
+            return cache[objetivo_id]
+        buscar_objetivo = getattr(self.repositorio, "buscar_objetivo_por_id", None)
+        if not callable(buscar_objetivo):
+            return True
+        objetivo = buscar_objetivo(objetivo_id)
+        if objetivo is None or objetivo.usuario_id != usuario.usuario_id:
+            if cache is not None:
+                cache[objetivo_id] = False
+            return False
+        status = getattr(objetivo, "status", "ativo")
+        status_valor = getattr(status, "value", status)
+        ativo = status_valor == "ativo"
+        if cache is not None:
+            cache[objetivo_id] = ativo
+        return ativo
+
+    def _inicio_recorrencia(self, dados: dict) -> date:
+        prazo = dados.get("prazo")
+        if not prazo:
+            return self._today()
+        return Missao(
+            titulo=dados["titulo"],
+            prioridade=dados.get("prioridade", LEGACY_DEFAULT_PRIORITY),
+            prazo=prazo,
+        ).due_date
+
+    def _limite_recorrencia(self, dados: dict) -> date:
+        limite = self._inicio_recorrencia(dados) + timedelta(days=self.RECURRENCE_WINDOW_DAYS - 1)
+        if dados.get("duration_type") == "prazo":
+            if not dados.get("recurrence_end_date"):
+                raise ValueError("Informe a data final da recorrência.")
+            fim = Missao(
+                titulo=dados["titulo"],
+                prioridade=dados.get("prioridade", LEGACY_DEFAULT_PRIORITY),
+                recurrence_end_date=dados.get("recurrence_end_date"),
+            ).recurrence_end_date
+            return min(limite, fim)
+        return limite
+
+    def _limite_recorrencia_missao(self, missao: Missao) -> date:
+        limite = self._today() + timedelta(days=self.RECURRENCE_WINDOW_DAYS - 1)
+        if missao.duration_type == "prazo" and missao.recurrence_end_date is not None:
+            return min(limite, missao.recurrence_end_date)
+        return limite
+
+    @staticmethod
+    def _datas_da_recorrencia(start_date: date, end_date: date, weekdays: list[int]) -> list[date]:
+        datas = []
+        dia = start_date
+        while dia <= end_date:
+            if dia.weekday() in weekdays:
+                datas.append(dia)
+            dia += timedelta(days=1)
+        return datas
+
+    def _chaves_recorrentes_existentes(self, missoes: list[Missao]) -> set:
+        return {
+            self._chave_recorrente(
+                {
+                    "objetivo_id": missao.objetivo_id,
+                    "titulo": missao.titulo,
+                    "instrucao": missao.instrucao,
+                },
+                missao.due_date,
+            )
+            for missao in missoes
+            if missao.objetivo_id is not None and missao.due_date is not None
+        }
+
+    @staticmethod
+    def _chave_recorrente(dados: dict, prazo: date) -> tuple:
+        return (
+            dados.get("objetivo_id"),
+            dados.get("titulo"),
+            dados.get("instrucao"),
+            prazo,
         )
 
     def _reconciliar_falhas(self, usuario=None, missoes=None) -> None:

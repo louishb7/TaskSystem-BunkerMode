@@ -89,7 +89,7 @@ export default function App() {
       return false;
     }
 
-    setActiveRoute(board.hasRegisteredOutcomes ? APP_ROUTES.REVIEW : APP_ROUTES.GENERAL_HOME);
+    setActiveRoute(APP_ROUTES.GENERAL_HOME);
     return true;
   }
 
@@ -140,7 +140,10 @@ export default function App() {
   if (activeRoute === APP_ROUTES.MOUNTAIN) {
     return (
       <TacticalMountainRoute
-        onBack={() => setActiveRoute(APP_ROUTES.GENERAL_HOME)}
+        onBack={async () => {
+          setActiveRoute(APP_ROUTES.GENERAL_HOME);
+          await board.refreshGeneralBoard();
+        }}
         onUnauthorized={auth.handleUnauthorized}
         token={auth.token}
       />
