@@ -13,6 +13,8 @@ const statusLabels = {
   concluido: "CONCLUÍDO",
 };
 
+const weekdayLabels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
 function formatTargetDate(value) {
   if (!value || typeof value !== "string") {
     return "";
@@ -78,6 +80,18 @@ function missionStatusLabel(mission, pendingToday = false) {
   return mission?.status_label || mission?.status_code || "Pendente";
 }
 
+function formatWeekdayFrequency(mission) {
+  if (!Array.isArray(mission?.recurrence_weekdays) || mission.recurrence_weekdays.length === 0) {
+    return "";
+  }
+
+  return [...mission.recurrence_weekdays]
+    .sort((a, b) => a - b)
+    .map((weekday) => weekdayLabels[weekday])
+    .filter(Boolean)
+    .join(", ");
+}
+
 function summarizeLinkedMissions(missions) {
   const today = formatDateForApi(new Date());
   const groups = new Map();
@@ -100,6 +114,7 @@ function summarizeLinkedMissions(missions) {
       return {
         key,
         completedToday,
+        frequencyLabel: formatWeekdayFrequency(representative),
         pendingToday,
         mission: representative,
         recurring: group.some(isRecurringMission),
@@ -288,7 +303,7 @@ export default function ObjetivoCard({
             <button className="button fire compact" type="button" onClick={() => setCreatingMission(true)}>
               NOVA ORDEM
             </button>
-            <button className="button secondary compact" type="button" onClick={() => setManageOpen(true)}>
+            <button className="button secondary compact objective-admin-action" type="button" onClick={() => setManageOpen(true)}>
               GERENCIAR
             </button>
           </div>
@@ -312,13 +327,15 @@ export default function ObjetivoCard({
           <strong className="objective-progress-number">{objetivo.progresso}%</strong>
           {linkedMissions.length > 0 ? (
             <div className="objective-linked-missions compact">
-              {linkedMissions.map(({ completedToday, key, mission, pendingToday, recurring }) => (
+              {linkedMissions.map(({ completedToday, frequencyLabel, key, mission, pendingToday, recurring }) => (
                 <div
                   className={`objective-linked-mission${completedToday ? " completed-today" : ""}${pendingToday ? " pending-today" : ""}`}
                   key={key}
                 >
                   <strong>{mission.titulo || "Sem título"}</strong>
-                  <span>{recurring && !completedToday && !pendingToday ? "Recorrente" : missionStatusLabel(mission, pendingToday)}</span>
+                  <span>
+                    {recurring && frequencyLabel ? frequencyLabel : missionStatusLabel(mission, pendingToday)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -347,13 +364,15 @@ export default function ObjetivoCard({
           {linkedMissions.length > 0 ? (
             <div className="objective-linked-missions">
               <p className="section-kicker fire">ORDENS</p>
-              {linkedMissions.map(({ completedToday, key, mission, pendingToday, recurring }) => (
+              {linkedMissions.map(({ completedToday, frequencyLabel, key, mission, pendingToday, recurring }) => (
                 <div
                   className={`objective-linked-mission${completedToday ? " completed-today" : ""}${pendingToday ? " pending-today" : ""}`}
                   key={key}
                 >
                   <strong>{mission.titulo || "Sem título"}</strong>
-                  <span>{recurring && !completedToday && !pendingToday ? "Recorrente" : missionStatusLabel(mission, pendingToday)}</span>
+                  <span>
+                    {recurring && frequencyLabel ? frequencyLabel : missionStatusLabel(mission, pendingToday)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -385,6 +404,11 @@ export default function ObjetivoCard({
 
       {creatingMission && (
         <MountainDialog label="Nova ordem" onClose={() => setCreatingMission(false)}>
+          <div className="objective-order-context">
+            <p className="section-kicker fire">ORDEM DO OBJETIVO</p>
+            <h2>{objetivo.titulo}</h2>
+            <p className="muted">Esta ordem nasce vinculada a este objetivo estratégico.</p>
+          </div>
           <MissionForm
             initialObjetivoId={objetivo.id}
             initialObjetivoTitulo={objetivo.titulo}

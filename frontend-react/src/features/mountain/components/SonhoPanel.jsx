@@ -84,9 +84,9 @@ export default function SonhoPanel({
     const vinculados = objetivosPorSonho[String(sonho.id)] || [];
     return (
       <div className="sonho-objective-branch">
-        <div className="branch-line" aria-hidden="true" />
+        {vinculados.length > 0 && <div className="branch-line" aria-hidden="true" />}
         {vinculados.length === 0 ? (
-          <p className="muted branch-empty">Nenhum objetivo vinculado a este sonho.</p>
+          null
         ) : (
           <div className="objetivo-list nested">
             {vinculados.map((objetivo) => (
@@ -162,7 +162,7 @@ export default function SonhoPanel({
                 <button className="button fire compact" disabled={loading} type="button" onClick={() => setObjetivoSonho(principal)}>
                   + NOVO OBJETIVO
                 </button>
-                <button className="button secondary compact" disabled={loading} type="button" onClick={() => {
+                <button className="button secondary compact mountain-admin-action" disabled={loading} type="button" onClick={() => {
                   setEditingSonho(principal);
                   setFormOpen(true);
                 }}>
@@ -196,7 +196,7 @@ export default function SonhoPanel({
                   <button className="button fire compact" disabled={loading} type="button" onClick={() => setObjetivoSonho(sonho)}>
                     + NOVO OBJETIVO
                   </button>
-                  <button className="button secondary compact" disabled={loading} type="button" onClick={() => {
+                  <button className="button secondary compact mountain-admin-action" disabled={loading} type="button" onClick={() => {
                     setEditingSonho(sonho);
                     setFormOpen(true);
                   }}>
