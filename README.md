@@ -16,6 +16,8 @@ Backend em FastAPI para autenticação, criação de missões, listagem de miss�
 - `BUNKERMODE_DB_HOST`
 - `BUNKERMODE_DB_PORT`
 - `BUNKERMODE_AUTH_SECRET`
+- `BUNKERMODE_REGISTRATION_INVITE_CODE`
+- `BUNKERMODE_ENV`
 - `BUNKERMODE_API_HOST`
 - `BUNKERMODE_API_PORT`
 - `BUNKERMODE_API_RELOAD`
@@ -30,10 +32,12 @@ Exemplo:
 BUNKERMODE_CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:5173
 ```
 
-Se a variável não for definida, a API sobe com `*`, o que facilita testes locais com uma interface simples.
+Se a variável não for definida em desenvolvimento, a API permite apenas origens locais conhecidas.
+Em produção (`BUNKERMODE_ENV=production`), `BUNKERMODE_CORS_ALLOW_ORIGINS` é obrigatório.
 
 ## Rodar a API
 ```bash
+cd backend
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -42,15 +46,12 @@ O atalho `python -m api` continua disponível e usa o mesmo entrypoint.
 ## Documentação
 - `/docs`
 - `/redoc`
-- `docs/PROJECT_STATE.md`
-- `docs/NEXT_STEPS.md`
-- `docs/FRONTEND_ARCHITECTURE.md`
-- `docs/WEB_STRUCTURE.md`
-- `docs/RUNNING_THE_PROJECT.md`
+- `API.md`
+- `AUTH.md`
 
 ## Endpoints úteis para integração
 - `GET /api/v2/health`
-- `POST /api/v2/auth/register`
+- `POST /api/v2/auth/register` exige `invite_code`
 - `POST /api/v2/auth/login`
 - `GET /api/v2/usuarios/me`
 - `GET /api/v2/missoes`
@@ -65,10 +66,10 @@ pytest
 
 ## Frontend
 
-A interface principal fica em `frontend-react/`.
+A interface principal fica em `frontend/`.
 
 ```bash
-cd frontend-react
+cd frontend
 npm install
 npm run dev
 ```

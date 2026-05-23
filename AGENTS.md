@@ -142,7 +142,7 @@ Backend:
 * pytest
 
 Web:
-* React (`frontend-react/`)
+* React (`frontend/`)
 
 Mobile:
 * React Native + Expo (`mobile/`)

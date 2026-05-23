@@ -31,9 +31,9 @@ yarn-error.log*
 
 # Node / frontend
 node_modules/
-frontend-react/node_modules/
-frontend-react/dist/
-frontend-react/dist-test/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-test/
 .expo/
 mobile/.expo/
 mobile/dist-test/
@@ -48,7 +48,7 @@ tmp/
 # Build
 dist/
 build/
-frontend-react/.vite/
+frontend/.vite/
 
 #Others
 *.zip

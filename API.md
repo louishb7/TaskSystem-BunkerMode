@@ -6,6 +6,7 @@ http://127.0.0.1:8000
 ## Rodar localmente
 
 ```bash
+cd backend
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -16,7 +17,8 @@ POST /api/v2/auth/register
 {
   "usuario": "henrique",
   "email": "henrique@email.com",
-  "senha": "123456"
+  "senha": "123456",
+  "invite_code": "codigo-configurado-no-servidor"
 }
 
 POST /api/v2/auth/login
