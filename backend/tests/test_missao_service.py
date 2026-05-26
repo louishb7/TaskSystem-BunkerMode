@@ -807,6 +807,28 @@ def test_criar_missao_sem_vinculo_nao_exige_arvore():
     assert missao.duration_type is None
 
 
+def test_criar_missao_pontual_vinculada_a_objetivo_nao_vira_recorrencia():
+    repositorio = RepositorioFluxoFake()
+    repositorio.objetivos[7] = SimpleNamespace(objetivo_id=7, usuario_id=1)
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {
+            "titulo": "Comprar material",
+            "prazo": "24-04-2026",
+            "objetivo_id": 7,
+            "duration_type": "pontual",
+        },
+        usuario=usuario,
+    )
+
+    assert missao.objetivo_id == 7
+    assert missao.recurrence_weekdays is None
+    assert missao.duration_type == "pontual"
+    assert [ordem.due_date for ordem in repositorio.missoes] == [date(2026, 4, 24)]
+
+
 def test_criar_missao_vinculada_a_objetivo_com_frequencia_e_duracao_infinita():
     repositorio = RepositorioFluxoFake()
     repositorio.objetivos[7] = SimpleNamespace(objetivo_id=7, usuario_id=1)

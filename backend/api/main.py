@@ -1,16 +1,24 @@
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
+for path in (PROJECT_ROOT, BASE_DIR):
+    path_string = str(path)
+    if path_string not in sys.path:
+        sys.path.insert(0, path_string)
+
 from backend.core.auth import validate_auth_secret_configured
 from backend.routes import router
 from backend.routes.common import validate_registration_invite_configured
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 LOCAL_CORS_ORIGINS = [
