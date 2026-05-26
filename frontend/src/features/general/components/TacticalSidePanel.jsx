@@ -21,11 +21,8 @@ export default function TacticalSidePanel({
 
   return (
     <section className="panel tactical-side-panel" aria-label="Painel tático do Leão do Dia">
-      <div
-        className="lion-emblem-card"
-        style={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}
-      >
-        <div className="lion-emblem-copy" style={{ flex: 1 }}>
+      <div className="lion-emblem-card">
+        <div className="lion-emblem-copy">
           <p className="section-kicker fire">LEÃO DO DIA</p>
           <h2>{selectedDateLabel}</h2>
           <p>
@@ -34,7 +31,7 @@ export default function TacticalSidePanel({
               : "Nenhuma caça definida para este dia."}
           </p>
         </div>
-        <div className="lion-emblem-media" style={{ display: "flex", justifyContent: "center", width: 120 }}>
+        <div className="lion-emblem-media">
           <LionEmblem variant="compact" />
         </div>
       </div>

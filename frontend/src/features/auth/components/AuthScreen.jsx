@@ -121,7 +121,7 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
 
           {status.message && <p className={`feedback ${status.type}`}>{status.message}</p>}
 
-          <button className="button danger full" disabled={loading} type="submit">
+          <button className="button fire full" disabled={loading} type="submit">
             {loading ? "AGUARDE" : isLogin ? "ENTRAR NO BUNKER" : "CRIAR ACESSO"}
           </button>
         </form>

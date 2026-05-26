@@ -70,6 +70,10 @@ export default function GeneralCommandPage({
     () => board.dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === formatDateForApi(todayDate)),
     [board.dailyMissions, todayDate]
   );
+  const selectedCompleted = selectedMissions.filter(isCompleted).length;
+  const selectedFailures = selectedMissions.filter((mission) => String(mission?.status_code || "").startsWith("FALHA")).length;
+  const selectedHighPriority = selectedMissions.filter((mission) => mission?.is_pinned === true).length;
+  const selectedPending = Math.max(0, selectedMissions.length - selectedCompleted - selectedFailures);
   const reviewCount = board.reviewMissions.length + (board.reviewState?.pending ? 1 : 0);
 
   useEffect(() => {
@@ -128,19 +132,58 @@ export default function GeneralCommandPage({
   return (
     <TacticalShell mode="general">
       <section className="general-layout">
-        <aside className="general-side operational-side">
-          <TacticalSidePanel
-            loading={modeLoading}
-            onActivateSoldier={() => setShowSoldierConfirm(true)}
+        <aside className="general-side command-side">
+          <CommandRail
+            generalName={generalName}
+            onLogout={onLogout}
+            onOpenMountain={onOpenMountain}
+            onOpenOperations={() => setOperationsOpen(true)}
+            onOpenReview={onOpenReview}
             reviewCount={reviewCount}
-            selectedDate={selectedDate}
-            selectedDateLabel={selectedDateLabel}
-            selectedMissions={selectedMissions}
-            todayDate={todayDate}
           />
         </aside>
 
         <section className="general-board">
+          <header className="app-header general-command-header">
+            <div>
+              <p className="panel-kicker">SALA DE GUERRA</p>
+              <h1>Comando operacional</h1>
+              <p className="muted">{generalName} / {selectedDateLabel}</p>
+            </div>
+            <div className="header-actions">
+              <button className="button secondary compact" type="button" onClick={onOpenReview}>
+                RELATÓRIO
+              </button>
+              <button
+                className="button fire compact"
+                disabled={modeLoading}
+                type="button"
+                onClick={() => setShowSoldierConfirm(true)}
+              >
+                {modeLoading ? "ATIVANDO" : "MODO SOLDADO"}
+              </button>
+            </div>
+          </header>
+
+          <div className="metric-grid" aria-label="Resumo operacional do dia">
+            <div className="metric-card">
+              <span>ORDENS DO DIA</span>
+              <strong>{selectedMissions.length}</strong>
+            </div>
+            <div className="metric-card success">
+              <span>CUMPRIDAS</span>
+              <strong>{selectedCompleted}</strong>
+            </div>
+            <div className="metric-card">
+              <span>PENDENTES</span>
+              <strong>{selectedPending}</strong>
+            </div>
+            <div className="metric-card priority">
+              <span>PRIORIDADE</span>
+              <strong>{selectedHighPriority}</strong>
+            </div>
+          </div>
+
           <WeekPanel
             missionStatsByDate={missionStatsByDate}
             onNextWeek={() => setSelectedDate((current) => addDays(current, 7))}
@@ -171,14 +214,15 @@ export default function GeneralCommandPage({
           />
         </section>
 
-        <aside className="general-side command-side">
-          <CommandRail
-            generalName={generalName}
-            onLogout={onLogout}
-            onOpenMountain={onOpenMountain}
-            onOpenOperations={() => setOperationsOpen(true)}
-            onOpenReview={onOpenReview}
+        <aside className="general-side operational-side">
+          <TacticalSidePanel
+            loading={modeLoading}
+            onActivateSoldier={() => setShowSoldierConfirm(true)}
             reviewCount={reviewCount}
+            selectedDate={selectedDate}
+            selectedDateLabel={selectedDateLabel}
+            selectedMissions={selectedMissions}
+            todayDate={todayDate}
           />
         </aside>
       </section>

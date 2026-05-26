@@ -1,14 +1,15 @@
 :root {
-  --canvas: #0e0e0e;
-  --login-canvas: #0a0a0a;
-  --surface: #171717;
-  --surface-raised: #202020;
-  --surface-deep: #111111;
-  --surface-command: rgba(16, 16, 16, 0.96);
-  --border: rgba(237, 237, 237, 0.1);
-  --border-strong: rgba(237, 237, 237, 0.18);
-  --border-soft: rgba(237, 237, 237, 0.08);
-  --border-operational: rgba(255, 138, 42, 0.24);
+  --canvas: #090a0a;
+  --login-canvas: #080808;
+  --surface: #151617;
+  --surface-raised: #1c1d1f;
+  --surface-deep: #0d0e0f;
+  --surface-command: rgba(18, 19, 20, 0.94);
+  --surface-muted: rgba(237, 237, 237, 0.035);
+  --border: rgba(237, 237, 237, 0.095);
+  --border-strong: rgba(237, 237, 237, 0.16);
+  --border-soft: rgba(237, 237, 237, 0.065);
+  --border-operational: rgba(255, 138, 42, 0.2);
   --text: #ededed;
   --text-muted: #c8c8c8;
   --text-dim: #9a9a9a;
@@ -39,8 +40,9 @@
   --space-lg: 18px;
   --space-xl: 24px;
   --space-2xl: 40px;
-  --shadow: 0 24px 72px rgba(0, 0, 0, 0.42);
-  --shadow-raised: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(237, 237, 237, 0.035);
+  --text-main: #f2f0eb;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.36);
+  --shadow-raised: 0 18px 48px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(237, 237, 237, 0.035);
   --motion-fast: 140ms ease;
   color: var(--text);
   background: var(--canvas);
