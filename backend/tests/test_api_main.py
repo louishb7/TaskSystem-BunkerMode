@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.main import app
+from backend.api.main import app
 
 
 def test_api_main_expõe_app_fastapi():

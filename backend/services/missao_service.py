@@ -1,11 +1,11 @@
 from datetime import date, datetime, timedelta
 
-from auditoria import EventoAuditoria
-from core_exceptions import MissaoNaoEncontrada
-from missao import Missao, StatusMissao
-from services.exceptions import PermissaoNegadaError
-from services.mission_permissions import MissionPermissions
-from services.operational_day import operational_date_for
+from backend.models.auditoria import EventoAuditoria
+from backend.core.exceptions import MissaoNaoEncontrada
+from backend.models.missao import Missao, StatusMissao
+from backend.services.exceptions import PermissaoNegadaError
+from backend.services.mission_permissions import MissionPermissions
+from backend.services.operational_day import operational_date_for
 
 
 LEGACY_DEFAULT_PRIORITY = 2

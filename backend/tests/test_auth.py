@@ -4,10 +4,10 @@ from datetime import date, datetime, timezone
 
 import pytest
 
-from auth import decode_token, generate_token, hash_password
-from services.auth_service import AuthService
-from services.exceptions import AutenticacaoError, PermissaoNegadaError
-from usuario import Usuario
+from backend.core.auth import decode_token, generate_token, hash_password
+from backend.services.auth_service import AuthService
+from backend.services.exceptions import AutenticacaoError, PermissaoNegadaError
+from backend.models.usuario import Usuario
 
 
 def assinar_payload(payload: str, secret: str = "segredo-de-teste") -> str:

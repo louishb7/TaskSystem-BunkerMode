@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, PrioridadeMissao, StatusMissao
+from backend.models.missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, PrioridadeMissao, StatusMissao
 
 
 @pytest.fixture

@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import router, validate_registration_invite_configured
-from auth import validate_auth_secret_configured
+from backend.core.auth import validate_auth_secret_configured
+from backend.routes import router
+from backend.routes.common import validate_registration_invite_configured
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent

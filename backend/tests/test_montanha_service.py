@@ -3,10 +3,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from objetivo import Objetivo
-from services.objetivo_service import ObjetivoService
-from services.sonho_service import SonhoService
-from sonho import Sonho, TipoSonho
+from backend.models.objetivo import Objetivo
+from backend.services.objetivo_service import ObjetivoService
+from backend.services.sonho_service import SonhoService
+from backend.models.sonho import Sonho, TipoSonho
 
 
 INSTANTE_TESTE = datetime(2026, 5, 20, 10, 0, 0)

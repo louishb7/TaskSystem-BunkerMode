@@ -1,10 +1,10 @@
 from datetime import date, datetime, timedelta
 
-from missao import Missao, StatusMissao
-from operacao import Operacao
-from services.exceptions import PermissaoNegadaError
-from services.missao_service import LEGACY_DEFAULT_PRIORITY
-from services.operational_day import operational_date_for
+from backend.models.missao import Missao, StatusMissao
+from backend.models.operacao import Operacao
+from backend.services.exceptions import PermissaoNegadaError
+from backend.services.missao_service import LEGACY_DEFAULT_PRIORITY
+from backend.services.operational_day import operational_date_for
 
 
 class OperacaoService:
@@ -145,7 +145,7 @@ class OperacaoService:
             )
         registrar_auditoria = getattr(self.repositorio, "registrar_auditoria", None)
         if callable(registrar_auditoria):
-            from auditoria import EventoAuditoria
+            from backend.models.auditoria import EventoAuditoria
 
             registrar_auditoria(
                 EventoAuditoria(

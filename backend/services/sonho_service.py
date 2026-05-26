@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from services.exceptions import PermissaoNegadaError
-from sonho import Sonho, TipoSonho
+from backend.services.exceptions import PermissaoNegadaError
+from backend.models.sonho import Sonho, TipoSonho
 
 
 class SonhoService:

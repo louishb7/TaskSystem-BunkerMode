@@ -152,6 +152,54 @@ API → Serviço → Repositório → Banco
 
 ---
 
+## ESTRUTURA DO BACKEND
+
+O backend segue uma organização inspirada no Cadista, preservando a pilha própria do BunkerMode.
+
+```text
+backend/
+├── api/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── entrypoint.py
+│   └── main.py
+├── core/
+│   ├── auth.py
+│   ├── exceptions.py
+│   └── settings.py
+├── database/
+│   └── repositorio.py
+├── migrations/
+├── models/
+├── routes/
+├── schemas/
+├── services/
+└── tests/
+```
+
+Responsabilidades:
+* `backend/api/main.py`: cria a aplicação FastAPI, configura CORS e registra o router agregado.
+* `backend/api/entrypoint.py`: ponto de execução por Uvicorn.
+* `backend/core/settings.py`: carrega `.env` local e centraliza configuração de banco.
+* `backend/core/auth.py`: hashing, verificação de senha e tokens de autenticação.
+* `backend/core/exceptions.py`: exceções centrais compartilhadas.
+* `backend/database/repositorio.py`: único ponto de acesso PostgreSQL via `psycopg`.
+* `backend/models/`: entidades de domínio puras, uma por arquivo.
+* `backend/schemas/`: payloads Pydantic separados por domínio.
+* `backend/routes/`: routers FastAPI separados por domínio; rotas adaptam HTTP e delegam aos services.
+* `backend/services/`: casos de uso, regras de negócio e orquestração de repositório.
+* `backend/migrations/`: SQL existente do projeto; não criar migrations fora de pedido explícito.
+* `backend/tests/`: testes do backend, com imports apontando para os pacotes reais.
+
+Regras estruturais:
+* Não recriar arquivos de domínio soltos na raiz de `backend/`.
+* Não importar `backend.api.routes` nem `backend.api.schemas`; use `backend.routes.*` e `backend.schemas.*`.
+* Não migrar para SQLAlchemy. O BunkerMode usa `psycopg` direto.
+* Não tocar em `frontend/` durante refatorações de backend.
+* Rotas não devem conter regra de negócio; services concentram regras e acesso ao repositório.
+
+---
+
 ## ESTADO ATUAL
 
 O sistema já passou da fase CLI.

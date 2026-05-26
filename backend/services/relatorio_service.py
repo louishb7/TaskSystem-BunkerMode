@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
-from services.exceptions import PermissaoNegadaError
-from services.operational_day import operational_date_for, operational_week_bounds
+from backend.services.exceptions import PermissaoNegadaError
+from backend.services.operational_day import operational_date_for, operational_week_bounds
 
 
 class RelatorioService:

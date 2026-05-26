@@ -3,8 +3,8 @@ from datetime import date, datetime, timezone
 
 import pytest
 
-import repositorio_postgres as rp
-from missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, PrioridadeMissao, StatusMissao
+from backend.database import repositorio as rp
+from backend.models.missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, PrioridadeMissao, StatusMissao
 
 
 class FakeCursor:

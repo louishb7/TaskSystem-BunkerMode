@@ -4,44 +4,50 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from api.routes import (
-    alterar_timezone,
-    alterar_turno_planejamento,
-    atualizar_modo_sessao,
+from backend.routes.auth import login, registrar_usuario
+from backend.routes.missoes import (
     concluir_missao,
     criar_missao,
-    definir_nome_general,
     editar_missao,
+    encerrar_pendencias_turno_operacional,
     justificar_missao,
     listar_historico,
-    listar_missoes_historicas,
     listar_missoes,
-    listar_missoes_operacionais,
-    listar_missoes_em_revisao,
     listar_missoes_do_dia_operacional,
-    obter_turno_operacional,
-    encerrar_pendencias_turno_operacional,
-    listar_operacoes,
-    login,
-    limpar_relatorio_falhas,
-    criar_operacao,
-    cancelar_operacao,
-    encerrar_operacao,
-    materializar_operacoes,
-    obter_relatorio_semanal,
-    obter_estado_revisao,
+    listar_missoes_em_revisao,
+    listar_missoes_historicas,
+    listar_missoes_operacionais,
     obter_quadro_soldado,
-    listar_revisoes,
-    fechar_revisao,
-    liberar_general,
-    obter_usuario_atual,
+    obter_turno_operacional,
     registrar_justificativa_falha,
-    registrar_usuario,
     remover_missao,
     revisar_justificativa,
 )
-from api.schemas import (
+from backend.routes.operacoes import (
+    cancelar_operacao,
+    criar_operacao,
+    encerrar_operacao,
+    listar_operacoes,
+    materializar_operacoes,
+)
+from backend.routes.revisoes import (
+    fechar_revisao,
+    limpar_relatorio_falhas,
+    listar_revisoes,
+    obter_estado_revisao,
+    obter_relatorio_semanal,
+)
+from backend.routes.usuarios import (
+    alterar_timezone,
+    alterar_turno_planejamento,
+    atualizar_modo_sessao,
+    definir_nome_general,
+    liberar_general,
+    obter_usuario_atual,
+)
+from backend.schemas import (
     FailureJustificationPayload,
+    FecharRevisaoPayload,
     LimparRelatorioFalhasPayload,
     LoginPayload,
     MissaoCreatePayload,
@@ -55,15 +61,14 @@ from api.schemas import (
     SessionModePayload,
     SoldierExcusePayload,
     TimezonePayload,
-    FecharRevisaoPayload,
     UnlockGeneralPayload,
 )
-from missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, StatusMissao
-from services.auth_service import AuthService
-from services.missao_service import MissaoService
-from services.operacao_service import OperacaoService
-from services.relatorio_service import RelatorioService
-from services.revisao_service import RevisaoService
+from backend.models.missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, StatusMissao
+from backend.services.auth_service import AuthService
+from backend.services.missao_service import MissaoService
+from backend.services.operacao_service import OperacaoService
+from backend.services.relatorio_service import RelatorioService
+from backend.services.revisao_service import RevisaoService
 
 
 DATA_TESTE = datetime(2026, 4, 24, 10, 0, 0)

@@ -1,14 +1,14 @@
 from datetime import datetime, time, timedelta, timezone as utc_timezone
 from zoneinfo import ZoneInfo
 
-from auth import decode_token, generate_token, hash_password, verify_password
-from services.exceptions import (
+from backend.core.auth import decode_token, generate_token, hash_password, verify_password
+from backend.services.exceptions import (
     AutenticacaoError,
     PermissaoNegadaError,
     UsuarioJaExisteError,
     UsuarioNaoEncontrado,
 )
-from usuario import Usuario
+from backend.models.usuario import Usuario
 
 
 class AuthService:

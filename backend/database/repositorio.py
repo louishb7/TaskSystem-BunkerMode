@@ -5,13 +5,13 @@ except ModuleNotFoundError:  # pragma: no cover
 
 import json
 
-from auditoria import EventoAuditoria
-from missao import Missao
-from objetivo import Objetivo
-from operacao import Operacao
-from revisao import RevisaoSemanal
-from sonho import Sonho
-from usuario import Usuario
+from backend.models.auditoria import EventoAuditoria
+from backend.models.missao import Missao
+from backend.models.objetivo import Objetivo
+from backend.models.operacao import Operacao
+from backend.models.revisao import RevisaoSemanal
+from backend.models.sonho import Sonho
+from backend.models.usuario import Usuario
 
 
 class ErroRepositorio(ValueError):

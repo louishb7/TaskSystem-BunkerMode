@@ -3,20 +3,20 @@ from types import SimpleNamespace
 
 import pytest
 
-from auditoria import EventoAuditoria
-from core_exceptions import MissaoNaoEncontrada
-from missao import Missao, PrioridadeMissao, StatusMissao
-from services.auth_service import AuthService
-from services.missao_service import MissaoService
-from services.mission_permissions import MissionPermissions
-from services.operational_day import (
+from backend.models.auditoria import EventoAuditoria
+from backend.core.exceptions import MissaoNaoEncontrada
+from backend.models.missao import Missao, PrioridadeMissao, StatusMissao
+from backend.services.auth_service import AuthService
+from backend.services.missao_service import MissaoService
+from backend.services.mission_permissions import MissionPermissions
+from backend.services.operational_day import (
     operational_date_for,
     operational_week_bounds,
     previous_operational_week_bounds,
 )
-from services.relatorio_service import RelatorioService
-from services.revisao_service import RevisaoService
-from usuario import Usuario
+from backend.services.relatorio_service import RelatorioService
+from backend.services.revisao_service import RevisaoService
+from backend.models.usuario import Usuario
 
 
 DATA_TESTE = date(2026, 4, 24)
