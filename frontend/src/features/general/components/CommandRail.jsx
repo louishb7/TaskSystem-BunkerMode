@@ -22,7 +22,7 @@ export default function CommandRail({
         </div>
       </div>
       <p className="rail-note">Revise o quadro, abra o relatório e mantenha o comando limpo.</p>
-      <div className="rail-actions">
+      <div className="rail-actions rail-nav">
         <button className="button secondary" type="button" onClick={onOpenMountain}>
           <span className="button-asset-label">
             <span className="rail-symbol" aria-hidden="true">▲</span>
@@ -42,7 +42,9 @@ export default function CommandRail({
           </span>
           {reviewCount > 0 && <span className="count-badge">{reviewCount}</span>}
         </button>
-        <button className="button secondary" type="button" onClick={onLogout}>
+      </div>
+      <div className="rail-actions rail-session">
+        <button className="button secondary rail-danger" type="button" onClick={onLogout}>
           SAIR
         </button>
       </div>

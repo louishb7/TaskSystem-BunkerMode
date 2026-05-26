@@ -16,7 +16,7 @@ export default function WeekPanel({
     <section className="panel tactical-panel elevated">
       <div className="section-heading">
         <div>
-          <h1>CRONOGRAMA DE CAÇA</h1>
+          <h2>CRONOGRAMA DE CAÇA</h2>
           <p className="muted">
             Navegue entre os dias e defina as ordens do General.
           </p>
