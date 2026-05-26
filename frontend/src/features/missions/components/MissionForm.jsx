@@ -8,7 +8,7 @@ const emptyForm = {
   instrucao: "",
   objetivo_id: "",
   recurrence_weekdays: [],
-  duration_type: "ate_objetivo",
+  duration_type: "pontual",
   recurrence_end_date: "",
   prazo: "",
 };
@@ -113,7 +113,7 @@ export default function MissionForm({
       instrucao: editingMission.instrucao || "",
       objetivo_id: editingMission.objetivo_id ? String(editingMission.objetivo_id) : "",
       recurrence_weekdays: Array.isArray(editingMission.recurrence_weekdays) ? editingMission.recurrence_weekdays : [],
-      duration_type: editingMission.duration_type === "prazo" ? "prazo" : "ate_objetivo",
+      duration_type: editingMission.duration_type || "pontual",
       recurrence_end_date: editingMission.recurrence_end_date || "",
       prazo: editingMission.prazo || initialPrazo || "",
     });
@@ -177,10 +177,12 @@ export default function MissionForm({
     };
 
     if (linkedToObjective) {
-      payload.recurrence_weekdays = form.recurrence_weekdays.length > 0 ? form.recurrence_weekdays : null;
-      payload.duration_type = form.recurrence_weekdays.length > 0 ? form.duration_type : null;
+      const isSingleOrder = form.duration_type === "pontual";
+      payload.recurrence_weekdays = !isSingleOrder && form.recurrence_weekdays.length > 0 ? form.recurrence_weekdays : null;
+      payload.duration_type = form.duration_type;
       payload.recurrence_end_date = (
-        form.recurrence_weekdays.length > 0
+        !isSingleOrder
+        && form.recurrence_weekdays.length > 0
         && form.duration_type === "prazo"
         && form.recurrence_end_date
       )
@@ -268,38 +270,43 @@ export default function MissionForm({
             <label>
               Duração
               <select name="duration_type" onChange={updateField} value={form.duration_type}>
+                <option value="pontual">Ordem única</option>
                 <option value="ate_objetivo">Até atingir o objetivo</option>
                 <option value="prazo">Prazo determinado</option>
               </select>
             </label>
 
-            {form.duration_type === "prazo" && (
-              <label>
-                Encerrar em
-                <input
-                  name="recurrence_end_date"
-                  type="date"
-                  onChange={handleRecurrenceEndDateChange}
-                  value={toDateInputValue(form.recurrence_end_date)}
-                />
-              </label>
-            )}
-
-            <fieldset className="weekday-fieldset">
-              <legend>Frequência semanal</legend>
-              <div className="weekday-options">
-                {weekdayOptions.map(([value, label]) => (
-                  <label key={value} className={form.recurrence_weekdays.includes(value) ? "active" : ""}>
+            {form.duration_type !== "pontual" && (
+              <>
+                {form.duration_type === "prazo" && (
+                  <label>
+                    Encerrar em
                     <input
-                      checked={form.recurrence_weekdays.includes(value)}
-                      onChange={() => toggleWeekday(value)}
-                      type="checkbox"
+                      name="recurrence_end_date"
+                      type="date"
+                      onChange={handleRecurrenceEndDateChange}
+                      value={toDateInputValue(form.recurrence_end_date)}
                     />
-                    {label}
                   </label>
-                ))}
-              </div>
-            </fieldset>
+                )}
+
+                <fieldset className="weekday-fieldset">
+                  <legend>Frequência semanal</legend>
+                  <div className="weekday-options">
+                    {weekdayOptions.map(([value, label]) => (
+                      <label key={value} className={form.recurrence_weekdays.includes(value) ? "active" : ""}>
+                        <input
+                          checked={form.recurrence_weekdays.includes(value)}
+                          onChange={() => toggleWeekday(value)}
+                          type="checkbox"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </>
+            )}
           </div>
         )}
 
