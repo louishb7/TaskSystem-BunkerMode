@@ -13,7 +13,7 @@ export default function CommandRail({
   reviewCount,
 }) {
   return (
-    <aside className="command-rail panel">
+    <nav className="command-rail panel" aria-label="Navegação do comando">
       <div className="command-identity">
         <BrandSymbol muted size="sm" />
         <div>
@@ -48,6 +48,6 @@ export default function CommandRail({
           SAIR
         </button>
       </div>
-    </aside>
+    </nav>
   );
 }

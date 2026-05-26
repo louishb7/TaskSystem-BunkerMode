@@ -1997,6 +1997,19 @@ h3 {
   font-weight: 800;
 }
 
+.protocol-brief li {
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.protocol-mission-completed {
+  color: var(--text-dim);
+  opacity: 0.58;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: rgba(103, 197, 135, 0.54);
+}
+
 .review-screen {
   display: grid;
   width: min(1040px, 100%);

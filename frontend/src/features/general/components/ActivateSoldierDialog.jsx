@@ -27,7 +27,7 @@ export default function ActivateSoldierDialog({
               <li key={mission.id}>{mission?.titulo || "Missão sem título"}</li>
             ))}
             {completedMissions.map((mission) => (
-              <li key={mission.id} style={{ opacity: 0.5, textDecoration: "line-through" }}>
+              <li className="protocol-mission-completed" key={mission.id}>
                 {mission?.titulo || "Missão sem título"}
               </li>
             ))}
