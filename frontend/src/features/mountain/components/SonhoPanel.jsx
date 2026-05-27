@@ -48,6 +48,18 @@ export default function SonhoPanel({
     }, {}),
     [objetivos]
   );
+  const missionsPorObjetivo = useMemo(
+    () => (missions || []).reduce((groups, mission) => {
+      if (!mission.objetivo_id) {
+        return groups;
+      }
+      const key = String(mission.objetivo_id);
+      groups[key] = groups[key] || [];
+      groups[key].push(mission);
+      return groups;
+    }, {}),
+    [missions]
+  );
 
   async function submit(payload) {
     const saved = editingSonho
@@ -93,7 +105,7 @@ export default function SonhoPanel({
               <ObjetivoCard
                 key={objetivo.id}
                 loading={loading}
-                missions={missions.filter((mission) => mission.objetivo_id === objetivo.id)}
+                missions={missionsPorObjetivo[String(objetivo.id)] || []}
                 objetivo={objetivo}
                 onDelete={onDeleteObjetivo}
                 onCreateMission={onCreateMission}

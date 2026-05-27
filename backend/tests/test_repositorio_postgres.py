@@ -148,6 +148,10 @@ def test_inicializar_schema_roda_uma_vez_por_connection_string(monkeypatch):
 
     assert primeira_execucao > 0
     assert len(cursor.executions) == primeira_execucao
+    assert any(
+        "idx_missao_contextos_responsavel_id" in str(query)
+        for query, _ in cursor.executions
+    )
 
 
 def test_repositorio_reutiliza_conexao_ate_fechar(monkeypatch):

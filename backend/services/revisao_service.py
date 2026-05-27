@@ -73,8 +73,8 @@ class RevisaoService:
         return revisao.to_dict()
 
     def _montar_leitura(self, usuario_id: int, start_date: date, end_date: date) -> dict:
-        report = self.relatorio_service.get_weekly_report(usuario_id, start_date, end_date)
         missoes = list(self.repositorio.carregar_dados_por_responsavel(usuario_id))
+        report = self.relatorio_service.calcular_relatorio_semanal(missoes, start_date, end_date)
         pendentes = [
             missao
             for missao in missoes

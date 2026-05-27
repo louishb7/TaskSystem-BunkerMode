@@ -410,6 +410,11 @@ class RepositorioPostgres:
             ADD COLUMN IF NOT EXISTS operacao_dia DATE NULL;
             """,
             """
+            CREATE INDEX IF NOT EXISTS idx_missao_contextos_responsavel_id
+            ON missao_contextos (responsavel_id)
+            WHERE responsavel_id IS NOT NULL;
+            """,
+            """
             CREATE UNIQUE INDEX IF NOT EXISTS idx_missao_contextos_operacao_dia
             ON missao_contextos (operacao_id, operacao_dia)
             WHERE operacao_id IS NOT NULL AND operacao_dia IS NOT NULL;

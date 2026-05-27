@@ -26,7 +26,9 @@ class RelatorioService:
     def get_weekly_report(self, user_id: int, start_date: date | None = None, end_date: date | None = None) -> dict:
         inicio, fim = self._resolve_intervalo(start_date, end_date)
         missoes = list(self.repositorio.carregar_dados_por_responsavel(user_id))
+        return self.calcular_relatorio_semanal(missoes, inicio, fim)
 
+    def calcular_relatorio_semanal(self, missoes: list, inicio: date, fim: date) -> dict:
         consideradas = [
             missao
             for missao in missoes

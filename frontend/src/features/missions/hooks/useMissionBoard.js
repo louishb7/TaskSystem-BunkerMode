@@ -88,88 +88,33 @@ export function useMissionBoard({
   }, [authenticated, activeMode, token]);
 
   async function loadGeneralSupport(requestId) {
-    const [
-      reviewResult,
-      historicalResult,
-      reviewStateResult,
-      weeklyReviewsResult,
-      operationsResult,
-    ] = await Promise.all([
-      api.listReviewMissions(token),
-      api.listHistoricalMissions(token),
-      api.getReviewState(token),
-      api.listWeeklyReviews(token),
-      api.listOperations(token),
-    ]);
+    const result = await api.getGeneralSupport(token);
     if (requestId !== loadRequestRef.current) {
       return false;
     }
 
-    if (
-      onUnauthorized(reviewResult)
-      || onUnauthorized(historicalResult)
-      || onUnauthorized(reviewStateResult)
-      || onUnauthorized(weeklyReviewsResult)
-      || onUnauthorized(operationsResult)
-    ) {
+    if (onUnauthorized(result)) {
       return false;
     }
 
-    if (reviewResult.ok) {
-      setReviewMissions(reviewResult.data);
-    } else {
+    if (!result.ok) {
       setReviewMissions([]);
-      setStatus({
-        type: "error",
-        message: getErrorMessage(reviewResult, "Não foi possível carregar relatório."),
-      });
-      return false;
-    }
-
-    if (historicalResult.ok) {
-      setHistoricalMissions(historicalResult.data);
-    } else {
       setHistoricalMissions([]);
-      setStatus({
-        type: "error",
-        message: getErrorMessage(historicalResult, "Não foi possível carregar histórico."),
-      });
-      return false;
-    }
-
-    if (reviewStateResult.ok) {
-      setReviewState(reviewStateResult.data);
-    } else {
       setReviewState(null);
-      setStatus({
-        type: "error",
-        message: getErrorMessage(reviewStateResult, "Não foi possível carregar a revisão semanal."),
-      });
-      return false;
-    }
-
-    if (weeklyReviewsResult.ok) {
-      setWeeklyReviews(Array.isArray(weeklyReviewsResult.data) ? weeklyReviewsResult.data : []);
-    } else {
       setWeeklyReviews([]);
-      setStatus({
-        type: "error",
-        message: getErrorMessage(weeklyReviewsResult, "Não foi possível carregar o histórico de revisões."),
-      });
-      return false;
-    }
-
-    if (operationsResult.ok) {
-      setOperations(Array.isArray(operationsResult.data) ? operationsResult.data : []);
-    } else {
       setOperations([]);
       setStatus({
         type: "error",
-        message: getErrorMessage(operationsResult, "Não foi possível carregar operações."),
+        message: getErrorMessage(result, "Não foi possível carregar dados de suporte do comando."),
       });
       return false;
     }
 
+    setReviewMissions(Array.isArray(result.data?.review_missions) ? result.data.review_missions : []);
+    setHistoricalMissions(Array.isArray(result.data?.historical_missions) ? result.data.historical_missions : []);
+    setReviewState(result.data?.review_state || null);
+    setWeeklyReviews(Array.isArray(result.data?.weekly_reviews) ? result.data.weekly_reviews : []);
+    setOperations(Array.isArray(result.data?.operations) ? result.data.operations : []);
     return true;
   }
 

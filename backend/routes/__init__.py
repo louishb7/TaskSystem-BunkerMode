@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 
-from backend.routes import auth, missoes, montanha, objetivos, operacoes, revisoes, sonhos, usuarios
+from backend.routes import auth, comando, missoes, montanha, objetivos, operacoes, revisoes, sonhos, usuarios
 
 router = APIRouter()
 router.include_router(auth.router)
 router.include_router(usuarios.router)
+router.include_router(comando.router)
 router.include_router(sonhos.router)
 router.include_router(objetivos.router)
 router.include_router(montanha.router)

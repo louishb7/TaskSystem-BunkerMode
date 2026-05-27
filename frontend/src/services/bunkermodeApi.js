@@ -98,6 +98,9 @@ export const api = {
   getSoldierBoard(token) {
     return requestSoldierBoard("/missoes/quadro-soldado", { token });
   },
+  getGeneralSupport(token) {
+    return request("/comando-general/suporte", { token });
+  },
   closePreviousOperationalTurn(token) {
     return request("/missoes/turno-operacional/encerrar-pendencias", { token, method: "POST" });
   },
