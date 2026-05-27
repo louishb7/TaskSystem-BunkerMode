@@ -126,15 +126,25 @@ class RepositorioPostgres:
     def _conectar_compartilhado(self):
         agora = time.monotonic()
         ttl = self._shared_idle_timeout_seconds()
+        chave = (self.connection_string, threading.get_ident())
         with self._shared_lock:
-            entrada = self._shared_connections.get(self.connection_string)
+            for chave_existente, entrada_existente in list(self._shared_connections.items()):
+                conexao_existente = entrada_existente["connection"]
+                expirada = agora - entrada_existente["last_used"] > ttl
+                fechada = getattr(conexao_existente, "closed", False)
+                em_uso = entrada_existente.get("in_use", False)
+                if fechada or (expirada and not em_uso):
+                    if not fechada and hasattr(conexao_existente, "close"):
+                        conexao_existente.close()
+                    self._shared_connections.pop(chave_existente, None)
+
+            entrada = self._shared_connections.get(chave)
             conexao = None if entrada is None else entrada["connection"]
-            expirada = entrada is not None and agora - entrada["last_used"] > ttl
             fechada = conexao is not None and getattr(conexao, "closed", False)
-            if conexao is not None and (expirada or fechada):
+            if conexao is not None and fechada:
                 if not fechada and hasattr(conexao, "close"):
                     conexao.close()
-                self._shared_connections.pop(self.connection_string, None)
+                self._shared_connections.pop(chave, None)
                 conexao = None
 
             if conexao is None:
@@ -145,18 +155,19 @@ class RepositorioPostgres:
                         "Não foi possível conectar ao banco de dados."
                     ) from erro
                 entrada = {"connection": conexao, "last_used": agora}
-                self._shared_connections[self.connection_string] = entrada
+                self._shared_connections[chave] = entrada
+            entrada["in_use"] = True
 
             def mark_used():
                 with self._shared_lock:
-                    if self.connection_string in self._shared_connections:
-                        self._shared_connections[self.connection_string][
+                    if chave in self._shared_connections:
+                        self._shared_connections[chave][
                             "last_used"
                         ] = time.monotonic()
+                        self._shared_connections[chave]["in_use"] = False
 
             return _ConexaoRepositorio(
                 conexao,
-                lock=self._shared_lock,
                 on_exit=mark_used,
             )
 

@@ -1,4 +1,6 @@
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
 
 import pytest
@@ -193,6 +195,36 @@ def test_repositorio_reutiliza_conexao_compartilhada_em_producao(monkeypatch):
     rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
 
 
+def test_repositorio_compartilhado_nao_serializa_threads_em_uma_conexao(monkeypatch):
+    connections = [FakeConnection(FakeCursor()), FakeConnection(FakeCursor())]
+
+    class SequencedPsycopg(FakePsycopg):
+        def connect(self, connection_string):
+            self.connect_count += 1
+            self.received_connection_string = connection_string
+            return connections[self.connect_count - 1]
+
+    fake_psycopg = SequencedPsycopg()
+    barreira = threading.Barrier(2)
+    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
+    monkeypatch.setenv("BUNKERMODE_ENV", "production")
+    monkeypatch.delenv("BUNKERMODE_REUSE_DB_CONNECTIONS", raising=False)
+    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
+
+    def abrir_conexao():
+        repositorio = rp.RepositorioPostgres("dbname=shared_threads")
+        with repositorio._conectar():
+            barreira.wait(timeout=2)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        list(executor.map(lambda _: abrir_conexao(), range(2)))
+
+    assert fake_psycopg.connect_count == 2
+    assert all(connection.closed is False for connection in connections)
+
+    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
+
+
 def test_repositorio_renova_conexao_compartilhada_expirada(monkeypatch):
     cursor_1 = FakeCursor()
     cursor_2 = FakeCursor()
@@ -214,7 +246,8 @@ def test_repositorio_renova_conexao_compartilhada_expirada(monkeypatch):
     with repositorio._conectar():
         pass
 
-    rp.RepositorioPostgres._shared_connections["dbname=shared_expired"]["last_used"] -= 2
+    chave = next(iter(rp.RepositorioPostgres._shared_connections))
+    rp.RepositorioPostgres._shared_connections[chave]["last_used"] -= 2
     with repositorio._conectar():
         pass
 

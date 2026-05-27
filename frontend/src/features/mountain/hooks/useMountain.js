@@ -37,45 +37,23 @@ export function useMountain({ onUnauthorized, token }) {
       return false;
     }
     setLoading(true);
-    const [sonhosResult, objetivosResult, missionsResult, dailyMissionsResult] = await Promise.all([
-      api.listSonhos(token),
-      api.listObjetivos(token),
-      api.listMissions(token),
-      api.listDailyMissions(token),
-    ]);
+    const result = await api.getMountain(token);
     setLoading(false);
 
-    if (
-      onUnauthorized?.(sonhosResult)
-      || onUnauthorized?.(objetivosResult)
-      || onUnauthorized?.(missionsResult)
-      || onUnauthorized?.(dailyMissionsResult)
-    ) {
+    if (onUnauthorized?.(result)) {
       return false;
     }
 
-    if (!sonhosResult.ok) {
-      setStatus({ type: "error", message: getErrorMessage(sonhosResult, "Não foi possível carregar sonhos.") });
-      return false;
-    }
-    if (!objetivosResult.ok) {
-      setStatus({ type: "error", message: getErrorMessage(objetivosResult, "Não foi possível carregar objetivos.") });
-      return false;
-    }
-    if (!missionsResult.ok) {
-      setStatus({ type: "error", message: getErrorMessage(missionsResult, "Não foi possível carregar ordens da montanha.") });
-      return false;
-    }
-    if (!dailyMissionsResult.ok) {
-      setStatus({ type: "error", message: getErrorMessage(dailyMissionsResult, "Não foi possível carregar ordens do dia.") });
+    if (!result.ok) {
+      setStatus({ type: "error", message: getErrorMessage(result, "Não foi possível carregar a Montanha.") });
       return false;
     }
 
-    setSonhos(Array.isArray(sonhosResult.data) ? sonhosResult.data : []);
-    setObjetivos(Array.isArray(objetivosResult.data) ? objetivosResult.data : []);
+    setSonhos(Array.isArray(result.data?.sonhos) ? result.data.sonhos : []);
+    setObjetivos(Array.isArray(result.data?.objetivos) ? result.data.objetivos : []);
     setMissions(mergeMissions(
-      Array.isArray(missionsResult.data) ? missionsResult.data : [],
-      Array.isArray(dailyMissionsResult.data) ? dailyMissionsResult.data : []
+      Array.isArray(result.data?.missions) ? result.data.missions : [],
+      Array.isArray(result.data?.daily_missions) ? result.data.daily_missions : []
     ));
     setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus);
     return true;

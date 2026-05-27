@@ -175,6 +175,9 @@ export const api = {
   getMissionHistory(token, missionId) {
     return request(`/missoes/${missionId}/historico`, { token });
   },
+  getMountain(token) {
+    return request("/montanha", { token });
+  },
   listSonhos(token) {
     return request("/sonhos", { token });
   },
