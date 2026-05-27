@@ -5,6 +5,8 @@ except ModuleNotFoundError:  # pragma: no cover
 
 import json
 import os
+import threading
+import time
 
 from backend.models.auditoria import EventoAuditoria
 from backend.models.missao import Missao
@@ -44,15 +46,25 @@ class UsuarioNaoPersistidoError(ErroRepositorio):
 
 
 class _ConexaoRepositorio:
-    def __init__(self, conexao):
+    def __init__(self, conexao, lock=None, on_exit=None):
         self.conexao = conexao
+        self.lock = lock
+        self.on_exit = on_exit
 
     def __enter__(self):
+        if self.lock is not None:
+            self.lock.acquire()
         return self.conexao
 
     def __exit__(self, exc_type, exc, tb):
-        if exc_type is not None and hasattr(self.conexao, "rollback"):
-            self.conexao.rollback()
+        try:
+            if exc_type is not None and hasattr(self.conexao, "rollback"):
+                self.conexao.rollback()
+            if self.on_exit is not None:
+                self.on_exit()
+        finally:
+            if self.lock is not None:
+                self.lock.release()
         return False
 
 
@@ -60,6 +72,8 @@ class RepositorioPostgres:
     """Responsável por carregar e persistir dados do BunkerMode no PostgreSQL."""
 
     _schemas_inicializados = set()
+    _shared_connections = {}
+    _shared_lock = threading.RLock()
 
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
@@ -73,6 +87,8 @@ class RepositorioPostgres:
             raise DriverPostgresNaoInstaladoError(
                 "Driver psycopg não está instalado no ambiente atual."
             )
+        if self._deve_reutilizar_conexao_compartilhada():
+            return self._conectar_compartilhado()
         if self._conexao is not None and not getattr(self._conexao, "closed", False):
             return _ConexaoRepositorio(self._conexao)
         try:
@@ -83,12 +99,84 @@ class RepositorioPostgres:
                 "Não foi possível conectar ao banco de dados."
             ) from erro
 
+    def _deve_reutilizar_conexao_compartilhada(self) -> bool:
+        valor = os.getenv("BUNKERMODE_REUSE_DB_CONNECTIONS", "").strip().lower()
+        if valor in {"1", "true", "yes", "on"}:
+            return True
+        if valor in {"0", "false", "no", "off"}:
+            return False
+
+        ambiente = (
+            os.getenv("BUNKERMODE_ENV")
+            or os.getenv("ENV")
+            or os.getenv("PYTHON_ENV")
+            or ""
+        ).strip().lower()
+        return ambiente in {"production", "prod"}
+
+    def _shared_idle_timeout_seconds(self) -> float:
+        valor = os.getenv("BUNKERMODE_DB_CONNECTION_IDLE_TTL_SECONDS", "").strip()
+        if not valor:
+            return 120.0
+        try:
+            return max(1.0, float(valor))
+        except ValueError:
+            return 120.0
+
+    def _conectar_compartilhado(self):
+        agora = time.monotonic()
+        ttl = self._shared_idle_timeout_seconds()
+        with self._shared_lock:
+            entrada = self._shared_connections.get(self.connection_string)
+            conexao = None if entrada is None else entrada["connection"]
+            expirada = entrada is not None and agora - entrada["last_used"] > ttl
+            fechada = conexao is not None and getattr(conexao, "closed", False)
+            if conexao is not None and (expirada or fechada):
+                if not fechada and hasattr(conexao, "close"):
+                    conexao.close()
+                self._shared_connections.pop(self.connection_string, None)
+                conexao = None
+
+            if conexao is None:
+                try:
+                    conexao = psycopg.connect(self.connection_string)
+                except psycopg.Error as erro:
+                    raise ConexaoRepositorioError(
+                        "Não foi possível conectar ao banco de dados."
+                    ) from erro
+                entrada = {"connection": conexao, "last_used": agora}
+                self._shared_connections[self.connection_string] = entrada
+
+            def mark_used():
+                with self._shared_lock:
+                    if self.connection_string in self._shared_connections:
+                        self._shared_connections[self.connection_string][
+                            "last_used"
+                        ] = time.monotonic()
+
+            return _ConexaoRepositorio(
+                conexao,
+                lock=self._shared_lock,
+                on_exit=mark_used,
+            )
+
     def fechar(self) -> None:
+        if self._deve_reutilizar_conexao_compartilhada():
+            return
         if self._conexao is None:
             return
         if not getattr(self._conexao, "closed", False) and hasattr(self._conexao, "close"):
             self._conexao.close()
         self._conexao = None
+
+    @classmethod
+    def fechar_conexoes_compartilhadas(cls) -> None:
+        with cls._shared_lock:
+            for entrada in cls._shared_connections.values():
+                conexao = entrada["connection"]
+                if not getattr(conexao, "closed", False) and hasattr(conexao, "close"):
+                    conexao.close()
+            cls._shared_connections.clear()
 
     def _deve_inicializar_schema(self) -> bool:
         auto_init = os.getenv("BUNKERMODE_AUTO_SCHEMA_INIT", "").strip().lower()

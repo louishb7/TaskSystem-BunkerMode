@@ -44,6 +44,8 @@ class FakeConnection:
     def __init__(self, cursor):
         self._cursor = cursor
         self.commit_called = False
+        self.rollback_called = False
+        self.closed = False
 
     def __enter__(self):
         return self
@@ -56,6 +58,12 @@ class FakeConnection:
 
     def commit(self):
         self.commit_called = True
+
+    def rollback(self):
+        self.rollback_called = True
+
+    def close(self):
+        self.closed = True
 
 
 class FakePsycopg:
@@ -159,6 +167,61 @@ def test_repositorio_reutiliza_conexao_ate_fechar(monkeypatch):
         pass
 
     assert fake_psycopg.connect_count == 2
+
+
+def test_repositorio_reutiliza_conexao_compartilhada_em_producao(monkeypatch):
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    fake_psycopg = FakePsycopg(connection=connection)
+    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
+    monkeypatch.setenv("BUNKERMODE_ENV", "production")
+    monkeypatch.delenv("BUNKERMODE_REUSE_DB_CONNECTIONS", raising=False)
+    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
+
+    repositorio_1 = rp.RepositorioPostgres("dbname=shared")
+    repositorio_2 = rp.RepositorioPostgres("dbname=shared")
+
+    with repositorio_1._conectar():
+        pass
+    repositorio_1.fechar()
+    with repositorio_2._conectar():
+        pass
+
+    assert fake_psycopg.connect_count == 1
+    assert connection.closed is False
+
+    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
+
+
+def test_repositorio_renova_conexao_compartilhada_expirada(monkeypatch):
+    cursor_1 = FakeCursor()
+    cursor_2 = FakeCursor()
+    connections = [FakeConnection(cursor_1), FakeConnection(cursor_2)]
+
+    class SequencedPsycopg(FakePsycopg):
+        def connect(self, connection_string):
+            self.connect_count += 1
+            self.received_connection_string = connection_string
+            return connections[self.connect_count - 1]
+
+    fake_psycopg = SequencedPsycopg()
+    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
+    monkeypatch.setenv("BUNKERMODE_ENV", "production")
+    monkeypatch.setenv("BUNKERMODE_DB_CONNECTION_IDLE_TTL_SECONDS", "1")
+    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
+
+    repositorio = rp.RepositorioPostgres("dbname=shared_expired")
+    with repositorio._conectar():
+        pass
+
+    rp.RepositorioPostgres._shared_connections["dbname=shared_expired"]["last_used"] -= 2
+    with repositorio._conectar():
+        pass
+
+    assert fake_psycopg.connect_count == 2
+    assert connections[0].closed is True
+
+    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
 
 
 def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
