@@ -85,7 +85,7 @@ export function useAuthSession() {
 
   async function login(payload) {
     if (!payload.email || !payload.senha) {
-      setAuthStatus({ type: "error", message: "Preencha usuário e senha." });
+      setAuthStatus({ type: "error", message: "Preencha e-mail ou usuário e senha." });
       return;
     }
 
@@ -108,8 +108,8 @@ export function useAuthSession() {
   }
 
   async function register(payload) {
-    if (!payload.usuario || !payload.email || !payload.senha || !payload.invite_code) {
-      setAuthStatus({ type: "error", message: "Preencha usuário, e-mail, senha e código de convite." });
+    if (!payload.usuario || !payload.email || !payload.senha) {
+      setAuthStatus({ type: "error", message: "Preencha usuário, e-mail e senha." });
       return;
     }
 

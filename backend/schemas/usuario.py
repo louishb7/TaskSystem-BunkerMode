@@ -7,7 +7,6 @@ class RegistroPayload(BaseModel):
     usuario: str = Field(min_length=3)
     email: str = Field(min_length=5)
     senha: str = Field(min_length=6)
-    invite_code: str | None = None
 
 
 class LoginPayload(BaseModel):

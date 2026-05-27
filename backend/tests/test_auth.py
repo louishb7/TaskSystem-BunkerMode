@@ -54,6 +54,11 @@ class RepositorioAuthFake:
             return self.usuario
         return None
 
+    def buscar_usuario_por_usuario(self, usuario):
+        if self.usuario.usuario.lower() == usuario.strip().lower():
+            return self.usuario
+        return None
+
     def buscar_usuario_por_id(self, usuario_id):
         if self.usuario.usuario_id == usuario_id:
             return self.usuario
@@ -387,3 +392,12 @@ def test_timezone_invalido_falha_claramente():
 
     with pytest.raises(ValueError, match="Fuso horário inválido."):
         service.alterar_timezone(1, "Nao/Existe")
+
+
+def test_autenticar_aceita_usuario_em_vez_de_email():
+    auth = AuthService(RepositorioAuthFake())
+
+    resultado = auth.autenticar("henrique", "segredo123")
+
+    assert resultado["token_type"] == "bearer"
+    assert resultado["usuario"].email == "henrique@email.com"

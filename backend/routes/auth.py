@@ -1,4 +1,5 @@
 from backend.routes.common import *
+from backend.schemas import RegistroPayload
 
 
 router = APIRouter(prefix="/api/v2", tags=["auth"])
@@ -14,10 +15,8 @@ def registrar_usuario(
     payload: RegistroPayload,
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    _validate_registration_invite(payload)
-    dados = payload.model_dump(exclude={"invite_code"})
     try:
-        usuario = auth_service.registrar_usuario(dados)
+        usuario = auth_service.registrar_usuario(payload.model_dump())
     except (UsuarioJaExisteError, ValueError) as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
 

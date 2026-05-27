@@ -17,8 +17,7 @@ POST /api/v2/auth/register
 {
   "usuario": "henrique",
   "email": "henrique@email.com",
-  "senha": "123456",
-  "invite_code": "codigo-configurado-no-servidor"
+  "senha": "123456"
 }
 
 POST /api/v2/auth/login
@@ -27,6 +26,8 @@ POST /api/v2/auth/login
   "email": "henrique@email.com",
   "senha": "123456"
 }
+
+O campo `email` do login aceita tanto e-mail quanto nome de usuário.
 
 ## Missões
 

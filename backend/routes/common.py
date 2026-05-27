@@ -1,5 +1,3 @@
-import os
-
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from backend.schemas import (
@@ -19,7 +17,6 @@ from backend.schemas import (
     OperacaoMaterializarPayload,
     PlanningWindowPayload,
     RevisaoJustificativaPayload,
-    RegistroPayload,
     SessionModePayload,
     SonhoArquivarPayload,
     SonhoCreatePayload,
@@ -124,22 +121,6 @@ def _usuario_to_response(usuario, include_ativo: bool = True) -> dict:
     if include_ativo:
         response["ativo"] = usuario.ativo
     return response
-
-
-def _get_registration_invite_code() -> str:
-    invite_code = os.getenv("BUNKERMODE_REGISTRATION_INVITE_CODE", "").strip()
-    if not invite_code:
-        raise RuntimeError("Defina BUNKERMODE_REGISTRATION_INVITE_CODE antes de permitir cadastro.")
-    return invite_code
-
-
-def validate_registration_invite_configured() -> None:
-    _get_registration_invite_code()
-
-
-def _validate_registration_invite(payload: RegistroPayload) -> None:
-    if (payload.invite_code or "").strip() != _get_registration_invite_code():
-        raise HTTPException(status_code=403, detail="Código de convite inválido.")
 
 
 __all__ = [name for name in globals() if not name.startswith("__")]

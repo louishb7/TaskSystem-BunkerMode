@@ -7,4 +7,3 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault("BUNKERMODE_AUTH_SECRET", "segredo-de-teste")
-os.environ.setdefault("BUNKERMODE_REGISTRATION_INVITE_CODE", "convite-teste")

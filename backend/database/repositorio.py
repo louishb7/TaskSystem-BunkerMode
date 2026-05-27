@@ -1062,6 +1062,30 @@ class RepositorioPostgres:
             ) from erro
         return None if linha is None else self._reconstruir_usuario(linha)
 
+    def buscar_usuario_por_usuario(self, usuario: str) -> Usuario | None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
+                               active_mode, planning_window, timezone, emergency_unlock_date,
+                               timezone_updated_at
+                        FROM usuarios
+                        WHERE lower(usuario) = lower(%s);
+                        """,
+                        (usuario.strip(),),
+                    )
+                    linha = cursor.fetchone()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao buscar usuário pelo nome de usuário no banco de dados."
+            ) from erro
+        return None if linha is None else self._reconstruir_usuario(linha)
+
     def buscar_usuario_por_id(self, usuario_id: int) -> Usuario | None:
         self.inicializar_schema()
         try:

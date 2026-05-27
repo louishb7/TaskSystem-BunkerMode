@@ -16,7 +16,6 @@ for path in (PROJECT_ROOT, BASE_DIR):
 
 from backend.core.auth import validate_auth_secret_configured
 from backend.routes import router
-from backend.routes.common import validate_registration_invite_configured
 
 
 load_dotenv(dotenv_path=BASE_DIR / ".env")
@@ -51,7 +50,6 @@ def get_allowed_origins() -> list[str]:
 
 def validate_runtime_config() -> None:
     validate_auth_secret_configured()
-    validate_registration_invite_configured()
     get_allowed_origins()
 
 

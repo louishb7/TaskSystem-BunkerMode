@@ -7,7 +7,7 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
   const [form, setForm] = useState({
     usuario: "",
     email: "",
-    invite_code: "",
+    identificador: "",
     senha: "",
   });
 
@@ -24,14 +24,13 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
     event.preventDefault();
 
     if (isLogin) {
-      onLogin({ email: form.email.trim(), senha: form.senha });
+      onLogin({ email: form.identificador.trim(), senha: form.senha });
       return;
     }
 
     onRegister({
       usuario: form.usuario.trim(),
       email: form.email.trim(),
-      invite_code: form.invite_code.trim(),
       senha: form.senha,
     });
   }
@@ -81,31 +80,34 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
                   value={form.usuario}
                 />
               </label>
-
-              <label>
-                Código de convite
-                <input
-                  autoComplete="off"
-                  name="invite_code"
-                  onChange={updateField}
-                  placeholder="código de acesso"
-                  value={form.invite_code}
-                />
-              </label>
             </>
           )}
 
-          <label>
-            E-mail
-            <input
-              autoComplete="email"
-              name="email"
-              onChange={updateField}
-              placeholder="usuario@email.com"
-              type="email"
-              value={form.email}
-            />
-          </label>
+          {isLogin ? (
+            <label>
+              E-mail ou usuário
+              <input
+                autoComplete="username"
+                name="identificador"
+                onChange={updateField}
+                placeholder="usuario@email.com ou nome de usuário"
+                type="text"
+                value={form.identificador}
+              />
+            </label>
+          ) : (
+            <label>
+              E-mail
+              <input
+                autoComplete="email"
+                name="email"
+                onChange={updateField}
+                placeholder="usuario@email.com"
+                type="email"
+                value={form.email}
+              />
+            </label>
+          )}
 
           <label>
             Senha

@@ -44,7 +44,10 @@ class AuthService:
         return usuario
 
     def autenticar(self, email: str, senha: str) -> dict:
-        usuario = self.repositorio.buscar_usuario_por_email(email)
+        identificador = str(email).strip()
+        usuario = self.repositorio.buscar_usuario_por_email(identificador)
+        if usuario is None:
+            usuario = self.repositorio.buscar_usuario_por_usuario(identificador)
         if usuario is None or not verify_password(senha, usuario.senha_hash):
             raise AutenticacaoError("Credenciais inválidas.")
         if not usuario.ativo:

@@ -72,7 +72,6 @@ from backend.services.revisao_service import RevisaoService
 
 
 DATA_TESTE = datetime(2026, 4, 24, 10, 0, 0)
-INVITE_CODE_TESTE = "convite-teste"
 
 
 class RepositorioV2Fake:
@@ -130,6 +129,13 @@ class RepositorioV2Fake:
         email = email.strip().lower()
         for usuario in self.usuarios:
             if usuario.email == email:
+                return usuario
+        return None
+
+    def buscar_usuario_por_usuario(self, usuario_nome):
+        alvo = usuario_nome.strip().lower()
+        for usuario in self.usuarios:
+            if usuario.usuario.lower() == alvo:
                 return usuario
         return None
 
@@ -299,12 +305,11 @@ def preparar_ambiente():
             usuario="Henrique",
             email="henrique@email.com",
             senha="segredo123",
-            invite_code=INVITE_CODE_TESTE,
         ),
         auth_service=auth,
     )
     resultado_login = login(
-        LoginPayload(email="henrique@email.com", senha="segredo123"),
+        LoginPayload(email="henrique", senha="segredo123"),
         auth_service=auth,
     )
     usuario_obj = auth.obter_usuario_por_token(resultado_login["access_token"])
@@ -341,24 +346,6 @@ def test_auth_register_login_e_me_v2():
     assert usuario["timezone_updated_at"] is None
     assert usuario_obj.usuario == "Henrique"
     assert usuario_obj.active_mode == "general"
-
-
-def test_auth_register_rejeita_convite_invalido():
-    repo = RepositorioV2Fake()
-    auth = AuthService(repo)
-
-    with pytest.raises(HTTPException) as erro:
-        registrar_usuario(
-            RegistroPayload(
-                usuario="Intruso",
-                email="intruso@email.com",
-                senha="segredo123",
-                invite_code="codigo-errado",
-            ),
-            auth_service=auth,
-        )
-
-    assert erro.value.status_code == 403
 
 
 def test_api_confirma_active_mode_apos_ida_e_retorno_ao_general():
@@ -1157,7 +1144,6 @@ def test_usuario_nao_afeta_missao_de_outro_usuario():
             usuario="Henrique",
             email="henrique@email.com",
             senha="segredo123",
-            invite_code=INVITE_CODE_TESTE,
         ),
         auth_service=auth,
     )
@@ -1166,7 +1152,6 @@ def test_usuario_nao_afeta_missao_de_outro_usuario():
             usuario="Maria",
             email="maria@email.com",
             senha="segredo123",
-            invite_code=INVITE_CODE_TESTE,
         ),
         auth_service=auth,
     )
