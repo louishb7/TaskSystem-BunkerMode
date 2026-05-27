@@ -66,8 +66,10 @@ class FakePsycopg:
         self.connection = connection
         self.connect_error = connect_error
         self.received_connection_string = None
+        self.connect_count = 0
 
     def connect(self, connection_string):
+        self.connect_count += 1
         self.received_connection_string = connection_string
         if self.connect_error is not None:
             raise self.connect_error
@@ -136,6 +138,27 @@ def test_inicializar_schema_roda_uma_vez_por_connection_string(monkeypatch):
 
     assert primeira_execucao > 0
     assert len(cursor.executions) == primeira_execucao
+
+
+def test_repositorio_reutiliza_conexao_ate_fechar(monkeypatch):
+    repositorio = rp.RepositorioPostgres("dbname=reuso")
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    fake_psycopg = FakePsycopg(connection=connection)
+    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
+
+    with repositorio._conectar():
+        pass
+    with repositorio._conectar():
+        pass
+
+    assert fake_psycopg.connect_count == 1
+
+    repositorio.fechar()
+    with repositorio._conectar():
+        pass
+
+    assert fake_psycopg.connect_count == 2
 
 
 def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):

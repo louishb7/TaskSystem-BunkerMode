@@ -45,7 +45,11 @@ from backend.services.sonho_service import SonhoService
 
 
 def get_repositorio() -> RepositorioPostgres:
-    return RepositorioPostgres(get_connection_string())
+    repositorio = RepositorioPostgres(get_connection_string())
+    try:
+        yield repositorio
+    finally:
+        repositorio.fechar()
 
 
 def get_auth_service(

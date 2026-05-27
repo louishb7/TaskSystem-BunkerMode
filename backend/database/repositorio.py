@@ -43,6 +43,19 @@ class UsuarioNaoPersistidoError(ErroRepositorio):
     """Erro levantado quando o usuário esperado não existe no banco."""
 
 
+class _ConexaoRepositorio:
+    def __init__(self, conexao):
+        self.conexao = conexao
+
+    def __enter__(self):
+        return self.conexao
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is not None and hasattr(self.conexao, "rollback"):
+            self.conexao.rollback()
+        return False
+
+
 class RepositorioPostgres:
     """Responsável por carregar e persistir dados do BunkerMode no PostgreSQL."""
 
@@ -50,18 +63,32 @@ class RepositorioPostgres:
 
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
+        self._conexao = None
+
+    def __del__(self):  # pragma: no cover - fallback defensivo
+        self.fechar()
 
     def _conectar(self):
         if psycopg is None:
             raise DriverPostgresNaoInstaladoError(
                 "Driver psycopg não está instalado no ambiente atual."
             )
+        if self._conexao is not None and not getattr(self._conexao, "closed", False):
+            return _ConexaoRepositorio(self._conexao)
         try:
-            return psycopg.connect(self.connection_string)
+            self._conexao = psycopg.connect(self.connection_string)
+            return _ConexaoRepositorio(self._conexao)
         except psycopg.Error as erro:
             raise ConexaoRepositorioError(
                 "Não foi possível conectar ao banco de dados."
             ) from erro
+
+    def fechar(self) -> None:
+        if self._conexao is None:
+            return
+        if not getattr(self._conexao, "closed", False) and hasattr(self._conexao, "close"):
+            self._conexao.close()
+        self._conexao = None
 
     def _deve_inicializar_schema(self) -> bool:
         auto_init = os.getenv("BUNKERMODE_AUTO_SCHEMA_INIT", "").strip().lower()
