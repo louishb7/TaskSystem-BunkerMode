@@ -105,6 +105,39 @@ def test_conectar_traduz_erro_de_conexao(monkeypatch, repositorio):
         repositorio._conectar()
 
 
+def test_inicializar_schema_nao_roda_ddl_em_producao(monkeypatch):
+    repositorio = rp.RepositorioPostgres("dbname=producao")
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    fake_psycopg = FakePsycopg(connection=connection)
+    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
+    monkeypatch.setenv("BUNKERMODE_ENV", "production")
+    monkeypatch.delenv("BUNKERMODE_AUTO_SCHEMA_INIT", raising=False)
+
+    repositorio.inicializar_schema()
+
+    assert cursor.executions == []
+    assert connection.commit_called is False
+
+
+def test_inicializar_schema_roda_uma_vez_por_connection_string(monkeypatch):
+    repositorio = rp.RepositorioPostgres("dbname=cache_schema")
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    fake_psycopg = FakePsycopg(connection=connection)
+    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
+    monkeypatch.delenv("BUNKERMODE_ENV", raising=False)
+    monkeypatch.delenv("BUNKERMODE_AUTO_SCHEMA_INIT", raising=False)
+    rp.RepositorioPostgres._schemas_inicializados.discard("dbname=cache_schema")
+
+    repositorio.inicializar_schema()
+    primeira_execucao = len(cursor.executions)
+    repositorio.inicializar_schema()
+
+    assert primeira_execucao > 0
+    assert len(cursor.executions) == primeira_execucao
+
+
 def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
     cursor = FakeCursor(
         fetchall_result=[

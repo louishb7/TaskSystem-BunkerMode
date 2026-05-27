@@ -1,5 +1,7 @@
 import { API_URL } from "./config.js";
 
+const REQUEST_TIMEOUT_MS = 30000;
+
 async function parseResponse(response) {
   if (response.status === 204) {
     return { ok: true, status: 204, data: null };
@@ -26,6 +28,8 @@ export function getErrorMessage(result, fallback) {
 
 export async function request(path, { token, method = "GET", body } = {}) {
   const headers = {};
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";
@@ -39,14 +43,24 @@ export async function request(path, { token, method = "GET", body } = {}) {
     const response = await fetch(`${API_URL}${path}`, {
       method,
       headers,
+      signal: controller.signal,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     return parseResponse(response);
-  } catch {
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      return {
+        ok: false,
+        status: 0,
+        data: { detail: "A API demorou demais para responder. Tente novamente." },
+      };
+    }
     return {
       ok: false,
       status: 0,
       data: { detail: "Não foi possível conectar à API." },
     };
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }

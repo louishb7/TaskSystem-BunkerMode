@@ -23,7 +23,7 @@ function readStoredUser() {
 export function useAuthSession() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [user, setUser] = useState(readStoredUser);
-  const [booting, setBooting] = useState(Boolean(token));
+  const [booting, setBooting] = useState(false);
   const [authStatus, setAuthStatus] = useState(emptyStatus);
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -36,8 +36,13 @@ export function useAuthSession() {
       return;
     }
 
+    if (user) {
+      setBooting(false);
+      return;
+    }
+
     restoreSession();
-  }, [token]);
+  }, [token, user]);
 
   function persistUser(nextUser) {
     localStorage.setItem(USER_KEY, JSON.stringify(nextUser));

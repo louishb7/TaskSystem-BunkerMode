@@ -4,6 +4,7 @@ except ModuleNotFoundError:  # pragma: no cover
     psycopg = None
 
 import json
+import os
 
 from backend.models.auditoria import EventoAuditoria
 from backend.models.missao import Missao
@@ -45,6 +46,8 @@ class UsuarioNaoPersistidoError(ErroRepositorio):
 class RepositorioPostgres:
     """Responsável por carregar e persistir dados do BunkerMode no PostgreSQL."""
 
+    _schemas_inicializados = set()
+
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
 
@@ -60,7 +63,27 @@ class RepositorioPostgres:
                 "Não foi possível conectar ao banco de dados."
             ) from erro
 
+    def _deve_inicializar_schema(self) -> bool:
+        auto_init = os.getenv("BUNKERMODE_AUTO_SCHEMA_INIT", "").strip().lower()
+        if auto_init in {"1", "true", "yes", "on"}:
+            return True
+        if auto_init in {"0", "false", "no", "off"}:
+            return False
+
+        ambiente = (
+            os.getenv("BUNKERMODE_ENV")
+            or os.getenv("ENV")
+            or os.getenv("PYTHON_ENV")
+            or ""
+        ).strip().lower()
+        return ambiente not in {"production", "prod"}
+
     def inicializar_schema(self) -> None:
+        if not self._deve_inicializar_schema():
+            return
+        if self.connection_string in self._schemas_inicializados:
+            return
+
         comandos = [
             """
             CREATE TABLE IF NOT EXISTS usuarios (
@@ -306,6 +329,7 @@ class RepositorioPostgres:
                     for comando in comandos:
                         cursor.execute(comando)
                 conexao.commit()
+            self._schemas_inicializados.add(self.connection_string)
         except ErroRepositorio:
             raise
         except psycopg.Error as erro:
@@ -1059,6 +1083,33 @@ class RepositorioPostgres:
         except psycopg.Error as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar usuário pelo email no banco de dados."
+            ) from erro
+        return None if linha is None else self._reconstruir_usuario(linha)
+
+    def buscar_usuario_por_identificador(self, identificador: str) -> Usuario | None:
+        self.inicializar_schema()
+        identificador = identificador.strip()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
+                               active_mode, planning_window, timezone, emergency_unlock_date,
+                               timezone_updated_at
+                        FROM usuarios
+                        WHERE email = %s OR lower(usuario) = lower(%s)
+                        ORDER BY CASE WHEN email = %s THEN 0 ELSE 1 END
+                        LIMIT 1;
+                        """,
+                        (identificador.lower(), identificador, identificador.lower()),
+                    )
+                    linha = cursor.fetchone()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao buscar usuário para autenticação no banco de dados."
             ) from erro
         return None if linha is None else self._reconstruir_usuario(linha)
 

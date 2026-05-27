@@ -43,32 +43,51 @@ from backend.services.relatorio_service import RelatorioService
 from backend.services.revisao_service import RevisaoService
 from backend.services.sonho_service import SonhoService
 
-def get_auth_service() -> AuthService:
-    return AuthService(RepositorioPostgres(get_connection_string()))
+
+def get_repositorio() -> RepositorioPostgres:
+    return RepositorioPostgres(get_connection_string())
 
 
-def get_missao_service() -> MissaoService:
-    return MissaoService(RepositorioPostgres(get_connection_string()))
+def get_auth_service(
+    repositorio: RepositorioPostgres = Depends(get_repositorio),
+) -> AuthService:
+    return AuthService(repositorio)
 
 
-def get_relatorio_service() -> RelatorioService:
-    return RelatorioService(RepositorioPostgres(get_connection_string()))
+def get_missao_service(
+    repositorio: RepositorioPostgres = Depends(get_repositorio),
+) -> MissaoService:
+    return MissaoService(repositorio)
 
 
-def get_revisao_service() -> RevisaoService:
-    return RevisaoService(RepositorioPostgres(get_connection_string()))
+def get_relatorio_service(
+    repositorio: RepositorioPostgres = Depends(get_repositorio),
+) -> RelatorioService:
+    return RelatorioService(repositorio)
 
 
-def get_operacao_service() -> OperacaoService:
-    return OperacaoService(RepositorioPostgres(get_connection_string()))
+def get_revisao_service(
+    repositorio: RepositorioPostgres = Depends(get_repositorio),
+) -> RevisaoService:
+    return RevisaoService(repositorio)
 
 
-def get_sonho_service() -> SonhoService:
-    return SonhoService(RepositorioPostgres(get_connection_string()))
+def get_operacao_service(
+    repositorio: RepositorioPostgres = Depends(get_repositorio),
+) -> OperacaoService:
+    return OperacaoService(repositorio)
 
 
-def get_objetivo_service() -> ObjetivoService:
-    return ObjetivoService(RepositorioPostgres(get_connection_string()))
+def get_sonho_service(
+    repositorio: RepositorioPostgres = Depends(get_repositorio),
+) -> SonhoService:
+    return SonhoService(repositorio)
+
+
+def get_objetivo_service(
+    repositorio: RepositorioPostgres = Depends(get_repositorio),
+) -> ObjetivoService:
+    return ObjetivoService(repositorio)
 
 
 def get_current_user(

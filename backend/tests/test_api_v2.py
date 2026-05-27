@@ -139,6 +139,11 @@ class RepositorioV2Fake:
                 return usuario
         return None
 
+    def buscar_usuario_por_identificador(self, identificador):
+        return self.buscar_usuario_por_email(identificador) or self.buscar_usuario_por_usuario(
+            identificador
+        )
+
     def buscar_usuario_por_id(self, usuario_id):
         for usuario in self.usuarios:
             if usuario.usuario_id == usuario_id:

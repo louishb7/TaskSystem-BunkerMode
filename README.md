@@ -21,6 +21,7 @@ Backend em FastAPI para autenticação, criação de missões, listagem de miss�
 - `BUNKERMODE_API_PORT`
 - `BUNKERMODE_API_RELOAD`
 - `BUNKERMODE_CORS_ALLOW_ORIGINS`
+- `BUNKERMODE_AUTO_SCHEMA_INIT` opcional; em produção, deixe desativado.
 
 ## CORS
 A API aceita origens configuradas pela variável `BUNKERMODE_CORS_ALLOW_ORIGINS`.
