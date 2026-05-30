@@ -42,6 +42,18 @@ function formatPrazoContext(prazo) {
   return `${day}/${month}`;
 }
 
+function todayInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function defaultPrazo(initialPrazo) {
+  return initialPrazo || fromDateInputValue(todayInputValue());
+}
+
 // Converte DD-MM-AAAA -> AAAA-MM-DD para o input type="date".
 function toDateInputValue(prazo) {
   if (!prazo || typeof prazo !== "string") {
@@ -50,6 +62,9 @@ function toDateInputValue(prazo) {
   const parts = prazo.split("-");
   if (parts.length !== 3) {
     return "";
+  }
+  if (parts[0].length === 4) {
+    return prazo;
   }
   const [day, month, year] = parts;
   if (!day || !month || !year || year.length !== 4) {
@@ -71,6 +86,13 @@ function fromDateInputValue(value) {
   return `${day}-${month}-${year}`;
 }
 
+function toApiDateValue(value) {
+  if (!value || typeof value !== "string") {
+    return "";
+  }
+  return value.split("-")[0]?.length === 4 ? fromDateInputValue(value) : value;
+}
+
 export default function MissionForm({
   currentUser,
   editingMission,
@@ -89,7 +111,7 @@ export default function MissionForm({
   const [form, setForm] = useState({
     ...emptyForm,
     objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
-    prazo: initialPrazo || "",
+    prazo: defaultPrazo(initialPrazo),
   });
   const [objetivos, setObjetivos] = useState([]);
   const [objetivoStatus, setObjetivoStatus] = useState("");
@@ -103,7 +125,7 @@ export default function MissionForm({
       setForm({
         ...emptyForm,
         objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
-        prazo: initialPrazo || "",
+        prazo: defaultPrazo(initialPrazo),
       });
       return;
     }
@@ -114,8 +136,8 @@ export default function MissionForm({
       objetivo_id: editingMission.objetivo_id ? String(editingMission.objetivo_id) : "",
       recurrence_weekdays: Array.isArray(editingMission.recurrence_weekdays) ? editingMission.recurrence_weekdays : [],
       duration_type: editingMission.duration_type || "pontual",
-      recurrence_end_date: editingMission.recurrence_end_date || "",
-      prazo: editingMission.prazo || initialPrazo || "",
+      recurrence_end_date: toApiDateValue(editingMission.recurrence_end_date || ""),
+      prazo: toApiDateValue(editingMission.prazo || initialPrazo || ""),
     });
   }, [editingMission, initialObjetivoId, initialPrazo]);
 
@@ -154,6 +176,13 @@ export default function MissionForm({
     setForm((current) => ({
       ...current,
       recurrence_end_date: fromDateInputValue(event.target.value),
+    }));
+  }
+
+  function handlePrazoChange(event) {
+    setForm((current) => ({
+      ...current,
+      prazo: fromDateInputValue(event.target.value),
     }));
   }
 
@@ -218,6 +247,18 @@ export default function MissionForm({
             <span>DATA DEFINIDA</span>
             <strong>{prazoContext}</strong>
           </div>
+        )}
+
+        {!lockedInitialPrazo && (
+          <label>
+            Data de execução
+            <input
+              name="prazo"
+              onChange={handlePrazoChange}
+              type="date"
+              value={toDateInputValue(form.prazo)}
+            />
+          </label>
         )}
 
         <label>
