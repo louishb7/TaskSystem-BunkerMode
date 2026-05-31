@@ -251,6 +251,27 @@ class RepositorioPostgres:
             ADD COLUMN IF NOT EXISTS timezone_updated_at TIMESTAMPTZ NULL;
             """,
             """
+            CREATE TABLE IF NOT EXISTS missoes (
+                missao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                titulo TEXT NOT NULL,
+                prioridade INTEGER NOT NULL,
+                prazo DATE NULL,
+                instrucao TEXT NULL,
+                status TEXT NOT NULL,
+                is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP NULL,
+                failed_at TIMESTAMP NULL,
+                failure_reason_type TEXT NULL,
+                failure_reason TEXT NULL,
+                soldier_excuse TEXT NULL,
+                general_verdict TEXT NULL,
+                recurrence_weekdays TEXT NULL,
+                recurrence_end_date DATE NULL,
+                duration_type TEXT NULL
+            );
+            """,
+            """
             ALTER TABLE IF EXISTS missoes
             ALTER COLUMN instrucao DROP NOT NULL;
             """,

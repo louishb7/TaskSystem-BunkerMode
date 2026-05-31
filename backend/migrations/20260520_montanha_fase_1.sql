@@ -26,6 +26,26 @@ CREATE TABLE IF NOT EXISTS objetivos (
     concluded_at TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS missoes (
+    missao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    titulo TEXT NOT NULL,
+    prioridade INTEGER NOT NULL,
+    prazo DATE,
+    instrucao TEXT,
+    status TEXT NOT NULL,
+    is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    failed_at TIMESTAMP,
+    failure_reason_type TEXT,
+    failure_reason TEXT,
+    soldier_excuse TEXT,
+    general_verdict TEXT,
+    recurrence_weekdays TEXT,
+    recurrence_end_date DATE,
+    duration_type TEXT
+);
+
 ALTER TABLE missoes
 ADD COLUMN IF NOT EXISTS objetivo_id INTEGER REFERENCES objetivos(id) ON DELETE SET NULL;
 

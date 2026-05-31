@@ -154,6 +154,24 @@ def test_inicializar_schema_roda_uma_vez_por_connection_string(monkeypatch):
     )
 
 
+def test_inicializar_schema_cria_tabela_missoes(monkeypatch):
+    repositorio = rp.RepositorioPostgres("dbname=schema_missoes")
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    fake_psycopg = FakePsycopg(connection=connection)
+    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
+    monkeypatch.delenv("BUNKERMODE_ENV", raising=False)
+    monkeypatch.delenv("BUNKERMODE_AUTO_SCHEMA_INIT", raising=False)
+    rp.RepositorioPostgres._schemas_inicializados.discard("dbname=schema_missoes")
+
+    repositorio.inicializar_schema()
+
+    assert any(
+        "CREATE TABLE IF NOT EXISTS missoes" in str(query)
+        for query, _ in cursor.executions
+    )
+
+
 def test_repositorio_reutiliza_conexao_ate_fechar(monkeypatch):
     repositorio = rp.RepositorioPostgres("dbname=reuso")
     cursor = FakeCursor()
