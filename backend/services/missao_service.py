@@ -24,7 +24,9 @@ class MissaoService:
     def criar_missao(self, dados: dict, usuario=None) -> Missao:
         self._garantir_modo_general(usuario)
         responsavel_id = dados.get("responsavel_id") or getattr(usuario, "usuario_id", None)
+        self._garantir_vinculo_estrategico_unico(dados)
         self._garantir_objetivo_do_usuario(usuario, dados.get("objetivo_id"))
+        self._garantir_sonho_do_usuario(usuario, dados.get("sonho_id"))
         if self._deve_materializar_recorrencia(dados):
             return self._criar_missoes_recorrentes(dados, usuario=usuario, responsavel_id=responsavel_id)
 
@@ -36,6 +38,7 @@ class MissaoService:
             "instrucao": dados.get("instrucao"),
             "user_id": responsavel_id,
             "objetivo_id": dados.get("objetivo_id"),
+            "sonho_id": dados.get("sonho_id"),
             "recurrence_weekdays": dados.get("recurrence_weekdays"),
             "recurrence_end_date": dados.get("recurrence_end_date"),
             "duration_type": dados.get("duration_type"),
@@ -239,6 +242,13 @@ class MissaoService:
         if "objetivo_id" in dados:
             self._garantir_objetivo_do_usuario(usuario, dados["objetivo_id"])
             missao.objetivo_id = missao._validar_objetivo_id(dados["objetivo_id"])
+        if "sonho_id" in dados:
+            self._garantir_sonho_do_usuario(usuario, dados["sonho_id"])
+            missao.sonho_id = missao._validar_sonho_id(dados["sonho_id"])
+        self._garantir_vinculo_estrategico_unico({
+            "objetivo_id": missao.objetivo_id,
+            "sonho_id": missao.sonho_id,
+        })
         if "recurrence_weekdays" in dados:
             missao.recurrence_weekdays = missao._validar_recurrence_weekdays(dados["recurrence_weekdays"])
         if "recurrence_end_date" in dados:
@@ -488,6 +498,21 @@ class MissaoService:
         if objetivo is None or objetivo.usuario_id != usuario.usuario_id:
             raise ValueError("Objetivo vinculado não encontrado.")
 
+    def _garantir_sonho_do_usuario(self, usuario, sonho_id: int | None) -> None:
+        if sonho_id is None or usuario is None:
+            return
+        buscar_sonho = getattr(self.repositorio, "buscar_sonho_por_id", None)
+        if not callable(buscar_sonho):
+            return
+        sonho = buscar_sonho(sonho_id)
+        if sonho is None or sonho.usuario_id != usuario.usuario_id:
+            raise ValueError("Sonho vinculado não encontrado.")
+
+    @staticmethod
+    def _garantir_vinculo_estrategico_unico(dados: dict) -> None:
+        if dados.get("objetivo_id") is not None and dados.get("sonho_id") is not None:
+            raise ValueError("A ordem deve estar vinculada ao sonho ou ao objetivo, não aos dois.")
+
     def _registrar_auditoria(
         self,
         *,
@@ -507,7 +532,7 @@ class MissaoService:
 
     def _deve_materializar_recorrencia(self, dados: dict) -> bool:
         return bool(
-            dados.get("objetivo_id")
+            (dados.get("objetivo_id") or dados.get("sonho_id"))
             and dados.get("recurrence_weekdays")
             and dados.get("duration_type") in {"ate_objetivo", "prazo"}
         )
@@ -568,6 +593,7 @@ class MissaoService:
             instrucao=dados.get("instrucao"),
             user_id=responsavel_id,
             objetivo_id=dados.get("objetivo_id"),
+            sonho_id=dados.get("sonho_id"),
             recurrence_weekdays=dados.get("recurrence_weekdays"),
             recurrence_end_date=dados.get("recurrence_end_date"),
             duration_type=dados.get("duration_type"),
@@ -604,17 +630,19 @@ class MissaoService:
         chaves_existentes = self._chaves_recorrentes_existentes(base)
         materializou = False
         objetivos_validos = {}
+        sonhos_validos = {}
         recorrentes = [
             missao for missao in base
-            if missao.objetivo_id is not None
+            if (missao.objetivo_id is not None or missao.sonho_id is not None)
             and missao.recurrence_weekdays
             and missao.duration_type in {"ate_objetivo", "prazo"}
-            and self._objetivo_aceita_recorrencia(usuario, missao.objetivo_id, objetivos_validos)
+            and self._vinculo_aceita_recorrencia(usuario, missao, objetivos_validos, sonhos_validos)
         ]
         assinaturas_processadas = set()
         for missao in recorrentes:
             assinatura = (
                 missao.objetivo_id,
+                missao.sonho_id,
                 missao.titulo,
                 missao.instrucao,
                 tuple(missao.recurrence_weekdays or []),
@@ -639,6 +667,7 @@ class MissaoService:
                     "prioridade": missao.prioridade.value,
                     "instrucao": missao.instrucao,
                     "objetivo_id": missao.objetivo_id,
+                    "sonho_id": missao.sonho_id,
                     "recurrence_weekdays": missao.recurrence_weekdays,
                     "recurrence_end_date": (
                         None
@@ -659,6 +688,19 @@ class MissaoService:
                     materializou = True
         return materializou
 
+    def _vinculo_aceita_recorrencia(
+        self,
+        usuario,
+        missao: Missao,
+        objetivos_validos: dict | None = None,
+        sonhos_validos: dict | None = None,
+    ) -> bool:
+        if missao.objetivo_id is not None:
+            return self._objetivo_aceita_recorrencia(usuario, missao.objetivo_id, objetivos_validos)
+        if missao.sonho_id is not None:
+            return self._sonho_aceita_recorrencia(usuario, missao.sonho_id, sonhos_validos)
+        return False
+
     def _objetivo_aceita_recorrencia(self, usuario, objetivo_id: int, cache: dict | None = None) -> bool:
         if cache is not None and objetivo_id in cache:
             return cache[objetivo_id]
@@ -675,6 +717,24 @@ class MissaoService:
         ativo = status_valor == "ativo"
         if cache is not None:
             cache[objetivo_id] = ativo
+        return ativo
+
+    def _sonho_aceita_recorrencia(self, usuario, sonho_id: int, cache: dict | None = None) -> bool:
+        if cache is not None and sonho_id in cache:
+            return cache[sonho_id]
+        buscar_sonho = getattr(self.repositorio, "buscar_sonho_por_id", None)
+        if not callable(buscar_sonho):
+            return True
+        sonho = buscar_sonho(sonho_id)
+        if sonho is None or sonho.usuario_id != usuario.usuario_id:
+            if cache is not None:
+                cache[sonho_id] = False
+            return False
+        status = getattr(sonho, "status", "ativo")
+        status_valor = getattr(status, "value", status)
+        ativo = status_valor == "ativo"
+        if cache is not None:
+            cache[sonho_id] = ativo
         return ativo
 
     def _inicio_recorrencia(self, dados: dict) -> date:
@@ -721,19 +781,21 @@ class MissaoService:
             self._chave_recorrente(
                 {
                     "objetivo_id": missao.objetivo_id,
+                    "sonho_id": missao.sonho_id,
                     "titulo": missao.titulo,
                     "instrucao": missao.instrucao,
                 },
                 missao.due_date,
             )
             for missao in missoes
-            if missao.objetivo_id is not None and missao.due_date is not None
+            if (missao.objetivo_id is not None or missao.sonho_id is not None) and missao.due_date is not None
         }
 
     @staticmethod
     def _chave_recorrente(dados: dict, prazo: date) -> tuple:
         return (
             dados.get("objetivo_id"),
+            dados.get("sonho_id"),
             dados.get("titulo"),
             dados.get("instrucao"),
             prazo,

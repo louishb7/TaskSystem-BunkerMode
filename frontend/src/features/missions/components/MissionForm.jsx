@@ -7,6 +7,7 @@ const emptyForm = {
   titulo: "",
   instrucao: "",
   objetivo_id: "",
+  sonho_id: "",
   recurrence_weekdays: [],
   duration_type: "pontual",
   recurrence_end_date: "",
@@ -99,7 +100,10 @@ export default function MissionForm({
   initialObjetivoId,
   initialObjetivoTitulo,
   initialPrazo,
+  initialSonhoId,
+  initialSonhoTitulo,
   lockObjetivo = false,
+  lockSonho = false,
   loading,
   onCancel,
   onCreate,
@@ -111,9 +115,11 @@ export default function MissionForm({
   const [form, setForm] = useState({
     ...emptyForm,
     objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
+    sonho_id: initialSonhoId ? String(initialSonhoId) : emptyForm.sonho_id,
     prazo: defaultPrazo(initialPrazo),
   });
   const [objetivos, setObjetivos] = useState([]);
+  const [sonhos, setSonhos] = useState([]);
   const [objetivoStatus, setObjetivoStatus] = useState("");
 
   const isEditing = Boolean(editingMission);
@@ -125,6 +131,7 @@ export default function MissionForm({
       setForm({
         ...emptyForm,
         objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
+        sonho_id: initialSonhoId ? String(initialSonhoId) : emptyForm.sonho_id,
         prazo: defaultPrazo(initialPrazo),
       });
       return;
@@ -134,12 +141,13 @@ export default function MissionForm({
       titulo: editingMission.titulo || "",
       instrucao: editingMission.instrucao || "",
       objetivo_id: editingMission.objetivo_id ? String(editingMission.objetivo_id) : "",
+      sonho_id: editingMission.sonho_id ? String(editingMission.sonho_id) : "",
       recurrence_weekdays: Array.isArray(editingMission.recurrence_weekdays) ? editingMission.recurrence_weekdays : [],
       duration_type: editingMission.duration_type || "pontual",
       recurrence_end_date: toApiDateValue(editingMission.recurrence_end_date || ""),
       prazo: toApiDateValue(editingMission.prazo || initialPrazo || ""),
     });
-  }, [editingMission, initialObjetivoId, initialPrazo]);
+  }, [editingMission, initialObjetivoId, initialPrazo, initialSonhoId]);
 
   useEffect(() => {
     async function loadObjetivos() {
@@ -164,11 +172,42 @@ export default function MissionForm({
     loadObjetivos();
   }, [onUnauthorized, token]);
 
+  useEffect(() => {
+    async function loadSonhos() {
+      if (!token) {
+        return;
+      }
+
+      const result = await api.listSonhos(token);
+      if (onUnauthorized?.(result)) {
+        return;
+      }
+
+      if (!result.ok) {
+        setObjetivoStatus(getErrorMessage(result, "Não foi possível carregar vínculos estratégicos."));
+        return;
+      }
+
+      setSonhos((Array.isArray(result.data) ? result.data : []).filter((sonho) => sonho.status === "ativo"));
+    }
+
+    loadSonhos();
+  }, [onUnauthorized, token]);
+
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({
       ...current,
       [name]: name === "instrucao" ? value.slice(0, MISSION_INSTRUCTION_MAX_LENGTH) : value,
+    }));
+  }
+
+  function updateStrategicLink(event) {
+    const [type, id = ""] = event.target.value.split(":");
+    setForm((current) => ({
+      ...current,
+      objetivo_id: type === "objetivo" ? id : "",
+      sonho_id: type === "sonho" ? id : "",
     }));
   }
 
@@ -198,14 +237,16 @@ export default function MissionForm({
   function submit(event) {
     event.preventDefault();
     const linkedToObjective = Boolean(form.objetivo_id);
+    const linkedToSonho = Boolean(form.sonho_id);
     const payload = {
       titulo: form.titulo.trim(),
       instrucao: form.instrucao.trim(),
       objetivo_id: linkedToObjective ? Number(form.objetivo_id) : null,
+      sonho_id: linkedToSonho ? Number(form.sonho_id) : null,
       prazo: form.prazo ? form.prazo.trim() : null,
     };
 
-    if (linkedToObjective) {
+    if (linkedToObjective || linkedToSonho) {
       const isSingleOrder = form.duration_type === "pontual";
       payload.recurrence_weekdays = !isSingleOrder && form.recurrence_weekdays.length > 0 ? form.recurrence_weekdays : null;
       payload.duration_type = form.duration_type;
@@ -291,14 +332,28 @@ export default function MissionForm({
             <span>OBJETIVO VINCULADO</span>
             <strong>{initialObjetivoTitulo || "Objetivo selecionado"}</strong>
           </div>
+        ) : lockSonho ? (
+          <div className="deadline-context objective-context">
+            <span>SONHO VINCULADO</span>
+            <strong>{initialSonhoTitulo || "Sonho selecionado"}</strong>
+          </div>
         ) : (
           <label>
-            Objetivo
-            <select name="objetivo_id" onChange={updateField} value={form.objetivo_id}>
-              <option value="">Sem objetivo</option>
+            Vínculo estratégico
+            <select
+              name="strategic_link"
+              onChange={updateStrategicLink}
+              value={form.objetivo_id ? `objetivo:${form.objetivo_id}` : form.sonho_id ? `sonho:${form.sonho_id}` : ""}
+            >
+              <option value="">Apenas cronograma de caça</option>
+              {sonhos.map((sonho) => (
+                <option key={sonho.id} value={`sonho:${sonho.id}`}>
+                  {`Sonho: ${sonho.titulo}`}
+                </option>
+              ))}
               {objetivos.map((objetivo) => (
-                <option key={objetivo.id} value={objetivo.id}>
-                  {objetivo.titulo}
+                <option key={objetivo.id} value={`objetivo:${objetivo.id}`}>
+                  {`Objetivo: ${objetivo.titulo}`}
                 </option>
               ))}
             </select>
@@ -306,13 +361,13 @@ export default function MissionForm({
         )}
         {objetivoStatus && <p className="feedback error">{objetivoStatus}</p>}
 
-        {form.objetivo_id && (
+        {(form.objetivo_id || form.sonho_id) && (
           <div className="linked-mission-options">
             <label>
               Duração
               <select name="duration_type" onChange={updateField} value={form.duration_type}>
                 <option value="pontual">Ordem única</option>
-                <option value="ate_objetivo">Até atingir o objetivo</option>
+                <option value="ate_objetivo">{form.sonho_id ? "Até tomar o sonho" : "Até atingir o objetivo"}</option>
                 <option value="prazo">Prazo determinado</option>
               </select>
             </label>

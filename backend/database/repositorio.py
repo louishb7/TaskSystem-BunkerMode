@@ -344,6 +344,10 @@ class RepositorioPostgres:
             """,
             """
             ALTER TABLE IF EXISTS missoes
+            ADD COLUMN IF NOT EXISTS sonho_id INTEGER NULL REFERENCES sonhos(id) ON DELETE SET NULL;
+            """,
+            """
+            ALTER TABLE IF EXISTS missoes
             ADD COLUMN IF NOT EXISTS recurrence_weekdays TEXT NULL;
             """,
             """
@@ -473,6 +477,7 @@ class RepositorioPostgres:
         recurrence_weekdays = None
         recurrence_end_date = None
         duration_type = None
+        sonho_id = None
         if len(linha) == 7:
             (
                 missao_id,
@@ -678,6 +683,30 @@ class RepositorioPostgres:
                 recurrence_end_date,
                 duration_type,
             ) = linha
+        elif len(linha) == 21:
+            (
+                missao_id,
+                titulo,
+                prioridade,
+                prazo,
+                instrucao,
+                status,
+                is_pinned,
+                created_at,
+                completed_at,
+                failed_at,
+                failure_reason_type,
+                failure_reason,
+                soldier_excuse,
+                general_verdict,
+                operacao_id,
+                operacao_nome,
+                objetivo_id,
+                sonho_id,
+                recurrence_weekdays,
+                recurrence_end_date,
+                duration_type,
+            ) = linha
         elif len(linha) == 18:
             (
                 missao_id,
@@ -756,6 +785,7 @@ class RepositorioPostgres:
             operacao_id=operacao_id,
             operacao_nome=operacao_nome,
             objetivo_id=objetivo_id,
+            sonho_id=sonho_id,
             recurrence_weekdays=(
                 json.loads(recurrence_weekdays)
                 if isinstance(recurrence_weekdays, str) and recurrence_weekdays.strip()
@@ -950,7 +980,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
                                m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
                         FROM missoes m
                         LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -976,7 +1006,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
                                m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -1004,7 +1034,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
                                m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
                         FROM missoes m
                         LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -1032,9 +1062,9 @@ class RepositorioPostgres:
                         INSERT INTO missoes (
                             titulo, prioridade, prazo, instrucao, status, is_pinned,
                             created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict,
-                            objetivo_id, recurrence_weekdays, recurrence_end_date, duration_type
+                            objetivo_id, sonho_id, recurrence_weekdays, recurrence_end_date, duration_type
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
                         (
@@ -1052,6 +1082,7 @@ class RepositorioPostgres:
                             missao.soldier_excuse,
                             missao.general_verdict,
                             missao.objetivo_id,
+                            missao.sonho_id,
                             None if missao.recurrence_weekdays is None else json.dumps(missao.recurrence_weekdays),
                             missao.recurrence_end_date,
                             missao.duration_type,
@@ -1089,6 +1120,7 @@ class RepositorioPostgres:
                             soldier_excuse = %s,
                             general_verdict = %s,
                             objetivo_id = %s,
+                            sonho_id = %s,
                             recurrence_weekdays = %s,
                             recurrence_end_date = %s,
                             duration_type = %s
@@ -1109,6 +1141,7 @@ class RepositorioPostgres:
                             missao.soldier_excuse,
                             missao.general_verdict,
                             missao.objetivo_id,
+                            missao.sonho_id,
                             None if missao.recurrence_weekdays is None else json.dumps(missao.recurrence_weekdays),
                             missao.recurrence_end_date,
                             missao.duration_type,
@@ -1677,7 +1710,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
                                m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -1705,7 +1738,7 @@ class RepositorioPostgres:
                         """
                         SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
                                m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id,
+                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
                                m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
                         FROM missoes m
                         JOIN missao_contextos mc ON mc.missao_id = m.missao_id
@@ -1744,9 +1777,9 @@ class RepositorioPostgres:
                         INSERT INTO missoes (
                             titulo, prioridade, prazo, instrucao, status, is_pinned,
                             created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict,
-                            objetivo_id, recurrence_weekdays, recurrence_end_date, duration_type
+                            objetivo_id, sonho_id, recurrence_weekdays, recurrence_end_date, duration_type
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING missao_id;
                         """,
                         (
@@ -1764,6 +1797,7 @@ class RepositorioPostgres:
                             missao.soldier_excuse,
                             missao.general_verdict,
                             missao.objetivo_id,
+                            missao.sonho_id,
                             None if missao.recurrence_weekdays is None else json.dumps(missao.recurrence_weekdays),
                             missao.recurrence_end_date,
                             missao.duration_type,

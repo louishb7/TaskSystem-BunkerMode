@@ -40,6 +40,7 @@ class MissaoCreatePayload(BaseModel):
     instrucao: str | None = Field(default=None, max_length=MISSAO_INSTRUCAO_MAX_LENGTH)
     responsavel_id: int | None = None
     objetivo_id: int | None = None
+    sonho_id: int | None = None
     recurrence_weekdays: list[int] | None = None
     recurrence_end_date: str | None = None
     duration_type: Literal["pontual", "ate_objetivo", "prazo"] | None = None
@@ -52,6 +53,7 @@ class MissaoUpdatePayload(BaseModel):
     instrucao: str | None = Field(default=None, max_length=MISSAO_INSTRUCAO_MAX_LENGTH)
     status: str | None = None
     objetivo_id: int | None = None
+    sonho_id: int | None = None
     recurrence_weekdays: list[int] | None = None
     recurrence_end_date: str | None = None
     duration_type: Literal["pontual", "ate_objetivo", "prazo"] | None = None

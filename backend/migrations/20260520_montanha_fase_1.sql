@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS objetivos (
 ALTER TABLE missoes
 ADD COLUMN IF NOT EXISTS objetivo_id INTEGER REFERENCES objetivos(id) ON DELETE SET NULL;
 
+ALTER TABLE missoes
+ADD COLUMN IF NOT EXISTS sonho_id INTEGER REFERENCES sonhos(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS idx_missao_contextos_responsavel_id
 ON missao_contextos (responsavel_id)
 WHERE responsavel_id IS NOT NULL;

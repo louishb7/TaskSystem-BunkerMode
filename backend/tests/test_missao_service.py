@@ -154,6 +154,7 @@ class RepositorioFluxoFake:
     def __init__(self):
         self.missoes = []
         self.objetivos = {}
+        self.sonhos = {}
         self.contextos = {}
         self.auditoria_registrada = []
         self.revisoes = []
@@ -168,6 +169,9 @@ class RepositorioFluxoFake:
 
     def buscar_objetivo_por_id(self, objetivo_id):
         return self.objetivos.get(objetivo_id)
+
+    def buscar_sonho_por_id(self, sonho_id):
+        return self.sonhos.get(sonho_id)
 
     def carregar_dados(self):
         return list(self.missoes)
@@ -805,6 +809,79 @@ def test_criar_missao_sem_vinculo_nao_exige_arvore():
     assert missao.objetivo_id is None
     assert missao.recurrence_weekdays is None
     assert missao.duration_type is None
+
+
+def test_criar_missao_pontual_vinculada_ao_sonho_nao_exige_objetivo():
+    repositorio = RepositorioFluxoFake()
+    repositorio.sonhos[3] = SimpleNamespace(sonho_id=3, usuario_id=1, status="ativo")
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {
+            "titulo": "Pesquisar rota da campanha",
+            "prazo": "24-04-2026",
+            "sonho_id": 3,
+            "duration_type": "pontual",
+        },
+        usuario=usuario,
+    )
+
+    assert missao.sonho_id == 3
+    assert missao.objetivo_id is None
+    assert missao.recurrence_weekdays is None
+    assert missao.duration_type == "pontual"
+    assert [ordem.due_date for ordem in repositorio.missoes] == [date(2026, 4, 24)]
+
+
+def test_criar_missao_recorrente_vinculada_ao_sonho():
+    repositorio = RepositorioFluxoFake()
+    repositorio.sonhos[3] = SimpleNamespace(sonho_id=3, usuario_id=1, status="ativo")
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    missao = service.criar_missao(
+        {
+            "titulo": "Escrever página do livro",
+            "prazo": "24-04-2026",
+            "sonho_id": 3,
+            "recurrence_weekdays": [0, 2, 4],
+            "duration_type": "ate_objetivo",
+        },
+        usuario=usuario,
+    )
+
+    assert missao.sonho_id == 3
+    assert missao.objetivo_id is None
+    assert missao.recurrence_weekdays == [0, 2, 4]
+    assert [ordem.due_date for ordem in repositorio.missoes] == [
+        date(2026, 4, 24),
+        date(2026, 4, 27),
+        date(2026, 4, 29),
+        date(2026, 5, 1),
+        date(2026, 5, 4),
+        date(2026, 5, 6),
+    ]
+
+
+def test_missao_nao_pode_vincular_sonho_e_objetivo_ao_mesmo_tempo():
+    repositorio = RepositorioFluxoFake()
+    repositorio.objetivos[7] = SimpleNamespace(objetivo_id=7, usuario_id=1)
+    repositorio.sonhos[3] = SimpleNamespace(sonho_id=3, usuario_id=1, status="ativo")
+    service = criar_missao_service(repositorio)
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+
+    with pytest.raises(ValueError, match="sonho ou ao objetivo"):
+        service.criar_missao(
+            {
+                "titulo": "Misturar vínculos",
+                "prazo": "24-04-2026",
+                "objetivo_id": 7,
+                "sonho_id": 3,
+                "duration_type": "pontual",
+            },
+            usuario=usuario,
+        )
 
 
 def test_criar_missao_pontual_vinculada_a_objetivo_nao_vira_recorrencia():

@@ -67,6 +67,7 @@ class Missao:
         operacao_id=None,
         operacao_nome=None,
         objetivo_id=None,
+        sonho_id=None,
         recurrence_weekdays=None,
         recurrence_end_date=None,
         duration_type=None,
@@ -95,6 +96,7 @@ class Missao:
             "Nome da operação não pode ser vazio.",
         )
         self.objetivo_id = self._validar_objetivo_id(objetivo_id)
+        self.sonho_id = self._validar_sonho_id(sonho_id)
         self.recurrence_weekdays = self._validar_recurrence_weekdays(recurrence_weekdays)
         self.recurrence_end_date = self._validar_prazo(recurrence_end_date)
         self.duration_type = self._validar_duration_type(duration_type)
@@ -132,6 +134,7 @@ class Missao:
             "operacao_id": self.operacao_id,
             "operacao_nome": self.operacao_nome,
             "objetivo_id": self.objetivo_id,
+            "sonho_id": self.sonho_id,
             "recurrence_weekdays": self.recurrence_weekdays,
             "recurrence_end_date": None if self.recurrence_end_date is None else self.recurrence_end_date.isoformat(),
             "duration_type": self.duration_type,
@@ -455,6 +458,13 @@ class Missao:
         if not isinstance(objetivo_id, int) or objetivo_id < 1:
             raise ValueError("ID do objetivo da missão deve ser um inteiro positivo.")
         return objetivo_id
+
+    def _validar_sonho_id(self, sonho_id):
+        if sonho_id is None:
+            return None
+        if not isinstance(sonho_id, int) or sonho_id < 1:
+            raise ValueError("ID do sonho da missão deve ser um inteiro positivo.")
+        return sonho_id
 
     def _validar_prioridade(self, prioridade):
         if isinstance(prioridade, PrioridadeMissao):
