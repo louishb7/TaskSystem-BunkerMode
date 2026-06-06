@@ -25,3 +25,7 @@ class ObjetivoProgressoPayload(BaseModel):
 
 class ObjetivoStatusPayload(BaseModel):
     status: Literal["ativo", "concluido", "pausado", "abandonado"]
+
+
+class ObjetivoOrderPayload(BaseModel):
+    objetivo_ids: list[int] = Field(min_length=1)

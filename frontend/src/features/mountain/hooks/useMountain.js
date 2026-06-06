@@ -131,6 +131,11 @@ export function useMountain({ onUnauthorized, token }) {
       "Status atualizado.",
       "Não foi possível atualizar o status."
     ),
+    reorderObjetivos: (objetivoIds) => mutate(
+      () => api.reorderObjetivos(token, { objetivo_ids: objetivoIds }),
+      "Ordem dos objetivos atualizada.",
+      "Não foi possível reordenar os objetivos."
+    ),
     deleteObjetivo: (objetivoId) => mutate(
       () => api.deleteObjetivo(token, objetivoId),
       "Objetivo removido.",

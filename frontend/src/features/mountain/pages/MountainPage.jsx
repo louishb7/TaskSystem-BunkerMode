@@ -6,19 +6,6 @@ import ObjetivoList from "../components/ObjetivoList.jsx";
 import SonhoPanel from "../components/SonhoPanel.jsx";
 import { useMountain } from "../hooks/useMountain.js";
 
-function missionBelongsToMountain(mission) {
-  return Boolean(mission?.objetivo_id || mission?.sonho_id);
-}
-
-function calculateAverageProgress(objetivos = []) {
-  const activeObjetivos = objetivos.filter((objetivo) => objetivo.status === "ativo");
-  if (activeObjetivos.length === 0) {
-    return 0;
-  }
-  const total = activeObjetivos.reduce((sum, objetivo) => sum + Number(objetivo.progresso || 0), 0);
-  return Math.round(total / activeObjetivos.length);
-}
-
 export default function MountainPage({
   embedded = false,
   onClose,
@@ -27,43 +14,16 @@ export default function MountainPage({
 }) {
   const mountain = useMountain({ onUnauthorized, token });
   const busy = mountain.loading || mountain.mutating;
-  const sonhosAtivos = mountain.sonhos.filter((sonho) => sonho.status === "ativo");
-  const objetivosAtivos = mountain.objetivos.filter((objetivo) => objetivo.status === "ativo");
-  const missoesVinculadas = mountain.missions.filter(missionBelongsToMountain);
-  const progressoMedio = calculateAverageProgress(mountain.objetivos);
 
   const content = (
     <section className="mountain-page">
-      <div className="mountain-header">
-        <div>
-          <p className="section-kicker fire">A MONTANHA</p>
-          <h1>A Montanha Operacional</h1>
-          <p className="muted">Transforme direção em avanço concreto: Sonho, Objetivos e Missões conectados em uma única escalada.</p>
-        </div>
-        <div className="mountain-stat-grid" aria-label="Indicadores da Montanha">
-          <div className="mountain-stat-card">
-            <span>Sonhos ativos</span>
-            <strong>{sonhosAtivos.length}</strong>
-          </div>
-          <div className="mountain-stat-card">
-            <span>Objetivos ativos</span>
-            <strong>{objetivosAtivos.length}</strong>
-          </div>
-          <div className="mountain-stat-card">
-            <span>Missões vinculadas</span>
-            <strong>{missoesVinculadas.length}</strong>
-          </div>
-          <div className="mountain-stat-card">
-            <span>Progresso médio</span>
-            <strong>{progressoMedio}%</strong>
-          </div>
-        </div>
-        {onClose && (
+      {onClose && (
+        <div className="mountain-close-row">
           <button className="button secondary compact" type="button" onClick={onClose}>
             FECHAR
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <StatusNotice status={mountain.status} />
 
@@ -80,6 +40,7 @@ export default function MountainPage({
         onUpdateObjetivo={mountain.updateObjetivo}
         onUpdateObjetivoProgress={mountain.updateObjetivoProgresso}
         onUpdateObjetivoStatus={mountain.updateObjetivoStatus}
+        onReorderObjetivos={mountain.reorderObjetivos}
         onUpdate={mountain.updateSonho}
         sonhos={mountain.sonhos}
       />
@@ -94,6 +55,7 @@ export default function MountainPage({
         onUpdate={mountain.updateObjetivo}
         onUpdateProgress={mountain.updateObjetivoProgresso}
         onUpdateStatus={mountain.updateObjetivoStatus}
+        onReorder={mountain.reorderObjetivos}
         sonhos={mountain.sonhosAtivos}
       />
     </section>

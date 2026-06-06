@@ -27,6 +27,18 @@ def criar_objetivo(
         _raise_http_from_domain_error(erro)
 
 
+@router.patch("/objetivos/ordem")
+def reordenar_objetivos(
+    payload: ObjetivoOrderPayload,
+    usuario=Depends(get_current_user),
+    objetivo_service: ObjetivoService = Depends(get_objetivo_service),
+):
+    try:
+        return objetivo_service.reordenar_objetivos(usuario, payload.objetivo_ids)
+    except (PermissaoNegadaError, ValueError) as erro:
+        _raise_http_from_domain_error(erro)
+
+
 @router.patch("/objetivos/{objetivo_id}")
 def atualizar_objetivo(
     objetivo_id: int,
@@ -80,4 +92,3 @@ def deletar_objetivo(
         objetivo_service.deletar_objetivo(usuario, objetivo_id)
     except (PermissaoNegadaError, ValueError) as erro:
         _raise_http_from_domain_error(erro)
-

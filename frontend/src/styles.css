@@ -4823,7 +4823,12 @@ h3 {
 /* A Montanha: mapa de ascensão operacional. */
 .mountain-page {
   width: min(1220px, 100%);
-  gap: 18px;
+  gap: 12px;
+}
+
+.mountain-close-row {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .mountain-header {
@@ -5111,7 +5116,7 @@ h3 {
   display: none;
 }
 
-.mountain-camp-index {
+.mountain-objective-label {
   display: inline-flex;
   width: fit-content;
   margin: 0 0 6px;
@@ -5124,33 +5129,6 @@ h3 {
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-}
-
-.mountain-camp-mission-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  border-top: 1px solid var(--border-soft);
-  margin-top: 12px;
-  padding-top: 12px;
-}
-
-.mountain-camp-mission-summary span,
-.mountain-camp-mission-summary strong {
-  min-width: 0;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-lg);
-  background: rgba(0, 0, 0, 0.18);
-  padding: 8px;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 900;
-}
-
-.mountain-camp-mission-summary strong {
-  grid-column: 1 / -1;
-  color: var(--text);
-  overflow-wrap: anywhere;
 }
 
 .mountain-progress-strip,
@@ -5236,6 +5214,39 @@ h3 {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
 }
 
+.mountain-order-actions {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.mountain-order-actions .button {
+  min-height: 30px;
+  border-color: rgba(237, 237, 237, 0.12);
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  padding: 5px 7px;
+}
+
+.mountain-form-modal-card {
+  width: min(560px, 100%);
+}
+
+.mountain-form-modal-card .mission-form,
+.mountain-form-modal-card .objetivo-form-panel {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.mountain-form-modal-card .mission-form .section-heading {
+  margin-bottom: 10px;
+}
+
+.mountain-form-modal-card .mission-form textarea {
+  min-height: 76px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mountain-camp-card {
     transition: none;
@@ -5287,11 +5298,6 @@ h3 {
 }
 
 @media (max-width: 640px) {
-  .mountain-stat-grid,
-  .mountain-camp-mission-summary {
-    grid-template-columns: 1fr;
-  }
-
   .mountain-hero-summit {
     text-align: left;
   }

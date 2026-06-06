@@ -8,6 +8,7 @@ from backend.schemas.missao import (
 )
 from backend.schemas.objetivo import (
     ObjetivoCreatePayload,
+    ObjetivoOrderPayload,
     ObjetivoProgressoPayload,
     ObjetivoStatusPayload,
     ObjetivoUpdatePayload,

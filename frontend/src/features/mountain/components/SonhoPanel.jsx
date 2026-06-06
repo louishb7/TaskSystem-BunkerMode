@@ -40,6 +40,16 @@ function missionStatusLabel(mission) {
     : mission?.status_label || mission?.status_code || "Pendente";
 }
 
+function sortObjetivosByOrder(objetivos = []) {
+  return [...objetivos].sort((a, b) => {
+    const orderDiff = Number(a.order_index || 0) - Number(b.order_index || 0);
+    if (orderDiff !== 0) {
+      return orderDiff;
+    }
+    return Number(a.id || 0) - Number(b.id || 0);
+  });
+}
+
 function summarizeDirectSonhoMissions(missions) {
   const groups = new Map();
   missions.forEach((mission) => {
@@ -68,6 +78,7 @@ export default function SonhoPanel({
   objetivos,
   onDeleteObjetivo,
   onPromote,
+  onReorderObjetivos,
   onUpdateObjetivo,
   onUpdateObjetivoProgress,
   onUpdateObjetivoStatus,
@@ -187,7 +198,17 @@ export default function SonhoPanel({
   }
 
   function renderObjetivosDoSonho(sonho) {
-    const vinculados = objetivosPorSonho[String(sonho.id)] || [];
+    const vinculados = sortObjetivosByOrder(objetivosPorSonho[String(sonho.id)] || []);
+    function moveObjetivo(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= vinculados.length) {
+        return;
+      }
+      const reordered = [...vinculados];
+      [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+      onReorderObjetivos?.(reordered.map((objetivo) => objetivo.id));
+    }
+
     return (
       <div className="sonho-objective-branch mountain-ascent-path">
         {vinculados.length > 0 && <div className="branch-line mountain-path-line" aria-hidden="true" />}
@@ -196,7 +217,6 @@ export default function SonhoPanel({
             {vinculados.map((objetivo, index) => (
               <div className="mountain-camp-node" key={objetivo.id}>
                 <ObjetivoCard
-                  campIndex={index + 1}
                   loading={loading}
                   missions={missionsPorObjetivo[String(objetivo.id)] || []}
                   objetivo={objetivo}
@@ -205,6 +225,8 @@ export default function SonhoPanel({
                   onUpdate={onUpdateObjetivo}
                   onUpdateProgress={onUpdateObjetivoProgress}
                   onUpdateStatus={onUpdateObjetivoStatus}
+                  onMoveDown={index < vinculados.length - 1 ? () => moveObjetivo(index, 1) : null}
+                  onMoveUp={index > 0 ? () => moveObjetivo(index, -1) : null}
                   sonhos={sonhos}
                 />
               </div>

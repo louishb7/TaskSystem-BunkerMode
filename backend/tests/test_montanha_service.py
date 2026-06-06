@@ -56,6 +56,7 @@ class RepositorioMontanhaFake:
 
     def criar_objetivo(self, objetivo):
         objetivo.atualizar_objetivo_id(self.proximo_objetivo_id)
+        objetivo.atualizar_order_index(self.proximo_objetivo_id)
         self.proximo_objetivo_id += 1
         self.objetivos.append(objetivo)
 
@@ -72,7 +73,16 @@ class RepositorioMontanhaFake:
         return None
 
     def listar_objetivos_por_usuario(self, usuario_id):
-        return [objetivo for objetivo in self.objetivos if objetivo.usuario_id == usuario_id]
+        return sorted(
+            [objetivo for objetivo in self.objetivos if objetivo.usuario_id == usuario_id],
+            key=lambda objetivo: (objetivo.order_index, objetivo.objetivo_id),
+        )
+
+    def atualizar_ordem_objetivos(self, usuario_id, objetivo_ids):
+        for indice, objetivo_id in enumerate(objetivo_ids, start=1):
+            objetivo = self.buscar_objetivo_por_id(objetivo_id)
+            if objetivo and objetivo.usuario_id == usuario_id:
+                objetivo.atualizar_order_index(indice)
 
     def deletar_objetivo(self, objetivo_id, usuario_id):
         self.objetivos = [
@@ -182,3 +192,18 @@ def test_atualizar_status_concluido_registra_concluded_at():
 
     assert atualizado["status"] == "concluido"
     assert atualizado["concluded_at"] == INSTANTE_TESTE.isoformat()
+
+
+def test_reordenar_objetivos_persiste_ordem_manual():
+    repo = RepositorioMontanhaFake()
+    primeiro = criar_objetivo(repo)
+    segundo = criar_objetivo(repo)
+
+    payload = objetivo_service(repo).reordenar_objetivos(
+        usuario_general(),
+        [segundo.objetivo_id, primeiro.objetivo_id],
+    )
+
+    assert [objetivo["id"] for objetivo in payload] == [segundo.objetivo_id, primeiro.objetivo_id]
+    assert repo.buscar_objetivo_por_id(segundo.objetivo_id).order_index == 1
+    assert repo.buscar_objetivo_por_id(primeiro.objetivo_id).order_index == 2

@@ -22,6 +22,7 @@ class Objetivo:
         data_alvo=None,
         progresso=0,
         status=StatusObjetivo.ATIVO,
+        order_index=0,
         created_at=None,
         updated_at=None,
         concluded_at=None,
@@ -34,6 +35,7 @@ class Objetivo:
         self.data_alvo = self._validar_data(data_alvo, "Data alvo do objetivo inválida.")
         self.progresso = self._validar_progresso(progresso)
         self.status = self._validar_status(status)
+        self.order_index = self._validar_order_index(order_index)
         self.created_at = self._validar_datetime(created_at, "Data de criação do objetivo inválida.", default_now=True)
         self.updated_at = self._validar_datetime(updated_at, "Data de atualização do objetivo inválida.", default_now=True)
         self.concluded_at = self._validar_datetime(concluded_at, "Data de conclusão do objetivo inválida.")
@@ -52,6 +54,12 @@ class Objetivo:
             self.sonho_id = self._validar_id(payload["sonho_id"], "Sonho do objetivo inválido.", obrigatorio=False)
         if "progresso" in payload:
             self.progresso = self._validar_progresso(payload["progresso"])
+        if "order_index" in payload:
+            self.order_index = self._validar_order_index(payload["order_index"])
+        self.updated_at = self._validar_datetime(instante, "Data de atualização do objetivo inválida.", default_now=True)
+
+    def atualizar_order_index(self, order_index, instante=None):
+        self.order_index = self._validar_order_index(order_index)
         self.updated_at = self._validar_datetime(instante, "Data de atualização do objetivo inválida.", default_now=True)
 
     def atualizar_progresso(self, progresso, instante=None):
@@ -76,6 +84,7 @@ class Objetivo:
             "data_alvo": None if self.data_alvo is None else self.data_alvo.isoformat(),
             "progresso": self.progresso,
             "status": self.status.value,
+            "order_index": self.order_index,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "concluded_at": None if self.concluded_at is None else self.concluded_at.isoformat(),
@@ -133,6 +142,14 @@ class Objetivo:
     def _validar_progresso(valor):
         if not isinstance(valor, int) or valor < 0 or valor > 100:
             raise ValueError("Progresso do objetivo deve estar entre 0 e 100.")
+        return valor
+
+    @staticmethod
+    def _validar_order_index(valor):
+        if valor is None:
+            return 0
+        if not isinstance(valor, int) or valor < 0:
+            raise ValueError("Ordem do objetivo deve ser um inteiro não negativo.")
         return valor
 
     @staticmethod

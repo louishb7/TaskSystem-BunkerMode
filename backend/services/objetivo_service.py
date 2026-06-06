@@ -22,6 +22,12 @@ class ObjetivoService:
         self._garantir_modo_general(usuario)
         self._garantir_sonho_do_usuario(usuario, payload.get("sonho_id"))
         agora = self._now()
+        calcular_order_index = getattr(self.repositorio, "proximo_order_index_objetivo", None)
+        proximo_order_index = (
+            calcular_order_index(usuario.usuario_id, payload.get("sonho_id"))
+            if callable(calcular_order_index)
+            else 0
+        )
         objetivo = Objetivo(
             usuario_id=usuario.usuario_id,
             sonho_id=payload.get("sonho_id"),
@@ -29,6 +35,7 @@ class ObjetivoService:
             descricao=payload.get("descricao"),
             data_alvo=payload.get("data_alvo"),
             progresso=payload.get("progresso", 0),
+            order_index=proximo_order_index,
             created_at=agora,
             updated_at=agora,
         )
@@ -56,6 +63,18 @@ class ObjetivoService:
         objetivo.atualizar_status(status, instante=self._now())
         self.repositorio.atualizar_objetivo(objetivo)
         return objetivo.to_dict()
+
+    def reordenar_objetivos(self, usuario, objetivo_ids: list[int]) -> list[dict]:
+        self._garantir_modo_general(usuario)
+        if len(set(objetivo_ids)) != len(objetivo_ids):
+            raise ValueError("Lista de objetivos contém duplicidade.")
+        objetivos = [self._buscar_objetivo_do_usuario(usuario, objetivo_id) for objetivo_id in objetivo_ids]
+        sonho_ids = {objetivo.sonho_id for objetivo in objetivos}
+        if len(sonho_ids) > 1:
+            raise ValueError("Reordene apenas objetivos da mesma rota.")
+
+        self.repositorio.atualizar_ordem_objetivos(usuario.usuario_id, objetivo_ids)
+        return self.listar_objetivos(usuario)
 
     def deletar_objetivo(self, usuario, objetivo_id: int) -> None:
         self._garantir_modo_general(usuario)

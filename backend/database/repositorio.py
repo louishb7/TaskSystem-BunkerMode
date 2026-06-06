@@ -354,10 +354,29 @@ class RepositorioPostgres:
                 data_alvo DATE NULL,
                 progresso INTEGER NOT NULL DEFAULT 0 CHECK (progresso >= 0 AND progresso <= 100),
                 status VARCHAR(20) NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'concluido', 'pausado', 'abandonado')),
+                order_index INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 concluded_at TIMESTAMP NULL
             );
+            """,
+            """
+            ALTER TABLE IF EXISTS objetivos
+            ADD COLUMN IF NOT EXISTS order_index INTEGER NOT NULL DEFAULT 0;
+            """,
+            """
+            UPDATE objetivos AS objetivo
+            SET order_index = ordenado.position
+            FROM (
+                SELECT id,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY usuario_id, sonho_id
+                           ORDER BY created_at ASC, id ASC
+                       ) AS position
+                FROM objetivos
+                WHERE order_index = 0
+            ) AS ordenado
+            WHERE objetivo.id = ordenado.id;
             """,
             """
             ALTER TABLE IF EXISTS missoes
@@ -974,6 +993,7 @@ class RepositorioPostgres:
             data_alvo,
             progresso,
             status,
+            order_index,
             created_at,
             updated_at,
             concluded_at,
@@ -987,6 +1007,7 @@ class RepositorioPostgres:
             data_alvo=data_alvo,
             progresso=progresso,
             status=status,
+            order_index=order_index,
             created_at=created_at,
             updated_at=updated_at,
             concluded_at=concluded_at,
@@ -2032,9 +2053,9 @@ class RepositorioPostgres:
                         """
                         INSERT INTO objetivos (
                             usuario_id, sonho_id, titulo, descricao, data_alvo, progresso,
-                            status, created_at, updated_at, concluded_at
+                            status, order_index, created_at, updated_at, concluded_at
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING id;
                         """,
                         (
@@ -2045,6 +2066,7 @@ class RepositorioPostgres:
                             objetivo.data_alvo,
                             objetivo.progresso,
                             objetivo.status.value,
+                            objetivo.order_index,
                             objetivo.created_at,
                             objetivo.updated_at,
                             objetivo.concluded_at,
@@ -2071,6 +2093,7 @@ class RepositorioPostgres:
                             data_alvo = %s,
                             progresso = %s,
                             status = %s,
+                            order_index = %s,
                             updated_at = %s,
                             concluded_at = %s
                         WHERE id = %s AND usuario_id = %s;
@@ -2082,6 +2105,7 @@ class RepositorioPostgres:
                             objetivo.data_alvo,
                             objetivo.progresso,
                             objetivo.status.value,
+                            objetivo.order_index,
                             objetivo.updated_at,
                             objetivo.concluded_at,
                             objetivo.objetivo_id,
@@ -2104,7 +2128,7 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT id, usuario_id, sonho_id, titulo, descricao, data_alvo, progresso,
-                               status, created_at, updated_at, concluded_at
+                               status, order_index, created_at, updated_at, concluded_at
                         FROM objetivos
                         WHERE id = %s;
                         """,
@@ -2125,10 +2149,10 @@ class RepositorioPostgres:
                     cursor.execute(
                         """
                         SELECT id, usuario_id, sonho_id, titulo, descricao, data_alvo, progresso,
-                               status, created_at, updated_at, concluded_at
+                               status, order_index, created_at, updated_at, concluded_at
                         FROM objetivos
                         WHERE usuario_id = %s
-                        ORDER BY status ASC, data_alvo NULLS LAST, updated_at DESC, id DESC;
+                        ORDER BY order_index ASC, created_at ASC, id ASC;
                         """,
                         (usuario_id,),
                     )
@@ -2138,6 +2162,59 @@ class RepositorioPostgres:
         except psycopg.Error as erro:
             raise LeituraRepositorioError("Erro ao listar objetivos no banco de dados.") from erro
         return [self._reconstruir_objetivo(linha) for linha in linhas]
+
+    def proximo_order_index_objetivo(self, usuario_id: int, sonho_id: int | None) -> int:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    if sonho_id is None:
+                        cursor.execute(
+                            """
+                            SELECT COALESCE(MAX(order_index), 0) + 1
+                            FROM objetivos
+                            WHERE usuario_id = %s AND sonho_id IS NULL;
+                            """,
+                            (usuario_id,),
+                        )
+                    else:
+                        cursor.execute(
+                            """
+                            SELECT COALESCE(MAX(order_index), 0) + 1
+                            FROM objetivos
+                            WHERE usuario_id = %s AND sonho_id = %s;
+                            """,
+                            (usuario_id, sonho_id),
+                        )
+                    proximo = cursor.fetchone()[0]
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError("Erro ao calcular ordem do objetivo.") from erro
+        return int(proximo)
+
+    def atualizar_ordem_objetivos(self, usuario_id: int, objetivo_ids: list[int]) -> None:
+        self.inicializar_schema()
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    for indice, objetivo_id in enumerate(objetivo_ids, start=1):
+                        cursor.execute(
+                            """
+                            UPDATE objetivos
+                            SET order_index = %s,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE id = %s AND usuario_id = %s;
+                            """,
+                            (indice, objetivo_id, usuario_id),
+                        )
+                        if cursor.rowcount == 0:
+                            raise EscritaRepositorioError(f"Objetivo {objetivo_id} não encontrado para reordenação.")
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError("Erro ao reordenar objetivos no banco de dados.") from erro
 
     def deletar_objetivo(self, objetivo_id: int, usuario_id: int) -> None:
         self.inicializar_schema()

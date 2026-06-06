@@ -211,6 +211,9 @@ export const api = {
   updateObjetivoStatus(token, objetivoId, payload) {
     return request(`/objetivos/${objetivoId}/status`, { token, method: "PATCH", body: payload });
   },
+  reorderObjetivos(token, payload) {
+    return request("/objetivos/ordem", { token, method: "PATCH", body: payload });
+  },
   deleteObjetivo(token, objetivoId) {
     return request(`/objetivos/${objetivoId}`, { token, method: "DELETE" });
   },

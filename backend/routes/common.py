@@ -10,6 +10,7 @@ from backend.schemas import (
     MissaoUpdatePayload,
     NomeGeneralPayload,
     ObjetivoCreatePayload,
+    ObjetivoOrderPayload,
     ObjetivoProgressoPayload,
     ObjetivoStatusPayload,
     ObjetivoUpdatePayload,
