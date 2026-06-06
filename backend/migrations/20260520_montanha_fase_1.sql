@@ -1,3 +1,17 @@
+CREATE TABLE IF NOT EXISTS usuarios (
+    usuario_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    usuario TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    senha_hash TEXT NOT NULL,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    nome_general TEXT NULL,
+    active_mode TEXT NOT NULL DEFAULT 'general',
+    planning_window TEXT NOT NULL DEFAULT 'night',
+    timezone TEXT NOT NULL DEFAULT 'America/Recife',
+    emergency_unlock_date DATE NULL,
+    timezone_updated_at TIMESTAMPTZ NULL
+);
+
 CREATE TABLE IF NOT EXISTS sonhos (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
@@ -70,6 +84,21 @@ ALTER COLUMN instrucao DROP NOT NULL;
 ALTER TABLE IF EXISTS missoes
 ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
 
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'missoes' AND column_name = 'is_decided'
+    ) THEN
+        UPDATE missoes
+        SET is_pinned = TRUE
+        WHERE is_decided = TRUE;
+    END IF;
+END $$;
+
+ALTER TABLE IF EXISTS missoes
+DROP COLUMN IF EXISTS is_decided;
+
 ALTER TABLE IF EXISTS missoes
 ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
@@ -87,6 +116,10 @@ ADD COLUMN IF NOT EXISTS failure_reason TEXT NULL;
 
 ALTER TABLE IF EXISTS missoes
 ADD COLUMN IF NOT EXISTS soldier_excuse TEXT NULL;
+
+UPDATE missoes
+SET failure_reason = soldier_excuse
+WHERE failure_reason IS NULL AND soldier_excuse IS NOT NULL;
 
 ALTER TABLE IF EXISTS missoes
 ADD COLUMN IF NOT EXISTS general_verdict TEXT NULL;
@@ -123,6 +156,23 @@ CREATE TABLE IF NOT EXISTS operacoes (
 
 ALTER TABLE IF EXISTS operacoes
 ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'operacoes' AND column_name = 'is_decided'
+    ) THEN
+        UPDATE operacoes
+        SET is_pinned = TRUE
+        WHERE is_decided = TRUE;
+    END IF;
+END $$;
+
+ALTER TABLE IF EXISTS operacoes
+DROP COLUMN IF EXISTS is_decided;
+
+DROP TABLE IF EXISTS operational_day_overrides;
 
 CREATE TABLE IF NOT EXISTS missao_contextos (
     missao_id INTEGER PRIMARY KEY REFERENCES missoes(missao_id) ON DELETE CASCADE,

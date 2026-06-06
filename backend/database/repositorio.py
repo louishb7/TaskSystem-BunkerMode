@@ -178,6 +178,10 @@ class RepositorioPostgres:
             "observacao",
         },
     }
+    _indices_obrigatorios = {
+        "idx_missao_contextos_responsavel_id",
+        "idx_missao_contextos_operacao_dia",
+    }
 
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
@@ -611,6 +615,16 @@ class RepositorioPostgres:
                         (list(self._schema_obrigatorio.keys()),),
                     )
                     linhas = cursor.fetchall()
+                    cursor.execute(
+                        """
+                        SELECT indexname
+                        FROM pg_indexes
+                        WHERE schemaname = 'public'
+                          AND indexname = ANY(%s);
+                        """,
+                        (list(self._indices_obrigatorios),),
+                    )
+                    indices = {linha[0] for linha in cursor.fetchall()}
         except ErroRepositorio:
             raise
         except psycopg.Error as erro:
@@ -629,10 +643,178 @@ class RepositorioPostgres:
             if faltantes:
                 pendencias[tabela] = faltantes
 
+        indices_faltantes = sorted(self._indices_obrigatorios - indices)
+        if indices_faltantes:
+            pendencias["indices"] = indices_faltantes
+
         return {
             "status": "ok" if not pendencias else "incompleto",
             "schema_ok": not pendencias,
             "pendencias": pendencias,
+        }
+
+    def auditar_integridade(self) -> dict:
+        schema = self.verificar_schema()
+        if not schema["schema_ok"]:
+            return {
+                "status": "incompleto",
+                "integridade_ok": False,
+                "pendencias": {"schema": schema["pendencias"]},
+                "contagens": {},
+            }
+        consultas = {
+            "missoes_sem_contexto": """
+                SELECT COUNT(*)
+                FROM missoes m
+                LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
+                WHERE mc.missao_id IS NULL;
+            """,
+            "contextos_sem_missao": """
+                SELECT COUNT(*)
+                FROM missao_contextos mc
+                LEFT JOIN missoes m ON m.missao_id = mc.missao_id
+                WHERE m.missao_id IS NULL;
+            """,
+            "contextos_sem_responsavel": """
+                SELECT COUNT(*)
+                FROM missao_contextos
+                WHERE responsavel_id IS NULL;
+            """,
+            "missoes_com_objetivo_inexistente": """
+                SELECT COUNT(*)
+                FROM missoes m
+                LEFT JOIN objetivos o ON o.id = m.objetivo_id
+                WHERE m.objetivo_id IS NOT NULL AND o.id IS NULL;
+            """,
+            "missoes_com_sonho_inexistente": """
+                SELECT COUNT(*)
+                FROM missoes m
+                LEFT JOIN sonhos s ON s.id = m.sonho_id
+                WHERE m.sonho_id IS NOT NULL AND s.id IS NULL;
+            """,
+            "objetivos_com_sonho_inexistente": """
+                SELECT COUNT(*)
+                FROM objetivos o
+                LEFT JOIN sonhos s ON s.id = o.sonho_id
+                WHERE o.sonho_id IS NOT NULL AND s.id IS NULL;
+            """,
+            "operacoes_sem_usuario": """
+                SELECT COUNT(*)
+                FROM operacoes o
+                LEFT JOIN usuarios u ON u.usuario_id = o.usuario_id
+                WHERE u.usuario_id IS NULL;
+            """,
+            "sonhos_sem_usuario": """
+                SELECT COUNT(*)
+                FROM sonhos s
+                LEFT JOIN usuarios u ON u.usuario_id = s.usuario_id
+                WHERE u.usuario_id IS NULL;
+            """,
+            "objetivos_sem_usuario": """
+                SELECT COUNT(*)
+                FROM objetivos o
+                LEFT JOIN usuarios u ON u.usuario_id = o.usuario_id
+                WHERE u.usuario_id IS NULL;
+            """,
+        }
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    resultado = {}
+                    for chave, consulta in consultas.items():
+                        cursor.execute(consulta)
+                        resultado[chave] = cursor.fetchone()[0]
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao auditar integridade do banco de dados."
+            ) from erro
+
+        pendencias = {
+            chave: valor
+            for chave, valor in resultado.items()
+            if valor
+        }
+        return {
+            "status": "ok" if not pendencias else "inconsistente",
+            "integridade_ok": not pendencias,
+            "pendencias": pendencias,
+            "contagens": resultado,
+        }
+
+    def reparar_integridade_segura(self) -> dict:
+        schema = self.verificar_schema()
+        if not schema["schema_ok"]:
+            return {
+                "status": "incompleto",
+                "correcoes": {},
+                "auditoria": {
+                    "status": "incompleto",
+                    "integridade_ok": False,
+                    "pendencias": {"schema": schema["pendencias"]},
+                    "contagens": {},
+                },
+                "pendencias_manuais": {"schema": schema["pendencias"]},
+            }
+        comandos = {
+            "contextos_sem_missao": """
+                DELETE FROM missao_contextos mc
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM missoes m WHERE m.missao_id = mc.missao_id
+                );
+            """,
+            "missoes_com_objetivo_inexistente": """
+                UPDATE missoes m
+                SET objetivo_id = NULL
+                WHERE objetivo_id IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM objetivos o WHERE o.id = m.objetivo_id
+                  );
+            """,
+            "missoes_com_sonho_inexistente": """
+                UPDATE missoes m
+                SET sonho_id = NULL
+                WHERE sonho_id IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM sonhos s WHERE s.id = m.sonho_id
+                  );
+            """,
+            "objetivos_com_sonho_inexistente": """
+                UPDATE objetivos o
+                SET sonho_id = NULL
+                WHERE sonho_id IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM sonhos s WHERE s.id = o.sonho_id
+                  );
+            """,
+        }
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    correcoes = {}
+                    for chave, comando in comandos.items():
+                        cursor.execute(comando)
+                        correcoes[chave] = cursor.rowcount
+                conexao.commit()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise EscritaRepositorioError(
+                "Erro ao reparar integridade segura do banco de dados."
+            ) from erro
+
+        auditoria = self.auditar_integridade()
+        pendencias_manuais = {
+            chave: valor
+            for chave, valor in auditoria["pendencias"].items()
+            if chave not in comandos
+        }
+        return {
+            "status": "ok" if not pendencias_manuais else "pendencias_manuais",
+            "correcoes": correcoes,
+            "auditoria": auditoria,
+            "pendencias_manuais": pendencias_manuais,
         }
 
     def _reconstruir_missao(self, linha: tuple) -> Missao:
@@ -1324,9 +1506,18 @@ class RepositorioPostgres:
             ) from erro
 
     def remover_missao(self, missao_id: int) -> None:
+        self.inicializar_schema()
         try:
             with self._conectar() as conexao:
                 with conexao.cursor() as cursor:
+                    for tabela_auxiliar in ("auditoria_eventos", "missao_contextos"):
+                        try:
+                            cursor.execute(
+                                f"DELETE FROM {tabela_auxiliar} WHERE missao_id = %s;",
+                                (missao_id,),
+                            )
+                        except psycopg.Error:
+                            pass
                     cursor.execute(
                         "DELETE FROM missoes WHERE missao_id = %s;",
                         (missao_id,),
@@ -1335,15 +1526,6 @@ class RepositorioPostgres:
                         raise MissaoNaoPersistidaError(
                             f"Missão {missao_id} não encontrada para remoção."
                         )
-
-                    for tabela_auxiliar in ("missao_contextos", "auditoria_eventos"):
-                        try:
-                            cursor.execute(
-                                f"DELETE FROM {tabela_auxiliar} WHERE missao_id = %s;",
-                                (missao_id,),
-                            )
-                        except psycopg.Error:
-                            pass
                 conexao.commit()
         except ErroRepositorio:
             raise
