@@ -13,6 +13,8 @@ def test_migration_montanha_inclui_dependencias_de_leitura_de_missoes():
 
     trechos_obrigatorios = [
         "ADD COLUMN IF NOT EXISTS is_pinned",
+        "ADD COLUMN IF NOT EXISTS planning_window",
+        "ADD COLUMN IF NOT EXISTS timezone",
         "ADD COLUMN IF NOT EXISTS objetivo_id",
         "ADD COLUMN IF NOT EXISTS sonho_id",
         "ADD COLUMN IF NOT EXISTS recurrence_weekdays",
@@ -22,6 +24,8 @@ def test_migration_montanha_inclui_dependencias_de_leitura_de_missoes():
         "CREATE TABLE IF NOT EXISTS missao_contextos",
         "ADD COLUMN IF NOT EXISTS operacao_id",
         "ADD COLUMN IF NOT EXISTS operacao_dia",
+        "CREATE TABLE IF NOT EXISTS auditoria_eventos",
+        "CREATE TABLE IF NOT EXISTS revisoes_semanais",
         "idx_missao_contextos_responsavel_id",
     ]
 

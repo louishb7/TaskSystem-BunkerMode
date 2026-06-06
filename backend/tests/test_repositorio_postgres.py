@@ -172,6 +172,27 @@ def test_inicializar_schema_cria_tabela_missoes(monkeypatch):
     )
 
 
+def test_verificar_schema_reporta_colunas_faltantes(monkeypatch):
+    repositorio = rp.RepositorioPostgres("dbname=schema_check")
+    cursor = FakeCursor(
+        fetchall_result=[
+            ("usuarios", "usuario_id"),
+            ("usuarios", "usuario"),
+            ("missoes", "missao_id"),
+        ]
+    )
+    connection = FakeConnection(cursor)
+    fake_psycopg = FakePsycopg(connection=connection)
+    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
+
+    resultado = repositorio.verificar_schema()
+
+    assert resultado["status"] == "incompleto"
+    assert resultado["schema_ok"] is False
+    assert "email" in resultado["pendencias"]["usuarios"]
+    assert "titulo" in resultado["pendencias"]["missoes"]
+
+
 def test_repositorio_reutiliza_conexao_ate_fechar(monkeypatch):
     repositorio = rp.RepositorioPostgres("dbname=reuso")
     cursor = FakeCursor()

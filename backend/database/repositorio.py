@@ -74,6 +74,110 @@ class RepositorioPostgres:
     _schemas_inicializados = set()
     _shared_connections = {}
     _shared_lock = threading.RLock()
+    _schema_obrigatorio = {
+        "usuarios": {
+            "usuario_id",
+            "usuario",
+            "email",
+            "senha_hash",
+            "ativo",
+            "nome_general",
+            "active_mode",
+            "planning_window",
+            "timezone",
+            "emergency_unlock_date",
+            "timezone_updated_at",
+        },
+        "missoes": {
+            "missao_id",
+            "titulo",
+            "prioridade",
+            "prazo",
+            "instrucao",
+            "status",
+            "is_pinned",
+            "created_at",
+            "completed_at",
+            "failed_at",
+            "failure_reason_type",
+            "failure_reason",
+            "soldier_excuse",
+            "general_verdict",
+            "objetivo_id",
+            "sonho_id",
+            "recurrence_weekdays",
+            "recurrence_end_date",
+            "duration_type",
+        },
+        "sonhos": {
+            "id",
+            "usuario_id",
+            "titulo",
+            "descricao",
+            "tipo",
+            "status",
+            "justificativa_arquivamento",
+            "created_at",
+            "updated_at",
+            "archived_at",
+            "concluded_at",
+        },
+        "objetivos": {
+            "id",
+            "usuario_id",
+            "sonho_id",
+            "titulo",
+            "descricao",
+            "data_alvo",
+            "progresso",
+            "status",
+            "created_at",
+            "updated_at",
+            "concluded_at",
+        },
+        "operacoes": {
+            "operacao_id",
+            "usuario_id",
+            "nome",
+            "descricao",
+            "start_date",
+            "end_date",
+            "weekdays",
+            "ordem_titulo",
+            "ordem_instrucao",
+            "is_pinned",
+            "status",
+            "created_at",
+        },
+        "missao_contextos": {
+            "missao_id",
+            "criada_por_id",
+            "responsavel_id",
+            "operacao_id",
+            "operacao_dia",
+        },
+        "auditoria_eventos": {
+            "evento_id",
+            "missao_id",
+            "usuario_id",
+            "acao",
+            "detalhes",
+            "criado_em",
+        },
+        "revisoes_semanais": {
+            "revisao_id",
+            "usuario_id",
+            "start_date",
+            "end_date",
+            "reviewed_at",
+            "resumo_operacional",
+            "completed_missions",
+            "pending_missions",
+            "failed_missions",
+            "high_priority_missions",
+            "observacao",
+        },
+    }
 
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
@@ -492,6 +596,44 @@ class RepositorioPostgres:
             raise EscritaRepositorioError(
                 "Erro ao inicializar o schema complementar do banco de dados."
             ) from erro
+
+    def verificar_schema(self) -> dict:
+        try:
+            with self._conectar() as conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT table_name, column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = ANY(%s);
+                        """,
+                        (list(self._schema_obrigatorio.keys()),),
+                    )
+                    linhas = cursor.fetchall()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise LeituraRepositorioError(
+                "Erro ao verificar schema do banco de dados."
+            ) from erro
+
+        colunas_por_tabela = {}
+        for tabela, coluna in linhas:
+            colunas_por_tabela.setdefault(tabela, set()).add(coluna)
+
+        pendencias = {}
+        for tabela, colunas_obrigatorias in self._schema_obrigatorio.items():
+            colunas_existentes = colunas_por_tabela.get(tabela, set())
+            faltantes = sorted(colunas_obrigatorias - colunas_existentes)
+            if faltantes:
+                pendencias[tabela] = faltantes
+
+        return {
+            "status": "ok" if not pendencias else "incompleto",
+            "schema_ok": not pendencias,
+            "pendencias": pendencias,
+        }
 
     def _reconstruir_missao(self, linha: tuple) -> Missao:
         is_pinned = False

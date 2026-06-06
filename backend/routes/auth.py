@@ -10,6 +10,23 @@ def healthcheck():
     return {"status": "ok"}
 
 
+@router.get("/health/schema")
+def healthcheck_schema(
+    repositorio: RepositorioPostgres = Depends(get_repositorio),
+):
+    try:
+        resultado = repositorio.verificar_schema()
+    except ValueError as erro:
+        raise HTTPException(status_code=503, detail=str(erro)) from erro
+
+    if not resultado["schema_ok"]:
+        return {
+            **resultado,
+            "detail": "Schema do banco de dados incompleto. Aplique a migration da Montanha.",
+        }
+    return resultado
+
+
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED)
 def registrar_usuario(
     payload: RegistroPayload,

@@ -18,6 +18,18 @@ ADD COLUMN IF NOT EXISTS nome_general TEXT NULL;
 ALTER TABLE IF EXISTS usuarios
 ADD COLUMN IF NOT EXISTS active_mode TEXT NOT NULL DEFAULT 'general';
 
+ALTER TABLE IF EXISTS usuarios
+ADD COLUMN IF NOT EXISTS planning_window TEXT NOT NULL DEFAULT 'night';
+
+ALTER TABLE IF EXISTS usuarios
+ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'America/Recife';
+
+ALTER TABLE IF EXISTS usuarios
+ADD COLUMN IF NOT EXISTS emergency_unlock_date DATE NULL;
+
+ALTER TABLE IF EXISTS usuarios
+ADD COLUMN IF NOT EXISTS timezone_updated_at TIMESTAMPTZ NULL;
+
 CREATE TABLE IF NOT EXISTS objetivos (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
@@ -131,3 +143,30 @@ WHERE responsavel_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_missao_contextos_operacao_dia
 ON missao_contextos (operacao_id, operacao_dia)
 WHERE operacao_id IS NOT NULL AND operacao_dia IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS auditoria_eventos (
+    evento_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    missao_id INTEGER NULL,
+    usuario_id INTEGER NULL REFERENCES usuarios(usuario_id) ON DELETE SET NULL,
+    acao TEXT NOT NULL,
+    detalhes TEXT NOT NULL,
+    criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS revisoes_semanais (
+    revisao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reviewed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resumo_operacional TEXT NOT NULL,
+    completed_missions INTEGER NOT NULL DEFAULT 0,
+    pending_missions INTEGER NOT NULL DEFAULT 0,
+    failed_missions INTEGER NOT NULL DEFAULT 0,
+    high_priority_missions INTEGER NOT NULL DEFAULT 0,
+    observacao TEXT NULL,
+    UNIQUE (usuario_id, start_date, end_date)
+);
+
+ALTER TABLE IF EXISTS revisoes_semanais
+ADD COLUMN IF NOT EXISTS high_priority_missions INTEGER NOT NULL DEFAULT 0;
