@@ -1,4 +1,4 @@
-import { API_URL } from "./config.js";
+import { API_CONFIG_ERROR, API_URL } from "./config.js";
 
 const REQUEST_TIMEOUT_MS = 30000;
 
@@ -27,6 +27,18 @@ export function getErrorMessage(result, fallback) {
 }
 
 export async function request(path, { token, method = "GET", body } = {}) {
+  if (API_CONFIG_ERROR || !API_URL) {
+    return {
+      ok: false,
+      status: 0,
+      data: {
+        detail:
+          API_CONFIG_ERROR ||
+          "Configuração da API ausente. Defina a URL pública da API antes de usar o sistema.",
+      },
+    };
+  }
+
   const headers = {};
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

@@ -37,6 +37,29 @@ BUNKERMODE_CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:5173
 Se a variável não for definida em desenvolvimento, a API permite apenas origens locais conhecidas.
 Em produção (`BUNKERMODE_ENV=production`), `BUNKERMODE_CORS_ALLOW_ORIGINS` é obrigatório.
 
+## Deploy
+
+No deploy do frontend, defina `VITE_API_URL` com a URL pública da API incluindo o prefixo `/api/v2`.
+
+Exemplo:
+
+```bash
+VITE_API_URL=https://api.exemplo.com/api/v2
+```
+
+Sem essa variável, o frontend em produção não tenta usar `127.0.0.1` e exibe erro de configuração da API.
+
+No deploy da API, defina:
+
+```bash
+BUNKERMODE_ENV=production
+BUNKERMODE_CORS_ALLOW_ORIGINS=https://site.exemplo.com
+BUNKERMODE_AUTH_SECRET=valor-seguro
+BUNKERMODE_DB_URL=postgresql://usuario:senha@host:5432/banco
+```
+
+Se iniciar a API por `python -m api`, o host padrão já escuta em `0.0.0.0`. É possível sobrescrever com `BUNKERMODE_API_HOST`.
+
 ## Rodar a API
 ```bash
 cd backend
