@@ -10,57 +10,6 @@ def healthcheck():
     return {"status": "ok"}
 
 
-@router.get("/health/schema")
-def healthcheck_schema(
-    repositorio: RepositorioPostgres = Depends(get_repositorio),
-):
-    try:
-        resultado = repositorio.verificar_schema()
-    except ValueError as erro:
-        raise HTTPException(status_code=503, detail=str(erro)) from erro
-
-    if not resultado["schema_ok"]:
-        return {
-            **resultado,
-            "detail": "Schema do banco de dados incompleto. Aplique a migration da Montanha.",
-        }
-    return resultado
-
-
-@router.get("/health/database")
-def healthcheck_database(
-    repositorio: RepositorioPostgres = Depends(get_repositorio),
-):
-    try:
-        schema = repositorio.verificar_schema()
-        if not schema["schema_ok"]:
-            return {
-                "status": "incompleto",
-                "schema": schema,
-                "integridade": None,
-                "detail": "Schema do banco de dados incompleto. Aplique a migration da Montanha antes da auditoria de integridade.",
-            }
-        integridade = repositorio.auditar_integridade()
-    except ValueError as erro:
-        raise HTTPException(status_code=503, detail=str(erro)) from erro
-
-    return {
-        "status": "ok" if integridade["integridade_ok"] else "inconsistente",
-        "schema": schema,
-        "integridade": integridade,
-    }
-
-
-@router.post("/health/database/reparar")
-def reparar_integridade_database(
-    repositorio: RepositorioPostgres = Depends(get_repositorio),
-):
-    try:
-        return repositorio.reparar_integridade_segura()
-    except ValueError as erro:
-        raise HTTPException(status_code=503, detail=str(erro)) from erro
-
-
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED)
 def registrar_usuario(
     payload: RegistroPayload,

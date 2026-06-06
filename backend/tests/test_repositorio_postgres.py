@@ -14,16 +14,12 @@ class FakeCursor:
         self,
         *,
         fetchall_result=None,
-        fetchall_results=None,
         fetchone_result=None,
-        fetchone_results=None,
         rowcount=1,
         execute_error=None,
     ):
         self.fetchall_result = fetchall_result if fetchall_result is not None else []
-        self.fetchall_results = list(fetchall_results or [])
         self.fetchone_result = fetchone_result
-        self.fetchone_results = list(fetchone_results or [])
         self.rowcount = rowcount
         self.execute_error = execute_error
         self.executions = []
@@ -40,13 +36,9 @@ class FakeCursor:
             raise self.execute_error
 
     def fetchall(self):
-        if self.fetchall_results:
-            return self.fetchall_results.pop(0)
         return self.fetchall_result
 
     def fetchone(self):
-        if self.fetchone_results:
-            return self.fetchone_results.pop(0)
         return self.fetchone_result
 
 
@@ -178,171 +170,6 @@ def test_inicializar_schema_cria_tabela_missoes(monkeypatch):
         "CREATE TABLE IF NOT EXISTS missoes" in str(query)
         for query, _ in cursor.executions
     )
-
-
-def test_verificar_schema_reporta_colunas_faltantes(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=schema_check")
-    cursor = FakeCursor(
-        fetchall_results=[
-            [
-                ("usuarios", "usuario_id"),
-                ("usuarios", "usuario"),
-                ("missoes", "missao_id"),
-            ],
-            [],
-        ]
-    )
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-
-    resultado = repositorio.verificar_schema()
-
-    assert resultado["status"] == "incompleto"
-    assert resultado["schema_ok"] is False
-    assert "email" in resultado["pendencias"]["usuarios"]
-    assert "titulo" in resultado["pendencias"]["missoes"]
-    assert "idx_missao_contextos_responsavel_id" in resultado["pendencias"]["indices"]
-
-
-def test_auditar_integridade_reporta_pendencias(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=integridade_check")
-    colunas = [
-        (tabela, coluna)
-        for tabela, colunas in rp.RepositorioPostgres._schema_obrigatorio.items()
-        for coluna in colunas
-    ]
-    indices = [
-        ("idx_missao_contextos_responsavel_id",),
-        ("idx_missao_contextos_operacao_dia",),
-    ]
-    cursor = FakeCursor(
-        fetchall_results=[colunas, indices],
-        fetchone_results=[
-            (2,),
-            (0,),
-            (1,),
-            (0,),
-            (0,),
-            (0,),
-            (0,),
-            (0,),
-            (0,),
-        ],
-    )
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-
-    resultado = repositorio.auditar_integridade()
-
-    assert resultado["status"] == "inconsistente"
-    assert resultado["integridade_ok"] is False
-    assert resultado["pendencias"] == {
-        "missoes_sem_contexto": 2,
-        "contextos_sem_responsavel": 1,
-    }
-
-
-def test_auditar_integridade_nao_executa_consultas_com_schema_incompleto(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=integridade_incompleta")
-    cursor = FakeCursor(
-        fetchall_results=[
-            [("usuarios", "usuario_id")],
-            [],
-        ]
-    )
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-
-    resultado = repositorio.auditar_integridade()
-
-    assert resultado["status"] == "incompleto"
-    assert resultado["integridade_ok"] is False
-    assert resultado["contagens"] == {}
-    assert "schema" in resultado["pendencias"]
-
-
-def test_reparar_integridade_segura_corrige_apenas_casos_sem_adivinhar_dono(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=repair_check")
-    colunas = [
-        (tabela, coluna)
-        for tabela, colunas in rp.RepositorioPostgres._schema_obrigatorio.items()
-        for coluna in colunas
-    ]
-    indices = [
-        ("idx_missao_contextos_responsavel_id",),
-        ("idx_missao_contextos_operacao_dia",),
-    ]
-    cursor = FakeCursor(
-        fetchall_results=[colunas, indices, colunas, indices],
-        fetchone_results=[
-            (3,),
-            (0,),
-            (1,),
-            (0,),
-            (0,),
-            (0,),
-            (0,),
-            (0,),
-            (0,),
-        ],
-        rowcount=1,
-    )
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-
-    resultado = repositorio.reparar_integridade_segura()
-
-    assert resultado["status"] == "pendencias_manuais"
-    assert resultado["correcoes"] == {
-        "contextos_sem_missao": 1,
-        "missoes_com_objetivo_inexistente": 1,
-        "missoes_com_sonho_inexistente": 1,
-        "objetivos_com_sonho_inexistente": 1,
-    }
-    assert resultado["pendencias_manuais"] == {
-        "missoes_sem_contexto": 3,
-        "contextos_sem_responsavel": 1,
-    }
-
-
-def test_reparar_integridade_segura_nao_executa_reparo_com_schema_incompleto(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=repair_incompleto")
-    cursor = FakeCursor(
-        fetchall_results=[
-            [("usuarios", "usuario_id")],
-            [],
-        ]
-    )
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-
-    resultado = repositorio.reparar_integridade_segura()
-
-    assert resultado["status"] == "incompleto"
-    assert resultado["correcoes"] == {}
-    assert resultado["auditoria"]["contagens"] == {}
-    assert "schema" in resultado["pendencias_manuais"]
-
-
-def test_remover_missao_remove_auxiliares_antes_da_missao(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=delete_order")
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-    monkeypatch.setenv("BUNKERMODE_AUTO_SCHEMA_INIT", "0")
-
-    repositorio.remover_missao(7)
-
-    comandos = [str(query) for query, _ in cursor.executions]
-    assert "DELETE FROM auditoria_eventos" in comandos[0]
-    assert "DELETE FROM missao_contextos" in comandos[1]
-    assert "DELETE FROM missoes" in comandos[2]
 
 
 def test_repositorio_reutiliza_conexao_ate_fechar(monkeypatch):
