@@ -174,8 +174,8 @@ export default function SonhoPanel({
       return null;
     }
     return (
-      <div className="objective-linked-missions sonho-direct-orders compact">
-        <p className="section-kicker fire">ORDENS DO SONHO</p>
+      <div className="mountain-direct-orders objective-linked-missions sonho-direct-orders compact">
+        <p className="section-kicker fire">{sonho.tipo === "principal" ? "ORDENS DIRETAS DO TOPO" : "ORDENS DIRETAS DA ROTA"}</p>
         {ordens.map(({ key, mission }) => (
           <div className="objective-linked-mission" key={key}>
             <strong>{mission.titulo || "Sem título"}</strong>
@@ -189,38 +189,45 @@ export default function SonhoPanel({
   function renderObjetivosDoSonho(sonho) {
     const vinculados = objetivosPorSonho[String(sonho.id)] || [];
     return (
-      <div className="sonho-objective-branch">
-        {vinculados.length > 0 && <div className="branch-line" aria-hidden="true" />}
-        {vinculados.length === 0 ? (
-          null
-        ) : (
-          <div className="objetivo-list nested">
-            {vinculados.map((objetivo) => (
-              <ObjetivoCard
-                key={objetivo.id}
-                loading={loading}
-                missions={missionsPorObjetivo[String(objetivo.id)] || []}
-                objetivo={objetivo}
-                onDelete={onDeleteObjetivo}
-                onCreateMission={onCreateMission}
-                onUpdate={onUpdateObjetivo}
-                onUpdateProgress={onUpdateObjetivoProgress}
-                onUpdateStatus={onUpdateObjetivoStatus}
-                sonhos={sonhos}
-              />
+      <div className="sonho-objective-branch mountain-ascent-path">
+        {vinculados.length > 0 && <div className="branch-line mountain-path-line" aria-hidden="true" />}
+        {vinculados.length > 0 && (
+          <div className="objetivo-list nested mountain-camp-list">
+            {vinculados.map((objetivo, index) => (
+              <div className="mountain-camp-node" key={objetivo.id}>
+                <ObjetivoCard
+                  campIndex={index + 1}
+                  loading={loading}
+                  missions={missionsPorObjetivo[String(objetivo.id)] || []}
+                  objetivo={objetivo}
+                  onDelete={onDeleteObjetivo}
+                  onCreateMission={onCreateMission}
+                  onUpdate={onUpdateObjetivo}
+                  onUpdateProgress={onUpdateObjetivoProgress}
+                  onUpdateStatus={onUpdateObjetivoStatus}
+                  sonhos={sonhos}
+                />
+              </div>
             ))}
           </div>
+        )}
+        {vinculados.length === 0 && (
+          <p className="mountain-empty-route muted">
+            {sonho.tipo === "principal"
+              ? "Topo definido. A rota ainda não tem acampamentos."
+              : "Rota secundária sem acampamentos definidos."}
+          </p>
         )}
       </div>
     );
   }
 
   return (
-    <section className="mountain-section">
+    <section className="mountain-section mountain-command-map">
       <div className="mountain-section-head">
         <div>
-          <p className="section-kicker fire">SONHOS</p>
-          <h2>Topo da montanha</h2>
+          <p className="section-kicker fire">MAPA DE ASCENSÃO</p>
+          <h2>Topo, rotas e acampamentos</h2>
         </div>
         <button className="button fire compact" disabled={loading} type="button" onClick={() => openCreateForm()}>
           {hasActivePrincipal ? "ADICIONAR SONHO SECUNDÁRIO" : "NOVO SONHO"}
@@ -258,18 +265,21 @@ export default function SonhoPanel({
       )}
 
       <div className="mountain-tree">
-        <article className={principal ? "sonho-principal-spotlight sonho-card principal" : "sonho-principal-spotlight sonho-card principal empty"}>
-          <span className="meta-tag critical">PRINCIPAL</span>
-          <h3>{principal?.titulo || "Nenhum sonho principal definido."}</h3>
-          <p>{principal?.descricao || "Defina a campanha estratégica que orienta o comando."}</p>
+        <article className={principal ? "sonho-principal-spotlight sonho-card principal mountain-hero-summit" : "sonho-principal-spotlight sonho-card principal mountain-hero-summit empty"}>
+          <div className="mountain-summit-label">
+            <span>TOPO DA MONTANHA</span>
+            <span className="meta-tag critical">SONHO PRINCIPAL</span>
+          </div>
+          <h3>{principal?.titulo || "Nenhum topo definido"}</h3>
+          <p>{principal?.descricao || "Defina a campanha estratégica que orienta a escalada operacional."}</p>
           <div className="mountain-card-actions">
             {principal ? (
               <>
                 <button className="button fire compact" disabled={loading} type="button" onClick={() => setObjetivoSonho(principal)}>
-                  + NOVO OBJETIVO
+                  NOVO OBJETIVO
                 </button>
                 <button className="button secondary compact" disabled={loading} type="button" onClick={() => setOrdemSonho(principal)}>
-                  + ORDEM DO SONHO
+                  ORDEM DIRETA
                 </button>
                 <button className="button secondary compact mountain-admin-action" disabled={loading} type="button" onClick={() => {
                   setEditingSonho(principal);
@@ -280,7 +290,7 @@ export default function SonhoPanel({
               </>
             ) : (
               <button className="button fire compact" disabled={loading} type="button" onClick={() => openCreateForm("principal")}>
-                CRIAR SONHO PRINCIPAL
+                DEFINIR TOPO
               </button>
             )}
           </div>
@@ -291,23 +301,23 @@ export default function SonhoPanel({
       </div>
 
       {secundarios.length > 0 && (
-        <section className="sonho-secondary-section">
+        <section className="sonho-secondary-section mountain-route-secondary">
           <div className="objetivo-group-title">
-            <h3>SONHOS SECUNDÁRIOS</h3>
+            <h3>ROTAS SECUNDÁRIAS</h3>
             <span>{secundarios.length}</span>
           </div>
           <div className="sonho-secondary-list">
             {secundarios.map((sonho) => (
               <article className="sonho-card secondary" key={sonho.id}>
-                <span className="meta-tag">SECUNDÁRIO</span>
+                <span className="meta-tag">ROTA SECUNDÁRIA</span>
                 <h3>{sonho.titulo}</h3>
                 {sonho.descricao && <p>{sonho.descricao}</p>}
                 <div className="mountain-card-actions">
                   <button className="button fire compact" disabled={loading} type="button" onClick={() => setObjetivoSonho(sonho)}>
-                    + NOVO OBJETIVO
+                    NOVO OBJETIVO
                   </button>
                   <button className="button secondary compact" disabled={loading} type="button" onClick={() => setOrdemSonho(sonho)}>
-                    + ORDEM DO SONHO
+                    ORDEM DIRETA
                   </button>
                   <button className="button secondary compact mountain-admin-action" disabled={loading} type="button" onClick={() => {
                     setEditingSonho(sonho);

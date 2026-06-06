@@ -113,7 +113,27 @@ function summarizeLinkedMissions(missions) {
     });
 }
 
+function formatCampIndex(index) {
+  const labels = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+  return labels[index - 1] || String(index);
+}
+
+function summarizeMissionCounts(linkedMissions) {
+  const total = linkedMissions.length;
+  const concluded = linkedMissions.filter((item) => item.completed).length;
+  const pending = total - concluded;
+  const nextMission = linkedMissions.find((item) => !item.completed)?.mission;
+
+  return {
+    concluded,
+    nextTitle: nextMission?.titulo || "",
+    pending,
+    total,
+  };
+}
+
 export default function ObjetivoCard({
+  campIndex,
   loading,
   missions = [],
   objetivo,
@@ -144,6 +164,7 @@ export default function ObjetivoCard({
     () => summarizeLinkedMissions(Array.isArray(missions) ? missions : []),
     [missions]
   );
+  const missionSummary = useMemo(() => summarizeMissionCounts(linkedMissions), [linkedMissions]);
 
   useEffect(() => {
     setProgressDraft(Number(objetivo.progresso ?? 0));
@@ -277,9 +298,10 @@ export default function ObjetivoCard({
   }
 
   return (
-    <article className={`objetivo-card status-${objetivo.status}`}>
+    <article className={`objetivo-card mountain-camp-card status-${objetivo.status}`}>
       <div className="objetivo-card-head">
         <div>
+          {campIndex && <span className="mountain-camp-index">ACAMPAMENTO {formatCampIndex(campIndex)}</span>}
           <span className={`meta-tag status-tag ${objetivo.status}`}>{statusLabels[objetivo.status] || objetivo.status}</span>
           <h3>{objetivo.titulo}</h3>
         </div>
@@ -288,6 +310,11 @@ export default function ObjetivoCard({
             <button className="button fire compact" type="button" onClick={() => setCreatingMission(true)}>
               NOVA ORDEM
             </button>
+            {linkedMissions.length > 0 && (
+              <button className="button secondary compact" type="button" onClick={() => setDetailsOpen((current) => !current)}>
+                {detailsOpen ? "OCULTAR ORDENS" : "VER ORDENS"}
+              </button>
+            )}
             <button className="button secondary compact objective-admin-action" type="button" onClick={() => setManageOpen(true)}>
               GERENCIAR
             </button>
@@ -311,7 +338,18 @@ export default function ObjetivoCard({
           </div>
           <strong className="objective-progress-number">{objetivo.progresso}%</strong>
           {linkedMissions.length > 0 ? (
+            <div className="mountain-camp-mission-summary">
+              <span>{missionSummary.total} missões vinculadas</span>
+              <span>{missionSummary.pending} pendentes</span>
+              <span>{missionSummary.concluded} concluídas</span>
+              {missionSummary.nextTitle && <strong>Próxima: {missionSummary.nextTitle}</strong>}
+            </div>
+          ) : (
+            <p className="muted objetivo-empty-orders">Objetivo sem ordens operacionais.</p>
+          )}
+          {detailsOpen && linkedMissions.length > 0 && (
             <div className="objective-linked-missions compact">
+              <p className="section-kicker fire">ORDENS DO MARCO</p>
               {linkedMissions.map(({ completed, key, mission, pendingToday }) => (
                 <div
                   className={`objective-linked-mission${completed ? " completed-today" : ""}${pendingToday ? " pending-today" : ""}`}
@@ -322,13 +360,11 @@ export default function ObjetivoCard({
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="muted objetivo-empty-orders">Objetivo sem ordens operacionais.</p>
           )}
         </>
       )}
 
-      {expanded && (
+      {!active && expanded && (
         <>
           {objetivo.descricao && <p>{objetivo.descricao}</p>}
 

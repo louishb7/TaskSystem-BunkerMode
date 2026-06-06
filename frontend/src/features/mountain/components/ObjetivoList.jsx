@@ -46,11 +46,12 @@ export default function ObjetivoList({
   }
 
   return (
-    <section className="mountain-section isolated-objectives-section">
+    <section className="mountain-section isolated-objectives-section mountain-unlinked-ops">
       <div className="mountain-section-head">
         <div>
-          <p className="section-kicker">OBJETIVOS ISOLADOS</p>
-          <h2>Fora da árvore principal</h2>
+          <p className="section-kicker">OPERAÇÕES SEM TOPO DEFINIDO</p>
+          <h2>Objetivos fora da escalada principal</h2>
+          <p className="muted">Operações úteis podem existir sem Sonho, mas ficam fora da trilha estratégica principal.</p>
         </div>
         <button className="button secondary compact isolated-objective-action" disabled={loading} type="button" onClick={() => setFormOpen(true)}>
           NOVO OBJETIVO ISOLADO
