@@ -1,5 +1,8 @@
 FROM python:3.12-slim
 
+# Build context obrigatório: docker build -t bunkermode-api ./backend
+# O COPY abaixo depende desse contexto para encontrar requirements.txt corretamente.
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000

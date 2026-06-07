@@ -1,6 +1,8 @@
 # Env
 .env
 .env.*
+!.env.example
+!backend/.env.example
 .envrc
 
 # Python

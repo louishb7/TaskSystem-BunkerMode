@@ -189,6 +189,21 @@ class RepositorioPostgres:
                     conexao.close()
             cls._shared_connections.clear()
 
+    def verificar_conexao(self) -> None:
+        # Healthcheck precisa testar o banco sem disparar criação automática de schema.
+        try:
+            conexao = psycopg.connect(self.connection_string, connect_timeout=2)
+            with conexao:
+                with conexao.cursor() as cursor:
+                    cursor.execute("SELECT 1;")
+                    cursor.fetchone()
+        except ErroRepositorio:
+            raise
+        except psycopg.Error as erro:
+            raise ConexaoRepositorioError(
+                "Não foi possível validar a conexão com o banco de dados."
+            ) from erro
+
     def _deve_inicializar_schema(self) -> bool:
         auto_init = os.getenv("BUNKERMODE_AUTO_SCHEMA_INIT", "").strip().lower()
         if auto_init in {"1", "true", "yes", "on"}:
