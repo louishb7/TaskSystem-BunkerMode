@@ -1,13 +1,23 @@
-try:
-    import psycopg
-except ModuleNotFoundError:  # pragma: no cover
-    psycopg = None
-
+from contextlib import contextmanager
+from datetime import date
 import json
-import os
-import threading
-import time
+import shlex
+from urllib.parse import quote_plus, urlencode, urlsplit, urlunsplit
 
+from sqlalchemy import and_, create_engine, delete, func, or_, select, text, update
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
+
+from backend.database.orm_models import (
+    AuditoriaEventoORM,
+    MissaoContextoORM,
+    MissaoORM,
+    ObjetivoORM,
+    OperacaoORM,
+    RevisaoSemanalORM,
+    SonhoORM,
+    UsuarioORM,
+)
 from backend.models.auditoria import EventoAuditoria
 from backend.models.missao import Missao
 from backend.models.objetivo import Objetivo
@@ -22,7 +32,7 @@ class ErroRepositorio(ValueError):
 
 
 class DriverPostgresNaoInstaladoError(ErroRepositorio):
-    """Erro levantado quando o driver do PostgreSQL não está disponível."""
+    """Mantido por compatibilidade com imports legados."""
 
 
 class ConexaoRepositorioError(ErroRepositorio):
@@ -45,1417 +55,498 @@ class UsuarioNaoPersistidoError(ErroRepositorio):
     """Erro levantado quando o usuário esperado não existe no banco."""
 
 
-class _ConexaoRepositorio:
-    def __init__(self, conexao, lock=None, on_exit=None):
-        self.conexao = conexao
-        self.lock = lock
-        self.on_exit = on_exit
+def _normalizar_url_sqlalchemy(connection_string: str) -> str:
+    if "://" in connection_string:
+        return _forcar_driver_psycopg(connection_string)
 
-    def __enter__(self):
-        if self.lock is not None:
-            self.lock.acquire()
-        return self.conexao
+    partes = {}
+    for token in shlex.split(connection_string):
+        if "=" not in token:
+            continue
+        chave, valor = token.split("=", maxsplit=1)
+        partes[chave] = valor
 
-    def __exit__(self, exc_type, exc, tb):
-        try:
-            if exc_type is not None and hasattr(self.conexao, "rollback"):
-                self.conexao.rollback()
-            if self.on_exit is not None:
-                self.on_exit()
-        finally:
-            if self.lock is not None:
-                self.lock.release()
-        return False
+    user = quote_plus(partes.get("user", ""))
+    password = quote_plus(partes.get("password", ""))
+    host = partes.get("host", "localhost")
+    port = partes.get("port", "5432")
+    dbname = partes.get("dbname", "")
+    auth = user if not password else f"{user}:{password}"
+    netloc = f"{auth}@{host}:{port}" if auth else f"{host}:{port}"
+    extras = {
+        chave: valor
+        for chave, valor in partes.items()
+        if chave not in {"dbname", "user", "password", "host", "port"}
+    }
+    query = urlencode(extras)
+    return urlunsplit(("postgresql+psycopg", netloc, f"/{dbname}", query, ""))
+
+
+def _forcar_driver_psycopg(url: str) -> str:
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgres://")
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgresql://")
+    return url
+
+
+def _json_lista_ou_none(valor):
+    if valor is None:
+        return None
+    if isinstance(valor, str):
+        if not valor.strip():
+            return None
+        return json.loads(valor)
+    return valor
+
+
+def _json_dumps_ou_none(valor):
+    if valor is None:
+        return None
+    return json.dumps(valor)
 
 
 class RepositorioPostgres:
     """Responsável por carregar e persistir dados do BunkerMode no PostgreSQL."""
 
-    _schemas_inicializados = set()
-    _shared_connections = {}
-    _shared_lock = threading.RLock()
-
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
-        self._conexao = None
+        self.sqlalchemy_url = _normalizar_url_sqlalchemy(connection_string)
+        self._engine = create_engine(self.sqlalchemy_url)
+        self._Session = sessionmaker(bind=self._engine, expire_on_commit=False)
 
     def __del__(self):  # pragma: no cover - fallback defensivo
         self.fechar()
 
-    def _conectar(self):
-        if psycopg is None:
-            raise DriverPostgresNaoInstaladoError(
-                "Driver psycopg não está instalado no ambiente atual."
-            )
-        if self._deve_reutilizar_conexao_compartilhada():
-            return self._conectar_compartilhado()
-        if self._conexao is not None and not getattr(self._conexao, "closed", False):
-            return _ConexaoRepositorio(self._conexao)
+    @contextmanager
+    def _session(self):
+        session = self._Session()
         try:
-            self._conexao = psycopg.connect(self.connection_string)
-            return _ConexaoRepositorio(self._conexao)
-        except psycopg.Error as erro:
-            raise ConexaoRepositorioError(
-                "Não foi possível conectar ao banco de dados."
-            ) from erro
-
-    def _deve_reutilizar_conexao_compartilhada(self) -> bool:
-        valor = os.getenv("BUNKERMODE_REUSE_DB_CONNECTIONS", "").strip().lower()
-        if valor in {"1", "true", "yes", "on"}:
-            return True
-        if valor in {"0", "false", "no", "off"}:
-            return False
-
-        ambiente = (
-            os.getenv("BUNKERMODE_ENV")
-            or os.getenv("ENV")
-            or os.getenv("PYTHON_ENV")
-            or ""
-        ).strip().lower()
-        return ambiente in {"production", "prod"}
-
-    def _shared_idle_timeout_seconds(self) -> float:
-        valor = os.getenv("BUNKERMODE_DB_CONNECTION_IDLE_TTL_SECONDS", "").strip()
-        if not valor:
-            return 120.0
-        try:
-            return max(1.0, float(valor))
-        except ValueError:
-            return 120.0
-
-    def _conectar_compartilhado(self):
-        agora = time.monotonic()
-        ttl = self._shared_idle_timeout_seconds()
-        chave = (self.connection_string, threading.get_ident())
-        with self._shared_lock:
-            for chave_existente, entrada_existente in list(self._shared_connections.items()):
-                conexao_existente = entrada_existente["connection"]
-                expirada = agora - entrada_existente["last_used"] > ttl
-                fechada = getattr(conexao_existente, "closed", False)
-                em_uso = entrada_existente.get("in_use", False)
-                if fechada or (expirada and not em_uso):
-                    if not fechada and hasattr(conexao_existente, "close"):
-                        conexao_existente.close()
-                    self._shared_connections.pop(chave_existente, None)
-
-            entrada = self._shared_connections.get(chave)
-            conexao = None if entrada is None else entrada["connection"]
-            fechada = conexao is not None and getattr(conexao, "closed", False)
-            if conexao is not None and fechada:
-                if not fechada and hasattr(conexao, "close"):
-                    conexao.close()
-                self._shared_connections.pop(chave, None)
-                conexao = None
-
-            if conexao is None:
-                try:
-                    conexao = psycopg.connect(self.connection_string)
-                except psycopg.Error as erro:
-                    raise ConexaoRepositorioError(
-                        "Não foi possível conectar ao banco de dados."
-                    ) from erro
-                entrada = {"connection": conexao, "last_used": agora}
-                self._shared_connections[chave] = entrada
-            entrada["in_use"] = True
-
-            def mark_used():
-                with self._shared_lock:
-                    if chave in self._shared_connections:
-                        self._shared_connections[chave][
-                            "last_used"
-                        ] = time.monotonic()
-                        self._shared_connections[chave]["in_use"] = False
-
-            return _ConexaoRepositorio(
-                conexao,
-                on_exit=mark_used,
-            )
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     def fechar(self) -> None:
-        if self._deve_reutilizar_conexao_compartilhada():
-            return
-        if self._conexao is None:
-            return
-        if not getattr(self._conexao, "closed", False) and hasattr(self._conexao, "close"):
-            self._conexao.close()
-        self._conexao = None
+        self._engine.dispose()
 
     @classmethod
     def fechar_conexoes_compartilhadas(cls) -> None:
-        with cls._shared_lock:
-            for entrada in cls._shared_connections.values():
-                conexao = entrada["connection"]
-                if not getattr(conexao, "closed", False) and hasattr(conexao, "close"):
-                    conexao.close()
-            cls._shared_connections.clear()
+        return None
 
     def verificar_conexao(self) -> None:
-        # Healthcheck precisa testar o banco sem disparar criação automática de schema.
         try:
-            conexao = psycopg.connect(self.connection_string, connect_timeout=2)
-            with conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute("SELECT 1;")
-                    cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._engine.connect() as conexao:
+                conexao.execute(text("SELECT 1"))
+        except SQLAlchemyError as erro:
             raise ConexaoRepositorioError(
                 "Não foi possível validar a conexão com o banco de dados."
             ) from erro
 
-    def _deve_inicializar_schema(self) -> bool:
-        auto_init = os.getenv("BUNKERMODE_AUTO_SCHEMA_INIT", "").strip().lower()
-        if auto_init in {"1", "true", "yes", "on"}:
-            return True
-        if auto_init in {"0", "false", "no", "off"}:
-            return False
-
-        ambiente = (
-            os.getenv("BUNKERMODE_ENV")
-            or os.getenv("ENV")
-            or os.getenv("PYTHON_ENV")
-            or ""
-        ).strip().lower()
-        return ambiente not in {"production", "prod"}
-
-    def inicializar_schema(self) -> None:
-        if not self._deve_inicializar_schema():
-            return
-        if self.connection_string in self._schemas_inicializados:
-            return
-
-        comandos = [
-            """
-            CREATE TABLE IF NOT EXISTS usuarios (
-                usuario_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                usuario TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE,
-                senha_hash TEXT NOT NULL,
-                ativo BOOLEAN NOT NULL DEFAULT TRUE,
-                nome_general TEXT NULL,
-                active_mode TEXT NOT NULL DEFAULT 'general',
-                planning_window TEXT NOT NULL DEFAULT 'night',
-                timezone TEXT NOT NULL DEFAULT 'America/Recife',
-                emergency_unlock_date DATE NULL,
-                timezone_updated_at TIMESTAMPTZ NULL
-            );
-            """,
-            """
-            ALTER TABLE IF EXISTS usuarios
-            ADD COLUMN IF NOT EXISTS nome_general TEXT NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS usuarios
-            ADD COLUMN IF NOT EXISTS active_mode TEXT NOT NULL DEFAULT 'general';
-            """,
-            """
-            ALTER TABLE IF EXISTS usuarios
-            ADD COLUMN IF NOT EXISTS planning_window TEXT NOT NULL DEFAULT 'night';
-            """,
-            """
-            ALTER TABLE IF EXISTS usuarios
-            ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'America/Recife';
-            """,
-            """
-            ALTER TABLE IF EXISTS usuarios
-            ADD COLUMN IF NOT EXISTS emergency_unlock_date DATE NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS usuarios
-            ADD COLUMN IF NOT EXISTS timezone_updated_at TIMESTAMPTZ NULL;
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS missoes (
-                missao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                titulo TEXT NOT NULL,
-                prioridade INTEGER NOT NULL,
-                prazo DATE NULL,
-                instrucao TEXT NULL,
-                status TEXT NOT NULL,
-                is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP NULL,
-                failed_at TIMESTAMP NULL,
-                failure_reason_type TEXT NULL,
-                failure_reason TEXT NULL,
-                soldier_excuse TEXT NULL,
-                general_verdict TEXT NULL,
-                recurrence_weekdays TEXT NULL,
-                recurrence_end_date DATE NULL,
-                duration_type TEXT NULL
-            );
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ALTER COLUMN instrucao DROP NOT NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
-            """,
-            """
-            DO $$
-            BEGIN
-                IF EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name = 'missoes' AND column_name = 'is_decided'
-                ) THEN
-                    UPDATE missoes
-                    SET is_pinned = TRUE
-                    WHERE is_decided = TRUE;
-                END IF;
-            END $$;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            DROP COLUMN IF EXISTS is_decided;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS failed_at TIMESTAMP NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS failure_reason TEXT NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS failure_reason_type TEXT NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS soldier_excuse TEXT NULL;
-            """,
-            """
-            UPDATE missoes
-            SET failure_reason = soldier_excuse
-            WHERE failure_reason IS NULL AND soldier_excuse IS NOT NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS general_verdict TEXT NULL;
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS sonhos (
-                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
-                titulo VARCHAR(200) NOT NULL,
-                descricao TEXT NULL,
-                tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('principal', 'secundario')),
-                status VARCHAR(20) NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'arquivado', 'concluido')),
-                justificativa_arquivamento TEXT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                archived_at TIMESTAMP NULL,
-                concluded_at TIMESTAMP NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS objetivos (
-                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
-                sonho_id INTEGER NULL REFERENCES sonhos(id) ON DELETE SET NULL,
-                titulo VARCHAR(200) NOT NULL,
-                descricao TEXT NULL,
-                data_alvo DATE NULL,
-                progresso INTEGER NOT NULL DEFAULT 0 CHECK (progresso >= 0 AND progresso <= 100),
-                status VARCHAR(20) NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'concluido', 'pausado', 'abandonado')),
-                order_index INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                concluded_at TIMESTAMP NULL
-            );
-            """,
-            """
-            ALTER TABLE IF EXISTS objetivos
-            ADD COLUMN IF NOT EXISTS order_index INTEGER NOT NULL DEFAULT 0;
-            """,
-            """
-            UPDATE objetivos AS objetivo
-            SET order_index = ordenado.position
-            FROM (
-                SELECT id,
-                       ROW_NUMBER() OVER (
-                           PARTITION BY usuario_id, sonho_id
-                           ORDER BY created_at ASC, id ASC
-                       ) AS position
-                FROM objetivos
-                WHERE order_index = 0
-            ) AS ordenado
-            WHERE objetivo.id = ordenado.id;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS objetivo_id INTEGER NULL REFERENCES objetivos(id) ON DELETE SET NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS sonho_id INTEGER NULL REFERENCES sonhos(id) ON DELETE SET NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS recurrence_weekdays TEXT NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS recurrence_end_date DATE NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missoes
-            ADD COLUMN IF NOT EXISTS duration_type TEXT NULL;
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS operacoes (
-                operacao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
-                nome TEXT NOT NULL,
-                descricao TEXT NULL,
-                start_date DATE NOT NULL,
-                end_date DATE NOT NULL,
-                weekdays TEXT NOT NULL,
-                ordem_titulo TEXT NOT NULL,
-                ordem_instrucao TEXT NULL,
-                is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
-                status TEXT NOT NULL DEFAULT 'ativa',
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            """,
-            """
-            ALTER TABLE IF EXISTS operacoes
-            ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
-            """,
-            """
-            DO $$
-            BEGIN
-                IF EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name = 'operacoes' AND column_name = 'is_decided'
-                ) THEN
-                    UPDATE operacoes
-                    SET is_pinned = TRUE
-                    WHERE is_decided = TRUE;
-                END IF;
-            END $$;
-            """,
-            """
-            ALTER TABLE IF EXISTS operacoes
-            DROP COLUMN IF EXISTS is_decided;
-            """,
-            """
-            DROP TABLE IF EXISTS operational_day_overrides;
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS missao_contextos (
-                missao_id INTEGER PRIMARY KEY,
-                criada_por_id INTEGER NULL REFERENCES usuarios(usuario_id) ON DELETE SET NULL,
-                responsavel_id INTEGER NULL REFERENCES usuarios(usuario_id) ON DELETE SET NULL
-            );
-            """,
-            """
-            ALTER TABLE IF EXISTS missao_contextos
-            ADD COLUMN IF NOT EXISTS operacao_id INTEGER NULL REFERENCES operacoes(operacao_id) ON DELETE SET NULL;
-            """,
-            """
-            ALTER TABLE IF EXISTS missao_contextos
-            ADD COLUMN IF NOT EXISTS operacao_dia DATE NULL;
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_missao_contextos_responsavel_id
-            ON missao_contextos (responsavel_id)
-            WHERE responsavel_id IS NOT NULL;
-            """,
-            """
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_missao_contextos_operacao_dia
-            ON missao_contextos (operacao_id, operacao_dia)
-            WHERE operacao_id IS NOT NULL AND operacao_dia IS NOT NULL;
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS auditoria_eventos (
-                evento_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                missao_id INTEGER NULL,
-                usuario_id INTEGER NULL REFERENCES usuarios(usuario_id) ON DELETE SET NULL,
-                acao TEXT NOT NULL,
-                detalhes TEXT NOT NULL,
-                criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS revisoes_semanais (
-                revisao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                usuario_id INTEGER NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
-                start_date DATE NOT NULL,
-                end_date DATE NOT NULL,
-                reviewed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                resumo_operacional TEXT NOT NULL,
-                completed_missions INTEGER NOT NULL DEFAULT 0,
-                pending_missions INTEGER NOT NULL DEFAULT 0,
-                failed_missions INTEGER NOT NULL DEFAULT 0,
-                high_priority_missions INTEGER NOT NULL DEFAULT 0,
-                observacao TEXT NULL,
-                UNIQUE (usuario_id, start_date, end_date)
-            );
-            """,
-            """
-            ALTER TABLE IF EXISTS revisoes_semanais
-            ADD COLUMN IF NOT EXISTS high_priority_missions INTEGER NOT NULL DEFAULT 0;
-            """,
-            """
-            ALTER TABLE IF EXISTS revisoes_semanais
-            DROP COLUMN IF EXISTS committed_missions_failed;
-            """,
-        ]
-        try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    for comando in comandos:
-                        cursor.execute(comando)
-                conexao.commit()
-            self._schemas_inicializados.add(self.connection_string)
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
-            raise EscritaRepositorioError(
-                "Erro ao inicializar o schema complementar do banco de dados."
-            ) from erro
-
-    def _reconstruir_missao(self, linha: tuple) -> Missao:
-        is_pinned = False
-        recurrence_weekdays = None
-        recurrence_end_date = None
-        duration_type = None
-        sonho_id = None
-        if len(linha) == 7:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                legacy_priority_marker,
-            ) = linha
-            is_pinned = bool(legacy_priority_marker)
-            created_at = None
-            completed_at = None
-            failed_at = None
-            failure_reason_type = None
-            failure_reason = None
-            soldier_excuse = None
-            general_verdict = None
-            operacao_id = None
-            operacao_nome = None
-            objetivo_id = None
-        elif len(linha) == 6:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-            ) = linha
-            created_at = None
-            completed_at = None
-            failed_at = None
-            failure_reason_type = None
-            failure_reason = None
-            soldier_excuse = None
-            general_verdict = None
-            operacao_id = None
-            operacao_nome = None
-            objetivo_id = None
-        elif len(linha) == 10:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                legacy_priority_marker,
-                failed_at,
-                soldier_excuse,
-                general_verdict,
-            ) = linha
-            is_pinned = bool(legacy_priority_marker)
-            created_at = None
-            completed_at = None
-            failure_reason_type = None
-            failure_reason = soldier_excuse
-            operacao_id = None
-            operacao_nome = None
-            objetivo_id = None
-        elif len(linha) == 9:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                failed_at,
-                soldier_excuse,
-                general_verdict,
-            ) = linha
-            created_at = None
-            completed_at = None
-            failure_reason_type = None
-            failure_reason = soldier_excuse
-            operacao_id = None
-            operacao_nome = None
-            objetivo_id = None
-        elif len(linha) == 13:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                legacy_priority_marker,
-                created_at,
-                completed_at,
-                failed_at,
-                failure_reason,
-                soldier_excuse,
-                general_verdict,
-            ) = linha
-            is_pinned = bool(legacy_priority_marker)
-            failure_reason_type = None
-            operacao_id = None
-            operacao_nome = None
-            objetivo_id = None
-        elif len(linha) == 12:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                created_at,
-                completed_at,
-                failed_at,
-                failure_reason,
-                soldier_excuse,
-                general_verdict,
-            ) = linha
-            failure_reason_type = None
-            operacao_id = None
-            operacao_nome = None
-            objetivo_id = None
-        elif len(linha) == 15:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                created_at,
-                completed_at,
-                failed_at,
-                failure_reason_type,
-                failure_reason,
-                soldier_excuse,
-                general_verdict,
-                operacao_id,
-                operacao_nome,
-            ) = linha
-            objetivo_id = None
-        elif len(linha) == 17:
-            if isinstance(linha[7], bool):
-                (
-                    missao_id,
-                    titulo,
-                    prioridade,
-                    prazo,
-                    instrucao,
-                    status,
-                    legacy_priority_marker,
-                    is_pinned,
-                    created_at,
-                    completed_at,
-                    failed_at,
-                    failure_reason_type,
-                    failure_reason,
-                    soldier_excuse,
-                    general_verdict,
-                    operacao_id,
-                    operacao_nome,
-                ) = linha
-                objetivo_id = None
-                is_pinned = bool(is_pinned or legacy_priority_marker)
-            else:
-                (
-                    missao_id,
-                    titulo,
-                    prioridade,
-                    prazo,
-                    instrucao,
-                    status,
-                    is_pinned,
-                    created_at,
-                    completed_at,
-                    failed_at,
-                    failure_reason_type,
-                    failure_reason,
-                    soldier_excuse,
-                    general_verdict,
-                    operacao_id,
-                    operacao_nome,
-                    objetivo_id,
-                ) = linha
-        elif len(linha) == 20:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                is_pinned,
-                created_at,
-                completed_at,
-                failed_at,
-                failure_reason_type,
-                failure_reason,
-                soldier_excuse,
-                general_verdict,
-                operacao_id,
-                operacao_nome,
-                objetivo_id,
-                recurrence_weekdays,
-                recurrence_end_date,
-                duration_type,
-            ) = linha
-        elif len(linha) == 21:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                is_pinned,
-                created_at,
-                completed_at,
-                failed_at,
-                failure_reason_type,
-                failure_reason,
-                soldier_excuse,
-                general_verdict,
-                operacao_id,
-                operacao_nome,
-                objetivo_id,
-                sonho_id,
-                recurrence_weekdays,
-                recurrence_end_date,
-                duration_type,
-            ) = linha
-        elif len(linha) == 18:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                legacy_priority_marker,
-                is_pinned,
-                created_at,
-                completed_at,
-                failed_at,
-                failure_reason_type,
-                failure_reason,
-                soldier_excuse,
-                general_verdict,
-                operacao_id,
-                operacao_nome,
-                objetivo_id,
-            ) = linha
-            is_pinned = bool(is_pinned or legacy_priority_marker)
-        elif len(linha) == 16:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                is_pinned,
-                created_at,
-                completed_at,
-                failed_at,
-                failure_reason_type,
-                failure_reason,
-                soldier_excuse,
-                general_verdict,
-                operacao_id,
-                operacao_nome,
-            ) = linha
-            objetivo_id = None
-        else:
-            (
-                missao_id,
-                titulo,
-                prioridade,
-                prazo,
-                instrucao,
-                status,
-                created_at,
-                completed_at,
-                failed_at,
-                failure_reason_type,
-                failure_reason,
-                soldier_excuse,
-                general_verdict,
-            ) = linha
-            operacao_id = None
-            operacao_nome = None
-            objetivo_id = None
+    def _orm_para_missao(
+        self,
+        orm: MissaoORM,
+        contexto: MissaoContextoORM | None = None,
+        operacao_nome: str | None = None,
+    ) -> Missao:
         return Missao(
-            missao_id=missao_id,
-            titulo=titulo,
-            prioridade=prioridade,
-            prazo=prazo,
-            instrucao=instrucao,
-            status=status,
-            created_at=created_at,
-            completed_at=completed_at,
-            failed_at=failed_at,
-            failure_reason_type=failure_reason_type,
-            failure_reason=failure_reason,
-            soldier_excuse=soldier_excuse,
-            general_verdict=general_verdict,
-            operacao_id=operacao_id,
+            missao_id=orm.missao_id,
+            titulo=orm.titulo,
+            prioridade=orm.prioridade,
+            prazo=orm.prazo,
+            instrucao=orm.instrucao,
+            status=orm.status,
+            created_at=orm.created_at,
+            completed_at=orm.completed_at,
+            failed_at=orm.failed_at,
+            failure_reason_type=orm.failure_reason_type,
+            failure_reason=orm.failure_reason,
+            soldier_excuse=orm.soldier_excuse,
+            general_verdict=orm.general_verdict,
+            operacao_id=None if contexto is None else contexto.operacao_id,
             operacao_nome=operacao_nome,
-            objetivo_id=objetivo_id,
-            sonho_id=sonho_id,
-            recurrence_weekdays=(
-                json.loads(recurrence_weekdays)
-                if isinstance(recurrence_weekdays, str) and recurrence_weekdays.strip()
-                else recurrence_weekdays
-            ),
-            recurrence_end_date=recurrence_end_date,
-            duration_type=duration_type,
-            is_pinned=is_pinned,
+            objetivo_id=orm.objetivo_id,
+            sonho_id=orm.sonho_id,
+            recurrence_weekdays=_json_lista_ou_none(orm.recurrence_weekdays),
+            recurrence_end_date=orm.recurrence_end_date,
+            duration_type=orm.duration_type,
+            is_pinned=orm.is_pinned,
             validar_instrucao=False,
         )
 
-    def _reconstruir_usuario(self, linha: tuple) -> Usuario:
-        if len(linha) == 7:
-            usuario_id, usuario, email, senha_hash, ativo, nome_general, active_mode = linha
-            planning_window = "night"
-            timezone = "America/Recife"
-            emergency_unlock_date = None
-            timezone_updated_at = None
-        elif len(linha) == 10:
-            (
-                usuario_id,
-                usuario,
-                email,
-                senha_hash,
-                ativo,
-                nome_general,
-                active_mode,
-                planning_window,
-                timezone,
-                emergency_unlock_date,
-            ) = linha
-            timezone_updated_at = None
-        else:
-            (
-                usuario_id,
-                usuario,
-                email,
-                senha_hash,
-                ativo,
-                nome_general,
-                active_mode,
-                planning_window,
-                timezone,
-                emergency_unlock_date,
-                timezone_updated_at,
-            ) = linha
+    def _orm_para_usuario(self, orm: UsuarioORM) -> Usuario:
         return Usuario(
-            usuario_id=usuario_id,
-            usuario=usuario,
-            email=email,
-            senha_hash=senha_hash,
-            ativo=ativo,
-            nome_general=nome_general,
-            active_mode=active_mode,
-            planning_window=planning_window,
-            timezone=timezone,
-            emergency_unlock_date=emergency_unlock_date,
-            timezone_updated_at=timezone_updated_at,
+            usuario_id=orm.usuario_id,
+            usuario=orm.usuario,
+            email=orm.email,
+            senha_hash=orm.senha_hash,
+            ativo=orm.ativo,
+            nome_general=orm.nome_general,
+            active_mode=orm.active_mode,
+            planning_window=orm.planning_window,
+            timezone=orm.timezone,
+            emergency_unlock_date=orm.emergency_unlock_date,
+            timezone_updated_at=orm.timezone_updated_at,
         )
 
-    def _reconstruir_evento(self, linha: tuple) -> EventoAuditoria:
-        evento_id, missao_id, usuario_id, acao, detalhes, criado_em = linha
+    def _orm_para_evento(self, orm: AuditoriaEventoORM) -> EventoAuditoria:
         return EventoAuditoria(
-            evento_id=evento_id,
-            missao_id=missao_id,
-            usuario_id=usuario_id,
-            acao=acao,
-            detalhes=detalhes,
-            criado_em=criado_em,
+            evento_id=orm.evento_id,
+            missao_id=orm.missao_id,
+            usuario_id=orm.usuario_id,
+            acao=orm.acao,
+            detalhes=orm.detalhes,
+            criado_em=orm.criado_em,
         )
 
-    def _reconstruir_revisao(self, linha: tuple) -> RevisaoSemanal:
-        (
-            revisao_id,
-            usuario_id,
-            start_date,
-            end_date,
-            reviewed_at,
-            resumo_operacional,
-            completed_missions,
-            pending_missions,
-            failed_missions,
-            high_priority_missions,
-            observacao,
-        ) = linha
+    def _orm_para_revisao(self, orm: RevisaoSemanalORM) -> RevisaoSemanal:
         return RevisaoSemanal(
-            revisao_id=revisao_id,
-            usuario_id=usuario_id,
-            start_date=start_date,
-            end_date=end_date,
-            reviewed_at=reviewed_at,
-            resumo_operacional=resumo_operacional,
-            completed_missions=completed_missions,
-            pending_missions=pending_missions,
-            failed_missions=failed_missions,
-            high_priority_missions=high_priority_missions,
-            observacao=observacao,
+            revisao_id=orm.revisao_id,
+            usuario_id=orm.usuario_id,
+            start_date=orm.start_date,
+            end_date=orm.end_date,
+            reviewed_at=orm.reviewed_at,
+            resumo_operacional=orm.resumo_operacional,
+            completed_missions=orm.completed_missions,
+            pending_missions=orm.pending_missions,
+            failed_missions=orm.failed_missions,
+            high_priority_missions=orm.high_priority_missions,
+            observacao=orm.observacao,
         )
 
-    def _reconstruir_operacao(self, linha: tuple) -> Operacao:
-        (
-            operacao_id,
-            usuario_id,
-            nome,
-            descricao,
-            start_date,
-            end_date,
-            weekdays,
-            ordem_titulo,
-            ordem_instrucao,
-            is_pinned,
-            status,
-            created_at,
-        ) = linha
+    def _orm_para_operacao(self, orm: OperacaoORM) -> Operacao:
         return Operacao(
-            operacao_id=operacao_id,
-            usuario_id=usuario_id,
-            nome=nome,
-            descricao=descricao,
-            start_date=start_date,
-            end_date=end_date,
-            weekdays=json.loads(weekdays),
-            ordem_titulo=ordem_titulo,
-            ordem_instrucao=ordem_instrucao,
-            is_pinned=is_pinned,
-            status=status,
-            created_at=created_at,
+            operacao_id=orm.operacao_id,
+            usuario_id=orm.usuario_id,
+            nome=orm.nome,
+            descricao=orm.descricao,
+            start_date=orm.start_date,
+            end_date=orm.end_date,
+            weekdays=json.loads(orm.weekdays),
+            ordem_titulo=orm.ordem_titulo,
+            ordem_instrucao=orm.ordem_instrucao,
+            is_pinned=orm.is_pinned,
+            status=orm.status,
+            created_at=orm.created_at,
         )
 
-    def _reconstruir_sonho(self, linha: tuple) -> Sonho:
-        (
-            sonho_id,
-            usuario_id,
-            titulo,
-            descricao,
-            tipo,
-            status,
-            justificativa_arquivamento,
-            created_at,
-            updated_at,
-            archived_at,
-            concluded_at,
-        ) = linha
+    def _orm_para_sonho(self, orm: SonhoORM) -> Sonho:
         return Sonho(
-            sonho_id=sonho_id,
-            usuario_id=usuario_id,
-            titulo=titulo,
-            descricao=descricao,
-            tipo=tipo,
-            status=status,
-            justificativa_arquivamento=justificativa_arquivamento,
-            created_at=created_at,
-            updated_at=updated_at,
-            archived_at=archived_at,
-            concluded_at=concluded_at,
+            sonho_id=orm.id,
+            usuario_id=orm.usuario_id,
+            titulo=orm.titulo,
+            descricao=orm.descricao,
+            tipo=orm.tipo,
+            status=orm.status,
+            justificativa_arquivamento=orm.justificativa_arquivamento,
+            created_at=orm.created_at,
+            updated_at=orm.updated_at,
+            archived_at=orm.archived_at,
+            concluded_at=orm.concluded_at,
         )
 
-    def _reconstruir_objetivo(self, linha: tuple) -> Objetivo:
-        (
-            objetivo_id,
-            usuario_id,
-            sonho_id,
-            titulo,
-            descricao,
-            data_alvo,
-            progresso,
-            status,
-            order_index,
-            created_at,
-            updated_at,
-            concluded_at,
-        ) = linha
+    def _orm_para_objetivo(self, orm: ObjetivoORM) -> Objetivo:
         return Objetivo(
-            objetivo_id=objetivo_id,
-            usuario_id=usuario_id,
-            sonho_id=sonho_id,
-            titulo=titulo,
-            descricao=descricao,
-            data_alvo=data_alvo,
-            progresso=progresso,
-            status=status,
-            order_index=order_index,
-            created_at=created_at,
-            updated_at=updated_at,
-            concluded_at=concluded_at,
+            objetivo_id=orm.id,
+            usuario_id=orm.usuario_id,
+            sonho_id=orm.sonho_id,
+            titulo=orm.titulo,
+            descricao=orm.descricao,
+            data_alvo=orm.data_alvo,
+            progresso=orm.progresso,
+            status=orm.status,
+            order_index=orm.order_index,
+            created_at=orm.created_at,
+            updated_at=orm.updated_at,
+            concluded_at=orm.concluded_at,
         )
+
+    def _select_missoes_com_contexto(self):
+        return (
+            select(MissaoORM, MissaoContextoORM, OperacaoORM.nome)
+            .outerjoin(
+                MissaoContextoORM,
+                MissaoContextoORM.missao_id == MissaoORM.missao_id,
+            )
+            .outerjoin(
+                OperacaoORM,
+                OperacaoORM.operacao_id == MissaoContextoORM.operacao_id,
+            )
+        )
+
+    def _mission_orm(self, missao: Missao) -> MissaoORM:
+        return MissaoORM(
+            titulo=missao.titulo,
+            prioridade=missao.prioridade.value,
+            prazo=missao.prazo_date,
+            instrucao=missao.instrucao,
+            status=missao.status.value,
+            is_pinned=missao.is_pinned,
+            created_at=missao.created_at,
+            completed_at=missao.completed_at,
+            failed_at=missao.failed_at,
+            failure_reason_type=(
+                None
+                if missao.failure_reason_type is None
+                else missao.failure_reason_type.value
+            ),
+            failure_reason=missao.failure_reason,
+            soldier_excuse=missao.soldier_excuse,
+            general_verdict=missao.general_verdict,
+            objetivo_id=missao.objetivo_id,
+            sonho_id=missao.sonho_id,
+            recurrence_weekdays=_json_dumps_ou_none(missao.recurrence_weekdays),
+            recurrence_end_date=missao.recurrence_end_date,
+            duration_type=missao.duration_type,
+        )
+
+    def _aplicar_missao(self, orm: MissaoORM, missao: Missao) -> None:
+        orm.titulo = missao.titulo
+        orm.prioridade = missao.prioridade.value
+        orm.prazo = missao.prazo_date
+        orm.instrucao = missao.instrucao
+        orm.status = missao.status.value
+        orm.is_pinned = missao.is_pinned
+        orm.created_at = missao.created_at
+        orm.completed_at = missao.completed_at
+        orm.failed_at = missao.failed_at
+        orm.failure_reason_type = (
+            None if missao.failure_reason_type is None else missao.failure_reason_type.value
+        )
+        orm.failure_reason = missao.failure_reason
+        orm.soldier_excuse = missao.soldier_excuse
+        orm.general_verdict = missao.general_verdict
+        orm.objetivo_id = missao.objetivo_id
+        orm.sonho_id = missao.sonho_id
+        orm.recurrence_weekdays = _json_dumps_ou_none(missao.recurrence_weekdays)
+        orm.recurrence_end_date = missao.recurrence_end_date
+        orm.duration_type = missao.duration_type
 
     def carregar_dados(self) -> list[Missao]:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
-                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
-                               m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
-                        FROM missoes m
-                        LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
-                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
-                        ORDER BY m.prioridade, m.missao_id;
-                        """
+            with self._session() as session:
+                linhas = session.execute(
+                    self._select_missoes_com_contexto().order_by(
+                        MissaoORM.prioridade,
+                        MissaoORM.missao_id,
                     )
-                    linhas = cursor.fetchall()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).all()
+                return [
+                    self._orm_para_missao(missao, contexto, operacao_nome)
+                    for missao, contexto, operacao_nome in linhas
+                ]
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao carregar missões do banco de dados."
             ) from erro
-        return [self._reconstruir_missao(linha) for linha in linhas]
 
     def carregar_dados_por_responsavel(self, responsavel_id: int) -> list[Missao]:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
-                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
-                               m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
-                        FROM missoes m
-                        JOIN missao_contextos mc ON mc.missao_id = m.missao_id
-                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
-                        WHERE mc.responsavel_id = %s
-                        ORDER BY m.prioridade, m.missao_id;
-                        """,
-                        (responsavel_id,),
-                    )
-                    linhas = cursor.fetchall()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                linhas = session.execute(
+                    self._select_missoes_com_contexto()
+                    .where(MissaoContextoORM.responsavel_id == responsavel_id)
+                    .order_by(MissaoORM.prioridade, MissaoORM.missao_id)
+                ).all()
+                return [
+                    self._orm_para_missao(missao, contexto, operacao_nome)
+                    for missao, contexto, operacao_nome in linhas
+                ]
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao carregar missões do responsável no banco de dados."
             ) from erro
-        return [self._reconstruir_missao(linha) for linha in linhas]
 
     def buscar_por_id(self, missao_id: int) -> Missao | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
-                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
-                               m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
-                        FROM missoes m
-                        LEFT JOIN missao_contextos mc ON mc.missao_id = m.missao_id
-                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
-                        WHERE m.missao_id = %s;
-                        """,
-                        (missao_id,),
+            with self._session() as session:
+                linha = session.execute(
+                    self._select_missoes_com_contexto().where(
+                        MissaoORM.missao_id == missao_id
                     )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).first()
+                if linha is None:
+                    return None
+                missao, contexto, operacao_nome = linha
+                return self._orm_para_missao(missao, contexto, operacao_nome)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar missão no banco de dados."
             ) from erro
-        return None if linha is None else self._reconstruir_missao(linha)
 
     def adicionar_missao(self, missao: Missao) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO missoes (
-                            titulo, prioridade, prazo, instrucao, status, is_pinned,
-                            created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict,
-                            objetivo_id, sonho_id, recurrence_weekdays, recurrence_end_date, duration_type
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        RETURNING missao_id;
-                        """,
-                        (
-                            missao.titulo,
-                            missao.prioridade.value,
-                            missao.prazo_date,
-                            missao.instrucao,
-                            missao.status.value,
-                            missao.is_pinned,
-                            missao.created_at,
-                            missao.completed_at,
-                            missao.failed_at,
-                            None if missao.failure_reason_type is None else missao.failure_reason_type.value,
-                            missao.failure_reason,
-                            missao.soldier_excuse,
-                            missao.general_verdict,
-                            missao.objetivo_id,
-                            missao.sonho_id,
-                            None if missao.recurrence_weekdays is None else json.dumps(missao.recurrence_weekdays),
-                            missao.recurrence_end_date,
-                            missao.duration_type,
-                        ),
-                    )
-                    missao_id = cursor.fetchone()[0]
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = self._mission_orm(missao)
+                session.add(orm)
+                session.flush()
+                missao.atualizar_missao_id(orm.missao_id)
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao adicionar missão no banco de dados."
             ) from erro
-        missao.atualizar_missao_id(missao_id)
 
     def atualizar_missao(self, missao: Missao) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE missoes
-                        SET titulo = %s,
-                            prioridade = %s,
-                            prazo = %s,
-                            instrucao = %s,
-                            status = %s,
-                            is_pinned = %s,
-                            created_at = %s,
-                            completed_at = %s,
-                            failed_at = %s,
-                            failure_reason_type = %s,
-                            failure_reason = %s,
-                            soldier_excuse = %s,
-                            general_verdict = %s,
-                            objetivo_id = %s,
-                            sonho_id = %s,
-                            recurrence_weekdays = %s,
-                            recurrence_end_date = %s,
-                            duration_type = %s
-                        WHERE missao_id = %s;
-                        """,
-                        (
-                            missao.titulo,
-                            missao.prioridade.value,
-                            missao.prazo_date,
-                            missao.instrucao,
-                            missao.status.value,
-                            missao.is_pinned,
-                            missao.created_at,
-                            missao.completed_at,
-                            missao.failed_at,
-                            None if missao.failure_reason_type is None else missao.failure_reason_type.value,
-                            missao.failure_reason,
-                            missao.soldier_excuse,
-                            missao.general_verdict,
-                            missao.objetivo_id,
-                            missao.sonho_id,
-                            None if missao.recurrence_weekdays is None else json.dumps(missao.recurrence_weekdays),
-                            missao.recurrence_end_date,
-                            missao.duration_type,
-                            missao.missao_id,
-                        ),
+            with self._session() as session:
+                orm = session.get(MissaoORM, missao.missao_id)
+                if orm is None:
+                    raise MissaoNaoPersistidaError(
+                        f"Missão {missao.missao_id} não encontrada para atualização."
                     )
-                    if cursor.rowcount == 0:
-                        raise MissaoNaoPersistidaError(
-                            f"Missão {missao.missao_id} não encontrada para atualização."
-                        )
-                conexao.commit()
+                self._aplicar_missao(orm, missao)
         except ErroRepositorio:
             raise
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao atualizar missão no banco de dados."
             ) from erro
 
     def remover_missao(self, missao_id: int) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    for tabela_auxiliar in ("auditoria_eventos", "missao_contextos"):
-                        try:
-                            cursor.execute(
-                                f"DELETE FROM {tabela_auxiliar} WHERE missao_id = %s;",
-                                (missao_id,),
-                            )
-                        except psycopg.Error:
-                            pass
-                    cursor.execute(
-                        "DELETE FROM missoes WHERE missao_id = %s;",
-                        (missao_id,),
+            with self._session() as session:
+                session.execute(
+                    delete(AuditoriaEventoORM).where(
+                        AuditoriaEventoORM.missao_id == missao_id
                     )
-                    if cursor.rowcount == 0:
-                        raise MissaoNaoPersistidaError(
-                            f"Missão {missao_id} não encontrada para remoção."
-                        )
-                conexao.commit()
+                )
+                session.execute(
+                    delete(MissaoContextoORM).where(
+                        MissaoContextoORM.missao_id == missao_id
+                    )
+                )
+                resultado = session.execute(
+                    delete(MissaoORM).where(MissaoORM.missao_id == missao_id)
+                )
+                if resultado.rowcount == 0:
+                    raise MissaoNaoPersistidaError(
+                        f"Missão {missao_id} não encontrada para remoção."
+                    )
         except ErroRepositorio:
             raise
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao remover missão do banco de dados."
             ) from erro
 
     def adicionar_usuario(self, usuario: Usuario) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO usuarios (
-                            usuario, email, senha_hash, ativo, nome_general,
-                            active_mode, planning_window, timezone, emergency_unlock_date,
-                            timezone_updated_at
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        RETURNING usuario_id;
-                        """,
-                        (
-                            usuario.usuario,
-                            usuario.email,
-                            usuario.senha_hash,
-                            usuario.ativo,
-                            usuario.nome_general,
-                            usuario.active_mode,
-                            usuario.planning_window,
-                            usuario.timezone,
-                            usuario.emergency_unlock_date,
-                            usuario.timezone_updated_at,
-                        ),
-                    )
-                    usuario.usuario_id = cursor.fetchone()[0]
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = UsuarioORM(
+                    usuario=usuario.usuario,
+                    email=usuario.email,
+                    senha_hash=usuario.senha_hash,
+                    ativo=usuario.ativo,
+                    nome_general=usuario.nome_general,
+                    active_mode=usuario.active_mode,
+                    planning_window=usuario.planning_window,
+                    timezone=usuario.timezone,
+                    emergency_unlock_date=usuario.emergency_unlock_date,
+                    timezone_updated_at=usuario.timezone_updated_at,
+                )
+                session.add(orm)
+                session.flush()
+                usuario.usuario_id = orm.usuario_id
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao adicionar usuário no banco de dados."
             ) from erro
 
     def buscar_usuario_por_email(self, email: str) -> Usuario | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
-                               active_mode, planning_window, timezone, emergency_unlock_date,
-                               timezone_updated_at
-                        FROM usuarios
-                        WHERE email = %s;
-                        """,
-                        (email.strip().lower(),),
-                    )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = session.execute(
+                    select(UsuarioORM).where(UsuarioORM.email == email.strip().lower())
+                ).scalar_one_or_none()
+                return None if orm is None else self._orm_para_usuario(orm)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar usuário pelo email no banco de dados."
             ) from erro
-        return None if linha is None else self._reconstruir_usuario(linha)
 
     def buscar_usuario_por_identificador(self, identificador: str) -> Usuario | None:
-        self.inicializar_schema()
         identificador = identificador.strip()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
-                               active_mode, planning_window, timezone, emergency_unlock_date,
-                               timezone_updated_at
-                        FROM usuarios
-                        WHERE email = %s OR lower(usuario) = lower(%s)
-                        ORDER BY CASE WHEN email = %s THEN 0 ELSE 1 END
-                        LIMIT 1;
-                        """,
-                        (identificador.lower(), identificador, identificador.lower()),
+            with self._session() as session:
+                orm = session.execute(
+                    select(UsuarioORM)
+                    .where(
+                        or_(
+                            UsuarioORM.email == identificador.lower(),
+                            func.lower(UsuarioORM.usuario) == identificador.lower(),
+                        )
                     )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                    .order_by((UsuarioORM.email == identificador.lower()).desc())
+                    .limit(1)
+                ).scalar_one_or_none()
+                return None if orm is None else self._orm_para_usuario(orm)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar usuário para autenticação no banco de dados."
             ) from erro
-        return None if linha is None else self._reconstruir_usuario(linha)
 
     def buscar_usuario_por_usuario(self, usuario: str) -> Usuario | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
-                               active_mode, planning_window, timezone, emergency_unlock_date,
-                               timezone_updated_at
-                        FROM usuarios
-                        WHERE lower(usuario) = lower(%s);
-                        """,
-                        (usuario.strip(),),
+            with self._session() as session:
+                orm = session.execute(
+                    select(UsuarioORM).where(
+                        func.lower(UsuarioORM.usuario) == usuario.strip().lower()
                     )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).scalar_one_or_none()
+                return None if orm is None else self._orm_para_usuario(orm)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar usuário pelo nome de usuário no banco de dados."
             ) from erro
-        return None if linha is None else self._reconstruir_usuario(linha)
 
     def buscar_usuario_por_id(self, usuario_id: int) -> Usuario | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT usuario_id, usuario, email, senha_hash, ativo, nome_general,
-                               active_mode, planning_window, timezone, emergency_unlock_date,
-                               timezone_updated_at
-                        FROM usuarios
-                        WHERE usuario_id = %s;
-                        """,
-                        (usuario_id,),
-                    )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = session.get(UsuarioORM, usuario_id)
+                return None if orm is None else self._orm_para_usuario(orm)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar usuário pelo ID no banco de dados."
             ) from erro
-        return None if linha is None else self._reconstruir_usuario(linha)
+
+    def _atualizar_usuario(self, usuario_id: int, mensagem: str, **campos) -> None:
+        try:
+            with self._session() as session:
+                resultado = session.execute(
+                    update(UsuarioORM)
+                    .where(UsuarioORM.usuario_id == usuario_id)
+                    .values(**campos)
+                )
+                if resultado.rowcount == 0:
+                    raise UsuarioNaoPersistidoError(mensagem)
+        except ErroRepositorio:
+            raise
+        except SQLAlchemyError as erro:
+            raise EscritaRepositorioError(mensagem) from erro
 
     def atualizar_nome_general(self, usuario_id: int, nome_general: str) -> None:
-        self.inicializar_schema()
-        try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE usuarios
-                        SET nome_general = %s
-                        WHERE usuario_id = %s;
-                        """,
-                        (nome_general.strip(), usuario_id),
-                    )
-                    if cursor.rowcount == 0:
-                        raise UsuarioNaoPersistidoError(
-                            f"Usuário {usuario_id} não encontrado para atualizar o nome do General."
-                        )
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
-            raise EscritaRepositorioError(
-                "Erro ao atualizar o nome do General no banco de dados."
-            ) from erro
+        self._atualizar_usuario(
+            usuario_id,
+            f"Usuário {usuario_id} não encontrado para atualizar o nome do General.",
+            nome_general=nome_general.strip(),
+        )
 
     def atualizar_modo_ativo(self, usuario_id: int, active_mode: str) -> None:
-        self.inicializar_schema()
-        try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE usuarios
-                        SET active_mode = %s
-                        WHERE usuario_id = %s;
-                        """,
-                        (active_mode.strip().lower(), usuario_id),
-                    )
-                    if cursor.rowcount == 0:
-                        raise UsuarioNaoPersistidoError(
-                            f"Usuário {usuario_id} não encontrado para atualizar o modo ativo."
-                        )
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
-            raise EscritaRepositorioError(
-                "Erro ao atualizar o modo ativo no banco de dados."
-            ) from erro
+        self._atualizar_usuario(
+            usuario_id,
+            f"Usuário {usuario_id} não encontrado para atualizar o modo ativo.",
+            active_mode=active_mode.strip().lower(),
+        )
 
     def atualizar_turno_planejamento(self, usuario_id: int, planning_window: str) -> None:
-        self.inicializar_schema()
-        try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE usuarios
-                        SET planning_window = %s
-                        WHERE usuario_id = %s;
-                        """,
-                        (planning_window.strip().lower(), usuario_id),
-                    )
-                    if cursor.rowcount == 0:
-                        raise UsuarioNaoPersistidoError(
-                            f"Usuário {usuario_id} não encontrado para atualizar o turno de planejamento."
-                        )
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
-            raise EscritaRepositorioError(
-                "Erro ao atualizar o turno de planejamento no banco de dados."
-            ) from erro
+        self._atualizar_usuario(
+            usuario_id,
+            f"Usuário {usuario_id} não encontrado para atualizar o turno de planejamento.",
+            planning_window=planning_window.strip().lower(),
+        )
 
     def atualizar_timezone(
         self,
@@ -1463,55 +554,19 @@ class RepositorioPostgres:
         timezone: str,
         timezone_updated_at,
     ) -> None:
-        self.inicializar_schema()
-        try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE usuarios
-                        SET timezone = %s,
-                            timezone_updated_at = %s
-                        WHERE usuario_id = %s;
-                        """,
-                        (timezone.strip(), timezone_updated_at, usuario_id),
-                    )
-                    if cursor.rowcount == 0:
-                        raise UsuarioNaoPersistidoError(
-                            f"Usuário {usuario_id} não encontrado para atualizar o timezone."
-                        )
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
-            raise EscritaRepositorioError(
-                "Erro ao atualizar o timezone no banco de dados."
-            ) from erro
+        self._atualizar_usuario(
+            usuario_id,
+            f"Usuário {usuario_id} não encontrado para atualizar o timezone.",
+            timezone=timezone.strip(),
+            timezone_updated_at=timezone_updated_at,
+        )
 
     def registrar_uso_emergencia_general(self, usuario_id: int, local_date) -> None:
-        self.inicializar_schema()
-        try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE usuarios
-                        SET emergency_unlock_date = %s
-                        WHERE usuario_id = %s;
-                        """,
-                        (local_date, usuario_id),
-                    )
-                    if cursor.rowcount == 0:
-                        raise UsuarioNaoPersistidoError(
-                            f"Usuário {usuario_id} não encontrado para registrar emergência do General."
-                        )
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
-            raise EscritaRepositorioError(
-                "Erro ao registrar emergência do General no banco de dados."
-            ) from erro
+        self._atualizar_usuario(
+            usuario_id,
+            f"Usuário {usuario_id} não encontrado para registrar emergência do General.",
+            emergency_unlock_date=local_date,
+        )
 
     def salvar_contexto_missao(
         self,
@@ -1521,298 +576,205 @@ class RepositorioPostgres:
         operacao_id: int | None = None,
         operacao_dia=None,
     ) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO missao_contextos (missao_id, criada_por_id, responsavel_id, operacao_id, operacao_dia)
-                        VALUES (%s, %s, %s, %s, %s)
-                        ON CONFLICT (missao_id)
-                        DO UPDATE SET criada_por_id = EXCLUDED.criada_por_id,
-                                      responsavel_id = EXCLUDED.responsavel_id,
-                                      operacao_id = EXCLUDED.operacao_id,
-                                      operacao_dia = EXCLUDED.operacao_dia;
-                        """,
-                        (missao_id, criada_por_id, responsavel_id, operacao_id, operacao_dia),
-                    )
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                contexto = session.get(MissaoContextoORM, missao_id)
+                if contexto is None:
+                    contexto = MissaoContextoORM(missao_id=missao_id)
+                    session.add(contexto)
+                contexto.criada_por_id = criada_por_id
+                contexto.responsavel_id = responsavel_id
+                contexto.operacao_id = operacao_id
+                contexto.operacao_dia = operacao_dia
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao salvar contexto da missão no banco de dados."
             ) from erro
 
     def buscar_contexto_missao(self, missao_id: int) -> dict | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        "SELECT criada_por_id, responsavel_id, operacao_id, operacao_dia FROM missao_contextos WHERE missao_id = %s;",
-                        (missao_id,),
-                    )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                contexto = session.get(MissaoContextoORM, missao_id)
+                if contexto is None:
+                    return None
+                return {
+                    "criada_por_id": contexto.criada_por_id,
+                    "responsavel_id": contexto.responsavel_id,
+                    "operacao_id": contexto.operacao_id,
+                    "operacao_dia": contexto.operacao_dia,
+                }
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar contexto da missão no banco de dados."
             ) from erro
-        if linha is None:
-            return None
-        criada_por_id, responsavel_id, operacao_id, operacao_dia = linha
-        return {
-            "criada_por_id": criada_por_id,
-            "responsavel_id": responsavel_id,
-            "operacao_id": operacao_id,
-            "operacao_dia": operacao_dia,
-        }
 
     def adicionar_operacao(self, operacao: Operacao) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO operacoes (
-                            usuario_id, nome, descricao, start_date, end_date, weekdays,
-                            ordem_titulo, ordem_instrucao, is_pinned, status, created_at
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        RETURNING operacao_id;
-                        """,
-                        (
-                            operacao.usuario_id,
-                            operacao.nome,
-                            operacao.descricao,
-                            operacao.start_date,
-                            operacao.end_date,
-                            json.dumps(operacao.weekdays),
-                            operacao.ordem_titulo,
-                            operacao.ordem_instrucao,
-                            operacao.is_pinned,
-                            operacao.status,
-                            operacao.created_at,
-                        ),
-                    )
-                    operacao.atualizar_operacao_id(cursor.fetchone()[0])
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = OperacaoORM(
+                    usuario_id=operacao.usuario_id,
+                    nome=operacao.nome,
+                    descricao=operacao.descricao,
+                    start_date=operacao.start_date,
+                    end_date=operacao.end_date,
+                    weekdays=json.dumps(operacao.weekdays),
+                    ordem_titulo=operacao.ordem_titulo,
+                    ordem_instrucao=operacao.ordem_instrucao,
+                    is_pinned=operacao.is_pinned,
+                    status=operacao.status,
+                    created_at=operacao.created_at,
+                )
+                session.add(orm)
+                session.flush()
+                operacao.atualizar_operacao_id(orm.operacao_id)
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao adicionar operação no banco de dados."
             ) from erro
 
     def listar_operacoes_por_usuario(self, usuario_id: int) -> list[Operacao]:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT operacao_id, usuario_id, nome, descricao, start_date, end_date,
-                               weekdays, ordem_titulo, ordem_instrucao, is_pinned, status, created_at
-                        FROM operacoes
-                        WHERE usuario_id = %s
-                        ORDER BY status ASC, start_date DESC, operacao_id DESC;
-                        """,
-                        (usuario_id,),
+            with self._session() as session:
+                operacoes = session.execute(
+                    select(OperacaoORM)
+                    .where(OperacaoORM.usuario_id == usuario_id)
+                    .order_by(
+                        OperacaoORM.status.asc(),
+                        OperacaoORM.start_date.desc(),
+                        OperacaoORM.operacao_id.desc(),
                     )
-                    linhas = cursor.fetchall()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).scalars()
+                return [self._orm_para_operacao(operacao) for operacao in operacoes]
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao listar operações no banco de dados."
             ) from erro
-        return [self._reconstruir_operacao(linha) for linha in linhas]
 
     def buscar_operacao_por_id(self, operacao_id: int) -> Operacao | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT operacao_id, usuario_id, nome, descricao, start_date, end_date,
-                               weekdays, ordem_titulo, ordem_instrucao, is_pinned, status, created_at
-                        FROM operacoes
-                        WHERE operacao_id = %s;
-                        """,
-                        (operacao_id,),
-                    )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = session.get(OperacaoORM, operacao_id)
+                return None if orm is None else self._orm_para_operacao(orm)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar operação no banco de dados."
             ) from erro
-        return None if linha is None else self._reconstruir_operacao(linha)
 
     def atualizar_operacao(self, operacao: Operacao) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE operacoes
-                        SET nome = %s,
-                            descricao = %s,
-                            start_date = %s,
-                            end_date = %s,
-                            weekdays = %s,
-                            ordem_titulo = %s,
-                            ordem_instrucao = %s,
-                            is_pinned = %s,
-                            status = %s
-                        WHERE operacao_id = %s AND usuario_id = %s;
-                        """,
-                        (
-                            operacao.nome,
-                            operacao.descricao,
-                            operacao.start_date,
-                            operacao.end_date,
-                            json.dumps(operacao.weekdays),
-                            operacao.ordem_titulo,
-                            operacao.ordem_instrucao,
-                            operacao.is_pinned,
-                            operacao.status,
-                            operacao.operacao_id,
-                            operacao.usuario_id,
-                        ),
+            with self._session() as session:
+                orm = session.get(OperacaoORM, operacao.operacao_id)
+                if orm is None or orm.usuario_id != operacao.usuario_id:
+                    raise EscritaRepositorioError(
+                        f"Operação {operacao.operacao_id} não encontrada para atualização."
                     )
-                    if cursor.rowcount == 0:
-                        raise EscritaRepositorioError(
-                            f"Operação {operacao.operacao_id} não encontrada para atualização."
-                        )
-                conexao.commit()
+                orm.nome = operacao.nome
+                orm.descricao = operacao.descricao
+                orm.start_date = operacao.start_date
+                orm.end_date = operacao.end_date
+                orm.weekdays = json.dumps(operacao.weekdays)
+                orm.ordem_titulo = operacao.ordem_titulo
+                orm.ordem_instrucao = operacao.ordem_instrucao
+                orm.is_pinned = operacao.is_pinned
+                orm.status = operacao.status
         except ErroRepositorio:
             raise
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao atualizar operação no banco de dados."
             ) from erro
 
     def remover_operacao(self, operacao_id: int, usuario_id: int) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        "SELECT 1 FROM operacoes WHERE operacao_id = %s AND usuario_id = %s;",
-                        (operacao_id, usuario_id),
+            with self._session() as session:
+                operacao = session.get(OperacaoORM, operacao_id)
+                if operacao is None or operacao.usuario_id != usuario_id:
+                    raise EscritaRepositorioError(
+                        f"Operação {operacao_id} não encontrada para remoção."
                     )
-                    if cursor.fetchone() is None:
-                        raise EscritaRepositorioError(
-                            f"Operação {operacao_id} não encontrada para remoção."
+
+                missao_ids = list(
+                    session.execute(
+                        select(MissaoContextoORM.missao_id)
+                        .join(
+                            MissaoORM,
+                            MissaoORM.missao_id == MissaoContextoORM.missao_id,
                         )
-                    cursor.execute(
-                        """
-                        SELECT mc.missao_id
-                        FROM missao_contextos mc
-                        JOIN missoes m ON m.missao_id = mc.missao_id
-                        WHERE mc.operacao_id = %s
-                          AND (m.prazo IS NULL OR m.prazo >= CURRENT_DATE);
-                        """,
-                        (operacao_id,),
+                        .where(
+                            MissaoContextoORM.operacao_id == operacao_id,
+                            or_(
+                                MissaoORM.prazo.is_(None),
+                                MissaoORM.prazo >= func.current_date(),
+                            ),
+                        )
+                    ).scalars()
+                )
+                if missao_ids:
+                    session.execute(
+                        delete(AuditoriaEventoORM).where(
+                            AuditoriaEventoORM.missao_id.in_(missao_ids)
+                        )
                     )
-                    missao_ids = [linha[0] for linha in cursor.fetchall()]
-                    if missao_ids:
-                        cursor.execute(
-                            "DELETE FROM auditoria_eventos WHERE missao_id = ANY(%s);",
-                            (missao_ids,),
+                    session.execute(
+                        delete(MissaoContextoORM).where(
+                            MissaoContextoORM.missao_id.in_(missao_ids)
                         )
-                        cursor.execute(
-                            "DELETE FROM missao_contextos WHERE missao_id = ANY(%s);",
-                            (missao_ids,),
-                        )
-                        cursor.execute(
-                            "DELETE FROM missoes WHERE missao_id = ANY(%s);",
-                            (missao_ids,),
-                        )
-                    cursor.execute(
-                        """
-                        UPDATE missao_contextos
-                        SET operacao_id = NULL,
-                            operacao_dia = NULL
-                        WHERE operacao_id = %s;
-                        """,
-                        (operacao_id,),
                     )
-                    cursor.execute(
-                        "DELETE FROM operacoes WHERE operacao_id = %s AND usuario_id = %s;",
-                        (operacao_id, usuario_id),
+                    session.execute(
+                        delete(MissaoORM).where(MissaoORM.missao_id.in_(missao_ids))
                     )
-                conexao.commit()
+                session.execute(
+                    update(MissaoContextoORM)
+                    .where(MissaoContextoORM.operacao_id == operacao_id)
+                    .values(operacao_id=None, operacao_dia=None)
+                )
+                session.delete(operacao)
         except ErroRepositorio:
             raise
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao remover operação no banco de dados."
             ) from erro
 
     def listar_missoes_por_operacao(self, operacao_id: int) -> list[Missao]:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
-                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
-                               m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
-                        FROM missoes m
-                        JOIN missao_contextos mc ON mc.missao_id = m.missao_id
-                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
-                        WHERE mc.operacao_id = %s
-                        ORDER BY m.prazo ASC, m.missao_id ASC;
-                        """,
-                        (operacao_id,),
-                    )
-                    linhas = cursor.fetchall()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                linhas = session.execute(
+                    self._select_missoes_com_contexto()
+                    .where(MissaoContextoORM.operacao_id == operacao_id)
+                    .order_by(MissaoORM.prazo.asc(), MissaoORM.missao_id.asc())
+                ).all()
+                return [
+                    self._orm_para_missao(missao, contexto, operacao_nome)
+                    for missao, contexto, operacao_nome in linhas
+                ]
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao listar ordens da operação no banco de dados."
             ) from erro
-        return [self._reconstruir_missao(linha) for linha in linhas]
 
     def buscar_missao_de_operacao_por_data(self, operacao_id: int, prazo) -> Missao | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT m.missao_id, m.titulo, m.prioridade, m.prazo, m.instrucao, m.status,
-                               m.is_pinned, m.created_at, m.completed_at, m.failed_at, m.failure_reason_type, m.failure_reason,
-                               m.soldier_excuse, m.general_verdict, mc.operacao_id, o.nome, m.objetivo_id, m.sonho_id,
-                               m.recurrence_weekdays, m.recurrence_end_date, m.duration_type
-                        FROM missoes m
-                        JOIN missao_contextos mc ON mc.missao_id = m.missao_id
-                        LEFT JOIN operacoes o ON o.operacao_id = mc.operacao_id
-                        WHERE mc.operacao_id = %s AND (mc.operacao_dia = %s OR m.prazo = %s)
-                        LIMIT 1;
-                        """,
-                        (operacao_id, prazo, prazo),
+            with self._session() as session:
+                linha = session.execute(
+                    self._select_missoes_com_contexto()
+                    .where(
+                        MissaoContextoORM.operacao_id == operacao_id,
+                        or_(
+                            MissaoContextoORM.operacao_dia == prazo,
+                            MissaoORM.prazo == prazo,
+                        ),
                     )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                    .limit(1)
+                ).first()
+                if linha is None:
+                    return None
+                missao, contexto, operacao_nome = linha
+                return self._orm_para_missao(missao, contexto, operacao_nome)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar ordem de operação no banco de dados."
             ) from erro
-        return None if linha is None else self._reconstruir_missao(linha)
 
     def criar_missao_de_operacao_se_ausente(
         self,
@@ -1822,482 +784,317 @@ class RepositorioPostgres:
         operacao_id: int,
         operacao_dia,
     ) -> Missao | None:
-        self.inicializar_schema()
-        existente = self.buscar_missao_de_operacao_por_data(operacao_id, operacao_dia)
-        if existente is not None:
-            return None
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO missoes (
-                            titulo, prioridade, prazo, instrucao, status, is_pinned,
-                            created_at, completed_at, failed_at, failure_reason_type, failure_reason, soldier_excuse, general_verdict,
-                            objetivo_id, sonho_id, recurrence_weekdays, recurrence_end_date, duration_type
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        RETURNING missao_id;
-                        """,
-                        (
-                            missao.titulo,
-                            missao.prioridade.value,
-                            missao.prazo_date,
-                            missao.instrucao,
-                            missao.status.value,
-                            missao.is_pinned,
-                            missao.created_at,
-                            missao.completed_at,
-                            missao.failed_at,
-                            None if missao.failure_reason_type is None else missao.failure_reason_type.value,
-                            missao.failure_reason,
-                            missao.soldier_excuse,
-                            missao.general_verdict,
-                            missao.objetivo_id,
-                            missao.sonho_id,
-                            None if missao.recurrence_weekdays is None else json.dumps(missao.recurrence_weekdays),
-                            missao.recurrence_end_date,
-                            missao.duration_type,
+            with self._session() as session:
+                existente = session.execute(
+                    select(MissaoORM)
+                    .join(
+                        MissaoContextoORM,
+                        MissaoContextoORM.missao_id == MissaoORM.missao_id,
+                    )
+                    .where(
+                        MissaoContextoORM.operacao_id == operacao_id,
+                        or_(
+                            MissaoContextoORM.operacao_dia == operacao_dia,
+                            MissaoORM.prazo == operacao_dia,
                         ),
                     )
-                    missao_id = cursor.fetchone()[0]
-                    cursor.execute(
-                        """
-                        INSERT INTO missao_contextos (
-                            missao_id, criada_por_id, responsavel_id, operacao_id, operacao_dia
-                        )
-                        VALUES (%s, %s, %s, %s, %s);
-                        """,
-                        (missao_id, criada_por_id, responsavel_id, operacao_id, operacao_dia),
+                    .limit(1)
+                ).scalar_one_or_none()
+                if existente is not None:
+                    return None
+
+                orm = self._mission_orm(missao)
+                session.add(orm)
+                session.flush()
+                session.add(
+                    MissaoContextoORM(
+                        missao_id=orm.missao_id,
+                        criada_por_id=criada_por_id,
+                        responsavel_id=responsavel_id,
+                        operacao_id=operacao_id,
+                        operacao_dia=operacao_dia,
                     )
-                    missao.atualizar_missao_id(missao_id)
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.errors.UniqueViolation:
+                )
+                missao.atualizar_missao_id(orm.missao_id)
+                return missao
+        except IntegrityError:
             return None
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao criar ordem de operação no banco de dados."
             ) from erro
-        return missao
 
     def criar_sonho(self, sonho: Sonho) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO sonhos (
-                            usuario_id, titulo, descricao, tipo, status, justificativa_arquivamento,
-                            created_at, updated_at, archived_at, concluded_at
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        RETURNING id;
-                        """,
-                        (
-                            sonho.usuario_id,
-                            sonho.titulo,
-                            sonho.descricao,
-                            sonho.tipo.value,
-                            sonho.status.value,
-                            sonho.justificativa_arquivamento,
-                            sonho.created_at,
-                            sonho.updated_at,
-                            sonho.archived_at,
-                            sonho.concluded_at,
-                        ),
-                    )
-                    sonho.atualizar_sonho_id(cursor.fetchone()[0])
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = SonhoORM(
+                    usuario_id=sonho.usuario_id,
+                    titulo=sonho.titulo,
+                    descricao=sonho.descricao,
+                    tipo=sonho.tipo.value,
+                    status=sonho.status.value,
+                    justificativa_arquivamento=sonho.justificativa_arquivamento,
+                    created_at=sonho.created_at,
+                    updated_at=sonho.updated_at,
+                    archived_at=sonho.archived_at,
+                    concluded_at=sonho.concluded_at,
+                )
+                session.add(orm)
+                session.flush()
+                sonho.atualizar_sonho_id(orm.id)
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError("Erro ao criar sonho no banco de dados.") from erro
 
     def atualizar_sonho(self, sonho: Sonho) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE sonhos
-                        SET titulo = %s,
-                            descricao = %s,
-                            tipo = %s,
-                            status = %s,
-                            justificativa_arquivamento = %s,
-                            updated_at = %s,
-                            archived_at = %s,
-                            concluded_at = %s
-                        WHERE id = %s AND usuario_id = %s;
-                        """,
-                        (
-                            sonho.titulo,
-                            sonho.descricao,
-                            sonho.tipo.value,
-                            sonho.status.value,
-                            sonho.justificativa_arquivamento,
-                            sonho.updated_at,
-                            sonho.archived_at,
-                            sonho.concluded_at,
-                            sonho.sonho_id,
-                            sonho.usuario_id,
-                        ),
+            with self._session() as session:
+                orm = session.get(SonhoORM, sonho.sonho_id)
+                if orm is None or orm.usuario_id != sonho.usuario_id:
+                    raise EscritaRepositorioError(
+                        f"Sonho {sonho.sonho_id} não encontrado para atualização."
                     )
-                    if cursor.rowcount == 0:
-                        raise EscritaRepositorioError(f"Sonho {sonho.sonho_id} não encontrado para atualização.")
-                conexao.commit()
+                orm.titulo = sonho.titulo
+                orm.descricao = sonho.descricao
+                orm.tipo = sonho.tipo.value
+                orm.status = sonho.status.value
+                orm.justificativa_arquivamento = sonho.justificativa_arquivamento
+                orm.updated_at = sonho.updated_at
+                orm.archived_at = sonho.archived_at
+                orm.concluded_at = sonho.concluded_at
         except ErroRepositorio:
             raise
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError("Erro ao atualizar sonho no banco de dados.") from erro
 
     def promover_sonho_para_principal(self, usuario_id: int, sonho_id: int, instante) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT 1 FROM sonhos
-                        WHERE id = %s AND usuario_id = %s AND status = 'ativo';
-                        """,
-                        (sonho_id, usuario_id),
+            with self._session() as session:
+                alvo = session.execute(
+                    select(SonhoORM).where(
+                        SonhoORM.id == sonho_id,
+                        SonhoORM.usuario_id == usuario_id,
+                        SonhoORM.status == "ativo",
                     )
-                    if cursor.fetchone() is None:
-                        raise EscritaRepositorioError("Sonho não encontrado.")
-                    cursor.execute(
-                        """
-                        UPDATE sonhos
-                        SET tipo = 'secundario',
-                            updated_at = %s
-                        WHERE usuario_id = %s AND status = 'ativo' AND tipo = 'principal';
-                        """,
-                        (instante, usuario_id),
+                ).scalar_one_or_none()
+                if alvo is None:
+                    raise EscritaRepositorioError("Sonho não encontrado.")
+                session.execute(
+                    update(SonhoORM)
+                    .where(
+                        SonhoORM.usuario_id == usuario_id,
+                        SonhoORM.status == "ativo",
+                        SonhoORM.tipo == "principal",
                     )
-                    cursor.execute(
-                        """
-                        UPDATE sonhos
-                        SET tipo = 'principal',
-                            updated_at = %s
-                        WHERE id = %s AND usuario_id = %s AND status = 'ativo';
-                        """,
-                        (instante, sonho_id, usuario_id),
-                    )
-                conexao.commit()
+                    .values(tipo="secundario", updated_at=instante)
+                )
+                alvo.tipo = "principal"
+                alvo.updated_at = instante
         except ErroRepositorio:
             raise
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError("Erro ao promover sonho no banco de dados.") from erro
 
     def buscar_sonho_por_id(self, sonho_id: int) -> Sonho | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT id, usuario_id, titulo, descricao, tipo, status, justificativa_arquivamento,
-                               created_at, updated_at, archived_at, concluded_at
-                        FROM sonhos
-                        WHERE id = %s;
-                        """,
-                        (sonho_id,),
-                    )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = session.get(SonhoORM, sonho_id)
+                return None if orm is None else self._orm_para_sonho(orm)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError("Erro ao buscar sonho no banco de dados.") from erro
-        return None if linha is None else self._reconstruir_sonho(linha)
 
     def listar_sonhos_por_usuario(self, usuario_id: int) -> list[Sonho]:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT id, usuario_id, titulo, descricao, tipo, status, justificativa_arquivamento,
-                               created_at, updated_at, archived_at, concluded_at
-                        FROM sonhos
-                        WHERE usuario_id = %s
-                        ORDER BY status ASC, tipo ASC, updated_at DESC, id DESC;
-                        """,
-                        (usuario_id,),
+            with self._session() as session:
+                sonhos = session.execute(
+                    select(SonhoORM)
+                    .where(SonhoORM.usuario_id == usuario_id)
+                    .order_by(
+                        SonhoORM.status.asc(),
+                        SonhoORM.tipo.asc(),
+                        SonhoORM.updated_at.desc(),
+                        SonhoORM.id.desc(),
                     )
-                    linhas = cursor.fetchall()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).scalars()
+                return [self._orm_para_sonho(sonho) for sonho in sonhos]
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError("Erro ao listar sonhos no banco de dados.") from erro
-        return [self._reconstruir_sonho(linha) for linha in linhas]
 
     def contar_sonhos_ativos_por_usuario(self, usuario_id: int) -> dict:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT
-                            COUNT(*) AS total,
-                            COUNT(*) FILTER (WHERE tipo = 'principal') AS principal,
-                            COUNT(*) FILTER (WHERE tipo = 'secundario') AS secundario
-                        FROM sonhos
-                        WHERE usuario_id = %s AND status = 'ativo';
-                        """,
-                        (usuario_id,),
+            with self._session() as session:
+                total, principal, secundario = session.execute(
+                    select(
+                        func.count(),
+                        func.count().filter(SonhoORM.tipo == "principal"),
+                        func.count().filter(SonhoORM.tipo == "secundario"),
+                    ).where(
+                        SonhoORM.usuario_id == usuario_id,
+                        SonhoORM.status == "ativo",
                     )
-                    total, principal, secundario = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).one()
+                return {
+                    "total": int(total),
+                    "principal": int(principal),
+                    "secundario": int(secundario),
+                }
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError("Erro ao contar sonhos no banco de dados.") from erro
-        return {"total": total, "principal": principal, "secundario": secundario}
 
     def criar_objetivo(self, objetivo: Objetivo) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO objetivos (
-                            usuario_id, sonho_id, titulo, descricao, data_alvo, progresso,
-                            status, order_index, created_at, updated_at, concluded_at
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        RETURNING id;
-                        """,
-                        (
-                            objetivo.usuario_id,
-                            objetivo.sonho_id,
-                            objetivo.titulo,
-                            objetivo.descricao,
-                            objetivo.data_alvo,
-                            objetivo.progresso,
-                            objetivo.status.value,
-                            objetivo.order_index,
-                            objetivo.created_at,
-                            objetivo.updated_at,
-                            objetivo.concluded_at,
-                        ),
-                    )
-                    objetivo.atualizar_objetivo_id(cursor.fetchone()[0])
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = ObjetivoORM(
+                    usuario_id=objetivo.usuario_id,
+                    sonho_id=objetivo.sonho_id,
+                    titulo=objetivo.titulo,
+                    descricao=objetivo.descricao,
+                    data_alvo=objetivo.data_alvo,
+                    progresso=objetivo.progresso,
+                    status=objetivo.status.value,
+                    order_index=objetivo.order_index,
+                    created_at=objetivo.created_at,
+                    updated_at=objetivo.updated_at,
+                    concluded_at=objetivo.concluded_at,
+                )
+                session.add(orm)
+                session.flush()
+                objetivo.atualizar_objetivo_id(orm.id)
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError("Erro ao criar objetivo no banco de dados.") from erro
 
     def atualizar_objetivo(self, objetivo: Objetivo) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE objetivos
-                        SET sonho_id = %s,
-                            titulo = %s,
-                            descricao = %s,
-                            data_alvo = %s,
-                            progresso = %s,
-                            status = %s,
-                            order_index = %s,
-                            updated_at = %s,
-                            concluded_at = %s
-                        WHERE id = %s AND usuario_id = %s;
-                        """,
-                        (
-                            objetivo.sonho_id,
-                            objetivo.titulo,
-                            objetivo.descricao,
-                            objetivo.data_alvo,
-                            objetivo.progresso,
-                            objetivo.status.value,
-                            objetivo.order_index,
-                            objetivo.updated_at,
-                            objetivo.concluded_at,
-                            objetivo.objetivo_id,
-                            objetivo.usuario_id,
-                        ),
+            with self._session() as session:
+                orm = session.get(ObjetivoORM, objetivo.objetivo_id)
+                if orm is None or orm.usuario_id != objetivo.usuario_id:
+                    raise EscritaRepositorioError(
+                        f"Objetivo {objetivo.objetivo_id} não encontrado para atualização."
                     )
-                    if cursor.rowcount == 0:
-                        raise EscritaRepositorioError(f"Objetivo {objetivo.objetivo_id} não encontrado para atualização.")
-                conexao.commit()
+                orm.sonho_id = objetivo.sonho_id
+                orm.titulo = objetivo.titulo
+                orm.descricao = objetivo.descricao
+                orm.data_alvo = objetivo.data_alvo
+                orm.progresso = objetivo.progresso
+                orm.status = objetivo.status.value
+                orm.order_index = objetivo.order_index
+                orm.updated_at = objetivo.updated_at
+                orm.concluded_at = objetivo.concluded_at
         except ErroRepositorio:
             raise
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError("Erro ao atualizar objetivo no banco de dados.") from erro
 
     def buscar_objetivo_por_id(self, objetivo_id: int) -> Objetivo | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT id, usuario_id, sonho_id, titulo, descricao, data_alvo, progresso,
-                               status, order_index, created_at, updated_at, concluded_at
-                        FROM objetivos
-                        WHERE id = %s;
-                        """,
-                        (objetivo_id,),
-                    )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = session.get(ObjetivoORM, objetivo_id)
+                return None if orm is None else self._orm_para_objetivo(orm)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError("Erro ao buscar objetivo no banco de dados.") from erro
-        return None if linha is None else self._reconstruir_objetivo(linha)
 
     def listar_objetivos_por_usuario(self, usuario_id: int) -> list[Objetivo]:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT id, usuario_id, sonho_id, titulo, descricao, data_alvo, progresso,
-                               status, order_index, created_at, updated_at, concluded_at
-                        FROM objetivos
-                        WHERE usuario_id = %s
-                        ORDER BY order_index ASC, created_at ASC, id ASC;
-                        """,
-                        (usuario_id,),
+            with self._session() as session:
+                objetivos = session.execute(
+                    select(ObjetivoORM)
+                    .where(ObjetivoORM.usuario_id == usuario_id)
+                    .order_by(
+                        ObjetivoORM.order_index.asc(),
+                        ObjetivoORM.created_at.asc(),
+                        ObjetivoORM.id.asc(),
                     )
-                    linhas = cursor.fetchall()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).scalars()
+                return [self._orm_para_objetivo(objetivo) for objetivo in objetivos]
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError("Erro ao listar objetivos no banco de dados.") from erro
-        return [self._reconstruir_objetivo(linha) for linha in linhas]
 
     def proximo_order_index_objetivo(self, usuario_id: int, sonho_id: int | None) -> int:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    if sonho_id is None:
-                        cursor.execute(
-                            """
-                            SELECT COALESCE(MAX(order_index), 0) + 1
-                            FROM objetivos
-                            WHERE usuario_id = %s AND sonho_id IS NULL;
-                            """,
-                            (usuario_id,),
-                        )
-                    else:
-                        cursor.execute(
-                            """
-                            SELECT COALESCE(MAX(order_index), 0) + 1
-                            FROM objetivos
-                            WHERE usuario_id = %s AND sonho_id = %s;
-                            """,
-                            (usuario_id, sonho_id),
-                        )
-                    proximo = cursor.fetchone()[0]
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                filtros = [ObjetivoORM.usuario_id == usuario_id]
+                if sonho_id is None:
+                    filtros.append(ObjetivoORM.sonho_id.is_(None))
+                else:
+                    filtros.append(ObjetivoORM.sonho_id == sonho_id)
+                proximo = session.execute(
+                    select(func.coalesce(func.max(ObjetivoORM.order_index), 0) + 1)
+                    .where(*filtros)
+                ).scalar_one()
+                return int(proximo)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError("Erro ao calcular ordem do objetivo.") from erro
-        return int(proximo)
 
     def atualizar_ordem_objetivos(self, usuario_id: int, objetivo_ids: list[int]) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    for indice, objetivo_id in enumerate(objetivo_ids, start=1):
-                        cursor.execute(
-                            """
-                            UPDATE objetivos
-                            SET order_index = %s,
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE id = %s AND usuario_id = %s;
-                            """,
-                            (indice, objetivo_id, usuario_id),
+            with self._session() as session:
+                for indice, objetivo_id in enumerate(objetivo_ids, start=1):
+                    resultado = session.execute(
+                        update(ObjetivoORM)
+                        .where(
+                            ObjetivoORM.id == objetivo_id,
+                            ObjetivoORM.usuario_id == usuario_id,
                         )
-                        if cursor.rowcount == 0:
-                            raise EscritaRepositorioError(f"Objetivo {objetivo_id} não encontrado para reordenação.")
-                conexao.commit()
+                        .values(order_index=indice, updated_at=func.current_timestamp())
+                    )
+                    if resultado.rowcount == 0:
+                        raise EscritaRepositorioError(
+                            f"Objetivo {objetivo_id} não encontrado para reordenação."
+                        )
         except ErroRepositorio:
             raise
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError("Erro ao reordenar objetivos no banco de dados.") from erro
 
     def deletar_objetivo(self, objetivo_id: int, usuario_id: int) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        "DELETE FROM objetivos WHERE id = %s AND usuario_id = %s;",
-                        (objetivo_id, usuario_id),
+            with self._session() as session:
+                resultado = session.execute(
+                    delete(ObjetivoORM).where(
+                        ObjetivoORM.id == objetivo_id,
+                        ObjetivoORM.usuario_id == usuario_id,
                     )
-                    if cursor.rowcount == 0:
-                        raise EscritaRepositorioError(f"Objetivo {objetivo_id} não encontrado para remoção.")
-                conexao.commit()
+                )
+                if resultado.rowcount == 0:
+                    raise EscritaRepositorioError(
+                        f"Objetivo {objetivo_id} não encontrado para remoção."
+                    )
         except ErroRepositorio:
             raise
-        except psycopg.Error as erro:
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError("Erro ao remover objetivo no banco de dados.") from erro
 
     def registrar_auditoria(self, evento: EventoAuditoria) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO auditoria_eventos (missao_id, usuario_id, acao, detalhes, criado_em)
-                        VALUES (%s, %s, %s, %s, %s)
-                        RETURNING evento_id;
-                        """,
-                        (
-                            evento.missao_id,
-                            evento.usuario_id,
-                            evento.acao,
-                            evento.detalhes,
-                            evento.criado_em,
-                        ),
-                    )
-                    evento.evento_id = cursor.fetchone()[0]
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                orm = AuditoriaEventoORM(
+                    missao_id=evento.missao_id,
+                    usuario_id=evento.usuario_id,
+                    acao=evento.acao,
+                    detalhes=evento.detalhes,
+                    criado_em=evento.criado_em,
+                )
+                session.add(orm)
+                session.flush()
+                evento.evento_id = orm.evento_id
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao registrar auditoria no banco de dados."
             ) from erro
 
     def listar_auditoria_por_missao(self, missao_id: int) -> list[EventoAuditoria]:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT evento_id, missao_id, usuario_id, acao, detalhes, criado_em
-                        FROM auditoria_eventos
-                        WHERE missao_id = %s
-                        ORDER BY criado_em, evento_id;
-                        """,
-                        (missao_id,),
-                    )
-                    linhas = cursor.fetchall()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+            with self._session() as session:
+                eventos = session.execute(
+                    select(AuditoriaEventoORM)
+                    .where(AuditoriaEventoORM.missao_id == missao_id)
+                    .order_by(AuditoriaEventoORM.criado_em, AuditoriaEventoORM.evento_id)
+                ).scalars()
+                return [self._orm_para_evento(evento) for evento in eventos]
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao listar auditoria da missão no banco de dados."
             ) from erro
-        return [self._reconstruir_evento(linha) for linha in linhas]
 
     def buscar_revisao_por_periodo(
         self,
@@ -2305,95 +1102,65 @@ class RepositorioPostgres:
         start_date,
         end_date,
     ) -> RevisaoSemanal | None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT revisao_id, usuario_id, start_date, end_date, reviewed_at,
-                               resumo_operacional, completed_missions, pending_missions,
-                               failed_missions, high_priority_missions, observacao
-                        FROM revisoes_semanais
-                        WHERE usuario_id = %s AND start_date = %s AND end_date = %s;
-                        """,
-                        (usuario_id, start_date, end_date),
+            with self._session() as session:
+                orm = session.execute(
+                    select(RevisaoSemanalORM).where(
+                        RevisaoSemanalORM.usuario_id == usuario_id,
+                        RevisaoSemanalORM.start_date == start_date,
+                        RevisaoSemanalORM.end_date == end_date,
                     )
-                    linha = cursor.fetchone()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).scalar_one_or_none()
+                return None if orm is None else self._orm_para_revisao(orm)
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar revisão semanal no banco de dados."
             ) from erro
-        return None if linha is None else self._reconstruir_revisao(linha)
 
     def listar_revisoes_semanais(self, usuario_id: int) -> list[RevisaoSemanal]:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT revisao_id, usuario_id, start_date, end_date, reviewed_at,
-                               resumo_operacional, completed_missions, pending_missions,
-                               failed_missions, high_priority_missions, observacao
-                        FROM revisoes_semanais
-                        WHERE usuario_id = %s
-                        ORDER BY start_date DESC, revisao_id DESC;
-                        """,
-                        (usuario_id,),
+            with self._session() as session:
+                revisoes = session.execute(
+                    select(RevisaoSemanalORM)
+                    .where(RevisaoSemanalORM.usuario_id == usuario_id)
+                    .order_by(
+                        RevisaoSemanalORM.start_date.desc(),
+                        RevisaoSemanalORM.revisao_id.desc(),
                     )
-                    linhas = cursor.fetchall()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).scalars()
+                return [self._orm_para_revisao(revisao) for revisao in revisoes]
+        except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao listar revisões semanais no banco de dados."
             ) from erro
-        return [self._reconstruir_revisao(linha) for linha in linhas]
 
     def salvar_revisao_semanal(self, revisao: RevisaoSemanal) -> None:
-        self.inicializar_schema()
         try:
-            with self._conectar() as conexao:
-                with conexao.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO revisoes_semanais (
-                            usuario_id, start_date, end_date, reviewed_at,
-                            resumo_operacional, completed_missions, pending_missions,
-                            failed_missions, high_priority_missions, observacao
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (usuario_id, start_date, end_date)
-                        DO UPDATE SET reviewed_at = EXCLUDED.reviewed_at,
-                                      resumo_operacional = EXCLUDED.resumo_operacional,
-                                      completed_missions = EXCLUDED.completed_missions,
-                                      pending_missions = EXCLUDED.pending_missions,
-                                      failed_missions = EXCLUDED.failed_missions,
-                                      high_priority_missions = EXCLUDED.high_priority_missions,
-                                      observacao = EXCLUDED.observacao
-                        RETURNING revisao_id;
-                        """,
-                        (
-                            revisao.usuario_id,
-                            revisao.start_date,
-                            revisao.end_date,
-                            revisao.reviewed_at,
-                            revisao.resumo_operacional,
-                            revisao.completed_missions,
-                            revisao.pending_missions,
-                            revisao.failed_missions,
-                            revisao.high_priority_missions,
-                            revisao.observacao,
-                        ),
+            with self._session() as session:
+                orm = session.execute(
+                    select(RevisaoSemanalORM).where(
+                        RevisaoSemanalORM.usuario_id == revisao.usuario_id,
+                        RevisaoSemanalORM.start_date == revisao.start_date,
+                        RevisaoSemanalORM.end_date == revisao.end_date,
                     )
-                    revisao.atualizar_revisao_id(cursor.fetchone()[0])
-                conexao.commit()
-        except ErroRepositorio:
-            raise
-        except psycopg.Error as erro:
+                ).scalar_one_or_none()
+                if orm is None:
+                    orm = RevisaoSemanalORM(
+                        usuario_id=revisao.usuario_id,
+                        start_date=revisao.start_date,
+                        end_date=revisao.end_date,
+                    )
+                    session.add(orm)
+                orm.reviewed_at = revisao.reviewed_at
+                orm.resumo_operacional = revisao.resumo_operacional
+                orm.completed_missions = revisao.completed_missions
+                orm.pending_missions = revisao.pending_missions
+                orm.failed_missions = revisao.failed_missions
+                orm.high_priority_missions = revisao.high_priority_missions
+                orm.observacao = revisao.observacao
+                session.flush()
+                revisao.atualizar_revisao_id(orm.revisao_id)
+        except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao salvar revisão semanal no banco de dados."
             ) from erro

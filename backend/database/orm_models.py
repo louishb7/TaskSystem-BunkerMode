@@ -6,6 +6,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     Text,
@@ -23,7 +24,19 @@ class Base(DeclarativeBase):
 class UsuarioORM(Base):
     __tablename__ = "usuarios"
 
-    usuario_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    usuario_id: Mapped[int] = mapped_column(
+        Integer,
+        Identity(
+            always=True,
+            start=1,
+            increment=1,
+            minvalue=1,
+            maxvalue=2147483647,
+            cycle=False,
+            cache=1,
+        ),
+        primary_key=True,
+    )
     usuario: Mapped[str] = mapped_column(Text, nullable=False)
     email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     senha_hash: Mapped[str] = mapped_column(Text, nullable=False)
@@ -64,7 +77,19 @@ class SonhoORM(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer,
+        Identity(
+            always=True,
+            start=1,
+            increment=1,
+            minvalue=1,
+            maxvalue=2147483647,
+            cycle=False,
+            cache=1,
+        ),
+        primary_key=True,
+    )
     usuario_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("usuarios.usuario_id", ondelete="CASCADE"),
@@ -106,7 +131,19 @@ class ObjetivoORM(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer,
+        Identity(
+            always=True,
+            start=1,
+            increment=1,
+            minvalue=1,
+            maxvalue=2147483647,
+            cycle=False,
+            cache=1,
+        ),
+        primary_key=True,
+    )
     usuario_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("usuarios.usuario_id", ondelete="CASCADE"),
@@ -143,7 +180,19 @@ class ObjetivoORM(Base):
 class MissaoORM(Base):
     __tablename__ = "missoes"
 
-    missao_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    missao_id: Mapped[int] = mapped_column(
+        Integer,
+        Identity(
+            always=True,
+            start=1,
+            increment=1,
+            minvalue=1,
+            maxvalue=2147483647,
+            cycle=False,
+            cache=1,
+        ),
+        primary_key=True,
+    )
     titulo: Mapped[str] = mapped_column(Text, nullable=False)
     prioridade: Mapped[int] = mapped_column(Integer, nullable=False)
     prazo: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -179,7 +228,19 @@ class MissaoORM(Base):
 class OperacaoORM(Base):
     __tablename__ = "operacoes"
 
-    operacao_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    operacao_id: Mapped[int] = mapped_column(
+        Integer,
+        Identity(
+            always=True,
+            start=1,
+            increment=1,
+            minvalue=1,
+            maxvalue=2147483647,
+            cycle=False,
+            cache=1,
+        ),
+        primary_key=True,
+    )
     usuario_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("usuarios.usuario_id", ondelete="CASCADE"),
@@ -244,7 +305,19 @@ class MissaoContextoORM(Base):
 class AuditoriaEventoORM(Base):
     __tablename__ = "auditoria_eventos"
 
-    evento_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    evento_id: Mapped[int] = mapped_column(
+        Integer,
+        Identity(
+            always=True,
+            start=1,
+            increment=1,
+            minvalue=1,
+            maxvalue=2147483647,
+            cycle=False,
+            cache=1,
+        ),
+        primary_key=True,
+    )
     missao_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     usuario_id: Mapped[int | None] = mapped_column(
         Integer,
@@ -266,7 +339,19 @@ class RevisaoSemanalORM(Base):
         UniqueConstraint("usuario_id", "start_date", "end_date"),
     )
 
-    revisao_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    revisao_id: Mapped[int] = mapped_column(
+        Integer,
+        Identity(
+            always=True,
+            start=1,
+            increment=1,
+            minvalue=1,
+            maxvalue=2147483647,
+            cycle=False,
+            cache=1,
+        ),
+        primary_key=True,
+    )
     usuario_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("usuarios.usuario_id", ondelete="CASCADE"),

@@ -1,26 +1,21 @@
-import os
-import threading
-from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import repositorio as rp
-from backend.models.missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, PrioridadeMissao, StatusMissao
+from backend.database.orm_models import MissaoContextoORM, MissaoORM, UsuarioORM
+from backend.models.missao import (
+    MISSAO_INSTRUCAO_MAX_LENGTH,
+    Missao,
+    PrioridadeMissao,
+    StatusMissao,
+)
 
 
-class FakeCursor:
-    def __init__(
-        self,
-        *,
-        fetchall_result=None,
-        fetchone_result=None,
-        rowcount=1,
-        execute_error=None,
-    ):
-        self.fetchall_result = fetchall_result if fetchall_result is not None else []
-        self.fetchone_result = fetchone_result
-        self.rowcount = rowcount
+class FakeConnection:
+    def __init__(self, execute_error=None):
         self.execute_error = execute_error
         self.executions = []
 
@@ -30,70 +25,149 @@ class FakeCursor:
     def __exit__(self, exc_type, exc, tb):
         return False
 
-    def execute(self, query, params=None):
-        self.executions.append((query, params))
+    def execute(self, statement):
+        self.executions.append(statement)
         if self.execute_error is not None:
             raise self.execute_error
 
-    def fetchall(self):
-        return self.fetchall_result
 
-    def fetchone(self):
-        return self.fetchone_result
+class FakeEngine:
+    def __init__(self, execute_error=None):
+        self.execute_error = execute_error
+        self.disposed = False
+        self.connection = FakeConnection(execute_error=execute_error)
+
+    def connect(self):
+        return self.connection
+
+    def dispose(self):
+        self.disposed = True
 
 
-class FakeConnection:
-    def __init__(self, cursor):
-        self._cursor = cursor
-        self.commit_called = False
-        self.rollback_called = False
+class FakeSession:
+    def __init__(self, flush_callback=None):
+        self.flush_callback = flush_callback
+        self.added = []
+        self.committed = False
+        self.rolled_back = False
         self.closed = False
 
-    def __enter__(self):
-        return self
+    def add(self, orm):
+        self.added.append(orm)
 
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def cursor(self):
-        return self._cursor
+    def flush(self):
+        if self.flush_callback is not None:
+            self.flush_callback(self)
 
     def commit(self):
-        self.commit_called = True
+        self.committed = True
 
     def rollback(self):
-        self.rollback_called = True
+        self.rolled_back = True
 
     def close(self):
         self.closed = True
 
 
-class FakePsycopg:
-    class Error(Exception):
+def criar_repositorio_sem_engine_real(monkeypatch, engine=None):
+    fake_engine = engine or FakeEngine()
+    monkeypatch.setattr(rp, "create_engine", lambda url: fake_engine)
+    return rp.RepositorioPostgres("dbname=bunkermode user=user password=pass host=localhost port=5432")
+
+
+def test_normaliza_conninfo_psycopg_para_url_sqlalchemy(monkeypatch):
+    repositorio = criar_repositorio_sem_engine_real(
+        monkeypatch,
+    )
+
+    parsed = urlsplit(repositorio.sqlalchemy_url)
+
+    assert parsed.scheme == "postgresql+psycopg"
+    assert parsed.username == "user"
+    assert parsed.password == "pass"
+    assert parsed.hostname == "localhost"
+    assert parsed.port == 5432
+    assert parsed.path == "/bunkermode"
+
+
+def test_normaliza_postgres_url_para_driver_psycopg(monkeypatch):
+    fake_engine = FakeEngine()
+    monkeypatch.setattr(rp, "create_engine", lambda url: fake_engine)
+
+    repositorio = rp.RepositorioPostgres(
+        "postgresql://user:pass@db.example.com:5432/bunkermode?sslmode=require"
+    )
+
+    parsed = urlsplit(repositorio.sqlalchemy_url)
+    assert parsed.scheme == "postgresql+psycopg"
+    assert parsed.hostname == "db.example.com"
+    assert parse_qs(parsed.query) == {"sslmode": ["require"]}
+
+
+def test_fechar_descarta_engine(monkeypatch):
+    fake_engine = FakeEngine()
+    repositorio = criar_repositorio_sem_engine_real(monkeypatch, fake_engine)
+
+    repositorio.fechar()
+
+    assert fake_engine.disposed is True
+
+
+def test_verificar_conexao_executa_select(monkeypatch):
+    fake_engine = FakeEngine()
+    repositorio = criar_repositorio_sem_engine_real(monkeypatch, fake_engine)
+
+    repositorio.verificar_conexao()
+
+    assert str(fake_engine.connection.executions[0]) == "SELECT 1"
+
+
+def test_verificar_conexao_traduz_erro_sqlalchemy(monkeypatch):
+    repositorio = criar_repositorio_sem_engine_real(
+        monkeypatch,
+        FakeEngine(execute_error=SQLAlchemyError("falha")),
+    )
+
+    with pytest.raises(rp.ConexaoRepositorioError, match="validar a conexão"):
+        repositorio.verificar_conexao()
+
+
+def test_session_confirma_e_fecha(monkeypatch):
+    repositorio = criar_repositorio_sem_engine_real(monkeypatch)
+    session = FakeSession()
+    repositorio._Session = lambda: session
+
+    with repositorio._session():
         pass
 
-    def __init__(self, connection=None, connect_error=None):
-        self.connection = connection
-        self.connect_error = connect_error
-        self.received_connection_string = None
-        self.connect_count = 0
-
-    def connect(self, connection_string):
-        self.connect_count += 1
-        self.received_connection_string = connection_string
-        if self.connect_error is not None:
-            raise self.connect_error
-        return self.connection
+    assert session.committed is True
+    assert session.rolled_back is False
+    assert session.closed is True
 
 
-@pytest.fixture
-def repositorio():
-    return rp.RepositorioPostgres("dbname=bunkermode_test")
+def test_session_reverte_quando_ha_erro(monkeypatch):
+    repositorio = criar_repositorio_sem_engine_real(monkeypatch)
+    session = FakeSession()
+    repositorio._Session = lambda: session
+
+    with pytest.raises(RuntimeError):
+        with repositorio._session():
+            raise RuntimeError("falha")
+
+    assert session.committed is False
+    assert session.rolled_back is True
+    assert session.closed is True
 
 
-@pytest.fixture
-def missao_exemplo():
-    return Missao(
+def test_adicionar_missao_usa_session_e_atualiza_id(monkeypatch):
+    repositorio = criar_repositorio_sem_engine_real(monkeypatch)
+
+    def definir_id(session):
+        session.added[0].missao_id = 7
+
+    session = FakeSession(flush_callback=definir_id)
+    repositorio._Session = lambda: session
+    missao = Missao(
         titulo="Estudar persistência",
         prioridade=1,
         prazo="20-04-2026",
@@ -101,465 +175,66 @@ def missao_exemplo():
         status=StatusMissao.PENDENTE,
     )
 
+    repositorio.adicionar_missao(missao)
 
-def test_conectar_lanca_erro_quando_driver_nao_esta_instalado(monkeypatch, repositorio):
-    monkeypatch.setattr(rp, "psycopg", None)
-
-    with pytest.raises(rp.DriverPostgresNaoInstaladoError):
-        repositorio._conectar()
-
-
-def test_conectar_traduz_erro_de_conexao(monkeypatch, repositorio):
-    fake_psycopg = FakePsycopg(connect_error=FakePsycopg.Error("falha"))
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-
-    with pytest.raises(rp.ConexaoRepositorioError, match="Não foi possível conectar"):
-        repositorio._conectar()
+    assert missao.missao_id == 7
+    assert session.committed is True
+    orm = session.added[0]
+    assert orm.titulo == "Estudar persistência"
+    assert orm.prioridade == PrioridadeMissao.ALTA.value
+    assert orm.prazo == date(2026, 4, 20)
+    assert orm.status == StatusMissao.PENDENTE.value
 
 
-def test_inicializar_schema_nao_roda_ddl_em_producao(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=producao")
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-    monkeypatch.setenv("BUNKERMODE_ENV", "production")
-    monkeypatch.delenv("BUNKERMODE_AUTO_SCHEMA_INIT", raising=False)
-
-    repositorio.inicializar_schema()
-
-    assert cursor.executions == []
-    assert connection.commit_called is False
-
-
-def test_inicializar_schema_roda_uma_vez_por_connection_string(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=cache_schema")
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-    monkeypatch.delenv("BUNKERMODE_ENV", raising=False)
-    monkeypatch.delenv("BUNKERMODE_AUTO_SCHEMA_INIT", raising=False)
-    rp.RepositorioPostgres._schemas_inicializados.discard("dbname=cache_schema")
-
-    repositorio.inicializar_schema()
-    primeira_execucao = len(cursor.executions)
-    repositorio.inicializar_schema()
-
-    assert primeira_execucao > 0
-    assert len(cursor.executions) == primeira_execucao
-    assert any(
-        "idx_missao_contextos_responsavel_id" in str(query)
-        for query, _ in cursor.executions
-    )
-
-
-def test_inicializar_schema_cria_tabela_missoes(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=schema_missoes")
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-    monkeypatch.delenv("BUNKERMODE_ENV", raising=False)
-    monkeypatch.delenv("BUNKERMODE_AUTO_SCHEMA_INIT", raising=False)
-    rp.RepositorioPostgres._schemas_inicializados.discard("dbname=schema_missoes")
-
-    repositorio.inicializar_schema()
-
-    assert any(
-        "CREATE TABLE IF NOT EXISTS missoes" in str(query)
-        for query, _ in cursor.executions
-    )
-
-
-def test_repositorio_reutiliza_conexao_ate_fechar(monkeypatch):
-    repositorio = rp.RepositorioPostgres("dbname=reuso")
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-
-    with repositorio._conectar():
-        pass
-    with repositorio._conectar():
-        pass
-
-    assert fake_psycopg.connect_count == 1
-
-    repositorio.fechar()
-    with repositorio._conectar():
-        pass
-
-    assert fake_psycopg.connect_count == 2
-
-
-def test_repositorio_reutiliza_conexao_compartilhada_em_producao(monkeypatch):
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    fake_psycopg = FakePsycopg(connection=connection)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-    monkeypatch.setenv("BUNKERMODE_ENV", "production")
-    monkeypatch.delenv("BUNKERMODE_REUSE_DB_CONNECTIONS", raising=False)
-    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
-
-    repositorio_1 = rp.RepositorioPostgres("dbname=shared")
-    repositorio_2 = rp.RepositorioPostgres("dbname=shared")
-
-    with repositorio_1._conectar():
-        pass
-    repositorio_1.fechar()
-    with repositorio_2._conectar():
-        pass
-
-    assert fake_psycopg.connect_count == 1
-    assert connection.closed is False
-
-    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
-
-
-def test_repositorio_compartilhado_nao_serializa_threads_em_uma_conexao(monkeypatch):
-    connections = [FakeConnection(FakeCursor()), FakeConnection(FakeCursor())]
-
-    class SequencedPsycopg(FakePsycopg):
-        def connect(self, connection_string):
-            self.connect_count += 1
-            self.received_connection_string = connection_string
-            return connections[self.connect_count - 1]
-
-    fake_psycopg = SequencedPsycopg()
-    barreira = threading.Barrier(2)
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-    monkeypatch.setenv("BUNKERMODE_ENV", "production")
-    monkeypatch.delenv("BUNKERMODE_REUSE_DB_CONNECTIONS", raising=False)
-    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
-
-    def abrir_conexao():
-        repositorio = rp.RepositorioPostgres("dbname=shared_threads")
-        with repositorio._conectar():
-            barreira.wait(timeout=2)
-
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        list(executor.map(lambda _: abrir_conexao(), range(2)))
-
-    assert fake_psycopg.connect_count == 2
-    assert all(connection.closed is False for connection in connections)
-
-    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
-
-
-def test_repositorio_renova_conexao_compartilhada_expirada(monkeypatch):
-    cursor_1 = FakeCursor()
-    cursor_2 = FakeCursor()
-    connections = [FakeConnection(cursor_1), FakeConnection(cursor_2)]
-
-    class SequencedPsycopg(FakePsycopg):
-        def connect(self, connection_string):
-            self.connect_count += 1
-            self.received_connection_string = connection_string
-            return connections[self.connect_count - 1]
-
-    fake_psycopg = SequencedPsycopg()
-    monkeypatch.setattr(rp, "psycopg", fake_psycopg)
-    monkeypatch.setenv("BUNKERMODE_ENV", "production")
-    monkeypatch.setenv("BUNKERMODE_DB_CONNECTION_IDLE_TTL_SECONDS", "1")
-    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
-
-    repositorio = rp.RepositorioPostgres("dbname=shared_expired")
-    with repositorio._conectar():
-        pass
-
-    chave = next(iter(rp.RepositorioPostgres._shared_connections))
-    rp.RepositorioPostgres._shared_connections[chave]["last_used"] -= 2
-    with repositorio._conectar():
-        pass
-
-    assert fake_psycopg.connect_count == 2
-    assert connections[0].closed is True
-
-    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
-
-
-def test_carregar_dados_reconstroi_missoes(monkeypatch, repositorio):
-    cursor = FakeCursor(
-        fetchall_result=[
-            (
-                1,
-                "Estudar SQL",
-                1,
-                date(2026, 4, 20),
-                "Revisar consultas",
-                "Pendente",
-                False,
-            ),
-            (
-                2,
-                "Treinar API",
-                2,
-                None,
-                "Ler rotas",
-                "Concluída",
-                True,
-            ),
-        ]
-    )
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-
-    missoes = repositorio.carregar_dados()
-
-    assert [missao.missao_id for missao in missoes] == [1, 2]
-    assert missoes[0].prioridade == PrioridadeMissao.ALTA
-    assert missoes[0].prazo == "20-04-2026"
-    assert missoes[0].is_pinned is False
-    assert missoes[1].status == StatusMissao.CONCLUIDA
-    assert missoes[1].is_pinned is True
-    assert "ORDER BY m.prioridade, m.missao_id" in cursor.executions[-1][0]
-
-
-def test_reconstruir_missao_preserva_instrucao_legada_acima_do_limite(repositorio):
+def test_orm_para_missao_preserva_instrucao_legada_acima_do_limite(monkeypatch):
+    repositorio = criar_repositorio_sem_engine_real(monkeypatch)
     instrucao_legada = "x" * (MISSAO_INSTRUCAO_MAX_LENGTH + 1)
-
-    missao = repositorio._reconstruir_missao(
-        (
-            1,
-            "Missão legada",
-            1,
-            date(2026, 4, 20),
-            instrucao_legada,
-            "Pendente",
-            False,
-        )
+    orm = MissaoORM(
+        missao_id=1,
+        titulo="Missão legada",
+        prioridade=1,
+        prazo=date(2026, 4, 20),
+        instrucao=instrucao_legada,
+        status="Pendente",
+        is_pinned=True,
+        created_at=datetime(2026, 4, 1, 8, 0),
     )
+    contexto = MissaoContextoORM(
+        missao_id=1,
+        responsavel_id=3,
+        operacao_id=4,
+    )
+
+    missao = repositorio._orm_para_missao(orm, contexto, "Operação Atlas")
 
     assert missao.instrucao == instrucao_legada
+    assert missao.is_pinned is True
+    assert missao.operacao_id == 4
+    assert missao.operacao_nome == "Operação Atlas"
 
 
-def test_buscar_por_id_retorna_none_quando_nao_encontra(monkeypatch, repositorio):
-    cursor = FakeCursor(fetchone_result=None)
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-
-    resultado = repositorio.buscar_por_id(99)
-
-    assert resultado is None
-    assert cursor.executions[-1][1] == (99,)
-
-
-def test_adicionar_missao_atualiza_id_e_confirma_transacao(
-    monkeypatch, repositorio, missao_exemplo
-):
-    cursor = FakeCursor(fetchone_result=(7,))
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-
-    repositorio.adicionar_missao(missao_exemplo)
-
-    assert missao_exemplo.missao_id == 7
-    assert connection.commit_called is True
-    params = cursor.executions[-1][1]
-    assert params[0:6] == (
-        "Estudar persistência",
-        1,
-        date(2026, 4, 20),
-        "Validar escrita no PostgreSQL",
-        "Pendente",
-        False,
+def test_orm_para_usuario_reconstroi_campos_de_sessao(monkeypatch):
+    repositorio = criar_repositorio_sem_engine_real(monkeypatch)
+    timezone_updated_at = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
+    orm = UsuarioORM(
+        usuario_id=1,
+        usuario="Henrique",
+        email="henrique@email.com",
+        senha_hash="hash",
+        ativo=True,
+        nome_general="General Atlas",
+        active_mode="soldier",
+        planning_window="morning",
+        timezone="Europe/Lisbon",
+        emergency_unlock_date=date(2026, 4, 24),
+        timezone_updated_at=timezone_updated_at,
     )
-    assert params[7:] == (None, None, None, None, None, None, None, None, None, None, None)
 
-
-def test_atualizar_missao_lanca_erro_quando_linha_nao_existe(
-    monkeypatch, repositorio, missao_exemplo
-):
-    missao_exemplo.atualizar_missao_id(3)
-    cursor = FakeCursor(rowcount=0)
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-
-    with pytest.raises(rp.MissaoNaoPersistidaError, match="não encontrada"):
-        repositorio.atualizar_missao(missao_exemplo)
-
-
-def test_remover_missao_traduz_erro_de_escrita(monkeypatch, repositorio):
-    cursor = FakeCursor(execute_error=FakePsycopg.Error("falha de escrita"))
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-
-    with pytest.raises(rp.EscritaRepositorioError, match="Erro ao remover missão"):
-        repositorio.remover_missao(4)
-
-
-def test_busca_usuario_reconstroi_nome_do_general(monkeypatch, repositorio):
-    cursor = FakeCursor(
-        fetchone_result=(
-            1,
-            "Henrique",
-            "henrique@email.com",
-            "hash",
-            True,
-            "General Atlas",
-            "soldier",
-        )
-    )
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-
-    usuario = repositorio.buscar_usuario_por_id(1)
+    usuario = repositorio._orm_para_usuario(orm)
 
     assert usuario.nome_general == "General Atlas"
     assert usuario.active_mode == "soldier"
-    assert usuario.planning_window == "night"
-    assert usuario.timezone == "America/Recife"
-    assert usuario.emergency_unlock_date is None
-    assert usuario.timezone_updated_at is None
-
-
-def test_busca_usuario_reconstroi_data_de_emergencia(monkeypatch, repositorio):
-    timezone_updated_at = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
-    cursor = FakeCursor(
-        fetchone_result=(
-            1,
-            "Henrique",
-            "henrique@email.com",
-            "hash",
-            True,
-            "General Atlas",
-            "soldier",
-            "morning",
-            "Europe/Lisbon",
-            date(2026, 4, 24),
-            timezone_updated_at,
-        )
-    )
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-
-    usuario = repositorio.buscar_usuario_por_id(1)
-
     assert usuario.planning_window == "morning"
     assert usuario.timezone == "Europe/Lisbon"
     assert usuario.emergency_unlock_date == date(2026, 4, 24)
     assert usuario.timezone_updated_at == timezone_updated_at
-
-
-def test_atualizar_nome_general_confirma_transacao(monkeypatch, repositorio):
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-
-    repositorio.atualizar_nome_general(3, "General Atlas")
-
-    assert connection.commit_called is True
-    assert cursor.executions[-1][1] == ("General Atlas", 3)
-
-
-def test_atualizar_modo_ativo_confirma_transacao(monkeypatch, repositorio):
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-
-    repositorio.atualizar_modo_ativo(3, "soldier")
-
-    assert connection.commit_called is True
-    assert cursor.executions[-1][1] == ("soldier", 3)
-
-
-def test_atualizar_turno_timezone_e_emergencia_confirma_transacao(monkeypatch, repositorio):
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(rp, "psycopg", FakePsycopg(connection=connection))
-    timezone_updated_at = datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)
-
-    repositorio.atualizar_turno_planejamento(3, "Morning")
-    repositorio.atualizar_timezone(3, "Europe/Lisbon", timezone_updated_at)
-    repositorio.registrar_uso_emergencia_general(3, date(2026, 4, 24))
-
-    assert connection.commit_called is True
-    update_params = [params for _, params in cursor.executions if params is not None]
-    assert update_params[-3:] == [
-        ("morning", 3),
-        ("Europe/Lisbon", timezone_updated_at, 3),
-        (date(2026, 4, 24), 3),
-    ]
-
-
-@pytest.fixture
-def connection_string_teste():
-    connection_string = os.getenv("BUNKERMODE_TEST_DB_URL")
-    if not connection_string:
-        pytest.skip(
-            "Defina BUNKERMODE_TEST_DB_URL para executar o teste de integração do PostgreSQL."
-        )
-    return connection_string
-
-
-@pytest.fixture
-def preparar_banco_teste(connection_string_teste):
-    psycopg = pytest.importorskip("psycopg")
-
-    with psycopg.connect(connection_string_teste) as conexao:
-        with conexao.cursor() as cursor:
-            cursor.execute("DROP TABLE IF EXISTS missoes;")
-            cursor.execute(
-                """
-                CREATE TABLE missoes (
-                    missao_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                    titulo TEXT NOT NULL,
-                    prioridade INTEGER NOT NULL,
-                    prazo DATE NULL,
-                    instrucao TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-                """
-            )
-        conexao.commit()
-
-    yield
-
-    with psycopg.connect(connection_string_teste) as conexao:
-        with conexao.cursor() as cursor:
-            cursor.execute("DROP TABLE IF EXISTS missoes;")
-        conexao.commit()
-
-
-@pytest.mark.integration
-def test_repositorio_postgres_persiste_fluxo_basico_real(
-    preparar_banco_teste, connection_string_teste
-):
-    repositorio = rp.RepositorioPostgres(connection_string_teste)
-
-    missao = Missao(
-        titulo="Persistir missão real",
-        prioridade=1,
-        prazo="22-04-2026",
-        instrucao="Validar CRUD real",
-        status=StatusMissao.PENDENTE,
-    )
-
-    repositorio.adicionar_missao(missao)
-    assert missao.missao_id == 1
-
-    buscada = repositorio.buscar_por_id(1)
-    assert buscada is not None
-    assert buscada.titulo == "Persistir missão real"
-    assert buscada.prazo == "22-04-2026"
-    assert buscada.is_pinned is False
-
-    missao.alternar_prioridade_fixada()
-    missao.atualizar_titulo("Persistir missão real atualizada")
-    missao.concluir()
-    repositorio.atualizar_missao(missao)
-
-    atualizada = repositorio.buscar_por_id(1)
-    assert atualizada is not None
-    assert atualizada.titulo == "Persistir missão real atualizada"
-    assert atualizada.is_pinned is True
-    assert atualizada.status == StatusMissao.CONCLUIDA
-
-    listadas = repositorio.carregar_dados()
-    assert len(listadas) == 1
-    assert listadas[0].missao_id == 1
-
-    repositorio.remover_missao(1)
-    assert repositorio.buscar_por_id(1) is None

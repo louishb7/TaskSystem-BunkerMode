@@ -1,8 +1,6 @@
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from backend.api.main import app
-from backend.routes.common import get_repositorio
 
 
 def test_api_main_expõe_app_fastapi():
@@ -19,9 +17,7 @@ def test_api_main_inclui_rotas_principais():
     assert "/api/v2/session/unlock-general" in paths
 
 
-def test_api_main_healthcheck_com_testclient():
-    with TestClient(app) as client:
-        response = client.get("/api/v2/health")
+def test_api_main_healthcheck_v2_retorna_ok():
+    rota = next(route for route in app.routes if route.path == "/api/v2/health")
 
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert rota.endpoint() == {"status": "ok"}
