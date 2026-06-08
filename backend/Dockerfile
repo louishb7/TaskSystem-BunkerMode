@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
-# Build context obrigatório:
-# docker build -f backend/Dockerfile -t bunkermode-api .
+# Build context obrigatório: docker build -t bunkermode-api ./backend
+# Render usa este Dockerfile com contexto em backend/.
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -13,10 +13,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md ./
-COPY backend ./backend
+COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir .
+    && pip install --no-cache-dir -r requirements.txt
+
+COPY . /app/backend/
 
 EXPOSE ${PORT}
 
