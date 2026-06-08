@@ -119,7 +119,6 @@ Estrutura relevante do backend:
 - `backend/schemas/`: payloads Pydantic.
 - `backend/routes/`: adaptação HTTP.
 - `backend/services/`: casos de uso e regras de negócio.
-- `backend/migrations/`: SQL legado existente.
 - `alembic/`: migrations versionadas do banco.
 - `backend/tests/`: testes do backend.
 

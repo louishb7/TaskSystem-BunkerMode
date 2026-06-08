@@ -4,7 +4,8 @@ Backend em FastAPI para autenticação, criação de missões, listagem de miss�
 
 ## Stack técnico
 - FastAPI
-- PostgreSQL com psycopg 3
+- PostgreSQL com SQLAlchemy ORM e psycopg 3
+- Alembic
 - Pytest
 - React com Vite
 
@@ -21,9 +22,6 @@ Backend em FastAPI para autenticação, criação de missões, listagem de miss�
 - `BUNKERMODE_API_PORT`
 - `BUNKERMODE_API_RELOAD`
 - `BUNKERMODE_CORS_ALLOW_ORIGINS`
-- `BUNKERMODE_AUTO_SCHEMA_INIT` opcional; em produção, deixe desativado.
-- `BUNKERMODE_REUSE_DB_CONNECTIONS` opcional; em produção, reutiliza conexão por padrão.
-- `BUNKERMODE_DB_CONNECTION_IDLE_TTL_SECONDS` opcional; padrão `120`.
 
 ## CORS
 A API aceita origens configuradas pela variável `BUNKERMODE_CORS_ALLOW_ORIGINS`.
@@ -67,6 +65,22 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 O atalho `python -m api` continua disponível e usa o mesmo entrypoint.
+
+## Migrations
+
+Novo ambiente:
+
+```bash
+alembic upgrade head
+```
+
+Nova migration após alterar `backend/database/orm_models.py`:
+
+```bash
+alembic revision --autogenerate -m "descrição da mudança"
+# revisar o arquivo gerado em alembic/versions/
+alembic upgrade head
+```
 
 ## Documentação
 - `/docs`
