@@ -4,4 +4,4 @@ export const componentTokens = Object.freeze({
   modeSwitchHeight: 58,
   missionCardMinHeight: 96,
   dayNodeMinHeight: 112,
-});
+})

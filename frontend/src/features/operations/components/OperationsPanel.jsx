@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react"
 
-import operationsAsset from "../../../assets/bunkermode/operations/operacoes.png";
-import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx";
-import StatusNotice from "../../../components/ui/StatusNotice.jsx";
+import operationsAsset from "../../../assets/bunkermode/operations/operacoes.png"
+import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx"
+import StatusNotice from "../../../components/ui/StatusNotice.jsx"
 
 const WEEKDAYS = [
   { value: 0, label: "SEG" },
@@ -12,7 +12,7 @@ const WEEKDAYS = [
   { value: 4, label: "SEX" },
   { value: 5, label: "SÁB" },
   { value: 6, label: "DOM" },
-];
+]
 
 const initialForm = {
   nome: "",
@@ -21,47 +21,49 @@ const initialForm = {
   weekdays: [],
   ordem_titulo: "",
   ordem_instrucao: "",
-};
+}
 
 function formatDate(value) {
   if (!value) {
-    return "--";
+    return "--"
   }
-  const [year, month, day] = String(value).slice(0, 10).split("-");
+  const [year, month, day] = String(value).slice(0, 10).split("-")
   if (!year || !month || !day) {
-    return value;
+    return value
   }
-  return `${day}/${month}/${year}`;
+  return `${day}/${month}/${year}`
 }
 
 function dateOnly(value) {
   if (!value) {
-    return null;
+    return null
   }
-  const [year, month, day] = String(value).slice(0, 10).split("-").map(Number);
+  const [year, month, day] = String(value).slice(0, 10).split("-").map(Number)
   if (!year || !month || !day) {
-    return null;
+    return null
   }
-  return new Date(year, month - 1, day);
+  return new Date(year, month - 1, day)
 }
 
 function todayOnly() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
 function periodHasPassed(endDate) {
-  const end = dateOnly(endDate);
-  return end !== null && todayOnly() > end;
+  const end = dateOnly(endDate)
+  return end !== null && todayOnly() > end
 }
 
 function weekdayLabels(values = []) {
-  const set = new Set(values);
-  return WEEKDAYS.filter((day) => set.has(day.value)).map((day) => day.label).join(" ");
+  const set = new Set(values)
+  return WEEKDAYS.filter((day) => set.has(day.value))
+    .map((day) => day.label)
+    .join(" ")
 }
 
 function isEveryDay(values = []) {
-  return WEEKDAYS.every((day) => values.includes(day.value));
+  return WEEKDAYS.every((day) => values.includes(day.value))
 }
 
 function OperationDays({ weekdays }) {
@@ -73,15 +75,15 @@ function OperationDays({ weekdays }) {
         </span>
         Todo santo dia
       </span>
-    );
+    )
   }
 
-  return <span className="operation-days">{weekdayLabels(weekdays) || "SEM DIAS"}</span>;
+  return <span className="operation-days">{weekdayLabels(weekdays) || "SEM DIAS"}</span>
 }
 
 function formatMetric(value) {
-  const numeric = Number(value || 0);
-  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1).replace(".", ",");
+  const numeric = Number(value || 0)
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1).replace(".", ",")
 }
 
 function OperationItem({
@@ -92,20 +94,20 @@ function OperationItem({
   onToggleDetails,
   operation,
 }) {
-  const active = operation.status === "ativa";
-  const canClose = active && periodHasPassed(operation.end_date);
-  const canCancel = active;
-  const metrics = operation.metrics || {};
-  const totalMissions = Number(metrics.total_missions || 0);
-  const completedMissions = Number(metrics.completed_missions || 0);
-  const failedMissions = Number(metrics.failed_missions || 0);
-  const completionRate = formatMetric(metrics.completion_rate);
+  const active = operation.status === "ativa"
+  const canClose = active && periodHasPassed(operation.end_date)
+  const canCancel = active
+  const metrics = operation.metrics || {}
+  const totalMissions = Number(metrics.total_missions || 0)
+  const completedMissions = Number(metrics.completed_missions || 0)
+  const failedMissions = Number(metrics.failed_missions || 0)
+  const completionRate = formatMetric(metrics.completion_rate)
 
   function requestDelete() {
     if (!canCancel || loading) {
-      return;
+      return
     }
-    onRequestDelete?.(operation);
+    onRequestDelete?.(operation)
   }
 
   return (
@@ -125,7 +127,11 @@ function OperationItem({
               ENCERRAR
             </button>
           )}
-          <button className="button secondary compact operation-close" type="button" onClick={onToggleDetails}>
+          <button
+            className="button secondary compact operation-close"
+            type="button"
+            onClick={onToggleDetails}
+          >
             {expanded ? "OCULTAR" : "DETALHES"}
           </button>
         </div>
@@ -158,7 +164,7 @@ function OperationItem({
         </div>
       )}
     </article>
-  );
+  )
 }
 
 export default function OperationsPanel({
@@ -170,44 +176,44 @@ export default function OperationsPanel({
   operations = [],
   status,
 }) {
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState(initialForm);
-  const [expandedOperationId, setExpandedOperationId] = useState(null);
-  const [deleteOperationTarget, setDeleteOperationTarget] = useState(null);
+  const [formOpen, setFormOpen] = useState(false)
+  const [form, setForm] = useState(initialForm)
+  const [expandedOperationId, setExpandedOperationId] = useState(null)
+  const [deleteOperationTarget, setDeleteOperationTarget] = useState(null)
   const activeOperations = useMemo(
     () => operations.filter((operation) => operation.status === "ativa"),
     [operations]
-  );
+  )
   const closedOperations = useMemo(
     () => operations.filter((operation) => operation.status !== "ativa"),
     [operations]
-  );
+  )
 
   function updateField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
+    setForm((current) => ({ ...current, [field]: value }))
   }
 
   function toggleWeekday(value) {
     setForm((current) => {
       const selected = current.weekdays.includes(value)
         ? current.weekdays.filter((item) => item !== value)
-        : [...current.weekdays, value].sort((a, b) => a - b);
-      return { ...current, weekdays: selected };
-    });
+        : [...current.weekdays, value].sort((a, b) => a - b)
+      return { ...current, weekdays: selected }
+    })
   }
 
   async function submit(event) {
-    event.preventDefault();
+    event.preventDefault()
     if (loading) {
-      return;
+      return
     }
     const saved = await onCreateOperation?.({
       ...form,
       ordem_instrucao: form.ordem_instrucao || null,
-    });
+    })
     if (saved) {
-      setForm(initialForm);
-      setFormOpen(false);
+      setForm(initialForm)
+      setFormOpen(false)
     }
   }
 
@@ -230,7 +236,12 @@ export default function OperationsPanel({
           >
             {formOpen ? "FECHAR FORMULÁRIO" : "CRIAR OPERAÇÃO"}
           </button>
-          <button className="button secondary compact" disabled={loading} type="button" onClick={onClose}>
+          <button
+            className="button secondary compact"
+            disabled={loading}
+            type="button"
+            onClick={onClose}
+          >
             FECHAR
           </button>
         </div>
@@ -278,7 +289,10 @@ export default function OperationsPanel({
             <legend>Dias de execução</legend>
             <div className="weekday-grid">
               {WEEKDAYS.map((day) => (
-                <label key={day.value} className={form.weekdays.includes(day.value) ? "selected" : ""}>
+                <label
+                  key={day.value}
+                  className={form.weekdays.includes(day.value) ? "selected" : ""}
+                >
                   <input
                     checked={form.weekdays.includes(day.value)}
                     disabled={loading}
@@ -335,7 +349,9 @@ export default function OperationsPanel({
 
       <div className="operations-list muted">
         <h3>Encerradas</h3>
-        {closedOperations.length === 0 && <p className="empty-copy">Arquivo sem operações encerradas.</p>}
+        {closedOperations.length === 0 && (
+          <p className="empty-copy">Arquivo sem operações encerradas.</p>
+        )}
         {closedOperations.map((operation) => (
           <OperationItem
             expanded={expandedOperationId === operation.id}
@@ -357,11 +373,11 @@ export default function OperationsPanel({
           variant="danger"
           onCancel={() => setDeleteOperationTarget(null)}
           onConfirm={() => {
-            onDeleteOperation(deleteOperationTarget.id);
-            setDeleteOperationTarget(null);
+            onDeleteOperation(deleteOperationTarget.id)
+            setDeleteOperationTarget(null)
           }}
         />
       )}
     </section>
-  );
+  )
 }

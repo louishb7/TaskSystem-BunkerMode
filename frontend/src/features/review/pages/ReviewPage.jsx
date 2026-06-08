@@ -1,9 +1,9 @@
-import React from "react";
+import React from "react"
 
-import reviewAsset from "../../../assets/bunkermode/review/revisao-relatorio.png";
-import StatusNotice from "../../../components/ui/StatusNotice.jsx";
-import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
-import GeneralReviewPanel from "../components/GeneralReviewPanel.jsx";
+import reviewAsset from "../../../assets/bunkermode/review/revisao-relatorio.png"
+import StatusNotice from "../../../components/ui/StatusNotice.jsx"
+import TacticalShell from "../../../components/tactical/TacticalShell.jsx"
+import GeneralReviewPanel from "../components/GeneralReviewPanel.jsx"
 
 export default function ReviewPage({
   allMissions,
@@ -48,5 +48,5 @@ export default function ReviewPage({
         />
       </section>
     </TacticalShell>
-  );
+  )
 }

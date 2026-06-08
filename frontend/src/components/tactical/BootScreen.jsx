@@ -1,7 +1,7 @@
-import React from "react";
+import React from "react"
 
-import BrandSymbol from "../ui/BrandSymbol.jsx";
-import TacticalShell from "./TacticalShell.jsx";
+import BrandSymbol from "../ui/BrandSymbol.jsx"
+import TacticalShell from "./TacticalShell.jsx"
 
 export default function BootScreen() {
   return (
@@ -11,5 +11,5 @@ export default function BootScreen() {
         <p>SINCRONIZANDO COMANDO</p>
       </section>
     </TacticalShell>
-  );
+  )
 }

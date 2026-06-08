@@ -1,4 +1,4 @@
-import React from "react";
+import React from "react"
 
 export default function EmptyState({ flat = false, message, title }) {
   return (
@@ -6,5 +6,5 @@ export default function EmptyState({ flat = false, message, title }) {
       <h3>{title}</h3>
       <p>{message}</p>
     </div>
-  );
+  )
 }

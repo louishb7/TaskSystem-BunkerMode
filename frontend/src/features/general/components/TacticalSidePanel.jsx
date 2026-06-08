@@ -1,8 +1,8 @@
-import React from "react";
+import React from "react"
 
-import generalModeAsset from "../../../assets/bunkermode/modes/modo-general.png";
-import LionEmblem from "../../../components/ui/LionEmblem.jsx";
-import { MissionProgress } from "../../missions/components/MissionCard.jsx";
+import generalModeAsset from "../../../assets/bunkermode/modes/modo-general.png"
+import LionEmblem from "../../../components/ui/LionEmblem.jsx"
+import { MissionProgress } from "../../missions/components/MissionCard.jsx"
 
 export default function TacticalSidePanel({
   loading,
@@ -12,12 +12,12 @@ export default function TacticalSidePanel({
   selectedMissions,
   todayDate,
 }) {
-  const totalCount = selectedMissions.length;
-  const selectedTime = selectedDate?.getTime?.() || 0;
-  const todayTime = todayDate?.getTime?.() || 0;
-  const isToday = selectedTime === todayTime;
-  const progressEmptyLabel = selectedTime > todayTime ? "SEM ORDENS" : isToday ? "0%" : "DIA OFF";
-  const showTodayHuntCopy = isToday && totalCount > 0;
+  const totalCount = selectedMissions.length
+  const selectedTime = selectedDate?.getTime?.() || 0
+  const todayTime = todayDate?.getTime?.() || 0
+  const isToday = selectedTime === todayTime
+  const progressEmptyLabel = selectedTime > todayTime ? "SEM ORDENS" : isToday ? "0%" : "DIA OFF"
+  const showTodayHuntCopy = isToday && totalCount > 0
 
   return (
     <section className="panel tactical-side-panel" aria-label="Painel tático do Leão do Dia">
@@ -37,7 +37,11 @@ export default function TacticalSidePanel({
       </div>
 
       <div className="side-block hunt-block">
-        <MissionProgress emptyLabel={progressEmptyLabel} label="CAÇADA" missions={selectedMissions} />
+        <MissionProgress
+          emptyLabel={progressEmptyLabel}
+          label="CAÇADA"
+          missions={selectedMissions}
+        />
       </div>
 
       <div className="side-block hunt-entry">
@@ -45,11 +49,18 @@ export default function TacticalSidePanel({
           <img src={generalModeAsset} alt="" />
           <strong className="operational-focus-title">Entrar em foco operacional</strong>
         </div>
-        {showTodayHuntCopy && <p className="muted">O leão de hoje está faminto. Pronto para caçá-lo?</p>}
-        <button className="button fire full" disabled={loading} type="button" onClick={onActivateSoldier}>
+        {showTodayHuntCopy && (
+          <p className="muted">O leão de hoje está faminto. Pronto para caçá-lo?</p>
+        )}
+        <button
+          className="button fire full"
+          disabled={loading}
+          type="button"
+          onClick={onActivateSoldier}
+        >
           {loading ? "ATIVANDO" : "ATIVAR MODO SOLDADO"}
         </button>
       </div>
     </section>
-  );
+  )
 }

@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react"
 
 const emptyForm = {
   titulo: "",
   descricao: "",
   data_alvo: "",
   sem_prazo: true,
-};
+}
 
 export default function ObjetivoForm({
   editingObjetivo,
@@ -14,13 +14,13 @@ export default function ObjetivoForm({
   onCancel,
   onSubmit,
 }) {
-  const [form, setForm] = useState(emptyForm);
-  const isEditing = Boolean(editingObjetivo);
+  const [form, setForm] = useState(emptyForm)
+  const isEditing = Boolean(editingObjetivo)
 
   useEffect(() => {
     if (!editingObjetivo) {
-      setForm(emptyForm);
-      return;
+      setForm(emptyForm)
+      return
     }
 
     setForm({
@@ -28,25 +28,25 @@ export default function ObjetivoForm({
       descricao: editingObjetivo.descricao || "",
       data_alvo: editingObjetivo.data_alvo || "",
       sem_prazo: !editingObjetivo.data_alvo,
-    });
-  }, [editingObjetivo]);
+    })
+  }, [editingObjetivo])
 
   function updateField(event) {
-    const { checked, name, type, value } = event.target;
+    const { checked, name, type, value } = event.target
     setForm((current) => ({
       ...current,
       [name]: type === "checkbox" ? checked : value,
-    }));
+    }))
   }
 
   function submit(event) {
-    event.preventDefault();
+    event.preventDefault()
     onSubmit?.({
       titulo: form.titulo.trim(),
       descricao: form.descricao.trim() || null,
       data_alvo: form.sem_prazo ? null : form.data_alvo || null,
-      sonho_id: isEditing ? editingObjetivo.sonho_id ?? null : initialSonhoId,
-    });
+      sonho_id: isEditing ? (editingObjetivo.sonho_id ?? null) : initialSonhoId,
+    })
   }
 
   return (
@@ -76,12 +76,7 @@ export default function ObjetivoForm({
           {!form.sem_prazo && (
             <label>
               Data alvo
-              <input
-                name="data_alvo"
-                onChange={updateField}
-                type="date"
-                value={form.data_alvo}
-              />
+              <input name="data_alvo" onChange={updateField} type="date" value={form.data_alvo} />
             </label>
           )}
         </div>
@@ -102,10 +97,15 @@ export default function ObjetivoForm({
         <button className="button fire compact" disabled={loading} type="submit">
           {loading ? "AGUARDE" : isEditing ? "SALVAR OBJETIVO" : "REGISTRAR OBJETIVO"}
         </button>
-        <button className="button secondary compact" disabled={loading} type="button" onClick={onCancel}>
+        <button
+          className="button secondary compact"
+          disabled={loading}
+          type="button"
+          onClick={onCancel}
+        >
           CANCELAR
         </button>
       </div>
     </form>
-  );
+  )
 }

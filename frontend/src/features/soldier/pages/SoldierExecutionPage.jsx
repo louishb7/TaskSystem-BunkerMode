@@ -1,20 +1,20 @@
-import React, { useState } from "react";
+import React, { useState } from "react"
 
-import EmptyState from "../../../components/ui/EmptyState.jsx";
-import LionEmblem from "../../../components/ui/LionEmblem.jsx";
-import StatusNotice from "../../../components/ui/StatusNotice.jsx";
-import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
-import { isCompleted } from "../../../utils/missionStatus.js";
-import { formatCurrentDay } from "../../calendar/calendarUtils.js";
-import MissionCard, { MissionProgress } from "../../missions/components/MissionCard.jsx";
+import EmptyState from "../../../components/ui/EmptyState.jsx"
+import LionEmblem from "../../../components/ui/LionEmblem.jsx"
+import StatusNotice from "../../../components/ui/StatusNotice.jsx"
+import TacticalShell from "../../../components/tactical/TacticalShell.jsx"
+import { isCompleted } from "../../../utils/missionStatus.js"
+import { formatCurrentDay } from "../../calendar/calendarUtils.js"
+import MissionCard, { MissionProgress } from "../../missions/components/MissionCard.jsx"
 
 function formatOperationalTurnDate(value) {
   if (!value || typeof value !== "string") {
-    return formatCurrentDay();
+    return formatCurrentDay()
   }
-  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number)
   if (!year || !month || !day) {
-    return formatCurrentDay();
+    return formatCurrentDay()
   }
   try {
     return new Date(year, month - 1, day)
@@ -23,9 +23,9 @@ function formatOperationalTurnDate(value) {
         day: "2-digit",
         month: "2-digit",
       })
-      .toUpperCase();
+      .toUpperCase()
   } catch {
-    return formatCurrentDay();
+    return formatCurrentDay()
   }
 }
 
@@ -36,21 +36,21 @@ export default function SoldierExecutionPage({
   missions,
   onReturnToCommand,
 }) {
-  const [returnLoading, setReturnLoading] = useState(false);
-  const turn = board.operationalTurn;
-  const showTurnWarning = turn?.requires_decision === true && !board.operationalTurnAcknowledged;
-  const turnDateLabel = formatOperationalTurnDate(turn?.active_date_label);
-  const hasCompletedMissions = dailyMissions.some(isCompleted);
+  const [returnLoading, setReturnLoading] = useState(false)
+  const turn = board.operationalTurn
+  const showTurnWarning = turn?.requires_decision === true && !board.operationalTurnAcknowledged
+  const turnDateLabel = formatOperationalTurnDate(turn?.active_date_label)
+  const hasCompletedMissions = dailyMissions.some(isCompleted)
 
   async function handleReturnToCommand() {
-    setReturnLoading(true);
-    await onReturnToCommand();
-    setReturnLoading(false);
+    setReturnLoading(true)
+    await onReturnToCommand()
+    setReturnLoading(false)
   }
 
   function renderTurnWarning() {
     if (!showTurnWarning) {
-      return null;
+      return null
     }
 
     return (
@@ -59,7 +59,8 @@ export default function SoldierExecutionPage({
           <span>TRANSIÇÃO DE TURNO</span>
           <strong>Existem ordens pendentes do ciclo anterior.</strong>
           <p>
-            O novo dia já tem ordens prontas. Continue o ciclo anterior ou encerre as pendências como falha para abrir a nova operação.
+            O novo dia já tem ordens prontas. Continue o ciclo anterior ou encerre as pendências
+            como falha para abrir a nova operação.
           </p>
         </div>
         <div className="operational-turn-actions">
@@ -81,7 +82,7 @@ export default function SoldierExecutionPage({
           </button>
         </div>
       </section>
-    );
+    )
   }
 
   return (
@@ -98,7 +99,10 @@ export default function SoldierExecutionPage({
               <div className="soldier-briefing-meta">
                 <span>{turnDateLabel}</span>
               </div>
-              <MissionProgress label="CAÇADA" missions={dailyMissions.length > 0 ? dailyMissions : missions} />
+              <MissionProgress
+                label="CAÇADA"
+                missions={dailyMissions.length > 0 ? dailyMissions : missions}
+              />
             </div>
           </div>
         </header>
@@ -166,5 +170,5 @@ export default function SoldierExecutionPage({
         </footer>
       </section>
     </TacticalShell>
-  );
+  )
 }

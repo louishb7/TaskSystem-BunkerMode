@@ -1,27 +1,29 @@
-import React from "react";
+import React from "react"
 
-import { TOKEN_KEY, USER_KEY } from "../constants/session.js";
+import { TOKEN_KEY, USER_KEY } from "../constants/session.js"
 
 export default class AppErrorBoundary extends React.Component {
   constructor(props) {
-    super(props);
-    this.state = { error: null, errorInfo: null };
+    super(props)
+    this.state = { error: null, errorInfo: null }
   }
 
   static getDerivedStateFromError(error) {
-    return { error };
+    return { error }
   }
 
   componentDidCatch(error, errorInfo) {
-    this.setState({ error, errorInfo });
-    console.error("Erro ao montar o frontend:", error, errorInfo);
+    this.setState({ error, errorInfo })
+    console.error("Erro ao montar o frontend:", error, errorInfo)
   }
 
   clearLocalSession = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    window.location.reload();
-  };
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
+    sessionStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(USER_KEY)
+    window.location.reload()
+  }
 
   render() {
     if (this.state.error) {
@@ -42,9 +44,9 @@ export default class AppErrorBoundary extends React.Component {
             LIMPAR SESSÃO LOCAL E RECARREGAR
           </button>
         </main>
-      );
+      )
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }

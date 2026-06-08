@@ -6,7 +6,7 @@ body {
   min-width: 320px;
   margin: 0;
   background:
-    linear-gradient(rgba(12, 12, 12, 0.82), rgba(12, 12, 12, 0.90)),
+    linear-gradient(rgba(12, 12, 12, 0.82), rgba(12, 12, 12, 0.9)),
     url("./assets/bunkermode/backgrounds/bg-global-bunker-16x9.png") center / cover fixed no-repeat,
     #15120f;
 }
@@ -19,12 +19,17 @@ body::before {
   background:
     radial-gradient(ellipse at 46% 0%, rgba(255, 138, 42, 0.13), transparent 34%),
     linear-gradient(90deg, rgba(255, 138, 42, 0.035) 0 1px, transparent 1px 82px),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.030) 0 1px, transparent 1px 74px),
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03) 0 1px, transparent 1px 74px),
     linear-gradient(115deg, rgba(0, 0, 0, 0.54), rgba(13, 13, 13, 0.76) 54%, rgba(0, 0, 0, 0.64)),
     url("./assets/bunkermode/backgrounds/bg-global-bunker-16x9.png");
   background-repeat: repeat, repeat, repeat, no-repeat, no-repeat;
   background-position: center;
-  background-size: auto, 82px 82px, 74px 74px, auto, cover;
+  background-size:
+    auto,
+    82px 82px,
+    74px 74px,
+    auto,
+    cover;
 }
 
 body::after {
@@ -38,8 +43,13 @@ body::after {
     linear-gradient(90deg, rgba(237, 237, 237, 0.025) 1px, transparent 1px),
     linear-gradient(180deg, rgba(237, 237, 237, 0.04), transparent 150px),
     url("./assets/bunkermode/textures/texture-overlay.png");
-  background-size: auto, 64px 64px, 64px 64px, auto, cover;
-  opacity: 0.30;
+  background-size:
+    auto,
+    64px 64px,
+    64px 64px,
+    auto,
+    cover;
+  opacity: 0.3;
   pointer-events: none;
 }
 
@@ -234,15 +244,13 @@ h3 {
 
 .button.secondary {
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.034), transparent 72%),
-    rgba(18, 18, 18, 0.84);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.034), transparent 72%), rgba(18, 18, 18, 0.84);
 }
 
 .button.secondary:hover:not(:disabled) {
   border-color: rgba(255, 138, 42, 0.34);
   background:
-    linear-gradient(180deg, rgba(255, 138, 42, 0.06), transparent 78%),
-    rgba(20, 20, 20, 0.9);
+    linear-gradient(180deg, rgba(255, 138, 42, 0.06), transparent 78%), rgba(20, 20, 20, 0.9);
 }
 
 .button.danger {
@@ -318,7 +326,9 @@ h3 {
   background:
     linear-gradient(180deg, rgba(237, 237, 237, 0.03), rgba(237, 237, 237, 0) 120px),
     var(--surface-command);
-  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(237, 237, 237, 0.03);
+  box-shadow:
+    0 18px 54px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(237, 237, 237, 0.03);
   padding: 18px;
 }
 
@@ -327,7 +337,13 @@ h3 {
   position: absolute;
   inset: 0 0 auto;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 138, 42, 0.18), rgba(237, 237, 237, 0.14), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 138, 42, 0.18),
+    rgba(237, 237, 237, 0.14),
+    transparent
+  );
   pointer-events: none;
 }
 
@@ -337,8 +353,7 @@ h3 {
   background:
     linear-gradient(135deg, rgba(255, 138, 42, 0.055), transparent 46%),
     linear-gradient(180deg, rgba(237, 237, 237, 0.036), transparent 120px),
-    url("./assets/bunkermode/textures/texture-overlay.png"),
-    rgba(20, 20, 20, 0.96);
+    url("./assets/bunkermode/textures/texture-overlay.png"), rgba(20, 20, 20, 0.96);
   background-size: auto, auto, cover, auto;
 }
 
@@ -527,7 +542,14 @@ h3 {
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(90deg, transparent 0 17%, rgba(255, 138, 42, 0.035) 17% 17.08%, transparent 17.08% 78%, rgba(237, 237, 237, 0.026) 78% 78.08%, transparent 78.08%),
+    linear-gradient(
+      90deg,
+      transparent 0 17%,
+      rgba(255, 138, 42, 0.035) 17% 17.08%,
+      transparent 17.08% 78%,
+      rgba(237, 237, 237, 0.026) 78% 78.08%,
+      transparent 78.08%
+    ),
     radial-gradient(ellipse at center 20%, rgba(255, 138, 42, 0.06), transparent 42%);
   pointer-events: none;
 }
@@ -563,11 +585,10 @@ h3 {
 
 .general-board {
   position: relative;
-  border-left: 1px solid rgba(255, 138, 42, 0.10);
+  border-left: 1px solid rgba(255, 138, 42, 0.1);
   border-right: 1px solid rgba(237, 237, 237, 0.055);
   background:
-    linear-gradient(180deg, rgba(255, 138, 42, 0.035), transparent 160px),
-    rgba(0, 0, 0, 0.08);
+    linear-gradient(180deg, rgba(255, 138, 42, 0.035), transparent 160px), rgba(0, 0, 0, 0.08);
   padding: 0 14px 14px;
 }
 
@@ -582,9 +603,10 @@ h3 {
   background:
     radial-gradient(circle at 94% 8%, rgba(255, 138, 42, 0.13), transparent 34%),
     linear-gradient(270deg, rgba(255, 138, 42, 0.065), transparent 52%),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 90px),
-    rgba(16, 16, 16, 0.96);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.36), inset 3px 0 0 rgba(255, 138, 42, 0.18);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 90px), rgba(16, 16, 16, 0.96);
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.36),
+    inset 3px 0 0 rgba(255, 138, 42, 0.18);
 }
 
 .command-rail .brand-symbol.sm {
@@ -703,17 +725,24 @@ h3 {
 }
 
 .tactical-panel.elevated {
-  border-color: rgba(255, 138, 42, 0.30);
+  border-color: rgba(255, 138, 42, 0.3);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.10), transparent 34%),
+    linear-gradient(90deg, rgba(255, 138, 42, 0.1), transparent 34%),
     linear-gradient(135deg, rgba(237, 237, 237, 0.035) 0 1px, transparent 1px 18px),
     linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 130px),
     linear-gradient(rgba(12, 12, 12, 0.72), rgba(12, 12, 12, 0.88)),
-    url("./assets/bunkermode/backgrounds/bg-cronograma-caca-16x9.png"),
-    rgba(17, 17, 17, 0.97);
+    url("./assets/bunkermode/backgrounds/bg-cronograma-caca-16x9.png"), rgba(17, 17, 17, 0.97);
   background-position: center;
-  background-size: auto, 18px 18px, auto, auto, cover, auto;
-  box-shadow: 0 22px 64px rgba(0, 0, 0, 0.46), inset 0 -1px 0 rgba(255, 138, 42, 0.08);
+  background-size:
+    auto,
+    18px 18px,
+    auto,
+    auto,
+    cover,
+    auto;
+  box-shadow:
+    0 22px 64px rgba(0, 0, 0, 0.46),
+    inset 0 -1px 0 rgba(255, 138, 42, 0.08);
 }
 
 .week-navigation {
@@ -747,11 +776,20 @@ h3 {
   gap: 8px;
   border: 1px solid rgba(255, 138, 42, 0.14);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.055), transparent 18%, transparent 82%, rgba(237, 237, 237, 0.035)),
+    linear-gradient(
+      90deg,
+      rgba(255, 138, 42, 0.055),
+      transparent 18%,
+      transparent 82%,
+      rgba(237, 237, 237, 0.035)
+    ),
     linear-gradient(rgba(237, 237, 237, 0.026) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(237, 237, 237, 0.018) 1px, transparent 1px),
-    rgba(7, 7, 7, 0.46);
-  background-size: auto, 42px 42px, 42px 42px, auto;
+    linear-gradient(90deg, rgba(237, 237, 237, 0.018) 1px, transparent 1px), rgba(7, 7, 7, 0.46);
+  background-size:
+    auto,
+    42px 42px,
+    42px 42px,
+    auto;
   overflow-x: auto;
   padding: 10px;
 }
@@ -766,12 +804,15 @@ h3 {
   border-radius: 0;
   background:
     linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 3px),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.038), transparent 68%),
-    rgba(23, 23, 23, 0.9);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.038), transparent 68%), rgba(23, 23, 23, 0.9);
   color: var(--text-muted);
   gap: 0;
   padding: 0;
-  transition: border-color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition:
+    border-color var(--motion-fast),
+    background var(--motion-fast),
+    box-shadow var(--motion-fast),
+    transform var(--motion-fast);
 }
 
 .day-select-button {
@@ -797,9 +838,10 @@ h3 {
 .day-node.selected {
   border-color: var(--fire);
   background:
-    linear-gradient(180deg, rgba(255, 138, 42, 0.16), transparent 76%),
-    rgba(28, 23, 19, 0.96);
-  box-shadow: inset 0 -2px 0 var(--fire), 0 0 0 1px rgba(255, 138, 42, 0.12);
+    linear-gradient(180deg, rgba(255, 138, 42, 0.16), transparent 76%), rgba(28, 23, 19, 0.96);
+  box-shadow:
+    inset 0 -2px 0 var(--fire),
+    0 0 0 1px rgba(255, 138, 42, 0.12);
 }
 
 .day-node:hover {
@@ -828,7 +870,7 @@ h3 {
   width: 48px;
   height: 36px;
   border: 1px solid rgba(237, 237, 237, 0.08);
-  background: rgba(0, 0, 0, 0.20);
+  background: rgba(0, 0, 0, 0.2);
   color: var(--text);
   font-size: 0.86rem;
   line-height: 1;
@@ -871,13 +913,14 @@ h3 {
 .day-node.complete {
   border-color: var(--success-border);
   background:
-    linear-gradient(180deg, rgba(103, 197, 135, 0.12), transparent 76%),
-    rgba(18, 25, 20, 0.92);
+    linear-gradient(180deg, rgba(103, 197, 135, 0.12), transparent 76%), rgba(18, 25, 20, 0.92);
 }
 
 .day-node.complete.selected {
   border-color: var(--fire);
-  box-shadow: inset 0 -2px 0 var(--fire), 0 0 0 1px rgba(103, 197, 135, 0.16);
+  box-shadow:
+    inset 0 -2px 0 var(--fire),
+    0 0 0 1px rgba(103, 197, 135, 0.16);
 }
 
 .day-node.execution-high .day-execution {
@@ -1004,8 +1047,7 @@ h3 {
   margin-bottom: 8px;
   border: 1px solid rgba(255, 138, 42, 0.24);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 58%),
-    rgba(11, 11, 11, 0.78);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 58%), rgba(11, 11, 11, 0.78);
   padding: 14px;
 }
 
@@ -1046,7 +1088,9 @@ h3 {
     linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 38%),
     linear-gradient(180deg, rgba(237, 237, 237, 0.032), rgba(237, 237, 237, 0) 130px),
     rgba(14, 14, 14, 0.96);
-  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.48), inset 0 0 0 1px rgba(255, 138, 42, 0.03);
+  box-shadow:
+    0 24px 68px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 1px rgba(255, 138, 42, 0.03);
 }
 
 .orders-panel .section-kicker {
@@ -1116,7 +1160,9 @@ h3 {
   border-radius: 50%;
   background: url("./assets/bunkermode/mission/missao-concluida.png") center / contain no-repeat;
   opacity: 0.88;
-  box-shadow: 0 0 0 1px rgba(103, 197, 135, 0.22), 0 0 12px rgba(103, 197, 135, 0.12);
+  box-shadow:
+    0 0 0 1px rgba(103, 197, 135, 0.22),
+    0 0 12px rgba(103, 197, 135, 0.12);
   vertical-align: -2px;
 }
 
@@ -1137,17 +1183,18 @@ h3 {
   border-left: 2px solid rgba(237, 237, 237, 0.16);
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.022), transparent 84px),
-    rgba(14, 14, 14, 0.62);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.022), transparent 84px), rgba(14, 14, 14, 0.62);
   padding: 8px 10px;
-  transition: border-color var(--motion-fast), background var(--motion-fast), opacity var(--motion-fast);
+  transition:
+    border-color var(--motion-fast),
+    background var(--motion-fast),
+    opacity var(--motion-fast);
 }
 
 .mission-card:hover {
   border-color: rgba(237, 237, 237, 0.16);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent 84px),
-    rgba(18, 18, 18, 0.7);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent 84px), rgba(18, 18, 18, 0.7);
 }
 
 .mission-card.priority-high {
@@ -1155,17 +1202,17 @@ h3 {
   border-left: 3px solid var(--neon-purple);
   background:
     linear-gradient(90deg, rgba(155, 92, 255, 0.12), transparent 46%),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 80px),
-    rgba(17, 17, 17, 0.95);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(155, 92, 255, 0.06);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 80px), rgba(17, 17, 17, 0.95);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(155, 92, 255, 0.06);
 }
 
 .mission-card.completed {
   border-color: rgba(103, 197, 135, 0.22);
   border-left: 2px solid rgba(103, 197, 135, 0.42);
   background:
-    linear-gradient(90deg, rgba(103, 197, 135, 0.045), transparent 42%),
-    rgba(12, 15, 13, 0.58);
+    linear-gradient(90deg, rgba(103, 197, 135, 0.045), transparent 42%), rgba(12, 15, 13, 0.58);
 }
 
 .mission-card.completed.priority-high {
@@ -1173,8 +1220,7 @@ h3 {
   border-left-color: var(--success);
   background:
     linear-gradient(90deg, var(--success-wash), transparent 42%),
-    linear-gradient(180deg, rgba(155, 92, 255, 0.06), transparent 80px),
-    rgba(23, 23, 23, 0.95);
+    linear-gradient(180deg, rgba(155, 92, 255, 0.06), transparent 80px), rgba(23, 23, 23, 0.95);
 }
 
 .mission-card.soldier-card {
@@ -1263,12 +1309,13 @@ h3 {
   height: 30px;
   border: 1px solid rgba(237, 237, 237, 0.14);
   border-radius: var(--radius-sm);
-  background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.05), transparent),
-    rgba(0, 0, 0, 0.26);
+  background: linear-gradient(180deg, rgba(237, 237, 237, 0.05), transparent), rgba(0, 0, 0, 0.26);
   color: var(--text-muted);
   cursor: pointer;
-  transition: border-color var(--motion-fast), background var(--motion-fast), opacity var(--motion-fast);
+  transition:
+    border-color var(--motion-fast),
+    background var(--motion-fast),
+    opacity var(--motion-fast);
 }
 
 .priority-icon-button span {
@@ -1402,9 +1449,7 @@ h3 {
   gap: 10px;
   overflow: hidden;
   border: 1px solid rgba(255, 138, 42, 0.14);
-  background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.04), transparent 44%),
-    rgba(0, 0, 0, 0.20);
+  background: linear-gradient(90deg, rgba(255, 138, 42, 0.04), transparent 44%), rgba(0, 0, 0, 0.2);
   padding: 10px;
   animation: operation-form-enter 160ms ease-out;
 }
@@ -1465,9 +1510,7 @@ h3 {
 .operation-form .operation-date-input {
   min-height: 54px;
   border-color: rgba(255, 138, 42, 0.55);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 138, 42, 0.08)),
-    #1f1b17;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 138, 42, 0.08)), #1f1b17;
   color: var(--text);
   color-scheme: light;
   font-size: 1rem;
@@ -1544,8 +1587,7 @@ h3 {
   border: 1px solid rgba(237, 237, 237, 0.09);
   border-left: 2px solid rgba(255, 138, 42, 0.42);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.07), transparent 52%),
-    rgba(10, 10, 10, 0.62);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.07), transparent 52%), rgba(10, 10, 10, 0.62);
   padding: 10px;
 }
 
@@ -1706,7 +1748,7 @@ h3 {
 }
 
 .mission-actions.detail-actions {
-  border-top-color: rgba(255, 138, 42, 0.10);
+  border-top-color: rgba(255, 138, 42, 0.1);
 }
 
 .mission-actions .button.compact {
@@ -1773,9 +1815,10 @@ h3 {
   border-color: rgba(255, 138, 42, 0.32);
   background:
     radial-gradient(circle at 78% 8%, rgba(255, 138, 42, 0.18), transparent 32%),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.036), transparent 130px),
-    rgba(13, 13, 13, 0.97);
-  box-shadow: 0 24px 66px rgba(0, 0, 0, 0.48), inset 0 0 0 1px rgba(255, 138, 42, 0.04);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.036), transparent 130px), rgba(13, 13, 13, 0.97);
+  box-shadow:
+    0 24px 66px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 1px rgba(255, 138, 42, 0.04);
 }
 
 .lion-emblem-card {
@@ -1786,8 +1829,7 @@ h3 {
   border: 1px solid rgba(255, 138, 42, 0.16);
   background:
     radial-gradient(circle at 86% 44%, rgba(255, 138, 42, 0.16), transparent 32%),
-    linear-gradient(90deg, rgba(237, 237, 237, 0.035), transparent 48%),
-    rgba(0, 0, 0, 0.20);
+    linear-gradient(90deg, rgba(237, 237, 237, 0.035), transparent 48%), rgba(0, 0, 0, 0.2);
   padding: 12px;
   box-shadow: inset 0 0 0 1px rgba(237, 237, 237, 0.025);
   isolation: isolate;
@@ -1798,7 +1840,12 @@ h3 {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(180deg, rgba(237, 237, 237, 0.04), transparent 44%, rgba(0, 0, 0, 0.12));
+  background: linear-gradient(
+    180deg,
+    rgba(237, 237, 237, 0.04),
+    transparent 44%,
+    rgba(0, 0, 0, 0.12)
+  );
   pointer-events: none;
 }
 
@@ -1937,9 +1984,7 @@ h3 {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   border-color: var(--purple-border);
-  background:
-    linear-gradient(90deg, var(--purple-wash), transparent),
-    rgba(10, 10, 10, 0.42);
+  background: linear-gradient(90deg, var(--purple-wash), transparent), rgba(10, 10, 10, 0.42);
 }
 
 .priority-summary div {
@@ -1964,8 +2009,7 @@ h3 {
   gap: 12px;
   border-color: rgba(255, 138, 42, 0.18);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.07), transparent 42%),
-    rgba(12, 12, 12, 0.92);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.07), transparent 42%), rgba(12, 12, 12, 0.92);
   padding: 14px;
 }
 
@@ -2021,8 +2065,7 @@ h3 {
   border-color: rgba(255, 138, 42, 0.24);
   box-shadow: none;
   background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.1), transparent 52%),
-    rgba(23, 23, 23, 0.94);
+    linear-gradient(135deg, rgba(255, 138, 42, 0.1), transparent 52%), rgba(23, 23, 23, 0.94);
 }
 
 .back-command {
@@ -2112,9 +2155,7 @@ h3 {
   display: grid;
   gap: 10px;
   border: 1px solid rgba(229, 57, 53, 0.36);
-  background:
-    linear-gradient(180deg, var(--red-wash), transparent 84px),
-    rgba(0, 0, 0, 0.24);
+  background: linear-gradient(180deg, var(--red-wash), transparent 84px), rgba(0, 0, 0, 0.24);
   padding: 14px;
 }
 
@@ -2300,9 +2341,7 @@ h3 {
   gap: 5px;
   min-height: 74px;
   border: 1px solid var(--border-soft);
-  background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent),
-    rgba(0, 0, 0, 0.22);
+  background: linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent), rgba(0, 0, 0, 0.22);
   color: var(--text);
   cursor: pointer;
   padding: 10px;
@@ -2311,9 +2350,7 @@ h3 {
 
 .review-week-grid button.selected {
   border-color: var(--fire-border);
-  background:
-    linear-gradient(180deg, var(--fire-wash), transparent),
-    rgba(0, 0, 0, 0.26);
+  background: linear-gradient(180deg, var(--fire-wash), transparent), rgba(0, 0, 0, 0.26);
 }
 
 .review-week-grid span,
@@ -2400,9 +2437,10 @@ h3 {
   border: 1px solid rgba(255, 138, 42, 0.26);
   background:
     radial-gradient(circle at 16% 36%, rgba(255, 138, 42, 0.12), transparent 32%),
-    linear-gradient(90deg, rgba(255, 138, 42, 0.10), transparent 52%),
-    rgba(8, 8, 8, 0.72);
-  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.52), inset 0 -1px 0 rgba(255, 138, 42, 0.08);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.1), transparent 52%), rgba(8, 8, 8, 0.72);
+  box-shadow:
+    0 24px 68px rgba(0, 0, 0, 0.52),
+    inset 0 -1px 0 rgba(255, 138, 42, 0.08);
   padding: 14px 16px 16px;
 }
 
@@ -2455,7 +2493,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
-  border: 1px solid rgba(237, 237, 237, 0.10);
+  border: 1px solid rgba(237, 237, 237, 0.1);
   background: rgba(0, 0, 0, 0.22);
   color: var(--text-muted);
   padding: 3px 7px;
@@ -2479,8 +2517,7 @@ h3 {
   min-height: 80px;
   border-left-width: 3px;
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.055), transparent 42%),
-    rgba(11, 11, 11, 0.74);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.055), transparent 42%), rgba(11, 11, 11, 0.74);
   padding: 0;
   gap: 0;
   overflow: hidden;
@@ -2526,18 +2563,18 @@ h3 {
   width: 52px;
   border-left: 1px solid rgba(96, 242, 144, 0.56);
   background:
-    linear-gradient(180deg, rgba(84, 235, 132, 0.28), rgba(21, 125, 61, 0.32)),
-    rgba(8, 52, 25, 0.9);
+    linear-gradient(180deg, rgba(84, 235, 132, 0.28), rgba(21, 125, 61, 0.32)), rgba(8, 52, 25, 0.9);
   box-shadow: inset 1px 0 0 rgba(218, 255, 228, 0.12);
-  transition: background var(--motion-fast), border-color var(--motion-fast);
+  transition:
+    background var(--motion-fast),
+    border-color var(--motion-fast);
 }
 
 .mission-card.soldier-card.priority-high .soldier-card-action {
   border-left-color: rgba(96, 242, 144, 0.62);
   background:
     linear-gradient(180deg, rgba(84, 235, 132, 0.3), rgba(21, 125, 61, 0.34)),
-    linear-gradient(90deg, rgba(155, 92, 255, 0.12), transparent),
-    rgba(8, 52, 25, 0.92);
+    linear-gradient(90deg, rgba(155, 92, 255, 0.12), transparent), rgba(8, 52, 25, 0.92);
 }
 
 .mission-card.soldier-card.danger .soldier-card-action {
@@ -2562,7 +2599,11 @@ h3 {
   text-transform: uppercase;
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  transition: background var(--motion-fast), color var(--motion-fast), text-shadow var(--motion-fast), box-shadow var(--motion-fast);
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast),
+    text-shadow var(--motion-fast),
+    box-shadow var(--motion-fast);
   padding: 12px 0;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
   box-shadow:
@@ -2583,8 +2624,7 @@ h3 {
 
 .soldier-abate-btn:active:not(:disabled) {
   background:
-    linear-gradient(180deg, rgba(80, 206, 120, 0.36), rgba(16, 92, 46, 0.48)),
-    rgba(6, 42, 21, 0.94);
+    linear-gradient(180deg, rgba(80, 206, 120, 0.36), rgba(16, 92, 46, 0.48)), rgba(6, 42, 21, 0.94);
 }
 
 .soldier-abate-btn:disabled {
@@ -2653,14 +2693,17 @@ h3 {
   min-height: 20px;
   border: 1px solid rgba(229, 57, 53, 0.46);
   border-radius: var(--radius-sm);
-  background: rgba(229, 57, 53, 0.10);
+  background: rgba(229, 57, 53, 0.1);
   color: #ff8b86;
   cursor: pointer;
   padding: 2px 8px;
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0;
-  transition: color var(--motion-fast), border-color var(--motion-fast), background var(--motion-fast);
+  transition:
+    color var(--motion-fast),
+    border-color var(--motion-fast),
+    background var(--motion-fast);
 }
 
 .soldier-failure-trigger:hover:not(:disabled) {
@@ -2732,9 +2775,7 @@ h3 {
   overflow-y: auto;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.08), transparent 42%),
-    var(--surface);
+  background: linear-gradient(135deg, rgba(255, 138, 42, 0.08), transparent 42%), var(--surface);
   box-shadow: var(--shadow);
   padding: 18px;
 }
@@ -2849,17 +2890,14 @@ h3 {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 86px),
-    rgba(12, 12, 12, 0.45);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 86px), rgba(12, 12, 12, 0.45);
   padding: 18px;
 }
 
 .sonho-card.principal {
   min-height: 168px;
   border-color: var(--fire-border);
-  background:
-    linear-gradient(135deg, var(--fire-wash), transparent 54%),
-    rgba(13, 13, 13, 0.62);
+  background: linear-gradient(135deg, var(--fire-wash), transparent 54%), rgba(13, 13, 13, 0.62);
 }
 
 .sonho-card.secondary {
@@ -2920,8 +2958,7 @@ h3 {
 .objetivo-list.nested .objetivo-card {
   border-left: 3px solid var(--fire-border);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 34%),
-    rgba(12, 12, 12, 0.42);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 34%), rgba(12, 12, 12, 0.42);
 }
 
 .objetivo-list.nested .objetivo-card::before {
@@ -3075,8 +3112,7 @@ h3 {
 .isolated-objectives-list .objetivo-card {
   border-color: rgba(237, 237, 237, 0.14);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 72px),
-    rgba(14, 14, 14, 0.42);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 72px), rgba(14, 14, 14, 0.42);
 }
 
 .isolated-objectives-list .objetivo-card::before {
@@ -3540,7 +3576,11 @@ body::before {
     linear-gradient(90deg, rgba(237, 237, 237, 0.018) 0 1px, transparent 1px 96px),
     linear-gradient(180deg, rgba(237, 237, 237, 0.014) 0 1px, transparent 1px 96px),
     linear-gradient(115deg, rgba(0, 0, 0, 0.54), rgba(10, 11, 11, 0.82) 58%, rgba(0, 0, 0, 0.66));
-  background-size: auto, 96px 96px, 96px 96px, auto;
+  background-size:
+    auto,
+    96px 96px,
+    96px 96px,
+    auto;
 }
 
 body::after {
@@ -3553,9 +3593,7 @@ textarea {
   min-height: 42px;
   border-color: var(--border);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.018), transparent),
-    rgba(7, 8, 8, 0.78);
+  background: linear-gradient(180deg, rgba(237, 237, 237, 0.018), transparent), rgba(7, 8, 8, 0.78);
   padding: 10px 12px;
 }
 
@@ -3607,8 +3645,7 @@ h3 {
   border-color: var(--border);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent),
-    rgba(12, 13, 14, 0.82);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent), rgba(12, 13, 14, 0.82);
   font-size: 0.7rem;
   letter-spacing: 0.02em;
   padding: 9px 12px;
@@ -3624,8 +3661,7 @@ h3 {
 .button.fire {
   border-color: rgba(255, 138, 42, 0.58);
   background:
-    linear-gradient(180deg, rgba(255, 177, 94, 0.16), rgba(255, 138, 42, 0.02)),
-    var(--fire);
+    linear-gradient(180deg, rgba(255, 177, 94, 0.16), rgba(255, 138, 42, 0.02)), var(--fire);
   color: #080808;
   box-shadow: none;
 }
@@ -3636,8 +3672,7 @@ h3 {
 
 .button.secondary {
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent),
-    rgba(15, 16, 17, 0.78);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent), rgba(15, 16, 17, 0.78);
 }
 
 .button.danger {
@@ -3690,7 +3725,14 @@ h3 {
 
 .tactical-shell.general::after {
   background:
-    linear-gradient(90deg, transparent 0 17%, rgba(255, 138, 42, 0.018) 17% 17.06%, transparent 17.06% 78%, rgba(237, 237, 237, 0.015) 78% 78.06%, transparent 78.06%),
+    linear-gradient(
+      90deg,
+      transparent 0 17%,
+      rgba(255, 138, 42, 0.018) 17% 17.06%,
+      transparent 17.06% 78%,
+      rgba(237, 237, 237, 0.015) 78% 78.06%,
+      transparent 78.06%
+    ),
     radial-gradient(ellipse at center 0%, rgba(255, 138, 42, 0.045), transparent 44%);
 }
 
@@ -3726,8 +3768,7 @@ h3 {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 54%),
-    rgba(15, 16, 17, 0.9);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 54%), rgba(15, 16, 17, 0.9);
   box-shadow: var(--shadow-raised);
   padding: 18px;
 }
@@ -3756,8 +3797,7 @@ h3 {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 70px),
-    rgba(16, 17, 18, 0.88);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 70px), rgba(16, 17, 18, 0.88);
   padding: 14px;
 }
 
@@ -3789,9 +3829,10 @@ h3 {
   min-height: calc(100vh - 40px);
   border-color: var(--border);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.028), transparent 110px),
-    rgba(14, 15, 16, 0.96);
-  box-shadow: var(--shadow-raised), inset 3px 0 0 rgba(255, 138, 42, 0.28);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.028), transparent 110px), rgba(14, 15, 16, 0.96);
+  box-shadow:
+    var(--shadow-raised),
+    inset 3px 0 0 rgba(255, 138, 42, 0.28);
 }
 
 .rail-note {
@@ -3812,9 +3853,7 @@ h3 {
 }
 
 .rail-actions .button:hover:not(:disabled) {
-  background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent),
-    rgba(18, 19, 20, 0.9);
+  background: linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent), rgba(18, 19, 20, 0.9);
 }
 
 .count-badge {
@@ -3832,8 +3871,7 @@ h3 {
 .review-screen-header {
   border-color: var(--border);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 120px),
-    rgba(16, 17, 18, 0.94);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 120px), rgba(16, 17, 18, 0.94);
   box-shadow: var(--shadow-raised);
 }
 
@@ -3847,9 +3885,7 @@ h3 {
   grid-template-columns: repeat(7, minmax(76px, 1fr));
   border-color: var(--border);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.018), transparent),
-    rgba(7, 8, 8, 0.42);
+  background: linear-gradient(180deg, rgba(237, 237, 237, 0.018), transparent), rgba(7, 8, 8, 0.42);
   gap: 8px;
 }
 
@@ -3858,8 +3894,7 @@ h3 {
   border-color: var(--border);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.028), transparent),
-    rgba(18, 19, 20, 0.9);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.028), transparent), rgba(18, 19, 20, 0.9);
 }
 
 .day-select-button {
@@ -3870,8 +3905,7 @@ h3 {
 .day-node.selected {
   border-color: rgba(255, 138, 42, 0.72);
   background:
-    linear-gradient(180deg, rgba(255, 138, 42, 0.12), transparent 74%),
-    rgba(25, 22, 19, 0.96);
+    linear-gradient(180deg, rgba(255, 138, 42, 0.12), transparent 74%), rgba(25, 22, 19, 0.96);
   box-shadow: inset 0 -2px 0 var(--fire);
 }
 
@@ -3904,8 +3938,7 @@ h3 {
   border-left-width: 3px;
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 88px),
-    rgba(12, 13, 14, 0.76);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 88px), rgba(12, 13, 14, 0.76);
   gap: 8px;
   padding: 11px 12px;
 }
@@ -3913,24 +3946,21 @@ h3 {
 .mission-card:hover {
   border-color: var(--border-strong);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.038), transparent 88px),
-    rgba(16, 17, 18, 0.84);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.038), transparent 88px), rgba(16, 17, 18, 0.84);
 }
 
 .mission-card.priority-high {
   border-color: rgba(155, 92, 255, 0.42);
   border-left-color: var(--neon-purple);
   background:
-    linear-gradient(90deg, rgba(155, 92, 255, 0.085), transparent 42%),
-    rgba(15, 16, 18, 0.9);
+    linear-gradient(90deg, rgba(155, 92, 255, 0.085), transparent 42%), rgba(15, 16, 18, 0.9);
   box-shadow: none;
 }
 
 .mission-card.completed {
   border-color: rgba(103, 197, 135, 0.22);
   background:
-    linear-gradient(90deg, rgba(103, 197, 135, 0.055), transparent 38%),
-    rgba(11, 14, 12, 0.72);
+    linear-gradient(90deg, rgba(103, 197, 135, 0.055), transparent 38%), rgba(11, 14, 12, 0.72);
 }
 
 .mission-card h3 {
@@ -3984,8 +4014,7 @@ h3 {
   border-color: var(--border);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 52%),
-    rgba(0, 0, 0, 0.18);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 52%), rgba(0, 0, 0, 0.18);
 }
 
 .lion-emblem-copy {
@@ -4022,8 +4051,7 @@ h3 {
 
 .auth-card {
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.038), transparent 120px),
-    rgba(16, 17, 18, 0.94);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.038), transparent 120px), rgba(16, 17, 18, 0.94);
 }
 
 .auth-identity h1 {
@@ -4041,8 +4069,7 @@ h3 {
 
 .review-panel {
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 120px),
-    rgba(16, 17, 18, 0.94);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 120px), rgba(16, 17, 18, 0.94);
 }
 
 .review-summary,
@@ -4054,9 +4081,7 @@ h3 {
 .selected-review-card {
   border-color: var(--border);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.024), transparent),
-    rgba(0, 0, 0, 0.2);
+  background: linear-gradient(180deg, rgba(237, 237, 237, 0.024), transparent), rgba(0, 0, 0, 0.2);
 }
 
 .review-summary strong,
@@ -4074,8 +4099,7 @@ h3 {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 54%),
-    rgba(15, 16, 17, 0.9);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.06), transparent 54%), rgba(15, 16, 17, 0.9);
   box-shadow: var(--shadow-raised);
   padding: 18px;
 }
@@ -4084,8 +4108,7 @@ h3 {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.024), transparent 110px),
-    rgba(16, 17, 18, 0.86);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.024), transparent 110px), rgba(16, 17, 18, 0.86);
   padding: 16px;
 }
 
@@ -4094,26 +4117,28 @@ h3 {
 .objetivo-form-panel {
   border-color: var(--border);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 86px),
-    rgba(10, 11, 12, 0.54);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 86px), rgba(10, 11, 12, 0.54);
 }
 
 .sonho-card.principal {
   border-color: rgba(255, 138, 42, 0.34);
   background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.08), transparent 54%),
-    rgba(11, 12, 13, 0.66);
+    linear-gradient(135deg, rgba(255, 138, 42, 0.08), transparent 54%), rgba(11, 12, 13, 0.66);
 }
 
 .branch-line {
-  background: linear-gradient(180deg, rgba(255, 138, 42, 0.72), rgba(155, 92, 255, 0.34), var(--border-soft));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 138, 42, 0.72),
+    rgba(155, 92, 255, 0.34),
+    var(--border-soft)
+  );
 }
 
 .operation-row {
   border-color: var(--border);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.045), transparent 48%),
-    rgba(10, 11, 12, 0.7);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.045), transparent 48%), rgba(10, 11, 12, 0.7);
 }
 
 .operation-metrics span,
@@ -4141,8 +4166,7 @@ h3 {
   border-color: var(--border);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 56%),
-    rgba(9, 10, 10, 0.82);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 56%), rgba(9, 10, 10, 0.82);
   box-shadow: var(--shadow-raised);
 }
 
@@ -4155,8 +4179,7 @@ h3 {
   border-left-color: var(--fire);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.045), transparent 44%),
-    rgba(11, 12, 13, 0.84);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.045), transparent 44%), rgba(11, 12, 13, 0.84);
 }
 
 .soldier-card-action {
@@ -4378,9 +4401,7 @@ h3 {
 
 .feedback {
   border-color: var(--border);
-  background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent),
-    rgba(0, 0, 0, 0.22);
+  background: linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent), rgba(0, 0, 0, 0.22);
   font-size: 0.8rem;
   line-height: 1.4;
 }
@@ -4499,8 +4520,7 @@ h3 {
 
 .mission-form {
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent 120px),
-    rgba(16, 17, 18, 0.96);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent 120px), rgba(16, 17, 18, 0.96);
 }
 
 .mission-form .section-heading {
@@ -4536,8 +4556,7 @@ h3 {
 .hunt-entry .button.fire {
   border-color: rgba(255, 138, 42, 0.34);
   background:
-    linear-gradient(180deg, rgba(255, 138, 42, 0.11), transparent),
-    rgba(255, 138, 42, 0.13);
+    linear-gradient(180deg, rgba(255, 138, 42, 0.11), transparent), rgba(255, 138, 42, 0.13);
   color: var(--fire);
 }
 
@@ -4579,8 +4598,7 @@ h3 {
 .return-command {
   min-height: 50px;
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent),
-    rgba(12, 13, 14, 0.74);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent), rgba(12, 13, 14, 0.74);
 }
 
 .review-summary strong {
@@ -4590,8 +4608,7 @@ h3 {
 .review-failure-panel {
   border-color: rgba(229, 57, 53, 0.22);
   background:
-    linear-gradient(180deg, rgba(229, 57, 53, 0.055), transparent 90px),
-    rgba(0, 0, 0, 0.2);
+    linear-gradient(180deg, rgba(229, 57, 53, 0.055), transparent 90px), rgba(0, 0, 0, 0.2);
 }
 
 .review-failure-panel > strong,
@@ -4872,8 +4889,7 @@ h3 {
   border-color: rgba(255, 138, 42, 0.22);
   background:
     radial-gradient(circle at 14% 0%, rgba(255, 138, 42, 0.18), transparent 34%),
-    linear-gradient(135deg, rgba(237, 237, 237, 0.04), transparent 42%),
-    rgba(10, 11, 12, 0.92);
+    linear-gradient(135deg, rgba(237, 237, 237, 0.04), transparent 42%), rgba(10, 11, 12, 0.92);
 }
 
 .mountain-header::before {
@@ -4905,9 +4921,7 @@ h3 {
   gap: 5px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(255, 138, 42, 0.055), transparent),
-    rgba(0, 0, 0, 0.24);
+  background: linear-gradient(180deg, rgba(255, 138, 42, 0.055), transparent), rgba(0, 0, 0, 0.24);
   padding: 12px;
 }
 
@@ -4931,8 +4945,7 @@ h3 {
   border-color: rgba(237, 237, 237, 0.14);
   background:
     radial-gradient(circle at 50% 0%, rgba(255, 138, 42, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 180px),
-    rgba(10, 11, 12, 0.86);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.035), transparent 180px), rgba(10, 11, 12, 0.86);
 }
 
 .mountain-command-map::before {
@@ -4941,8 +4954,18 @@ h3 {
   inset: 76px 8% 0;
   pointer-events: none;
   background:
-    linear-gradient(115deg, transparent 0 44%, rgba(255, 138, 42, 0.045) 44.2% 44.8%, transparent 45%),
-    linear-gradient(65deg, transparent 0 50%, rgba(237, 237, 237, 0.035) 50.2% 50.8%, transparent 51%);
+    linear-gradient(
+      115deg,
+      transparent 0 44%,
+      rgba(255, 138, 42, 0.045) 44.2% 44.8%,
+      transparent 45%
+    ),
+    linear-gradient(
+      65deg,
+      transparent 0 50%,
+      rgba(237, 237, 237, 0.035) 50.2% 50.8%,
+      transparent 51%
+    );
   opacity: 0.7;
 }
 
@@ -5054,8 +5077,13 @@ h3 {
   left: 50%;
   width: 2px;
   transform: translateX(-50%);
-  background:
-    linear-gradient(180deg, var(--fire), rgba(255, 138, 42, 0.32) 42%, rgba(96, 211, 148, 0.28) 74%, transparent);
+  background: linear-gradient(
+    180deg,
+    var(--fire),
+    rgba(255, 138, 42, 0.32) 42%,
+    rgba(96, 211, 148, 0.28) 74%,
+    transparent
+  );
   box-shadow: 0 0 28px rgba(255, 138, 42, 0.12);
 }
 
@@ -5093,7 +5121,9 @@ h3 {
   border: 2px solid var(--fire);
   border-radius: 999px;
   background: var(--surface-deep);
-  box-shadow: 0 0 0 6px rgba(255, 138, 42, 0.08), 0 0 20px rgba(255, 138, 42, 0.22);
+  box-shadow:
+    0 0 0 6px rgba(255, 138, 42, 0.08),
+    0 0 20px rgba(255, 138, 42, 0.22);
 }
 
 .mountain-camp-node:nth-child(odd)::before {
@@ -5127,10 +5157,12 @@ h3 {
   border-color: rgba(237, 237, 237, 0.16);
   background:
     radial-gradient(circle at 0 0, rgba(255, 138, 42, 0.09), transparent 42%),
-    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 90px),
-    rgba(9, 10, 11, 0.76);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.03), transparent 90px), rgba(9, 10, 11, 0.76);
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.26);
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .mountain-camp-card:hover {
@@ -5165,8 +5197,7 @@ h3 {
 .mountain-progress-strip {
   height: 9px;
   background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.08), rgba(96, 211, 148, 0.04)),
-    var(--surface-deep);
+    linear-gradient(90deg, rgba(255, 138, 42, 0.08), rgba(96, 211, 148, 0.04)), var(--surface-deep);
 }
 
 .mountain-route-secondary {
@@ -5184,8 +5215,7 @@ h3 {
   border-radius: var(--radius-lg);
   border-color: rgba(237, 237, 237, 0.13);
   background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.045), transparent 54%),
-    rgba(8, 9, 10, 0.62);
+    linear-gradient(135deg, rgba(255, 138, 42, 0.045), transparent 54%), rgba(8, 9, 10, 0.62);
 }
 
 .mountain-route-secondary .mountain-ascent-path {
@@ -5218,8 +5248,7 @@ h3 {
   opacity: 0.9;
   border-color: rgba(237, 237, 237, 0.1);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.018), transparent),
-    rgba(8, 9, 10, 0.62);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.018), transparent), rgba(8, 9, 10, 0.62);
 }
 
 .mountain-unlinked-ops .mountain-section-head {
@@ -5234,8 +5263,7 @@ h3 {
 .mountain-unlinked-ops .mountain-camp-card {
   border-color: rgba(237, 237, 237, 0.12);
   background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.022), transparent 72px),
-    rgba(8, 9, 10, 0.48);
+    linear-gradient(180deg, rgba(237, 237, 237, 0.022), transparent 72px), rgba(8, 9, 10, 0.48);
   box-shadow: none;
 }
 

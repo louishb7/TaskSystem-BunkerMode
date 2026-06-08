@@ -1,19 +1,14 @@
-import React from "react";
+import React from "react"
 
-import StatusNotice from "../../../components/ui/StatusNotice.jsx";
-import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
-import ObjetivoList from "../components/ObjetivoList.jsx";
-import SonhoPanel from "../components/SonhoPanel.jsx";
-import { useMountain } from "../hooks/useMountain.js";
+import StatusNotice from "../../../components/ui/StatusNotice.jsx"
+import TacticalShell from "../../../components/tactical/TacticalShell.jsx"
+import ObjetivoList from "../components/ObjetivoList.jsx"
+import SonhoPanel from "../components/SonhoPanel.jsx"
+import { useMountain } from "../hooks/useMountain.js"
 
-export default function MountainPage({
-  embedded = false,
-  onClose,
-  onUnauthorized,
-  token,
-}) {
-  const mountain = useMountain({ onUnauthorized, token });
-  const busy = mountain.loading || mountain.mutating;
+export default function MountainPage({ embedded = false, onClose, onUnauthorized, token }) {
+  const mountain = useMountain({ onUnauthorized, token })
+  const busy = mountain.loading || mountain.mutating
 
   const content = (
     <section className="mountain-page">
@@ -57,11 +52,11 @@ export default function MountainPage({
         sonhos={mountain.sonhosAtivos}
       />
     </section>
-  );
+  )
 
   if (embedded) {
-    return content;
+    return content
   }
 
-  return <TacticalShell mode="general">{content}</TacticalShell>;
+  return <TacticalShell mode="general">{content}</TacticalShell>
 }

@@ -1,6 +1,6 @@
-import React from "react";
+import React from "react"
 
-import DaySelector from "../../calendar/components/DaySelector.jsx";
+import DaySelector from "../../calendar/components/DaySelector.jsx"
 
 export default function WeekPanel({
   missionStatsByDate,
@@ -17,17 +17,23 @@ export default function WeekPanel({
       <div className="section-heading">
         <div>
           <h2>CRONOGRAMA DE CAÇA</h2>
-          <p className="muted">
-            Navegue entre os dias e defina as ordens do General.
-          </p>
+          <p className="muted">Navegue entre os dias e defina as ordens do General.</p>
         </div>
       </div>
       <div className="week-navigation" aria-label="Navegação de semanas">
-        <button className="button secondary compact week-nav-button" type="button" onClick={onPreviousWeek}>
+        <button
+          className="button secondary compact week-nav-button"
+          type="button"
+          onClick={onPreviousWeek}
+        >
           ← SEMANA
         </button>
         <strong>{weekLabel}</strong>
-        <button className="button secondary compact week-nav-button" type="button" onClick={onNextWeek}>
+        <button
+          className="button secondary compact week-nav-button"
+          type="button"
+          onClick={onNextWeek}
+        >
           SEMANA →
         </button>
       </div>
@@ -39,5 +45,5 @@ export default function WeekPanel({
         weekDays={weekDays}
       />
     </section>
-  );
+  )
 }

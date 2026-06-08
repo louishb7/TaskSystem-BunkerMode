@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react"
 
 const initialForm = {
   titulo: "",
   descricao: "",
   tipo: "principal",
-};
+}
 
 export default function SonhoForm({
   editingSonho,
@@ -16,50 +16,62 @@ export default function SonhoForm({
   onRequestArchive,
   onSubmit,
 }) {
-  const [form, setForm] = useState(initialForm);
-  const editing = Boolean(editingSonho);
-  const editingSecondary = editingSonho?.tipo === "secundario";
+  const [form, setForm] = useState(initialForm)
+  const editing = Boolean(editingSonho)
+  const editingSecondary = editingSonho?.tipo === "secundario"
 
   useEffect(() => {
     if (!editingSonho) {
       setForm({
         ...initialForm,
         tipo: hasActivePrincipal ? "secundario" : initialTipo,
-      });
-      return;
+      })
+      return
     }
     setForm({
       titulo: editingSonho.titulo || "",
       descricao: editingSonho.descricao || "",
       tipo: editingSonho.tipo || "secundario",
-    });
-  }, [editingSonho, hasActivePrincipal, initialTipo]);
+    })
+  }, [editingSonho, hasActivePrincipal, initialTipo])
 
   function updateField(event) {
-    setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+    setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
   }
 
   function submit(event) {
-    event.preventDefault();
+    event.preventDefault()
     const payload = {
       titulo: form.titulo.trim(),
       descricao: form.descricao.trim() || null,
-    };
-    if (!editing) {
-      payload.tipo = form.tipo;
     }
-    onSubmit?.(payload);
+    if (!editing) {
+      payload.tipo = form.tipo
+    }
+    onSubmit?.(payload)
   }
 
   return (
     <form className="mountain-form" onSubmit={submit}>
       <label>
         Título
-        <input name="titulo" disabled={loading} required value={form.titulo} onChange={updateField} />
+        <input
+          name="titulo"
+          disabled={loading}
+          required
+          value={form.titulo}
+          onChange={updateField}
+        />
       </label>
       <label>
         Descrição
-        <textarea name="descricao" disabled={loading} rows="4" value={form.descricao} onChange={updateField} />
+        <textarea
+          name="descricao"
+          disabled={loading}
+          rows="4"
+          value={form.descricao}
+          onChange={updateField}
+        />
       </label>
       {!editing && !hasActivePrincipal && (
         <label>
@@ -78,14 +90,25 @@ export default function SonhoForm({
           {editingSecondary && (
             <>
               <p className="muted form-note">
-                Para promover este sonho, o sonho principal atual precisa ser arquivado ou reduzido a secundário primeiro.
+                Para promover este sonho, o sonho principal atual precisa ser arquivado ou reduzido
+                a secundário primeiro.
               </p>
-              <button className="button secondary compact" disabled={loading} type="button" onClick={() => onPromote?.(editingSonho)}>
+              <button
+                className="button secondary compact"
+                disabled={loading}
+                type="button"
+                onClick={() => onPromote?.(editingSonho)}
+              >
                 PROMOVER PARA PRINCIPAL
               </button>
             </>
           )}
-          <button className="button danger ghost compact" disabled={loading} type="button" onClick={() => onRequestArchive?.(editingSonho)}>
+          <button
+            className="button danger ghost compact"
+            disabled={loading}
+            type="button"
+            onClick={() => onRequestArchive?.(editingSonho)}
+          >
             ARQUIVAR CAMPANHA
           </button>
         </div>
@@ -94,10 +117,15 @@ export default function SonhoForm({
         <button className="button fire compact" disabled={loading} type="submit">
           {editing ? "SALVAR SONHO" : "REGISTRAR SONHO"}
         </button>
-        <button className="button secondary compact" disabled={loading} type="button" onClick={onCancel}>
+        <button
+          className="button secondary compact"
+          disabled={loading}
+          type="button"
+          onClick={onCancel}
+        >
           CANCELAR
         </button>
       </div>
     </form>
-  );
+  )
 }

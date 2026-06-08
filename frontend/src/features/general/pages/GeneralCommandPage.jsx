@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react"
 
-import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx";
-import StatusNotice from "../../../components/ui/StatusNotice.jsx";
-import TacticalShell from "../../../components/tactical/TacticalShell.jsx";
-import { emptyStatus } from "../../../constants/uiState.js";
-import { formatDateForApi } from "../../../utils/date.js";
-import { isCompleted } from "../../../utils/missionStatus.js";
-import MissionForm from "../../missions/components/MissionForm.jsx";
+import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx"
+import StatusNotice from "../../../components/ui/StatusNotice.jsx"
+import TacticalShell from "../../../components/tactical/TacticalShell.jsx"
+import { emptyStatus } from "../../../constants/uiState.js"
+import { formatDateForApi } from "../../../utils/date.js"
+import { isCompleted } from "../../../utils/missionStatus.js"
+import MissionForm from "../../missions/components/MissionForm.jsx"
 import {
   addDays,
   formatSelectedDate,
@@ -14,13 +14,13 @@ import {
   getWeekDays,
   normalizeMissionDate,
   startOfDay,
-} from "../../calendar/calendarUtils.js";
-import ActivateSoldierDialog from "../components/ActivateSoldierDialog.jsx";
-import CommandRail from "../components/CommandRail.jsx";
-import OrdersPanel from "../components/OrdersPanel.jsx";
-import TacticalSidePanel from "../components/TacticalSidePanel.jsx";
-import WeekPanel from "../components/WeekPanel.jsx";
-import OperationsPanel from "../../operations/components/OperationsPanel.jsx";
+} from "../../calendar/calendarUtils.js"
+import ActivateSoldierDialog from "../components/ActivateSoldierDialog.jsx"
+import CommandRail from "../components/CommandRail.jsx"
+import OrdersPanel from "../components/OrdersPanel.jsx"
+import TacticalSidePanel from "../components/TacticalSidePanel.jsx"
+import WeekPanel from "../components/WeekPanel.jsx"
+import OperationsPanel from "../../operations/components/OperationsPanel.jsx"
 
 export default function GeneralCommandPage({
   board,
@@ -33,99 +33,114 @@ export default function GeneralCommandPage({
   token,
   user,
 }) {
-  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingMission, setEditingMission] = useState(null);
-  const [operationsOpen, setOperationsOpen] = useState(false);
-  const [showSoldierConfirm, setShowSoldierConfirm] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [modeLoading, setModeLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingMission, setEditingMission] = useState(null)
+  const [operationsOpen, setOperationsOpen] = useState(false)
+  const [showSoldierConfirm, setShowSoldierConfirm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [modeLoading, setModeLoading] = useState(false)
 
-  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
-  const weekLabel = formatWeekLabel(weekDays);
-  const todayDate = useMemo(() => startOfDay(new Date()), []);
-  const selectedDateApi = formatDateForApi(selectedDate);
-  const selectedDateLabel = formatSelectedDate(selectedDate);
+  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate])
+  const weekLabel = formatWeekLabel(weekDays)
+  const todayDate = useMemo(() => startOfDay(new Date()), [])
+  const selectedDateApi = formatDateForApi(selectedDate)
+  const selectedDateLabel = formatSelectedDate(selectedDate)
   const missionStatsByDate = useMemo(
-    () => board.dailyMissions.reduce((stats, mission) => {
-      const key = normalizeMissionDate(mission?.prazo);
-      if (!key) {
-        return stats;
-      }
+    () =>
+      board.dailyMissions.reduce((stats, mission) => {
+        const key = normalizeMissionDate(mission?.prazo)
+        if (!key) {
+          return stats
+        }
 
-      const current = stats[key] || { completed: 0, total: 0 };
-      stats[key] = {
-        completed: current.completed + (isCompleted(mission) ? 1 : 0),
-        total: current.total + 1,
-      };
-      return stats;
-    }, {}),
+        const current = stats[key] || { completed: 0, total: 0 }
+        stats[key] = {
+          completed: current.completed + (isCompleted(mission) ? 1 : 0),
+          total: current.total + 1,
+        }
+        return stats
+      }, {}),
     [board.dailyMissions]
-  );
+  )
   const selectedMissions = useMemo(
-    () => board.dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === selectedDateApi),
+    () =>
+      board.dailyMissions.filter(
+        (mission) => normalizeMissionDate(mission?.prazo) === selectedDateApi
+      ),
     [board.dailyMissions, selectedDateApi]
-  );
+  )
   const todayMissions = useMemo(
-    () => board.dailyMissions.filter((mission) => normalizeMissionDate(mission?.prazo) === formatDateForApi(todayDate)),
+    () =>
+      board.dailyMissions.filter(
+        (mission) => normalizeMissionDate(mission?.prazo) === formatDateForApi(todayDate)
+      ),
     [board.dailyMissions, todayDate]
-  );
-  const selectedCompleted = selectedMissions.filter(isCompleted).length;
-  const selectedFailures = selectedMissions.filter((mission) => String(mission?.status_code || "").startsWith("FALHA")).length;
-  const selectedHighPriority = selectedMissions.filter((mission) => mission?.is_pinned === true).length;
-  const selectedPending = Math.max(0, selectedMissions.length - selectedCompleted - selectedFailures);
-  const reviewCount = board.reviewMissions.length + (board.reviewState?.pending ? 1 : 0);
+  )
+  const selectedCompleted = selectedMissions.filter(isCompleted).length
+  const selectedFailures = selectedMissions.filter((mission) =>
+    String(mission?.status_code || "").startsWith("FALHA")
+  ).length
+  const selectedHighPriority = selectedMissions.filter(
+    (mission) => mission?.is_pinned === true
+  ).length
+  const selectedPending = Math.max(
+    0,
+    selectedMissions.length - selectedCompleted - selectedFailures
+  )
+  const reviewCount = board.reviewMissions.length + (board.reviewState?.pending ? 1 : 0)
+  const materializeOperations = board.materializeOperations
 
   useEffect(() => {
-    const start = formatDateForApi(weekDays[0]);
-    const end = formatDateForApi(weekDays[weekDays.length - 1]);
-    board.materializeOperations?.({ start_date: start, end_date: end });
-  }, [weekDays]);
+    const start = formatDateForApi(weekDays[0])
+    const end = formatDateForApi(weekDays[weekDays.length - 1])
+    materializeOperations?.({ start_date: start, end_date: end })
+  }, [materializeOperations, weekDays])
 
   function openCreateForm() {
-    setEditingMission(null);
-    board.setFormStatus(emptyStatus);
-    setFormOpen(true);
+    setEditingMission(null)
+    board.setFormStatus(emptyStatus)
+    setFormOpen(true)
   }
 
   function openEditForm(mission) {
-    setEditingMission(mission);
-    board.setFormStatus(emptyStatus);
-    setFormOpen(true);
+    setEditingMission(mission)
+    board.setFormStatus(emptyStatus)
+    setFormOpen(true)
   }
 
   async function createMission(payload) {
-    const saved = await board.createMission(payload);
+    const saved = await board.createMission(payload)
     if (saved) {
-      setFormOpen(false);
-      setEditingMission(null);
+      setFormOpen(false)
+      setEditingMission(null)
     }
   }
 
   async function updateMission(missionId, payload) {
-    const saved = await board.updateMission(missionId, payload);
+    const saved = await board.updateMission(missionId, payload)
     if (saved) {
-      setFormOpen(false);
-      setEditingMission(null);
+      setFormOpen(false)
+      setEditingMission(null)
     }
   }
 
   async function deleteMission(mission) {
-    const removed = await board.deleteMission(mission);
+    const removed = await board.deleteMission(mission)
     if (removed && editingMission?.id === mission.id) {
-      setEditingMission(null);
-      setFormOpen(false);
+      setEditingMission(null)
+      setFormOpen(false)
     }
   }
 
   async function confirmActivateSoldier() {
-    setModeLoading(true);
-    const activated = await onActivateSoldier();
-    setModeLoading(false);
+    setModeLoading(true)
+    const activated = await onActivateSoldier()
+    setModeLoading(false)
     if (activated) {
-      setShowSoldierConfirm(false);
-      setFormOpen(false);
-      setEditingMission(null);
+      setShowSoldierConfirm(false)
+      setFormOpen(false)
+      setEditingMission(null)
     }
   }
 
@@ -148,7 +163,9 @@ export default function GeneralCommandPage({
             <div>
               <p className="panel-kicker">SALA DE GUERRA</p>
               <h1>Comando operacional</h1>
-              <p className="muted">{generalName} / {selectedDateLabel}</p>
+              <p className="muted">
+                {generalName} / {selectedDateLabel}
+              </p>
             </div>
             <div className="header-actions">
               <button className="button secondary compact" type="button" onClick={onOpenReview}>
@@ -229,7 +246,12 @@ export default function GeneralCommandPage({
 
       {formOpen && (
         <div className="modal-backdrop command-modal-backdrop" role="presentation">
-          <div className="command-modal-card order-modal-card" role="dialog" aria-modal="true" aria-label={editingMission ? "Editar ordem" : "Nova ordem"}>
+          <div
+            className="command-modal-card order-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingMission ? "Editar ordem" : "Nova ordem"}
+          >
             <MissionForm
               currentUser={user}
               editingMission={editingMission}
@@ -237,9 +259,9 @@ export default function GeneralCommandPage({
               loading={board.formLoading}
               onUnauthorized={onUnauthorized}
               onCancel={() => {
-                setFormOpen(false);
-                setEditingMission(null);
-                board.setFormStatus(emptyStatus);
+                setFormOpen(false)
+                setEditingMission(null)
+                board.setFormStatus(emptyStatus)
               }}
               onCreate={createMission}
               onUpdate={updateMission}
@@ -252,7 +274,12 @@ export default function GeneralCommandPage({
 
       {operationsOpen && (
         <div className="modal-backdrop command-modal-backdrop" role="presentation">
-          <div className="command-modal-card operations-modal-card" role="dialog" aria-modal="true" aria-label="Operações">
+          <div
+            className="command-modal-card operations-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Operações"
+          >
             <OperationsPanel
               loading={board.operationLoading}
               onClose={() => setOperationsOpen(false)}
@@ -283,11 +310,11 @@ export default function GeneralCommandPage({
           variant="danger"
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => {
-            deleteMission(deleteTarget);
-            setDeleteTarget(null);
+            deleteMission(deleteTarget)
+            setDeleteTarget(null)
           }}
         />
       )}
     </TacticalShell>
-  );
+  )
 }

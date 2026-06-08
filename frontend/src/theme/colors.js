@@ -20,4 +20,4 @@ export const colors = Object.freeze({
   purpleDark: "#2A123F",
   purpleWash: "rgba(155, 92, 255, 0.14)",
   black: "#000000",
-});
+})

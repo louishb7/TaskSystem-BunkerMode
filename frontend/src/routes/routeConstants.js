@@ -1,5 +1,7 @@
 export const APP_ROUTES = Object.freeze({
-  GENERAL_HOME: "general.home",
-  MOUNTAIN: "general.mountain",
-  REVIEW: "general.review",
-});
+  AUTH: "/auth",
+  GENERAL_HOME: "/",
+  SOLDIER: "/soldier",
+  MOUNTAIN: "/mountain",
+  REVIEW: "/review",
+})

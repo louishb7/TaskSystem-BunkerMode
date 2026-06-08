@@ -1,6 +1,6 @@
-import React from "react";
+import React from "react"
 
-import { formatCurrentDay } from "../../calendar/calendarUtils.js";
+import { formatCurrentDay } from "../../calendar/calendarUtils.js"
 
 export default function ActivateSoldierDialog({
   loading,
@@ -10,11 +10,11 @@ export default function ActivateSoldierDialog({
 }) {
   const completedMissions = todayMissions.filter(
     (mission) => String(mission?.status_code || "").toUpperCase() === "CONCLUIDA"
-  );
+  )
   const pendingMissions = todayMissions.filter((mission) => {
-    const statusCode = String(mission?.status_code || "").toUpperCase();
-    return !statusCode.startsWith("FALHA") && statusCode !== "CONCLUIDA";
-  });
+    const statusCode = String(mission?.status_code || "").toUpperCase()
+    return !statusCode.startsWith("FALHA") && statusCode !== "CONCLUIDA"
+  })
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -47,5 +47,5 @@ export default function ActivateSoldierDialog({
         </div>
       </section>
     </div>
-  );
+  )
 }

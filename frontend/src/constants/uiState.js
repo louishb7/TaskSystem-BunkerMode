@@ -1,1 +1,1 @@
-export const emptyStatus = Object.freeze({ type: "muted", message: "" });
+export const emptyStatus = Object.freeze({ type: "muted", message: "" })

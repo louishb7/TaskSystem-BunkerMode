@@ -1,17 +1,17 @@
-import React from "react";
+import React from "react"
 
-import { formatDateForApi } from "../../../utils/date.js";
+import { formatDateForApi } from "../../../utils/date.js"
 
-const WEEK_LABELS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+const WEEK_LABELS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"]
 
 function executionTone(percent) {
   if (percent >= 80) {
-    return "high";
+    return "high"
   }
   if (percent >= 40) {
-    return "medium";
+    return "medium"
   }
-  return "low";
+  return "low"
 }
 
 export default function DaySelector({
@@ -24,18 +24,18 @@ export default function DaySelector({
   return (
     <div className="week-board" aria-label="Cronograma de caça">
       {weekDays.map((date) => {
-        const apiDate = formatDateForApi(date);
-        const selected = date.getTime() === selectedDate.getTime();
-        const today = date.getTime() === todayDate.getTime();
-        const past = date.getTime() < todayDate.getTime();
-        const future = date.getTime() > todayDate.getTime();
-        const stats = missionStatsByDate[apiDate] || { completed: 0, total: 0 };
-        const isDayOff = past && stats.total === 0;
-        const complete = stats.total > 0 && stats.completed === stats.total;
-        const percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
-        const hasExecutionLabel = !future && (today || past || stats.total > 0);
-        const executionLabel = isDayOff ? "DIA OFF" : hasExecutionLabel ? `${percent}%` : "";
-        const tone = isDayOff ? "off" : hasExecutionLabel ? executionTone(percent) : "neutral";
+        const apiDate = formatDateForApi(date)
+        const selected = date.getTime() === selectedDate.getTime()
+        const today = date.getTime() === todayDate.getTime()
+        const past = date.getTime() < todayDate.getTime()
+        const future = date.getTime() > todayDate.getTime()
+        const stats = missionStatsByDate[apiDate] || { completed: 0, total: 0 }
+        const isDayOff = past && stats.total === 0
+        const complete = stats.total > 0 && stats.completed === stats.total
+        const percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
+        const hasExecutionLabel = !future && (today || past || stats.total > 0)
+        const executionLabel = isDayOff ? "DIA OFF" : hasExecutionLabel ? `${percent}%` : ""
+        const tone = isDayOff ? "off" : hasExecutionLabel ? executionTone(percent) : "neutral"
         return (
           <div
             key={date.toISOString()}
@@ -54,8 +54,8 @@ export default function DaySelector({
               )}
             </button>
           </div>
-        );
+        )
       })}
     </div>
-  );
+  )
 }

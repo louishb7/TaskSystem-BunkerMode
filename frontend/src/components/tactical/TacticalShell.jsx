@@ -1,5 +1,5 @@
-import React from "react";
+import React from "react"
 
 export default function TacticalShell({ children, mode = "general" }) {
-  return <main className={`tactical-shell ${mode}`}>{children}</main>;
+  return <main className={`tactical-shell ${mode}`}>{children}</main>
 }

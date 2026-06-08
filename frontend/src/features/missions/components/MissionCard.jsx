@@ -1,61 +1,61 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react"
 
-import { isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js";
+import { isCompleted, isDoneNotMarked } from "../../../utils/missionStatus.js"
 
 function can(mission, key) {
-  return Boolean(mission?.permissions?.[key]) && mission?.id !== undefined && mission?.id !== null;
+  return Boolean(mission?.permissions?.[key]) && mission?.id !== undefined && mission?.id !== null
 }
 
 function parseMissionDate(value) {
   if (!value || typeof value !== "string") {
-    return null;
+    return null
   }
 
   if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
-    const [dayRaw, monthRaw, yearRaw] = value.split("-");
-    const day = Number(dayRaw);
-    const month = Number(monthRaw);
-    const year = Number(yearRaw);
-    const parsed = new Date(year, month - 1, day);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    const [dayRaw, monthRaw, yearRaw] = value.split("-")
+    const day = Number(dayRaw)
+    const month = Number(monthRaw)
+    const year = Number(yearRaw)
+    const parsed = new Date(year, month - 1, day)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
   }
 
   if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
-    const [yearRaw, monthRaw, dayRaw] = value.slice(0, 10).split("-");
-    const day = Number(dayRaw);
-    const month = Number(monthRaw);
-    const year = Number(yearRaw);
-    const parsed = new Date(year, month - 1, day);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    const [yearRaw, monthRaw, dayRaw] = value.slice(0, 10).split("-")
+    const day = Number(dayRaw)
+    const month = Number(monthRaw)
+    const year = Number(yearRaw)
+    const parsed = new Date(year, month - 1, day)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
   }
 
-  return null;
+  return null
 }
 
 function todayStart() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
 function formatDeadline(value) {
-  const parsed = parseMissionDate(value);
+  const parsed = parseMissionDate(value)
   if (!parsed) {
-    return "SEM DATA";
+    return "SEM DATA"
   }
 
-  const day = String(parsed.getDate()).padStart(2, "0");
-  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0")
+  const month = String(parsed.getMonth() + 1).padStart(2, "0")
 
   if (parsed.getTime() === todayStart().getTime()) {
-    return "HOJE";
+    return "HOJE"
   }
 
-  return `${day}/${month}`;
+  return `${day}/${month}`
 }
 
 function statusText(mission) {
   if (isDoneNotMarked(mission)) {
-    return "FORA DO APP";
+    return "FORA DO APP"
   }
 
   const compact = {
@@ -64,15 +64,15 @@ function statusText(mission) {
     FALHA_PENDENTE_JUSTIFICATIVA: "FALHOU",
     FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHOU",
     FALHA_REVISADA: "FALHA REVISADA",
-  };
-  const statusCode = String(mission?.status_code || "").toUpperCase();
-  const fallbackLabel = String(mission?.status_label || "").trim();
+  }
+  const statusCode = String(mission?.status_code || "").toUpperCase()
+  const fallbackLabel = String(mission?.status_label || "").trim()
 
   if (statusCode === "PENDENTE" || fallbackLabel.toUpperCase() === "PENDENTE") {
-    return "";
+    return ""
   }
 
-  return compact[statusCode] || fallbackLabel || "";
+  return compact[statusCode] || fallbackLabel || ""
 }
 
 export default function MissionCard({
@@ -89,58 +89,62 @@ export default function MissionCard({
   reopening = false,
   variant = "general",
 }) {
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [instructionOverflow, setInstructionOverflow] = useState(false);
-  const instructionRef = useRef(null);
-  const soldier = variant === "soldier";
-  const title = mission?.titulo || "Sem título";
-  const instruction = mission?.instrucao || "";
-  const isPinned = mission?.is_pinned === true;
-  const disabled = pinning || completing || justifying || reopening;
-  const canComplete = can(mission, "can_complete");
-  const canFail = can(mission, "can_fail");
-  const completed = isCompleted(mission);
-  const deadlineLabel = formatDeadline(mission?.prazo);
-  const operationName = mission?.operacao_nome;
-  const failed = String(mission?.status_code || "").startsWith("FALHA");
-  const previousPending = mission?.is_previous_operational_pending === true;
-  const currentStatusText = statusText(mission);
-  const hasBadge = isPinned || operationName || currentStatusText || previousPending;
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [instructionOverflow, setInstructionOverflow] = useState(false)
+  const instructionRef = useRef(null)
+  const soldier = variant === "soldier"
+  const title = mission?.titulo || "Sem título"
+  const instruction = mission?.instrucao || ""
+  const isPinned = mission?.is_pinned === true
+  const disabled = pinning || completing || justifying || reopening
+  const canComplete = can(mission, "can_complete")
+  const canFail = can(mission, "can_fail")
+  const completed = isCompleted(mission)
+  const deadlineLabel = formatDeadline(mission?.prazo)
+  const operationName = mission?.operacao_nome
+  const failed = String(mission?.status_code || "").startsWith("FALHA")
+  const previousPending = mission?.is_previous_operational_pending === true
+  const currentStatusText = statusText(mission)
+  const hasBadge = isPinned || operationName || currentStatusText || previousPending
 
   useEffect(() => {
-    setDetailsOpen(false);
-  }, [mission?.id, mission?.is_pinned]);
+    setDetailsOpen(false)
+  }, [mission?.id, mission?.is_pinned])
 
   useLayoutEffect(() => {
     if (!soldier || !instruction) {
-      setInstructionOverflow(false);
-      return undefined;
+      setInstructionOverflow(false)
+      return undefined
     }
 
     function measureInstruction() {
-      const element = instructionRef.current;
+      const element = instructionRef.current
       if (!element) {
-        setInstructionOverflow(false);
-        return;
+        setInstructionOverflow(false)
+        return
       }
-      setInstructionOverflow(element.scrollHeight > element.clientHeight + 1);
+      setInstructionOverflow(element.scrollHeight > element.clientHeight + 1)
     }
 
-    measureInstruction();
-    window.addEventListener("resize", measureInstruction);
-    return () => window.removeEventListener("resize", measureInstruction);
-  }, [instruction, soldier]);
+    measureInstruction()
+    window.addEventListener("resize", measureInstruction)
+    return () => window.removeEventListener("resize", measureInstruction)
+  }, [instruction, soldier])
 
   if (soldier) {
     return (
-      <article className={`mission-card soldier-card ${isPinned ? "priority-high" : ""} ${failed ? "danger" : ""}`}>
+      <article
+        className={`mission-card soldier-card ${isPinned ? "priority-high" : ""} ${failed ? "danger" : ""}`}
+      >
         <div className="soldier-card-inner">
           <div className="soldier-card-info">
             {hasBadge && (
               <div className="mission-badge-row">
                 {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
                 {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
-                {previousPending && <span className="meta-tag warning">PENDÊNCIA DO DIA ANTERIOR</span>}
+                {previousPending && (
+                  <span className="meta-tag warning">PENDÊNCIA DO DIA ANTERIOR</span>
+                )}
                 {currentStatusText && <span className="meta-tag">{currentStatusText}</span>}
               </div>
             )}
@@ -208,11 +212,13 @@ export default function MissionCard({
           )}
         </div>
       </article>
-    );
+    )
   }
 
   return (
-    <article className={`mission-card ${isPinned ? "priority-high" : ""} ${completed ? "completed" : ""}`}>
+    <article
+      className={`mission-card ${isPinned ? "priority-high" : ""} ${completed ? "completed" : ""}`}
+    >
       <div className="mission-compact-head">
         <div className="mission-title-stack">
           <h3>{title}</h3>
@@ -247,13 +253,23 @@ export default function MissionCard({
           )}
           <div className="mission-actions detail-actions">
             {can(mission, "can_edit") && (
-              <button className="button secondary compact" disabled={disabled} type="button" onClick={onEdit}>
+              <button
+                className="button secondary compact"
+                disabled={disabled}
+                type="button"
+                onClick={onEdit}
+              >
                 EDITAR
               </button>
             )}
 
             {can(mission, "can_delete") && (
-              <button className="button secondary compact" disabled={disabled} type="button" onClick={onDelete}>
+              <button
+                className="button secondary compact"
+                disabled={disabled}
+                type="button"
+                onClick={onDelete}
+              >
                 REMOVER
               </button>
             )}
@@ -262,9 +278,16 @@ export default function MissionCard({
       )}
 
       <div className="mission-actions primary-actions">
-        {!completed && currentStatusText && <span className="meta-tag mission-footer-status">{currentStatusText}</span>}
+        {!completed && currentStatusText && (
+          <span className="meta-tag mission-footer-status">{currentStatusText}</span>
+        )}
         {canComplete && (
-          <button className="button success compact" disabled={disabled} type="button" onClick={onComplete}>
+          <button
+            className="button success compact"
+            disabled={disabled}
+            type="button"
+            onClick={onComplete}
+          >
             {completing ? "AGUARDE" : "ABATER"}
           </button>
         )}
@@ -279,7 +302,12 @@ export default function MissionCard({
           </button>
         )}
         {completed && can(mission, "can_edit") && onReopen && (
-          <button className="button secondary compact" disabled={disabled} type="button" onClick={onReopen}>
+          <button
+            className="button secondary compact"
+            disabled={disabled}
+            type="button"
+            onClick={onReopen}
+          >
             {reopening ? "AGUARDE" : "REABRIR"}
           </button>
         )}
@@ -292,15 +320,15 @@ export default function MissionCard({
         </button>
       </div>
     </article>
-  );
+  )
 }
 
 export function MissionProgress({ emptyLabel = "DIA OFF", label = "PROGRESSO", missions }) {
-  const total = missions.length;
-  const completed = missions.filter(isCompleted).length;
-  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const complete = total > 0 && completed === total;
-  const off = total === 0;
+  const total = missions.length
+  const completed = missions.filter(isCompleted).length
+  const percent = total > 0 ? Math.round((completed / total) * 100) : 0
+  const complete = total > 0 && completed === total
+  const off = total === 0
 
   return (
     <div className={`mission-progress ${complete ? "complete" : ""} ${off ? "off" : ""}`}>
@@ -312,10 +340,8 @@ export function MissionProgress({ emptyLabel = "DIA OFF", label = "PROGRESSO", m
         <span style={{ width: `${percent}%` }} />
       </div>
       <div className="progress-meta">
-        <span>
-          {off ? emptyLabel : `${completed}/${total} EXECUTADAS`}
-        </span>
+        <span>{off ? emptyLabel : `${completed}/${total} EXECUTADAS`}</span>
       </div>
     </div>
-  );
+  )
 }

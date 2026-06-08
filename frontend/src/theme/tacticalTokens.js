@@ -5,4 +5,4 @@ export const tacticalTokens = Object.freeze({
   sidePanelWidth: 340,
   maxContentWidth: 1480,
   shadow: "0 24px 72px rgba(0, 0, 0, 0.42)",
-});
+})

@@ -1,20 +1,24 @@
-import React from "react";
+import React from "react"
 
-import EmptyState from "../../../components/ui/EmptyState.jsx";
-import { isCompleted } from "../../../utils/missionStatus.js";
-import MissionCard from "../../missions/components/MissionCard.jsx";
+import EmptyState from "../../../components/ui/EmptyState.jsx"
+import { isCompleted } from "../../../utils/missionStatus.js"
+import MissionCard from "../../missions/components/MissionCard.jsx"
 
 function isFailure(mission) {
-  return String(mission?.status_code || "").startsWith("FALHA");
+  return String(mission?.status_code || "").startsWith("FALHA")
 }
 
 function groupMissions(missions) {
   return {
     highPriority: missions.filter((mission) => mission?.is_pinned === true),
-    pending: missions.filter((mission) => mission?.is_pinned !== true && !isCompleted(mission) && !isFailure(mission)),
-    failures: missions.filter((mission) => mission?.is_pinned !== true && !isCompleted(mission) && isFailure(mission)),
+    pending: missions.filter(
+      (mission) => mission?.is_pinned !== true && !isCompleted(mission) && !isFailure(mission)
+    ),
+    failures: missions.filter(
+      (mission) => mission?.is_pinned !== true && !isCompleted(mission) && isFailure(mission)
+    ),
     completed: missions.filter((mission) => mission?.is_pinned !== true && isCompleted(mission)),
-  };
+  }
 }
 
 export default function OrdersPanel({
@@ -32,13 +36,16 @@ export default function OrdersPanel({
   reopenLoadingId,
   selectedMissions,
 }) {
-  const groups = groupMissions(selectedMissions);
-  const activeCount = groups.highPriority.filter((mission) => !isCompleted(mission)).length + groups.pending.length + groups.failures.length;
-  const completedCount = groups.completed.length;
+  const groups = groupMissions(selectedMissions)
+  const activeCount =
+    groups.highPriority.filter((mission) => !isCompleted(mission)).length +
+    groups.pending.length +
+    groups.failures.length
+  const completedCount = groups.completed.length
 
   function renderMissionGroup(label, missions, tone = "") {
     if (missions.length === 0) {
-      return null;
+      return null
     }
 
     return (
@@ -67,7 +74,7 @@ export default function OrdersPanel({
           ))}
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -90,10 +97,7 @@ export default function OrdersPanel({
       </div>
 
       {loading ? (
-        <EmptyState
-          title="Sincronizando comando"
-          message="Carregando ordens do dia selecionado."
-        />
+        <EmptyState title="Sincronizando comando" message="Carregando ordens do dia selecionado." />
       ) : selectedMissions.length > 0 ? (
         <div className="mission-groups">
           {renderMissionGroup("Prioridade elevada", groups.highPriority, "critical")}
@@ -111,5 +115,5 @@ export default function OrdersPanel({
         </div>
       )}
     </section>
-  );
+  )
 }

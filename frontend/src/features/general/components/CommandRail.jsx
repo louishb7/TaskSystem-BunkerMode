@@ -1,8 +1,8 @@
-import React from "react";
+import React from "react"
 
-import operationsAsset from "../../../assets/bunkermode/operations/operacoes.png";
-import reviewAsset from "../../../assets/bunkermode/review/revisao-relatorio.png";
-import BrandSymbol from "../../../components/ui/BrandSymbol.jsx";
+import operationsAsset from "../../../assets/bunkermode/operations/operacoes.png"
+import reviewAsset from "../../../assets/bunkermode/review/revisao-relatorio.png"
+import BrandSymbol from "../../../components/ui/BrandSymbol.jsx"
 
 export default function CommandRail({
   generalName,
@@ -25,7 +25,9 @@ export default function CommandRail({
       <div className="rail-actions rail-nav">
         <button className="button secondary" type="button" onClick={onOpenMountain}>
           <span className="button-asset-label">
-            <span className="rail-symbol" aria-hidden="true">▲</span>
+            <span className="rail-symbol" aria-hidden="true">
+              ▲
+            </span>
             A MONTANHA
           </span>
         </button>
@@ -49,5 +51,5 @@ export default function CommandRail({
         </button>
       </div>
     </nav>
-  );
+  )
 }

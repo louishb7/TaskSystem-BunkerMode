@@ -1,24 +1,24 @@
 export function formatDateForApi(date) {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${day}-${month}-${year}`;
+  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const year = date.getFullYear()
+  return `${day}-${month}-${year}`
 }
 
 export function getTomorrow() {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow;
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return tomorrow
 }
 
 export function formatDateTime(dateTime) {
   if (!dateTime) {
-    return "Data não disponível";
+    return "Data não disponível"
   }
 
-  const date = new Date(dateTime);
+  const date = new Date(dateTime)
   if (Number.isNaN(date.getTime())) {
-    return "Data inválida";
+    return "Data inválida"
   }
 
   return new Intl.DateTimeFormat("pt-BR", {
@@ -29,35 +29,35 @@ export function formatDateTime(dateTime) {
     minute: "2-digit",
   })
     .format(date)
-    .replace(",", " às");
+    .replace(",", " às")
 }
 
 export function parseApiDate(dateString) {
   if (!dateString || typeof dateString !== "string") {
-    return null;
+    return null
   }
 
-  const [day, month, year] = dateString.split("-").map(Number);
+  const [day, month, year] = dateString.split("-").map(Number)
   if (!day || !month || !year) {
-    return null;
+    return null
   }
 
-  const date = new Date(year, month - 1, day);
+  const date = new Date(year, month - 1, day)
   if (Number.isNaN(date.getTime())) {
-    return null;
+    return null
   }
 
-  return date;
+  return date
 }
 
 export function isMissionOverdue(dateString) {
-  const date = parseApiDate(dateString);
+  const date = parseApiDate(dateString)
   if (!date) {
-    return false;
+    return false
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  date.setHours(0, 0, 0, 0);
-  return date < today;
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  date.setHours(0, 0, 0, 0)
+  return date < today
 }

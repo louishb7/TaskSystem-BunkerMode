@@ -1,38 +1,38 @@
-import React, { useState } from "react";
+import React, { useState } from "react"
 
-import BrandSymbol from "../../../components/ui/BrandSymbol.jsx";
+import BrandSymbol from "../../../components/ui/BrandSymbol.jsx"
 
 export default function AuthScreen({ loading, onLogin, onRegister, status }) {
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState("login")
   const [form, setForm] = useState({
     usuario: "",
     email: "",
     identificador: "",
     senha: "",
-  });
+  })
 
-  const isLogin = mode === "login";
+  const isLogin = mode === "login"
 
   function updateField(event) {
     setForm((current) => ({
       ...current,
       [event.target.name]: event.target.value,
-    }));
+    }))
   }
 
   function submit(event) {
-    event.preventDefault();
+    event.preventDefault()
 
     if (isLogin) {
-      onLogin({ email: form.identificador.trim(), senha: form.senha });
-      return;
+      onLogin({ email: form.identificador.trim(), senha: form.senha })
+      return
     }
 
     onRegister({
       usuario: form.usuario.trim(),
       email: form.email.trim(),
       senha: form.senha,
-    });
+    })
   }
 
   return (
@@ -129,5 +129,5 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
         </form>
       </section>
     </main>
-  );
+  )
 }
