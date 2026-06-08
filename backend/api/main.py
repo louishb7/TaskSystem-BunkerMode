@@ -1,5 +1,6 @@
 import os
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -87,9 +88,38 @@ def _database_config_ok() -> bool:
     return bool(database_url) or host not in {"", "localhost"}
 
 
+def log_startup_config() -> None:
+    cors_origins = ",".join(get_allowed_origins())
+    database_target = _get_database_target()
+
+    # Logs de startup tornam divergências de env visíveis no provedor de deploy.
+    print(f"BUNKERMODE_ENV carregado: {os.getenv('BUNKERMODE_ENV', '') or 'não definido'}")
+    print(f"CORS origins configurados: {_mask_long_value(cors_origins)}")
+    print(f"Conectando em {database_target}...")
+    if not is_production_environment():
+        # Evita travar testes e boot local quando o PostgreSQL não está ativo.
+        print("Conexão com banco não testada fora de produção")
+        return
+    try:
+        repo = criar_repositorio()
+        repo.verificar_conexao()
+        print("Banco conectado")
+    except Exception as erro:
+        print(f"ERRO ao conectar: {erro}")
+    finally:
+        if "repo" in locals():
+            repo.fechar()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    log_startup_config()
+    yield
+
+
 def create_app() -> FastAPI:
     validate_runtime_config()
-    app = FastAPI(title="BunkerMode API")
+    app = FastAPI(title="BunkerMode API", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=get_allowed_origins(),
@@ -130,29 +160,6 @@ def create_app() -> FastAPI:
             else "degraded"
         )
         return {"status": status, "checks": checks}
-
-    @app.on_event("startup")
-    def log_startup_config() -> None:
-        cors_origins = ",".join(get_allowed_origins())
-        database_target = _get_database_target()
-
-        # Logs de startup tornam divergências de env visíveis no provedor de deploy.
-        print(f"BUNKERMODE_ENV carregado: {os.getenv('BUNKERMODE_ENV', '') or 'não definido'}")
-        print(f"CORS origins configurados: {_mask_long_value(cors_origins)}")
-        print(f"Conectando em {database_target}...")
-        if not is_production_environment():
-            # Evita travar testes e boot local quando o PostgreSQL não está ativo.
-            print("Conexão com banco não testada fora de produção")
-            return
-        try:
-            repo = criar_repositorio()
-            repo.verificar_conexao()
-            print("Banco conectado")
-        except Exception as erro:
-            print(f"ERRO ao conectar: {erro}")
-        finally:
-            if "repo" in locals():
-                repo.fechar()
 
     return app
 

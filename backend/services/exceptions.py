@@ -1,14 +1,7 @@
-class UsuarioNaoEncontrado(Exception):
-    """Erro levantado quando um usuário não é encontrado."""
-
-
-class UsuarioJaExisteError(ValueError):
-    """Erro levantado quando o email já está em uso."""
-
-
-class AutenticacaoError(ValueError):
-    """Erro levantado quando as credenciais são inválidas."""
-
-
-class PermissaoNegadaError(PermissionError):
-    """Erro levantado quando o usuário não pode executar a ação."""
+# Re-exports de compatibilidade: exceções centralizadas em core/exceptions.py.
+from backend.core.exceptions import (  # noqa: F401
+    AutenticacaoError,
+    PermissaoNegadaError,
+    UsuarioJaExisteError,
+    UsuarioNaoEncontrado,
+)

@@ -1,12 +1,13 @@
-import base64
 import hashlib
 import hmac
-import json
 import os
 import secrets
-import time
-from binascii import Error as BinasciiError
+from datetime import datetime, timedelta, timezone
 from typing import Any
+
+import jwt
+
+ALGORITHM = "HS256"
 
 
 def hash_password(password: str) -> str:
@@ -43,35 +44,19 @@ def validate_auth_secret_configured() -> None:
 
 def generate_token(payload: dict[str, Any], expires_in: int = 3600) -> str:
     body = payload.copy()
-    body["exp"] = int(time.time()) + expires_in
-    encoded = base64.urlsafe_b64encode(
-        json.dumps(body, separators=(",", ":")).encode("utf-8")
-    ).decode("utf-8")
-    signature = hmac.new(
-        _get_secret().encode("utf-8"), encoded.encode("utf-8"), hashlib.sha256
-    ).hexdigest()
-    return f"{encoded}.{signature}"
+    body["exp"] = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    return jwt.encode(body, _get_secret(), algorithm=ALGORITHM)
 
 
 def decode_token(token: str) -> dict[str, Any]:
     try:
-        encoded, signature = token.split(".", maxsplit=1)
-    except ValueError as erro:
-        raise ValueError("Token inválido.") from erro
-
-    expected_signature = hmac.new(
-        _get_secret().encode("utf-8"), encoded.encode("utf-8"), hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(signature, expected_signature):
-        raise ValueError("Token inválido.")
-
-    try:
-        payload = json.loads(
-            base64.urlsafe_b64decode(encoded.encode("utf-8")).decode("utf-8")
+        return jwt.decode(
+            token,
+            _get_secret(),
+            algorithms=[ALGORITHM],
+            options={"verify_sub": False},
         )
-    except (BinasciiError, UnicodeDecodeError, json.JSONDecodeError) as erro:
+    except jwt.ExpiredSignatureError as erro:
+        raise ValueError("Token expirado.") from erro
+    except jwt.InvalidTokenError as erro:
         raise ValueError("Token inválido.") from erro
-
-    if payload.get("exp", 0) < int(time.time()):
-        raise ValueError("Token expirado.")
-    return payload

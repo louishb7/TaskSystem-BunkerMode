@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
-# Build context obrigatório: docker build -t bunkermode-api ./backend
-# O COPY abaixo depende desse contexto para encontrar requirements.txt corretamente.
+# Build context obrigatório:
+# docker build -f backend/Dockerfile -t bunkermode-api .
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -13,11 +13,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY pyproject.toml README.md ./
+COPY backend ./backend
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
-
-COPY . /app/backend/
+    && pip install --no-cache-dir .
 
 EXPOSE ${PORT}
 

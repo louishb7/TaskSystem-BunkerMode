@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import repositorio as rp
@@ -159,14 +160,7 @@ def test_session_reverte_quando_ha_erro(monkeypatch):
     assert session.closed is True
 
 
-def test_adicionar_missao_usa_session_e_atualiza_id(monkeypatch):
-    repositorio = criar_repositorio_sem_engine_real(monkeypatch)
-
-    def definir_id(session):
-        session.added[0].missao_id = 7
-
-    session = FakeSession(flush_callback=definir_id)
-    repositorio._Session = lambda: session
+def test_adicionar_missao_persiste_com_sqlalchemy_sqlite(repositorio):
     missao = Missao(
         titulo="Estudar persistência",
         prioridade=1,
@@ -177,9 +171,11 @@ def test_adicionar_missao_usa_session_e_atualiza_id(monkeypatch):
 
     repositorio.adicionar_missao(missao)
 
-    assert missao.missao_id == 7
-    assert session.committed is True
-    orm = session.added[0]
+    assert missao.missao_id is not None
+
+    with repositorio._Session() as session:
+        orm = session.execute(select(MissaoORM)).scalar_one()
+
     assert orm.titulo == "Estudar persistência"
     assert orm.prioridade == PrioridadeMissao.ALTA.value
     assert orm.prazo == date(2026, 4, 20)

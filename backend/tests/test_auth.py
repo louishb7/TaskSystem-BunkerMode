@@ -1,21 +1,12 @@
-import hashlib
-import hmac
 from datetime import date, datetime, timezone
 
+import jwt
 import pytest
 
 from backend.core.auth import decode_token, generate_token, hash_password
 from backend.services.auth_service import AuthService
 from backend.services.exceptions import AutenticacaoError, PermissaoNegadaError
 from backend.models.usuario import Usuario
-
-
-def assinar_payload(payload: str, secret: str = "segredo-de-teste") -> str:
-    return hmac.new(
-        secret.encode("utf-8"),
-        payload.encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
 
 
 def test_decode_token_rejeita_token_malformado_com_value_error():
@@ -25,19 +16,24 @@ def test_decode_token_rejeita_token_malformado_com_value_error():
 
 def test_decode_token_rejeita_payload_json_invalido(monkeypatch):
     monkeypatch.setenv("BUNKERMODE_AUTH_SECRET", "segredo-de-teste")
-    payload_invalido = "bmFvLWpzb24="
-    assinatura = assinar_payload(payload_invalido)
 
     with pytest.raises(ValueError, match="Token inválido."):
-        decode_token(f"{payload_invalido}.{assinatura}")
+        decode_token("nao-e-um-jwt")
 
 
 def test_decode_token_rejeita_assinatura_invalida():
     token = generate_token({"sub": 1})
-    payload, _assinatura = token.split(".", maxsplit=1)
 
     with pytest.raises(ValueError, match="Token inválido."):
-        decode_token(f"{payload}.assinatura-invalida")
+        decode_token(f"{token}assinatura-invalida")
+
+
+def test_decode_token_rejeita_token_expirado(monkeypatch):
+    monkeypatch.setenv("BUNKERMODE_AUTH_SECRET", "segredo-de-teste")
+    token = jwt.encode({"sub": 1, "exp": 0}, "segredo-de-teste", algorithm="HS256")
+
+    with pytest.raises(ValueError, match="Token expirado."):
+        decode_token(token)
 
 
 class RepositorioAuthFake:

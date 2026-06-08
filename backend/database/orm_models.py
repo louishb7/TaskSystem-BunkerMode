@@ -45,17 +45,17 @@ class UsuarioORM(Base):
     active_mode: Mapped[str] = mapped_column(
         Text,
         nullable=False,
-        server_default=text("'general'::text"),
+        server_default=text("'general'"),
     )
     planning_window: Mapped[str] = mapped_column(
         Text,
         nullable=False,
-        server_default=text("'night'::text"),
+        server_default=text("'night'"),
     )
     timezone: Mapped[str] = mapped_column(
         Text,
         nullable=False,
-        server_default=text("'America/Recife'::text"),
+        server_default=text("'America/Recife'"),
     )
     emergency_unlock_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     timezone_updated_at: Mapped[datetime | None] = mapped_column(
@@ -68,11 +68,11 @@ class SonhoORM(Base):
     __tablename__ = "sonhos"
     __table_args__ = (
         CheckConstraint(
-            "tipo::text = ANY (ARRAY['principal'::character varying, 'secundario'::character varying]::text[])",
+            "tipo IN ('principal', 'secundario')",
             name="sonhos_tipo_check",
         ),
         CheckConstraint(
-            "status::text = ANY (ARRAY['ativo'::character varying, 'arquivado'::character varying, 'concluido'::character varying]::text[])",
+            "status IN ('ativo', 'arquivado', 'concluido')",
             name="sonhos_status_check",
         ),
     )
@@ -101,7 +101,7 @@ class SonhoORM(Base):
     status: Mapped[str] = mapped_column(
         VARCHAR(20),
         nullable=False,
-        server_default=text("'ativo'::character varying"),
+        server_default=text("'ativo'"),
     )
     justificativa_arquivamento: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -126,7 +126,7 @@ class ObjetivoORM(Base):
             name="objetivos_progresso_check",
         ),
         CheckConstraint(
-            "status::text = ANY (ARRAY['ativo'::character varying, 'concluido'::character varying, 'pausado'::character varying, 'abandonado'::character varying]::text[])",
+            "status IN ('ativo', 'concluido', 'pausado', 'abandonado')",
             name="objetivos_status_check",
         ),
     )
@@ -161,7 +161,7 @@ class ObjetivoORM(Base):
     status: Mapped[str] = mapped_column(
         VARCHAR(20),
         nullable=False,
-        server_default=text("'ativo'::character varying"),
+        server_default=text("'ativo'"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -257,7 +257,7 @@ class OperacaoORM(Base):
     status: Mapped[str] = mapped_column(
         Text,
         nullable=False,
-        server_default=text("'ativa'::text"),
+        server_default=text("'ativa'"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
