@@ -38,7 +38,6 @@ export default function MountainPage({
         onDeleteObjetivo={mountain.deleteObjetivo}
         onPromote={mountain.promoteSonho}
         onUpdateObjetivo={mountain.updateObjetivo}
-        onUpdateObjetivoProgress={mountain.updateObjetivoProgresso}
         onUpdateObjetivoStatus={mountain.updateObjetivoStatus}
         onReorderObjetivos={mountain.reorderObjetivos}
         onUpdate={mountain.updateSonho}
@@ -53,7 +52,6 @@ export default function MountainPage({
         onCreateMission={mountain.createMission}
         onDelete={mountain.deleteObjetivo}
         onUpdate={mountain.updateObjetivo}
-        onUpdateProgress={mountain.updateObjetivoProgresso}
         onUpdateStatus={mountain.updateObjetivoStatus}
         onReorder={mountain.reorderObjetivos}
         sonhos={mountain.sonhosAtivos}

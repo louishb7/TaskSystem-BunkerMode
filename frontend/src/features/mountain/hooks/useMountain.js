@@ -121,11 +121,6 @@ export function useMountain({ onUnauthorized, token }) {
       "Objetivo atualizado.",
       "Não foi possível atualizar o objetivo."
     ),
-    updateObjetivoProgresso: (objetivoId, progresso) => mutate(
-      () => api.updateObjetivoProgresso(token, objetivoId, { progresso }),
-      "Progresso atualizado.",
-      "Não foi possível atualizar o progresso."
-    ),
     updateObjetivoStatus: (objetivoId, objetivoStatus) => mutate(
       () => api.updateObjetivoStatus(token, objetivoId, { status: objetivoStatus }),
       "Status atualizado.",

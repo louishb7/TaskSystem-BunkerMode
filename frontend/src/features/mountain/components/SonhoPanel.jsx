@@ -80,7 +80,6 @@ export default function SonhoPanel({
   onPromote,
   onReorderObjetivos,
   onUpdateObjetivo,
-  onUpdateObjetivoProgress,
   onUpdateObjetivoStatus,
   onUpdate,
   sonhos,
@@ -199,13 +198,13 @@ export default function SonhoPanel({
 
   function renderObjetivosDoSonho(sonho) {
     const vinculados = sortObjetivosByOrder(objetivosPorSonho[String(sonho.id)] || []);
-    function moveObjetivo(index, direction) {
-      const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= vinculados.length) {
+    function moveObjetivoToTop(index) {
+      if (index <= 0 || index >= vinculados.length) {
         return;
       }
       const reordered = [...vinculados];
-      [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+      const [selected] = reordered.splice(index, 1);
+      reordered.unshift(selected);
       onReorderObjetivos?.(reordered.map((objetivo) => objetivo.id));
     }
 
@@ -223,10 +222,8 @@ export default function SonhoPanel({
                   onDelete={onDeleteObjetivo}
                   onCreateMission={onCreateMission}
                   onUpdate={onUpdateObjetivo}
-                  onUpdateProgress={onUpdateObjetivoProgress}
                   onUpdateStatus={onUpdateObjetivoStatus}
-                  onMoveDown={index < vinculados.length - 1 ? () => moveObjetivo(index, 1) : null}
-                  onMoveUp={index > 0 ? () => moveObjetivo(index, -1) : null}
+                  onMoveToTop={index > 0 ? () => moveObjetivoToTop(index) : null}
                   sonhos={sonhos}
                 />
               </div>

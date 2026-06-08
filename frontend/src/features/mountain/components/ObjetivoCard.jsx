@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import ConfirmDialog from "../../../components/ui/ConfirmDialog.jsx";
 import { formatDateForApi } from "../../../utils/date.js";
@@ -7,10 +7,10 @@ import MountainDialog from "./MountainDialog.jsx";
 import ObjetivoForm from "./ObjetivoForm.jsx";
 
 const statusLabels = {
-  ativo: "ATIVO",
-  pausado: "PAUSADO",
-  abandonado: "ABANDONADO",
-  concluido: "CONCLUÍDO",
+  ativo: "Ativo",
+  pausado: "Pausado",
+  abandonado: "Abandonado",
+  concluido: "Concluído",
 };
 
 function formatTargetDate(value) {
@@ -119,10 +119,8 @@ export default function ObjetivoCard({
   objetivo,
   onCreateMission,
   onDelete,
-  onMoveDown,
-  onMoveUp,
+  onMoveToTop,
   onUpdate,
-  onUpdateProgress,
   onUpdateStatus,
   sonhos,
 }) {
@@ -131,7 +129,6 @@ export default function ObjetivoCard({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
-  const [progressDraft, setProgressDraft] = useState(Number(objetivo.progresso ?? 0));
   const sonho = useMemo(
     () => sonhos.find((item) => item.id === objetivo.sonho_id),
     [objetivo.sonho_id, sonhos]
@@ -139,7 +136,7 @@ export default function ObjetivoCard({
   const targetLabel = formatTargetDate(objetivo.data_alvo);
   const concludedLabel = formatTargetDate(objetivo.concluded_at?.slice?.(0, 10));
   const pastTarget = isPastDate(objetivo.data_alvo) && objetivo.status === "ativo";
-  const progressChanged = progressDraft !== Number(objetivo.progresso ?? 0);
+  const dueLabel = targetLabel ? `Alvo: ${targetLabel}` : "Até conseguir";
   const active = objetivo.status === "ativo";
   const expanded = !active && detailsOpen;
   const linkedMissions = useMemo(
@@ -147,21 +144,10 @@ export default function ObjetivoCard({
     [missions]
   );
 
-  useEffect(() => {
-    setProgressDraft(Number(objetivo.progresso ?? 0));
-  }, [objetivo.progresso]);
-
   async function submit(payload) {
     const saved = await onUpdate?.(objetivo.id, payload);
     if (saved) {
       setEditing(false);
-    }
-  }
-
-  async function saveProgress() {
-    const saved = await onUpdateProgress?.(objetivo.id, progressDraft);
-    if (saved) {
-      setManageOpen(false);
     }
   }
 
@@ -191,35 +177,9 @@ export default function ObjetivoCard({
     }
   }
 
-  function renderManagementActions({ includeHide = false } = {}) {
+  function renderManagementActions() {
     return (
       <div className="objective-management">
-        <section className="management-block primary">
-          <div>
-            <p className="section-kicker fire">PROGRESSO</p>
-            <h3>Atualizar avanço</h3>
-          </div>
-          <label className="compact-slider">
-            Progresso: {progressDraft}%
-            <input
-              disabled={loading}
-              max="100"
-              min="0"
-              onChange={(event) => setProgressDraft(Number(event.target.value))}
-              type="range"
-              value={progressDraft}
-            />
-          </label>
-          <button
-            className="button fire compact"
-            disabled={loading || !progressChanged}
-            type="button"
-            onClick={saveProgress}
-          >
-            SALVAR PROGRESSO
-          </button>
-        </section>
-
         <section className="management-block">
           <div>
             <p className="section-kicker fire">DADOS</p>
@@ -236,9 +196,9 @@ export default function ObjetivoCard({
         <section className="management-block state-actions">
           <div>
             <p className="section-kicker fire">ESTADO</p>
-            <h3>Mudar estado do objetivo</h3>
+            <h3>{statusLabels[objetivo.status] || objetivo.status}</h3>
           </div>
-          <div className="mountain-card-actions">
+          <div className="mountain-card-actions compact-state-actions">
             {objetivo.status !== "concluido" && (
               <button
                 className="button success compact"
@@ -264,11 +224,6 @@ export default function ObjetivoCard({
                 ABANDONAR
               </button>
             )}
-            {includeHide && (
-              <button className="button secondary compact" type="button" onClick={() => setDetailsOpen(false)}>
-                OCULTAR
-              </button>
-            )}
             <button className="button danger ghost compact" disabled={loading} type="button" onClick={() => setConfirmAction("remover")}>
               REMOVER
             </button>
@@ -278,65 +233,70 @@ export default function ObjetivoCard({
     );
   }
 
+  function renderLinkedMissions(title = "ORDENS VINCULADAS") {
+    if (linkedMissions.length === 0) {
+      return <p className="muted objetivo-empty-orders">Objetivo sem ordens operacionais.</p>;
+    }
+
+    return (
+      <div className="objective-linked-missions compact">
+        <p className="section-kicker fire">{title}</p>
+        {linkedMissions.map(({ completed, key, mission, pendingToday, recurring }) => (
+          <div
+            className={`objective-linked-mission${completed ? " completed-today" : ""}${pendingToday ? " pending-today" : ""}`}
+            key={key}
+          >
+            <strong>{mission.titulo || "Sem título"}</strong>
+            <span>
+              {recurring && <small>Recorrente</small>}
+              {missionStatusLabel(mission, pendingToday)}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <article className={`objetivo-card mountain-camp-card status-${objetivo.status}`}>
       <div className="objetivo-card-head">
         <div>
-          <span className="mountain-objective-label">OBJETIVO ESTRATÉGICO</span>
-          <span className={`meta-tag status-tag ${objetivo.status}`}>{statusLabels[objetivo.status] || objetivo.status}</span>
           <h3>{objetivo.titulo}</h3>
-        </div>
-        {active ? (
-          <div className="objective-card-actions">
-            <div className="mountain-order-actions" aria-label="Reordenar objetivo">
-              <button className="button secondary compact" disabled={loading || !onMoveUp} type="button" onClick={onMoveUp}>
-                SUBIR
-              </button>
-              <button className="button secondary compact" disabled={loading || !onMoveDown} type="button" onClick={onMoveDown}>
-                DESCER
-              </button>
-            </div>
-            <button className="button fire compact" type="button" onClick={() => setCreatingMission(true)}>
-              NOVA ORDEM
-            </button>
-            <button className="button secondary compact objective-admin-action" type="button" onClick={() => setManageOpen(true)}>
-              GERENCIAR
-            </button>
+          <div className="objetivo-meta compact">
+            <span className={pastTarget ? "target-date past" : "target-date"}>
+              {dueLabel}
+            </span>
           </div>
-        ) : expanded ? <strong>{objetivo.progresso}%</strong> : (
-          <button className="button secondary compact" type="button" onClick={() => setDetailsOpen(true)}>
-            DETALHES
-          </button>
-        )}
+        </div>
+        <button
+          aria-label="Mover objetivo para o topo"
+          className="button secondary compact objective-move-top"
+          disabled={loading || !onMoveToTop}
+          title="Mover para o topo"
+          type="button"
+          onClick={onMoveToTop}
+        >
+          ↑
+        </button>
       </div>
 
       {active && (
         <>
-          <div className="objetivo-meta compact">
-            <span className={pastTarget ? "target-date past" : "target-date"}>
-              {targetLabel ? `Alvo: ${targetLabel}` : "Sem prazo definido"}
-            </span>
+          {renderLinkedMissions()}
+        </>
+      )}
+
+      {!active && !expanded && (
+        <>
+          {renderLinkedMissions("ORDENS")}
+          <div className="objective-card-footer">
+            <button className="button fire compact objective-primary-action" type="button" onClick={() => setManageOpen(true)}>
+              GERENCIAR
+            </button>
+            <button className="button secondary compact" type="button" onClick={() => setDetailsOpen(true)}>
+              DETALHES
+            </button>
           </div>
-          <div className="progress-track" aria-label={`Progresso ${objetivo.progresso}%`}>
-            <span style={{ width: `${objetivo.progresso}%` }} />
-          </div>
-          <strong className="objective-progress-number">{objetivo.progresso}%</strong>
-          {linkedMissions.length > 0 ? (
-            <div className="objective-linked-missions compact">
-              <p className="section-kicker fire">ORDENS VINCULADAS</p>
-              {linkedMissions.map(({ completed, key, mission, pendingToday }) => (
-                <div
-                  className={`objective-linked-mission${completed ? " completed-today" : ""}${pendingToday ? " pending-today" : ""}`}
-                  key={key}
-                >
-                  <strong>{mission.titulo || "Sem título"}</strong>
-                  <span>{missionStatusLabel(mission, pendingToday)}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted objetivo-empty-orders">Objetivo sem ordens operacionais.</p>
-          )}
         </>
       )}
 
@@ -347,34 +307,36 @@ export default function ObjetivoCard({
           <div className="objetivo-meta">
             <span>{sonho ? `Sonho: ${sonho.titulo}` : "Sem sonho vinculado"}</span>
             <span className={pastTarget ? "target-date past" : "target-date"}>
-              {targetLabel ? `Alvo: ${targetLabel}` : "Sem prazo definido"}
+              {dueLabel}
             </span>
             {objetivo.status === "concluido" && concludedLabel && <span>Conclusão: {concludedLabel}</span>}
           </div>
 
-          <div className="progress-track" aria-label={`Progresso ${objetivo.progresso}%`}>
-            <span style={{ width: `${objetivo.progresso}%` }} />
+          {renderLinkedMissions("ORDENS")}
+
+          <div className="objective-card-footer">
+            <button className="button fire compact objective-primary-action" type="button" onClick={() => setManageOpen(true)}>
+              GERENCIAR
+            </button>
+            <button className="button secondary compact" type="button" onClick={() => setDetailsOpen(false)}>
+              OCULTAR
+            </button>
           </div>
-
-          {linkedMissions.length > 0 ? (
-            <div className="objective-linked-missions">
-              <p className="section-kicker fire">ORDENS</p>
-              {linkedMissions.map(({ completed, key, mission, pendingToday }) => (
-                <div
-                  className={`objective-linked-mission${completed ? " completed-today" : ""}${pendingToday ? " pending-today" : ""}`}
-                  key={key}
-                >
-                  <strong>{mission.titulo || "Sem título"}</strong>
-                  <span>{missionStatusLabel(mission, pendingToday)}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted objetivo-empty-orders">Objetivo sem ordens operacionais.</p>
-          )}
-
-          {renderManagementActions({ includeHide: true })}
         </>
+      )}
+
+      {active && (
+        <div className="objective-card-footer">
+          <button className="button fire compact objective-primary-action" type="button" onClick={() => setManageOpen(true)}>
+            GERENCIAR
+          </button>
+          <button className="button secondary compact" type="button" onClick={() => setCreatingMission(true)}>
+            NOVA ORDEM
+          </button>
+          <button className="button secondary compact objective-state-action" type="button" onClick={() => setManageOpen(true)}>
+            Estado
+          </button>
+        </div>
       )}
 
       {manageOpen && (
@@ -388,7 +350,7 @@ export default function ObjetivoCard({
           <div className="objetivo-meta">
             <span>{sonho ? `Sonho: ${sonho.titulo}` : "Sem sonho vinculado"}</span>
             <span className={pastTarget ? "target-date past" : "target-date"}>
-              {targetLabel ? `Alvo: ${targetLabel}` : "Sem prazo definido"}
+              {dueLabel}
             </span>
           </div>
           {renderManagementActions()}

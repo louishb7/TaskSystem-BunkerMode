@@ -23,7 +23,6 @@ export default function ObjetivoList({
   onDelete,
   onReorder,
   onUpdate,
-  onUpdateProgress,
   onUpdateStatus,
   sonhos,
 }) {
@@ -52,13 +51,13 @@ export default function ObjetivoList({
     }
   }
 
-  function moveObjetivo(index, direction) {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= objetivosIsolados.length) {
+  function moveObjetivoToTop(index) {
+    if (index <= 0 || index >= objetivosIsolados.length) {
       return;
     }
     const reordered = [...objetivosIsolados];
-    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    const [selected] = reordered.splice(index, 1);
+    reordered.unshift(selected);
     onReorder?.(reordered.map((objetivo) => objetivo.id));
   }
 
@@ -104,10 +103,8 @@ export default function ObjetivoList({
             objetivo={objetivo}
             onCreateMission={onCreateMission}
             onDelete={onDelete}
-            onMoveDown={index < objetivosIsolados.length - 1 ? () => moveObjetivo(index, 1) : null}
-            onMoveUp={index > 0 ? () => moveObjetivo(index, -1) : null}
+            onMoveToTop={index > 0 ? () => moveObjetivoToTop(index) : null}
             onUpdate={onUpdate}
-            onUpdateProgress={onUpdateProgress}
             onUpdateStatus={onUpdateStatus}
             sonhos={sonhos}
           />

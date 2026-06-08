@@ -205,9 +205,6 @@ export const api = {
   updateObjetivo(token, objetivoId, payload) {
     return request(`/objetivos/${objetivoId}`, { token, method: "PATCH", body: payload });
   },
-  updateObjetivoProgresso(token, objetivoId, payload) {
-    return request(`/objetivos/${objetivoId}/progresso`, { token, method: "PATCH", body: payload });
-  },
   updateObjetivoStatus(token, objetivoId, payload) {
     return request(`/objetivos/${objetivoId}/status`, { token, method: "PATCH", body: payload });
   },

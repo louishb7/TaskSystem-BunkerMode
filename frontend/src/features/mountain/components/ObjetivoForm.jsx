@@ -71,7 +71,7 @@ export default function ObjetivoForm({
               onChange={updateField}
               type="checkbox"
             />
-            Sem prazo definido
+            Até conseguir
           </label>
           {!form.sem_prazo && (
             <label>
