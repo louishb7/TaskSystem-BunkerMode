@@ -25,7 +25,7 @@ Ordem de autoridade:
 Se houver conflito, reporte a divergência e use código real + `AGENTS.md` como base.
 
 Leia `CONCEITO.md` quando a tarefa envolver UX, fluxo ou decisão de produto.
-Leia `DECISOES.md` quando a tarefa envolver decisão registrada, arquitetura, escopo ou a migração temporária em andamento.
+Leia `DECISOES.md` quando a tarefa envolver decisão registrada, arquitetura ou escopo.
 
 ---
 
@@ -114,11 +114,13 @@ Estrutura relevante do backend:
 - `backend/core/auth.py`: hashing, verificação de senha e tokens.
 - `backend/core/exceptions.py`: exceções compartilhadas.
 - `backend/database/repositorio.py`: acesso ao banco.
+- `backend/database/orm_models.py`: models SQLAlchemy que mapeiam o schema do banco.
 - `backend/models/`: entidades de domínio puras.
 - `backend/schemas/`: payloads Pydantic.
 - `backend/routes/`: adaptação HTTP.
 - `backend/services/`: casos de uso e regras de negócio.
 - `backend/migrations/`: SQL legado existente.
+- `alembic/`: migrations versionadas do banco.
 - `backend/tests/`: testes do backend.
 
 Regras estruturais:
@@ -128,19 +130,35 @@ Regras estruturais:
 - Services concentram regras e orquestração de repositório.
 - Não tocar em `frontend/` durante refatorações de backend, salvo pedido explícito.
 
-### Migração SQLAlchemy / Alembic
+### Persistência E Migrations
 
-O estado atual ainda usa `psycopg` direto em `backend/database/repositorio.py`.
+O BunkerMode usa SQLAlchemy ORM com `psycopg` como driver.
 
-Existe uma migração temporária registrada em `DECISOES.md` para mover o backend para SQLAlchemy ORM + Alembic.
-Durante essa migração:
-- siga as tarefas do bloco temporário em `DECISOES.md`;
-- execute uma tarefa por vez;
-- não avance sem apagar a tarefa concluída;
-- mantenha a interface pública do repositório;
-- não altere services, routes, schemas ou contrato da API sem justificativa explícita.
+Regras:
+- Models ORM ficam em `backend/database/orm_models.py`.
+- Models de domínio ficam em `backend/models/` e não devem virar SQLAlchemy.
+- O repositório usa SQLAlchemy Session; não usar `psycopg` direto em código de aplicação.
+- Migrations são controladas pelo Alembic com autogenerate.
+- Não criar schema manualmente no repositório.
+- Não editar banco de produção fora de migration revisada.
 
-Quando a migração terminar, este arquivo deve ser atualizado para refletir SQLAlchemy como arquitetura permanente.
+Para criar nova migration após alterar `orm_models.py`:
+```bash
+alembic revision --autogenerate -m "descrição"
+# revisar o arquivo gerado em alembic/versions/
+alembic upgrade head
+```
+
+Para novo ambiente:
+```bash
+alembic upgrade head
+```
+
+Para verificar estado:
+```bash
+alembic current
+alembic history
+```
 
 ---
 

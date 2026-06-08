@@ -21,7 +21,6 @@ from backend.core.settings import (
     is_production_environment,
     validate_database_config_for_runtime,
 )
-from backend.database.repositorio import RepositorioPostgres
 from backend.routes import router
 
 
@@ -51,8 +50,10 @@ def validate_runtime_config() -> None:
     validate_database_config_for_runtime()
 
 
-def criar_repositorio() -> RepositorioPostgres:
+def criar_repositorio():
     # Mantém o healthcheck fora do sistema de Depends porque ele roda direto no app.
+    from backend.database.repositorio import RepositorioPostgres
+
     return RepositorioPostgres(get_connection_string())
 
 

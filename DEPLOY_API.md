@@ -44,6 +44,28 @@ BUNKERMODE_DB_URL=postgresql://user:pass@host:5432/dbname \
 python -c "from backend.api.main import app; print('Boot OK')"
 ```
 
+## Migrations
+
+### Novo ambiente
+```bash
+alembic upgrade head
+```
+
+### Nova migration
+Após alterar `backend/database/orm_models.py`:
+
+```bash
+alembic revision --autogenerate -m "descrição da mudança"
+# revisar o arquivo gerado em alembic/versions/
+alembic upgrade head
+```
+
+### Verificar estado
+```bash
+alembic current   # revisão aplicada
+alembic history   # histórico completo
+```
+
 ## Healthcheck
 `GET /health` deve retornar `{"status": "ok", ...}`.
 

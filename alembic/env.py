@@ -8,7 +8,10 @@ from backend.database.orm_models import Base
 
 
 config = context.config
-config.set_main_option("sqlalchemy.url", os.environ["BUNKERMODE_DB_URL"])
+config.set_main_option(
+    "sqlalchemy.url",
+    os.environ["BUNKERMODE_DB_URL"].replace("%", "%%"),
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
