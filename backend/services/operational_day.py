@@ -16,6 +16,18 @@ def operational_date_for(moment: datetime) -> date:
     return (local_moment - timedelta(hours=OPERATIONAL_DAY_START_HOUR)).date()
 
 
+def calendar_date_for(moment: datetime) -> date:
+    if not isinstance(moment, datetime):
+        raise ValueError("Instante operacional inválido.")
+    if moment.tzinfo is not None:
+        return moment.astimezone(_OPERATIONAL_ZONE).date()
+    return moment.date()
+
+
+def now_in_operational_timezone() -> datetime:
+    return datetime.now(_OPERATIONAL_ZONE)
+
+
 def current_operational_date(now_provider) -> date:
     return operational_date_for(now_provider())
 

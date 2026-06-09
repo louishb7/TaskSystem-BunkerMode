@@ -4,7 +4,11 @@ from backend.models.missao import Missao, StatusMissao
 from backend.models.operacao import Operacao
 from backend.services.exceptions import PermissaoNegadaError
 from backend.services.missao_service import LEGACY_DEFAULT_PRIORITY
-from backend.services.operational_day import operational_date_for
+from backend.services.operational_day import (
+    calendar_date_for,
+    now_in_operational_timezone,
+    operational_date_for,
+)
 
 
 class OperacaoService:
@@ -12,7 +16,7 @@ class OperacaoService:
 
     def __init__(self, repositorio, now_provider=None):
         self.repositorio = repositorio
-        self._now_provider = now_provider or datetime.now
+        self._now_provider = now_provider or now_in_operational_timezone
 
     def criar_operacao(self, dados: dict, usuario=None) -> dict:
         self._garantir_modo_general(usuario)
@@ -97,7 +101,7 @@ class OperacaoService:
     def materializar_turno_soldado(self, usuario=None) -> dict:
         agora = self._now()
         dia_operacional = operational_date_for(agora)
-        dia_calendario = agora.date()
+        dia_calendario = calendar_date_for(agora)
         geradas = self.materializar_periodo(usuario=usuario, start_date=dia_operacional, end_date=dia_operacional)
         if dia_calendario != dia_operacional:
             geradas_atuais = self.materializar_periodo(

@@ -5,7 +5,11 @@ from backend.core.exceptions import MissaoNaoEncontrada
 from backend.models.missao import Missao, StatusMissao
 from backend.services.exceptions import PermissaoNegadaError
 from backend.services.mission_permissions import MissionPermissions
-from backend.services.operational_day import operational_date_for
+from backend.services.operational_day import (
+    calendar_date_for,
+    now_in_operational_timezone,
+    operational_date_for,
+)
 
 
 LEGACY_DEFAULT_PRIORITY = 2
@@ -19,7 +23,7 @@ class MissaoService:
     def __init__(self, repositorio, today_provider=None, now_provider=None):
         self.repositorio = repositorio
         self._today_provider = today_provider
-        self._now_provider = now_provider or datetime.now
+        self._now_provider = now_provider or now_in_operational_timezone
 
     def criar_missao(self, dados: dict, usuario=None) -> Missao:
         self._garantir_modo_general(usuario)
@@ -112,7 +116,7 @@ class MissaoService:
         self._garantir_modo_soldado(usuario)
         agora = self._now()
         dia_operacional = operational_date_for(agora)
-        dia_calendario = agora.date()
+        dia_calendario = calendar_date_for(agora)
         missoes = self._carregar_missoes_do_usuario(usuario)
         materializou = self._materializar_recorrencias_do_usuario(
             usuario=usuario,
@@ -176,7 +180,7 @@ class MissaoService:
         self._garantir_modo_soldado(usuario)
         agora = self._now()
         dia_operacional = operational_date_for(agora)
-        dia_calendario = agora.date()
+        dia_calendario = calendar_date_for(agora)
 
         missoes_ciclo_anterior = self.listar_missoes_por_dia_operacional(dia_operacional, usuario=usuario)
         missoes_dia_atual = (
@@ -455,7 +459,7 @@ class MissaoService:
             reference_date is not None
             and missao.is_pending()
             and missao.due_date == reference_date
-            and self._now().date() != reference_date
+            and calendar_date_for(self._now()) != reference_date
         )
         return payload
 

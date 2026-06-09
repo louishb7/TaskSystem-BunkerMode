@@ -10,6 +10,7 @@ from backend.services.auth_service import AuthService
 from backend.services.missao_service import MissaoService
 from backend.services.mission_permissions import MissionPermissions
 from backend.services.operational_day import (
+    calendar_date_for,
     operational_date_for,
     operational_week_bounds,
     previous_operational_week_bounds,
@@ -263,6 +264,31 @@ def test_data_operacional_usa_timezone_padrao_e_corte_das_quatro():
 
     assert operational_date_for(datetime(2026, 4, 25, 6, 30, 0, tzinfo=timezone.utc)) == date(2026, 4, 24)
     assert operational_date_for(datetime(2026, 4, 25, 7, 0, 0, tzinfo=timezone.utc)) == date(2026, 4, 25)
+    assert calendar_date_for(
+        datetime(2026, 6, 9, 0, 30, 0, tzinfo=timezone.utc)
+    ) == date(2026, 6, 8)
+
+
+def test_turno_soldado_nao_transiciona_as_vinte_e_uma_no_horario_de_recife():
+    repositorio = RepositorioFluxoFake()
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+    service = MissaoService(
+        repositorio,
+        now_provider=lambda: datetime(2026, 6, 9, 0, 30, 0, tzinfo=timezone.utc),
+    )
+    service.criar_missao(
+        {"titulo": "Ordem da noite", "prazo": "08-06-2026"},
+        usuario=usuario,
+    )
+
+    usuario.active_mode = "soldier"
+    quadro = service.quadro_turno_soldado(usuario=usuario)
+
+    assert quadro["turn"]["active_date_label"] == "2026-06-08"
+    assert quadro["turn"]["current_calendar_date"] == "2026-06-08"
+    assert quadro["turn"]["before_cutoff"] is False
+    assert quadro["turn"]["requires_decision"] is False
+    assert [missao.titulo for missao in quadro["daily_missions"]] == ["Ordem da noite"]
 
 
 def test_intervalos_operacionais_usam_semana_de_segunda_a_domingo():
