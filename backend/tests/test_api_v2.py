@@ -478,6 +478,113 @@ def test_soldado_nao_conclui_missao_vencida_apos_corte_operacional():
     assert missoes.buscar_por_id(1).failed_at is not None
 
 
+def test_quadro_soldado_nao_reconsulta_cada_operacao_ja_materializada():
+    repo, auth, missoes, _, _, usuario = preparar_ambiente()
+    operacoes = OperacaoService(repo, now_provider=missoes._now_provider)
+    for indice in range(5):
+        criar_operacao(
+            OperacaoCreatePayload(
+                nome=f"Operação {indice}",
+                start_date="24-04-2026",
+                end_date="24-04-2026",
+                weekdays=[4],
+                ordem_titulo=f"Ordem {indice}",
+                ordem_instrucao="Executar",
+            ),
+            usuario=usuario,
+            operacao_service=operacoes,
+        )
+    atualizar_modo_sessao(
+        SessionModePayload(mode="soldier"),
+        usuario=usuario,
+        auth_service=auth,
+    )
+    obter_quadro_soldado(
+        usuario=usuario,
+        missao_service=missoes,
+        operacao_service=operacoes,
+    )
+
+    chamadas = {"bulk": 0, "unitaria": 0}
+    buscar_original = repo.buscar_missao_de_operacao_por_data
+
+    def listar_chaves_missoes_de_operacoes(operacao_ids, dias):
+        chamadas["bulk"] += 1
+        chaves = set()
+        for missao_id, contexto in repo.contextos.items():
+            operacao_id = contexto.get("operacao_id")
+            if operacao_id not in operacao_ids:
+                continue
+            missao = repo.buscar_por_id(missao_id)
+            dia = contexto.get("operacao_dia") or missao.due_date
+            if dia in dias:
+                chaves.add((operacao_id, dia))
+        return chaves
+
+    def buscar_missao_de_operacao_por_data(operacao_id, prazo):
+        chamadas["unitaria"] += 1
+        return buscar_original(operacao_id, prazo)
+
+    repo.listar_chaves_missoes_de_operacoes = listar_chaves_missoes_de_operacoes
+    repo.buscar_missao_de_operacao_por_data = buscar_missao_de_operacao_por_data
+
+    obter_quadro_soldado(
+        usuario=usuario,
+        missao_service=missoes,
+        operacao_service=operacoes,
+    )
+
+    assert chamadas == {"bulk": 1, "unitaria": 0}
+
+
+def test_endpoints_legados_do_soldado_reutilizam_um_quadro_por_request():
+    repo, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
+    operacoes = OperacaoService(repo, now_provider=missoes._now_provider)
+    criar_missao(
+        MissaoCreatePayload(
+            titulo="Ordem do turno",
+            prioridade=1,
+            prazo="24-04-2026",
+            instrucao="Executar",
+            responsavel_id=usuario_dict["id"],
+        ),
+        usuario=usuario,
+        missao_service=missoes,
+    )
+    atualizar_modo_sessao(
+        SessionModePayload(mode="soldier"),
+        usuario=usuario,
+        auth_service=auth,
+    )
+
+    chamadas = {"quadro": 0}
+    quadro_original = missoes.quadro_turno_soldado
+
+    def quadro_turno_soldado(usuario=None):
+        chamadas["quadro"] += 1
+        return quadro_original(usuario=usuario)
+
+    missoes.quadro_turno_soldado = quadro_turno_soldado
+
+    listar_missoes_operacionais(
+        usuario=usuario,
+        missao_service=missoes,
+        operacao_service=operacoes,
+    )
+    listar_missoes_do_dia_operacional(
+        usuario=usuario,
+        missao_service=missoes,
+        operacao_service=operacoes,
+    )
+    obter_turno_operacional(
+        usuario=usuario,
+        missao_service=missoes,
+        operacao_service=operacoes,
+    )
+
+    assert chamadas == {"quadro": 3}
+
+
 def test_general_pode_concluir_missao_sem_entrar_no_modo_soldado():
     repo, auth, missoes, relatorios, usuario_dict, usuario = preparar_ambiente()
     criar_missao(
@@ -1672,6 +1779,25 @@ def test_quadro_soldado_retorna_turno_acoes_e_progresso_em_uma_chamada():
     assert quadro["turn"]["requires_decision"] is True
     assert [missao["titulo"] for missao in quadro["missions"]] == ["Pendente de sexta"]
     assert [missao["titulo"] for missao in quadro["daily_missions"]] == ["Pendente de sexta"]
+
+
+def test_materializacao_do_turno_soldado_lista_operacoes_uma_vez_antes_do_corte():
+    repo, _, _, _, _, usuario = preparar_ambiente()
+    chamadas = {"listar_operacoes": 0}
+    listar_original = repo.listar_operacoes_por_usuario
+
+    def listar_operacoes_por_usuario(usuario_id):
+        chamadas["listar_operacoes"] += 1
+        return listar_original(usuario_id)
+
+    repo.listar_operacoes_por_usuario = listar_operacoes_por_usuario
+    usuario.definir_modo("soldier")
+    agora = datetime(2026, 4, 25, 2, 0, 0)
+    operacoes_madrugada = OperacaoService(repo, now_provider=lambda: agora)
+
+    operacoes_madrugada.materializar_turno_soldado(usuario=usuario)
+
+    assert chamadas == {"listar_operacoes": 1}
 
 
 def test_soldado_mostra_transicao_com_pendencias_e_pode_encerrar_ciclo_anterior():

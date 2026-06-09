@@ -5,10 +5,36 @@ import { TOKEN_KEY, USER_KEY } from "../../../constants/session.js"
 import { emptyStatus } from "../../../constants/uiState.js"
 import { api } from "../../../services/bunkermodeApi.js"
 
+const persistentStore = window.localStorage
 const sessionStore = window.sessionStorage
 
+function removeStoredSession() {
+  persistentStore.removeItem(TOKEN_KEY)
+  persistentStore.removeItem(USER_KEY)
+  sessionStore.removeItem(TOKEN_KEY)
+  sessionStore.removeItem(USER_KEY)
+}
+
+function migrateSessionStorage() {
+  const sessionToken = sessionStore.getItem(TOKEN_KEY)
+  const sessionUser = sessionStore.getItem(USER_KEY)
+
+  if (sessionToken && !persistentStore.getItem(TOKEN_KEY)) {
+    persistentStore.setItem(TOKEN_KEY, sessionToken)
+  }
+
+  if (sessionUser && !persistentStore.getItem(USER_KEY)) {
+    persistentStore.setItem(USER_KEY, sessionUser)
+  }
+
+  sessionStore.removeItem(TOKEN_KEY)
+  sessionStore.removeItem(USER_KEY)
+}
+
+migrateSessionStorage()
+
 function readStoredUser() {
-  const rawUser = sessionStore.getItem(USER_KEY)
+  const rawUser = persistentStore.getItem(USER_KEY)
   if (!rawUser) {
     return null
   }
@@ -16,14 +42,13 @@ function readStoredUser() {
   try {
     return JSON.parse(rawUser)
   } catch {
-    sessionStore.removeItem(TOKEN_KEY)
-    sessionStore.removeItem(USER_KEY)
+    removeStoredSession()
     return null
   }
 }
 
 export function useAuthSession() {
-  const [token, setToken] = useState(() => sessionStore.getItem(TOKEN_KEY))
+  const [token, setToken] = useState(() => persistentStore.getItem(TOKEN_KEY))
   const [user, setUser] = useState(readStoredUser)
   const [booting, setBooting] = useState(false)
   const [authStatus, setAuthStatus] = useState(emptyStatus)
@@ -33,15 +58,12 @@ export function useAuthSession() {
   const activeMode = user?.active_mode || "general"
 
   const persistUser = useCallback((nextUser) => {
-    sessionStore.setItem(USER_KEY, JSON.stringify(nextUser))
+    persistentStore.setItem(USER_KEY, JSON.stringify(nextUser))
     setUser(nextUser)
   }, [])
 
   const clearSession = useCallback(() => {
-    sessionStore.removeItem(TOKEN_KEY)
-    sessionStore.removeItem(USER_KEY)
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
+    removeStoredSession()
     setToken(null)
     setUser(null)
     setAuthStatus(emptyStatus)
@@ -114,7 +136,7 @@ export function useAuthSession() {
       return
     }
 
-    sessionStore.setItem(TOKEN_KEY, result.data.access_token)
+    persistentStore.setItem(TOKEN_KEY, result.data.access_token)
     setToken(result.data.access_token)
     persistUser(result.data.usuario)
   }

@@ -33,11 +33,11 @@ def _listar_missoes_operacionais(
         except (PermissaoNegadaError, ValueError) as erro:
             _raise_http_from_domain_error(erro)
     if getattr(usuario, "active_mode", "general") == "soldier":
-        estado = missao_service.estado_turno_soldado(usuario=usuario)
+        quadro = missao_service.quadro_turno_soldado(usuario=usuario)
         return missao_service.to_response_list(
-            missao_service.listar_acoes_do_turno_soldado(usuario=usuario),
+            quadro["action_missions"],
             usuario=usuario,
-            reference_date=estado["active_date"],
+            reference_date=quadro["turn"]["active_date"],
         )
     return missao_service.to_response_list(
         missao_service.listar_missoes(usuario=usuario),
@@ -88,11 +88,11 @@ def listar_missoes_do_dia_operacional(
         except (PermissaoNegadaError, ValueError) as erro:
             _raise_http_from_domain_error(erro)
     if getattr(usuario, "active_mode", "general") == "soldier":
-        estado = missao_service.estado_turno_soldado(usuario=usuario)
+        quadro = missao_service.quadro_turno_soldado(usuario=usuario)
         return missao_service.to_response_list(
-            missao_service.listar_missoes_do_turno_soldado(usuario=usuario),
+            quadro["daily_missions"],
             usuario=usuario,
-            reference_date=estado["active_date"],
+            reference_date=quadro["turn"]["active_date"],
         )
     return missao_service.to_response_list(
         missao_service.listar_missoes_do_dia_operacional(usuario=usuario),
@@ -370,4 +370,3 @@ def listar_historico(
         }
         for evento in eventos
     ]
-

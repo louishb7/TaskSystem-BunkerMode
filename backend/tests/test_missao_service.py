@@ -291,6 +291,40 @@ def test_turno_soldado_nao_transiciona_as_vinte_e_uma_no_horario_de_recife():
     assert [missao.titulo for missao in quadro["daily_missions"]] == ["Ordem da noite"]
 
 
+def test_quadro_soldado_carrega_apenas_missoes_do_turno_quando_repositorio_suporta():
+    repositorio = RepositorioFluxoFake()
+    usuario = SimpleNamespace(usuario_id=1, active_mode="general")
+    service = criar_missao_service(repositorio)
+    antiga = service.criar_missao(
+        {"titulo": "Ordem antiga", "prazo": "01-01-2026"},
+        usuario=usuario,
+    )
+    service.criar_missao(
+        {"titulo": "Ordem do turno", "prazo": "24-04-2026"},
+        usuario=usuario,
+    )
+    chamadas = []
+
+    def carregar_missoes_por_responsavel_e_dias(responsavel_id, dias):
+        chamadas.append((responsavel_id, tuple(dias)))
+        return [
+            missao
+            for missao in repositorio.carregar_dados_por_responsavel(responsavel_id)
+            if missao.due_date in dias or missao.recurrence_weekdays
+        ]
+
+    repositorio.carregar_missoes_por_responsavel_e_dias = (
+        carregar_missoes_por_responsavel_e_dias
+    )
+
+    usuario.active_mode = "soldier"
+    quadro = service.quadro_turno_soldado(usuario=usuario)
+
+    assert chamadas == [(1, (DATA_TESTE,))]
+    assert [missao.titulo for missao in quadro["daily_missions"]] == ["Ordem do turno"]
+    assert antiga.is_pending()
+
+
 def test_intervalos_operacionais_usam_semana_de_segunda_a_domingo():
     assert operational_week_bounds(date(2026, 4, 20)) == (
         date(2026, 4, 20),

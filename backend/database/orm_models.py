@@ -179,6 +179,13 @@ class ObjetivoORM(Base):
 
 class MissaoORM(Base):
     __tablename__ = "missoes"
+    __table_args__ = (
+        Index(
+            "idx_missoes_prazo",
+            "prazo",
+            postgresql_where=text("prazo IS NOT NULL"),
+        ),
+    )
 
     missao_id: Mapped[int] = mapped_column(
         Integer,

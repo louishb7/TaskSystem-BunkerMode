@@ -114,7 +114,12 @@ def log_startup_config() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log_startup_config()
-    yield
+    try:
+        yield
+    finally:
+        from backend.database.repositorio import RepositorioPostgres
+
+        RepositorioPostgres.fechar_conexoes_compartilhadas()
 
 
 def create_app() -> FastAPI:

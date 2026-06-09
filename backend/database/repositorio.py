@@ -109,10 +109,16 @@ def _json_dumps_ou_none(valor):
 class RepositorioPostgres:
     """Responsável por carregar e persistir dados do BunkerMode no PostgreSQL."""
 
+    _engines_compartilhados = {}
+
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
         self.sqlalchemy_url = _normalizar_url_sqlalchemy(connection_string)
-        self._engine = create_engine(self.sqlalchemy_url)
+        if self.sqlalchemy_url not in self._engines_compartilhados:
+            self._engines_compartilhados[self.sqlalchemy_url] = create_engine(
+                self.sqlalchemy_url
+            )
+        self._engine = self._engines_compartilhados[self.sqlalchemy_url]
         self._Session = sessionmaker(bind=self._engine, expire_on_commit=False)
 
     def __del__(self):  # pragma: no cover - fallback defensivo
@@ -131,11 +137,13 @@ class RepositorioPostgres:
             session.close()
 
     def fechar(self) -> None:
-        self._engine.dispose()
+        return None
 
     @classmethod
     def fechar_conexoes_compartilhadas(cls) -> None:
-        return None
+        for engine in cls._engines_compartilhados.values():
+            engine.dispose()
+        cls._engines_compartilhados.clear()
 
     def verificar_conexao(self) -> None:
         try:
@@ -358,6 +366,37 @@ class RepositorioPostgres:
         except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao carregar missões do responsável no banco de dados."
+            ) from erro
+
+    def carregar_missoes_por_responsavel_e_dias(
+        self,
+        responsavel_id: int,
+        dias: list[date],
+    ) -> list[Missao]:
+        dias_unicos = sorted({dia for dia in dias if isinstance(dia, date)})
+        if not dias_unicos:
+            return []
+
+        try:
+            with self._session() as session:
+                linhas = session.execute(
+                    self._select_missoes_com_contexto()
+                    .where(MissaoContextoORM.responsavel_id == responsavel_id)
+                    .where(
+                        or_(
+                            MissaoORM.prazo.in_(dias_unicos),
+                            MissaoORM.recurrence_weekdays.is_not(None),
+                        )
+                    )
+                    .order_by(MissaoORM.prioridade, MissaoORM.missao_id)
+                ).all()
+                return [
+                    self._orm_para_missao(missao, contexto, operacao_nome)
+                    for missao, contexto, operacao_nome in linhas
+                ]
+        except SQLAlchemyError as erro:
+            raise LeituraRepositorioError(
+                "Erro ao carregar missões do responsável por dia operacional."
             ) from erro
 
     def buscar_por_id(self, missao_id: int) -> Missao | None:
@@ -774,6 +813,48 @@ class RepositorioPostgres:
         except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar ordem de operação no banco de dados."
+            ) from erro
+
+    def listar_chaves_missoes_de_operacoes(
+        self,
+        operacao_ids: list[int],
+        dias: list[date],
+    ) -> set[tuple[int, date]]:
+        operacao_ids_unicos = sorted(
+            {operacao_id for operacao_id in operacao_ids if operacao_id}
+        )
+        dias_unicos = sorted({dia for dia in dias if isinstance(dia, date)})
+        if not operacao_ids_unicos or not dias_unicos:
+            return set()
+
+        try:
+            with self._session() as session:
+                linhas = session.execute(
+                    select(
+                        MissaoContextoORM.operacao_id,
+                        MissaoContextoORM.operacao_dia,
+                        MissaoORM.prazo,
+                    )
+                    .join(
+                        MissaoORM,
+                        MissaoORM.missao_id == MissaoContextoORM.missao_id,
+                    )
+                    .where(
+                        MissaoContextoORM.operacao_id.in_(operacao_ids_unicos),
+                        or_(
+                            MissaoContextoORM.operacao_dia.in_(dias_unicos),
+                            MissaoORM.prazo.in_(dias_unicos),
+                        ),
+                    )
+                ).all()
+                return {
+                    (operacao_id, operacao_dia or prazo)
+                    for operacao_id, operacao_dia, prazo in linhas
+                    if operacao_id is not None and (operacao_dia or prazo) is not None
+                }
+        except SQLAlchemyError as erro:
+            raise LeituraRepositorioError(
+                "Erro ao listar ordens existentes de operações no banco de dados."
             ) from erro
 
     def criar_missao_de_operacao_se_ausente(

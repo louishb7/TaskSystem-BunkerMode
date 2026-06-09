@@ -73,26 +73,57 @@ class OperacaoService:
         if (fim - inicio).days > 62:
             raise ValueError("Materialização limitada a 63 dias por chamada.")
 
-        geradas = []
         operacoes = self.repositorio.listar_operacoes_por_usuario(usuario.usuario_id)
-        for operacao in operacoes:
-            operacao = self._reativar_se_periodo_nao_passou(operacao)
-            if not operacao.esta_ativa():
-                continue
+        operacoes_ativas = [
+            operacao
+            for operacao in (
+                self._reativar_se_periodo_nao_passou(operacao)
+                for operacao in operacoes
+            )
+            if operacao.esta_ativa()
+        ]
+        dias_por_operacao = {}
+        dias_consultados = set()
+        for operacao in operacoes_ativas:
             dia = inicio
             while dia <= fim:
                 if operacao.cobre_data(dia):
+                    dias_por_operacao.setdefault(operacao.operacao_id, []).append(dia)
+                    dias_consultados.add(dia)
+                dia += timedelta(days=1)
+
+        listar_chaves = getattr(self.repositorio, "listar_chaves_missoes_de_operacoes", None)
+        chaves_existentes = (
+            listar_chaves(
+                [operacao.operacao_id for operacao in operacoes_ativas],
+                list(dias_consultados),
+            )
+            if callable(listar_chaves)
+            else set()
+        )
+
+        geradas = []
+        for operacao in operacoes_ativas:
+            for dia in dias_por_operacao.get(operacao.operacao_id, []):
+                chave = (operacao.operacao_id, dia)
+                if chave in chaves_existentes:
+                    continue
+                if not callable(listar_chaves):
                     existente = self.repositorio.buscar_missao_de_operacao_por_data(
                         operacao.operacao_id,
                         dia,
                     )
-                    if existente is None:
-                        missao = self._criar_missao_da_operacao(operacao, usuario, dia)
-                        if missao is not None:
-                            geradas.append(missao)
-                dia += timedelta(days=1)
+                    if existente is not None:
+                        continue
+                missao = self._criar_missao_da_operacao(operacao, usuario, dia)
+                if missao is not None:
+                    geradas.append(missao)
+                    chaves_existentes.add(chave)
 
-        return {"generated": len(geradas), "mission_ids": [missao.missao_id for missao in geradas]}
+        return {
+            "generated": len(geradas),
+            "mission_ids": [missao.missao_id for missao in geradas],
+        }
 
     def materializar_dia_operacional(self, usuario=None) -> dict:
         hoje = operational_date_for(self._now())
@@ -102,18 +133,17 @@ class OperacaoService:
         agora = self._now()
         dia_operacional = operational_date_for(agora)
         dia_calendario = calendar_date_for(agora)
-        geradas = self.materializar_periodo(usuario=usuario, start_date=dia_operacional, end_date=dia_operacional)
         if dia_calendario != dia_operacional:
-            geradas_atuais = self.materializar_periodo(
+            return self.materializar_periodo(
                 usuario=usuario,
-                start_date=dia_calendario,
+                start_date=dia_operacional,
                 end_date=dia_calendario,
             )
-            return {
-                "generated": geradas["generated"] + geradas_atuais["generated"],
-                "mission_ids": geradas["mission_ids"] + geradas_atuais["mission_ids"],
-            }
-        return geradas
+        return self.materializar_periodo(
+            usuario=usuario,
+            start_date=dia_operacional,
+            end_date=dia_operacional,
+        )
 
     def _criar_missao_da_operacao(self, operacao: Operacao, usuario, dia: date) -> Missao | None:
         missao = Missao(

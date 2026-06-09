@@ -71,6 +71,7 @@ class FakeSession:
 
 
 def criar_repositorio_sem_engine_real(monkeypatch, engine=None):
+    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
     fake_engine = engine or FakeEngine()
     monkeypatch.setattr(rp, "create_engine", lambda url: fake_engine)
     return rp.RepositorioPostgres("dbname=bunkermode user=user password=pass host=localhost port=5432")
@@ -105,13 +106,44 @@ def test_normaliza_postgres_url_para_driver_psycopg(monkeypatch):
     assert parse_qs(parsed.query) == {"sslmode": ["require"]}
 
 
-def test_fechar_descarta_engine(monkeypatch):
+def test_fechar_nao_descarta_engine_compartilhado(monkeypatch):
     fake_engine = FakeEngine()
     repositorio = criar_repositorio_sem_engine_real(monkeypatch, fake_engine)
 
     repositorio.fechar()
 
+    assert fake_engine.disposed is False
+
+
+def test_fechar_conexoes_compartilhadas_descarta_engine(monkeypatch):
+    fake_engine = FakeEngine()
+    criar_repositorio_sem_engine_real(monkeypatch, fake_engine)
+
+    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
+
     assert fake_engine.disposed is True
+
+
+def test_repositorios_com_mesma_url_reutilizam_engine(monkeypatch):
+    rp.RepositorioPostgres.fechar_conexoes_compartilhadas()
+    engines = []
+
+    def criar_engine(url):
+        engine = FakeEngine()
+        engines.append(engine)
+        return engine
+
+    monkeypatch.setattr(rp, "create_engine", criar_engine)
+
+    primeiro = rp.RepositorioPostgres(
+        "postgresql://user:pass@db.example.com:5432/bunkermode"
+    )
+    segundo = rp.RepositorioPostgres(
+        "postgresql://user:pass@db.example.com:5432/bunkermode"
+    )
+
+    assert len(engines) == 1
+    assert primeiro._engine is segundo._engine
 
 
 def test_verificar_conexao_executa_select(monkeypatch):

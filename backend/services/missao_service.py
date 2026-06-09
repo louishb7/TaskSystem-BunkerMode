@@ -15,6 +15,18 @@ from backend.services.operational_day import (
 LEGACY_DEFAULT_PRIORITY = 2
 
 
+def merge_missoes_por_id(*listas: list[Missao]) -> list[Missao]:
+    missoes_por_id = {}
+    sem_id = []
+    for lista in listas:
+        for missao in lista:
+            if missao.missao_id is None:
+                sem_id.append(missao)
+                continue
+            missoes_por_id[missao.missao_id] = missao
+    return [*missoes_por_id.values(), *sem_id]
+
+
 class MissaoService:
     """Centraliza os casos de uso de missão da API."""
 
@@ -100,24 +112,20 @@ class MissaoService:
         return self.listar_missoes_por_dia_operacional(self._today(), usuario=usuario)
 
     def listar_missoes_do_turno_soldado(self, usuario=None) -> list[Missao]:
-        estado = self.estado_turno_soldado(usuario=usuario)
-        return self.listar_missoes_por_dia_operacional(estado["active_date"], usuario=usuario)
+        return self.quadro_turno_soldado(usuario=usuario)["daily_missions"]
 
     def listar_acoes_do_turno_soldado(self, usuario=None) -> list[Missao]:
-        estado = self.estado_turno_soldado(usuario=usuario)
-        acoes_do_turno = self.listar_missoes_por_dia_operacional(estado["active_date"], usuario=usuario)
-        return [
-            missao
-            for missao in self.sort_missions_for_board(acoes_do_turno)
-            if missao.is_visible_to_soldier(estado["active_date"])
-        ]
+        return self.quadro_turno_soldado(usuario=usuario)["action_missions"]
 
     def quadro_turno_soldado(self, usuario=None) -> dict:
         self._garantir_modo_soldado(usuario)
         agora = self._now()
         dia_operacional = operational_date_for(agora)
         dia_calendario = calendar_date_for(agora)
-        missoes = self._carregar_missoes_do_usuario(usuario)
+        dias_do_turno = [dia_operacional]
+        if dia_calendario != dia_operacional:
+            dias_do_turno.append(dia_calendario)
+        missoes = self._carregar_missoes_do_usuario_para_dias(usuario, dias_do_turno)
         materializou = self._materializar_recorrencias_do_usuario(
             usuario=usuario,
             missoes=missoes,
@@ -135,8 +143,7 @@ class MissaoService:
                 or materializou
             )
         if materializou:
-            missoes = self._carregar_missoes_do_usuario(usuario)
-        self._reconciliar_falhas(usuario=usuario, missoes=missoes)
+            missoes = self._carregar_missoes_do_usuario_para_dias(usuario, dias_do_turno)
 
         missoes_ciclo_anterior = self.sort_missions_for_board(
             [missao for missao in missoes if self._pertence_ao_dia_operacional(missao, dia_operacional)]
@@ -147,6 +154,10 @@ class MissaoService:
             else self.sort_missions_for_board(
                 [missao for missao in missoes if self._pertence_ao_dia_operacional(missao, dia_calendario)]
             )
+        )
+        self._reconciliar_falhas(
+            usuario=usuario,
+            missoes=merge_missoes_por_id(missoes_ciclo_anterior, missoes_dia_atual),
         )
         pendencias_anteriores = [missao for missao in missoes_ciclo_anterior if missao.is_pending()]
         novo_dia_disponivel = dia_calendario != dia_operacional and len(missoes_dia_atual) > 0
@@ -177,37 +188,7 @@ class MissaoService:
         }
 
     def estado_turno_soldado(self, usuario=None) -> dict:
-        self._garantir_modo_soldado(usuario)
-        agora = self._now()
-        dia_operacional = operational_date_for(agora)
-        dia_calendario = calendar_date_for(agora)
-
-        missoes_ciclo_anterior = self.listar_missoes_por_dia_operacional(dia_operacional, usuario=usuario)
-        missoes_dia_atual = (
-            []
-            if dia_calendario == dia_operacional
-            else self.listar_missoes_por_dia_operacional(dia_calendario, usuario=usuario)
-        )
-        pendencias_anteriores = [missao for missao in missoes_ciclo_anterior if missao.is_pending()]
-        novo_dia_disponivel = dia_calendario != dia_operacional and len(missoes_dia_atual) > 0
-        exige_decisao = novo_dia_disponivel and len(pendencias_anteriores) > 0
-        migrou_automaticamente = novo_dia_disponivel and len(pendencias_anteriores) == 0
-        dia_ativo = dia_operacional
-        if migrou_automaticamente:
-            dia_ativo = dia_calendario
-
-        return {
-            "active_date": dia_ativo,
-            "active_date_label": dia_ativo.isoformat(),
-            "previous_operational_date": dia_operacional.isoformat(),
-            "current_calendar_date": dia_calendario.isoformat(),
-            "before_cutoff": dia_calendario != dia_operacional,
-            "current_day_available": novo_dia_disponivel,
-            "requires_decision": exige_decisao,
-            "auto_advanced": migrou_automaticamente,
-            "previous_pending_count": len(pendencias_anteriores),
-            "current_missions_count": len(missoes_dia_atual),
-        }
+        return self.quadro_turno_soldado(usuario=usuario)["turn"]
 
     def listar_missoes_por_dia_operacional(self, dia: date, usuario=None) -> list[Missao]:
         missoes = self._carregar_missoes_do_usuario(usuario)
@@ -402,7 +383,8 @@ class MissaoService:
         )
 
     def encerrar_pendencias_do_ciclo_anterior(self, usuario=None) -> dict:
-        estado = self.estado_turno_soldado(usuario=usuario)
+        quadro = self.quadro_turno_soldado(usuario=usuario)
+        estado = quadro["turn"]
         if not estado["requires_decision"]:
             return estado
 
@@ -410,7 +392,9 @@ class MissaoService:
             estado["previous_operational_date"],
             "Data do ciclo anterior inválida.",
         )
-        for missao in self.listar_missoes_por_dia_operacional(dia_anterior, usuario=usuario):
+        for missao in quadro["daily_missions"]:
+            if not self._pertence_ao_dia_operacional(missao, dia_anterior):
+                continue
             if not missao.is_pending():
                 continue
             missao.marcar_como_falha(self._now())
@@ -423,7 +407,16 @@ class MissaoService:
                     detalhes=f"Missão '{missao.titulo}' encerrada na transição operacional.",
                 )
 
-        return self.estado_turno_soldado(usuario=usuario)
+        estado_atualizado = estado.copy()
+        estado_atualizado["active_date"] = self._parse_iso_date(
+            estado["current_calendar_date"],
+            "Data do dia atual inválida.",
+        )
+        estado_atualizado["active_date_label"] = estado["current_calendar_date"]
+        estado_atualizado["requires_decision"] = False
+        estado_atualizado["auto_advanced"] = True
+        estado_atualizado["previous_pending_count"] = 0
+        return estado_atualizado
 
     def remover_missao(self, missao_id: int, usuario=None) -> None:
         self._garantir_modo_general(usuario)
@@ -491,6 +484,31 @@ class MissaoService:
                 if contexto is not None:
                     missao.atualizar_user_id(contexto.get("responsavel_id"))
         return missoes
+
+    def _carregar_missoes_do_usuario_para_dias(self, usuario, dias: list[date]) -> list[Missao]:
+        if usuario is None:
+            return [
+                missao
+                for missao in self._carregar_missoes_do_usuario(usuario)
+                if missao.due_date in dias or missao.recurrence_weekdays
+            ]
+
+        carregar_por_dias = getattr(
+            self.repositorio,
+            "carregar_missoes_por_responsavel_e_dias",
+            None,
+        )
+        if callable(carregar_por_dias):
+            missoes = list(carregar_por_dias(usuario.usuario_id, dias))
+            for missao in missoes:
+                missao.atualizar_user_id(usuario.usuario_id)
+            return missoes
+
+        return [
+            missao
+            for missao in self._carregar_missoes_do_usuario(usuario)
+            if missao.due_date in dias or missao.recurrence_weekdays
+        ]
 
     def _garantir_objetivo_do_usuario(self, usuario, objetivo_id: int | None) -> None:
         if objetivo_id is None or usuario is None:
