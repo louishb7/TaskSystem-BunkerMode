@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "scheme": "bunkermode",
     "userInterfaceStyle": "dark",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.bunkermode.mobile"
@@ -17,9 +19,19 @@
         "backgroundColor": "#090a0a"
       }
     },
-    "plugins": ["expo-router", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "72431ead-be5a-47aa-a29c-8c1d94c95910"
+      }
+    },
+    "owner": "louishb7"
   }
 }

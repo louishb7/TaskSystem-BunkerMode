@@ -4,7 +4,7 @@ import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function IndexRoute() {
-  const { authenticated, booting } = useAuth();
+  const { activeMode, authenticated, booting } = useAuth();
 
   if (booting) {
     return (
@@ -14,5 +14,9 @@ export default function IndexRoute() {
     );
   }
 
-  return <Redirect href={authenticated ? "/(tabs)/soldado" : "/login"} />;
+  if (!authenticated) {
+    return <Redirect href="/login" />;
+  }
+
+  return <Redirect href={activeMode === "soldier" ? "/(tabs)/soldado" : "/(tabs)/general"} />;
 }

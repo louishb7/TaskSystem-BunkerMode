@@ -17,3 +17,5 @@ export type LoginResponse = {
   token_type: string;
   usuario: User;
 };
+
+export type SessionMode = "general" | "soldier";

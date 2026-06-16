@@ -4,6 +4,7 @@ export type MissionPermissions = {
   can_delete: boolean;
   can_justify: boolean;
   can_fail: boolean;
+  can_pin?: boolean;
   can_review: boolean;
   can_view_history: boolean;
 };
@@ -24,6 +25,8 @@ export type Mission = {
   responsavel_id?: number | null;
   objetivo_id?: number | null;
   sonho_id?: number | null;
+  operacao_nome?: string | null;
+  is_previous_operational_pending?: boolean;
   permissions: MissionPermissions;
 };
 
