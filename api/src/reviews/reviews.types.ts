@@ -10,10 +10,6 @@ export type WeeklyReport = {
   failed_missions: number
   completion_rate: number
   high_priority_missions: number
-  missions_waiting_justification: 0
-  missions_waiting_review: 0
-  reviewed_failures: number
-  failure_reasons: []
 }
 
 export type ReviewResponse = {

@@ -263,7 +263,7 @@ export default function ObjetivoCard({
 
   function renderLinkedMissions(title = "ORDENS VINCULADAS") {
     if (linkedMissions.length === 0) {
-      return <p className="muted objetivo-empty-orders">Objetivo sem ordens operacionais.</p>
+      return <p className="muted objetivo-empty-orders">Objetivo sem ordens.</p>
     }
 
     return (

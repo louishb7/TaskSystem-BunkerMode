@@ -1039,48 +1039,6 @@ h3 {
   color: var(--fire);
 }
 
-.operational-turn-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 8px;
-  border: 1px solid rgba(255, 138, 42, 0.24);
-  background:
-    linear-gradient(90deg, rgba(255, 138, 42, 0.08), transparent 58%), rgba(11, 11, 11, 0.78);
-  padding: 14px;
-}
-
-.operational-turn-panel span {
-  display: block;
-  color: var(--fire);
-  font-size: 0.66rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.operational-turn-panel strong {
-  display: block;
-  color: var(--text);
-  margin-top: 4px;
-  font-size: 0.96rem;
-  text-transform: uppercase;
-}
-
-.operational-turn-panel p {
-  margin: 6px 0 0;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.operational-turn-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
 .orders-panel {
   display: grid;
   border-color: rgba(255, 138, 42, 0.26);
@@ -3138,18 +3096,6 @@ h3 {
     border: 0;
     background: transparent;
     padding: 0;
-  }
-
-  .operational-turn-panel {
-    grid-template-columns: 1fr;
-  }
-
-  .operational-turn-actions {
-    justify-content: stretch;
-  }
-
-  .operational-turn-actions .button {
-    width: 100%;
   }
 
   .review-summary {

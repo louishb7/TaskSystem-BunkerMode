@@ -17,10 +17,9 @@ function user(overrides: Partial<UserRecord> = {}): UserRecord {
     ativo: true,
     nome_general: null,
     active_mode: "general",
-    planning_window: "night",
     timezone: "America/Recife",
-    emergency_unlock_date: null,
-    timezone_updated_at: null,
+    created_at: new Date("2026-04-24T12:00:00.000Z"),
+    updated_at: new Date("2026-04-24T12:00:00.000Z"),
     ...overrides,
   }
 }
@@ -41,18 +40,17 @@ describe("Auth phase 3", () => {
     process.env.BUNKERMODE_AUTH_SECRET = "fase-3-test-secret"
   })
 
-  it("uses the legacy PBKDF2 password hash format", () => {
-    const passwordHash = hashPassword("senha123")
+  it("uses the current scrypt password hash format", () => {
+    const passwordHash = hashPassword("senha1234")
 
-    expect(passwordHash).toMatch(/^[0-9a-f]{32}\$[0-9a-f]{64}$/)
-    expect(verifyPassword("senha123", passwordHash)).toBe(true)
+    expect(passwordHash).toMatch(/^scrypt\$16384\$8\$1\$[0-9a-f]{32}\$[0-9a-f]{128}$/)
+    expect(verifyPassword("senha1234", passwordHash)).toBe(true)
     expect(verifyPassword("errada", passwordHash)).toBe(false)
   })
 
   it("registers a user with normalized email and default database fields", async () => {
     const prisma = prismaMock()
     const createdUser = user({ email: "general@bunker.local" })
-    prisma.usuarios.findUnique.mockResolvedValue(null)
     prisma.usuarios.create.mockResolvedValue(createdUser)
     const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
 
@@ -67,7 +65,7 @@ describe("Auth phase 3", () => {
       data: {
         usuario: "general",
         email: "general@bunker.local",
-        senha_hash: expect.stringMatching(/^[0-9a-f]{32}\$[0-9a-f]{64}$/),
+        senha_hash: expect.stringMatching(/^scrypt\$16384\$8\$1\$/),
       },
     })
   })
@@ -75,8 +73,7 @@ describe("Auth phase 3", () => {
   it("logs in by email or username and omits ativo from login user response", async () => {
     const prisma = prismaMock()
     const existingUser = user()
-    prisma.usuarios.findUnique.mockResolvedValue(null)
-    prisma.usuarios.findFirst.mockResolvedValue(existingUser)
+    prisma.usuarios.findUnique.mockResolvedValue(existingUser)
     const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
 
     const result = await service.login({ email: "GENERAL", senha: "senha123" })
@@ -84,9 +81,18 @@ describe("Auth phase 3", () => {
     expect(result.token_type).toBe("bearer")
     expect(result.access_token.split(".")).toHaveLength(3)
     expect(toUserResponse(result.usuario, false)).not.toHaveProperty("ativo")
-    expect(prisma.usuarios.findFirst).toHaveBeenCalledWith({
-      where: { usuario: { equals: "GENERAL", mode: "insensitive" } },
+    expect(prisma.usuarios.findUnique).toHaveBeenCalledWith({
+      where: { usuario: "general" },
     })
+  })
+
+  it("rejects inactive users from existing tokens", async () => {
+    const prisma = prismaMock()
+    prisma.usuarios.findUnique.mockResolvedValue(user({ ativo: false }))
+    const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
+    const token = new TokenService().generate({ sub: 1, email: "general@bunker.local" })
+
+    await expect(service.getUserFromToken(token)).rejects.toMatchObject({ status: 401 })
   })
 
   it("rejects invalid credentials with 401", async () => {

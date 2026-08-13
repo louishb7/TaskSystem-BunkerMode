@@ -20,7 +20,7 @@ async function requestMission(
     return {
       ok: false,
       status: 0,
-      data: { detail: contractErrorMessage(error) },
+      data: { message: contractErrorMessage(error) },
     }
   }
 }
@@ -40,7 +40,7 @@ async function requestMissionList(
     return {
       ok: false,
       status: 0,
-      data: { detail: contractErrorMessage(error) },
+      data: { message: contractErrorMessage(error) },
     }
   }
 }
@@ -67,7 +67,7 @@ async function requestSoldierBoard(
     return {
       ok: false,
       status: 0,
-      data: { detail: contractErrorMessage(error) },
+      data: { message: contractErrorMessage(error) },
     }
   }
 }
@@ -99,23 +99,14 @@ export const api = {
   listMissions(token) {
     return requestMissionList("/missoes", { token })
   },
-  listOperationalMissions(token) {
-    return requestMissionList("/missoes/operacionais", { token })
-  },
   listDailyMissions(token) {
     return requestMissionList("/missoes/dia-operacional", { token })
-  },
-  getOperationalTurn(token) {
-    return request("/missoes/turno-operacional", { token })
   },
   getSoldierBoard(token) {
     return requestSoldierBoard("/missoes/quadro-soldado", { token })
   },
   getGeneralSupport(token) {
     return request("/comando-general/suporte", { token })
-  },
-  closePreviousOperationalTurn(token) {
-    return request("/missoes/turno-operacional/encerrar-pendencias", { token, method: "POST" })
   },
   listReviewMissions(token) {
     return requestMissionList("/missoes/revisao", { token })
@@ -142,23 +133,6 @@ export const api = {
     return requestMission(`/missoes/${missionId}/falhar`, {
       token,
       method: "POST",
-    })
-  },
-  submitFailureJustification(token, missionId, _payload = undefined) {
-    return this.failMission(token, missionId)
-  },
-  submitGeneralReview(token, missionId, payload) {
-    return requestMission(`/missoes/${missionId}/revisar`, {
-      token,
-      method: "POST",
-      body: payload,
-    })
-  },
-  clearFailureReport(token, payload) {
-    return requestMissionList("/relatorios/falhas/limpar", {
-      token,
-      method: "POST",
-      body: payload,
     })
   },
   getReviewState(token) {

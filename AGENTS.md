@@ -99,9 +99,11 @@ Rank, métricas avançadas e gamificação seguem fora do escopo atual.
 
 ## Arquitetura
 
-Stack alvo:
+Stack canônica atual:
 - Backend: TypeScript + NestJS + Prisma + PostgreSQL.
 - Web: React + Vite em `frontend/`.
+
+NestJS + Prisma + PostgreSQL é a arquitetura canônica atual.
 
 Arquitetura:
 - Controller -> Service -> Prisma -> Banco.
@@ -118,17 +120,18 @@ Regras estruturais:
 O BunkerMode 2.0 usa Prisma Client com PostgreSQL.
 
 Regras:
-- Preserve o schema físico mapeado em `api/prisma/schema.prisma` até uma migration aprovada.
-- Não execute migration destrutiva contra banco real sem estratégia revisada.
-- CHECK constraints e índices parciais documentados no baseline devem ser preservados manualmente quando necessário.
-- `alembic_version` é legado de infraestrutura e só deve ser removido por migration aprovada na verificação final de banco.
+- Prisma é a única fonte de schema.
+- Não há dados de produção a preservar neste estágio.
+- O banco PostgreSQL/Neon pode ser recriado durante a preparação do próximo deploy.
+- Não preservar campos, estados, migrations, scripts ou contratos por compatibilidade histórica.
+- Migrations devem representar a arquitetura atual limpa, não o histórico do backend antigo.
+- Não executar comandos contra produção sem autorização explícita; preparar o projeto para deploy limpo.
 
 Checks úteis:
 ```bash
 cd api
 npm run prisma:validate
 npm run prisma:generate
-npm run baseline:check
 ```
 
 ---
@@ -148,9 +151,9 @@ Campos conhecidos:
 - `ativo`
 - `nome_general`
 - `active_mode`
+- `timezone`
 
 Não adicionar:
-- `username`
 - `roles`
 
 ### Missão
@@ -164,11 +167,14 @@ Campos conhecidos:
 - `status_code`
 - `status_label`
 - `is_pinned`
-- `failure_reason`
 - `created_at`
 - `completed_at`
 - `failed_at`
 - `responsavel_id`
+- `objetivo_id`
+- `sonho_id`
+- `recurrence_weekdays`
+- `duration_type`
 
 `permissions` é calculado no servidor e consumido pelo frontend.
 

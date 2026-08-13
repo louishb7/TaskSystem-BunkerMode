@@ -29,11 +29,6 @@ export class MissionsController {
     return missions.map((mission) => toMissionResponse(mission, user))
   }
 
-  @Get("missoes/operacionais")
-  async listOperationalMissions(@Req() request: AuthenticatedRequest) {
-    return this.listMissions(request)
-  }
-
   @Post("missoes")
   async createMission(@Req() request: AuthenticatedRequest, @Body() payload: unknown) {
     const user = request.currentUser!
@@ -48,26 +43,14 @@ export class MissionsController {
     return missions.map((mission) => toMissionResponse(mission, user))
   }
 
-  @Get("missoes/turno-operacional")
-  async operationalTurn(@Req() request: AuthenticatedRequest) {
-    return this.missionsService.operationalTurn(request.currentUser!)
-  }
-
   @Get("missoes/quadro-soldado")
   async soldierBoard(@Req() request: AuthenticatedRequest) {
     const user = request.currentUser!
     const board = await this.missionsService.soldierBoard(user)
     return {
-      turn: board.turn,
       missions: board.action_missions.map((mission) => toMissionResponse(mission, user)),
       daily_missions: board.daily_missions.map((mission) => toMissionResponse(mission, user)),
     }
-  }
-
-  @Post("missoes/turno-operacional/encerrar-pendencias")
-  @HttpCode(200)
-  async closePreviousOperationalTurn(@Req() request: AuthenticatedRequest) {
-    return this.missionsService.closePreviousOperationalTurn(request.currentUser!)
   }
 
   @Get("missoes/revisao")
@@ -110,26 +93,6 @@ export class MissionsController {
   async togglePin(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
     const user = request.currentUser!
     const mission = await this.missionsService.togglePin(missionId(id), user)
-    return toMissionResponse(mission, user)
-  }
-
-  @Post("missoes/:id/justification")
-  @HttpCode(200)
-  async failureJustification(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
-    return this.failMission(request, id)
-  }
-
-  @Post("missoes/:id/justificar")
-  @HttpCode(200)
-  async justifyMission(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
-    return this.failMission(request, id)
-  }
-
-  @Post("missoes/:id/revisar")
-  @HttpCode(200)
-  async reviewMission(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
-    const user = request.currentUser!
-    const mission = await this.missionsService.review(missionId(id), user)
     return toMissionResponse(mission, user)
   }
 

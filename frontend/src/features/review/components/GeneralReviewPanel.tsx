@@ -1,23 +1,12 @@
 import React, { useMemo, useState } from "react"
 
 import archiveAsset from "../../../assets/bunkermode/archive/arquivo-missoes.png"
-import ConfirmDialog from "../../../components/ui/ConfirmDialog"
 import { formatDateTime, parseApiDate } from "../../../utils/date"
-import { STATUS_MISSAO, isCompleted, isDoneNotMarked } from "../../../utils/missionStatus"
+import { STATUS_MISSAO, isCompleted } from "../../../utils/missionStatus"
 import { getWeekDays, normalizeMissionDate } from "../../calendar/calendarUtils"
 
 function isFailureMission(mission) {
-  return String(mission?.status_code || "").startsWith("FALHA") && !isDoneNotMarked(mission)
-}
-
-function isVisibleFailureRecord(mission) {
-  return (
-    [
-      STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA,
-      STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO,
-      STATUS_MISSAO.FALHA_REVISADA,
-    ].includes(mission?.status_code) && !isDoneNotMarked(mission)
-  )
+  return mission?.status_code === STATUS_MISSAO.FALHA
 }
 
 function isPendingMission(mission) {
@@ -52,13 +41,6 @@ function uniqueMissions(missions) {
   })
 }
 
-function formatReportDate(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
-}
-
 function formatOperationalDate(value) {
   if (!value || typeof value !== "string") {
     return "data indisponível"
@@ -84,11 +66,8 @@ function getReviewPeriodLabel(review) {
 
 export default function GeneralReviewPanel({
   allMissions = [],
-  loadingMissionId,
   missions,
-  onClearFailures,
   onCloseReview,
-  onReview,
   reviewState,
   weeklyReviews = [],
 }) {
@@ -98,7 +77,6 @@ export default function GeneralReviewPanel({
   const [selectedReviewId, setSelectedReviewId] = useState(null)
   const [reviewNote, setReviewNote] = useState("")
   const [reviewClosing, setReviewClosing] = useState(false)
-  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const today = useMemo(() => {
     const value = new Date()
     value.setHours(0, 0, 0, 0)
@@ -135,29 +113,11 @@ export default function GeneralReviewPanel({
       }),
     [range, sourceMissions]
   )
-  const scopedReviewMissions = useMemo(
-    () =>
-      missions.filter((mission) => {
-        const missionDate = getMissionDate(mission)
-        if (!missionDate) {
-          return true
-        }
-        return isSameOrAfter(missionDate, range.start) && isSameOrBefore(missionDate, range.end)
-      }),
-    [missions, range]
-  )
   const total = scopedMissions.length
   const completed = scopedMissions.filter(isCompleted).length
   const pending = scopedMissions.filter(isPendingMission).length
-  const failures = scopedMissions.filter(isFailureMission)
-  const reviewMissionIds = new Set(missions.map((mission) => mission.id))
-  const visibleFailuresForList = uniqueMissions([...scopedReviewMissions, ...failures]).filter(
-    isVisibleFailureRecord
-  )
-  const hasClearableFailure = visibleFailuresForList.length > 0
-  const visiblePendingReviewCount = visibleFailuresForList.filter((mission) =>
-    reviewMissionIds.has(mission.id)
-  ).length
+  const failures = uniqueMissions(scopedMissions.filter(isFailureMission))
+  const visibleFailures = failuresOpen ? failures : failures.slice(0, 4)
   const huntRate = total > 0 ? Math.round((completed / total) * 100) : 0
   const remaining = Math.max(0, total - completed)
   const executionReading = (() => {
@@ -166,7 +126,7 @@ export default function GeneralReviewPanel({
     }
 
     if (failures.length > 0) {
-      return `${failures.length} falha registrada no período. Use como leitura operacional da execução.`
+      return `${failures.length} falha registrada no período. Use como leitura objetiva da execução.`
     }
 
     if (remaining > 0) {
@@ -175,20 +135,6 @@ export default function GeneralReviewPanel({
 
     return "Todas as ordens carregadas para o período foram executadas sem falha registrada."
   })()
-
-  async function clearFailureReport() {
-    if (!hasClearableFailure) {
-      return
-    }
-
-    const cleared = await onClearFailures?.({
-      start_date: formatReportDate(range.start),
-      end_date: formatReportDate(range.end),
-    })
-    if (cleared) {
-      setFailuresOpen(false)
-    }
-  }
 
   async function closeWeeklyReview() {
     setReviewClosing(true)
@@ -239,12 +185,8 @@ export default function GeneralReviewPanel({
         <div className="weekly-review-panel">
           <div className="review-summary weekly-review-summary">
             <div>
-              <p className={`section-kicker ${reviewState?.pending ? "danger" : "fire"}`}>
-                {reviewState?.pending
-                  ? "REVISÃO DO GENERAL PENDENTE"
-                  : "REVISÃO DO GENERAL FECHADA"}
-              </p>
-              <h3>Semana operacional anterior</h3>
+              <p className="section-kicker danger">REVISÃO DO GENERAL PENDENTE</p>
+              <h3>Semana anterior</h3>
               <p className="muted">{formatOperationalPeriod(reviewState?.period)}</p>
             </div>
             <strong>{weeklyTotal}</strong>
@@ -269,29 +211,27 @@ export default function GeneralReviewPanel({
             </div>
           </div>
 
-          {reviewState?.pending && (
-            <div className="review-close-form">
-              <label className="field-label" htmlFor="weekly-review-note">
-                Observação do General
-              </label>
-              <textarea
-                id="weekly-review-note"
-                maxLength={600}
-                onChange={(event) => setReviewNote(event.target.value)}
-                placeholder="Registro opcional sobre a leitura operacional."
-                rows={3}
-                value={reviewNote}
-              />
-              <button
-                className="button primary"
-                disabled={reviewClosing}
-                type="button"
-                onClick={closeWeeklyReview}
-              >
-                {reviewClosing ? "FECHANDO" : "FECHAR REVISÃO"}
-              </button>
-            </div>
-          )}
+          <div className="review-close-form">
+            <label className="field-label" htmlFor="weekly-review-note">
+              Observação do General
+            </label>
+            <textarea
+              id="weekly-review-note"
+              maxLength={600}
+              onChange={(event) => setReviewNote(event.target.value)}
+              placeholder="Registro opcional sobre a leitura da semana."
+              rows={3}
+              value={reviewNote}
+            />
+            <button
+              className="button primary"
+              disabled={reviewClosing}
+              type="button"
+              onClick={closeWeeklyReview}
+            >
+              {reviewClosing ? "FECHANDO" : "FECHAR REVISÃO"}
+            </button>
+          </div>
 
           <div className="weekly-failure-table">
             <div className="weekly-failure-header">
@@ -322,7 +262,7 @@ export default function GeneralReviewPanel({
                   >
                     <span>{mission.is_pinned ? "PRIORIDADE" : "FALHA"}</span>
                     <strong>{mission.titulo || "Sem título"}</strong>
-                    <p>Falha registrada no ciclo operacional.</p>
+                    <p>Falha registrada como resultado histórico.</p>
                   </div>
                 ))}
               </div>
@@ -371,90 +311,52 @@ export default function GeneralReviewPanel({
 
         <div className="review-failure-panel">
           <p className="section-kicker danger">FALHAS REGISTRADAS</p>
-          <strong>{visiblePendingReviewCount}</strong>
+          <strong>{failures.length}</strong>
           <p className="muted">
-            {visibleFailuresForList.length > 0
-              ? `${visibleFailuresForList.length} registro no relatório de falhas.`
-              : "Relatório de falhas limpo para este período."}
+            {failures.length > 0
+              ? "Falhas permanecem no histórico e alimentam a revisão semanal."
+              : "Nenhuma falha visível neste período."}
           </p>
-          <div className="actions-row">
+          {failures.length > 4 && (
             <button
               className="button secondary compact"
               type="button"
               onClick={() => setFailuresOpen((current) => !current)}
             >
-              {failuresOpen ? "FECHAR" : "ABRIR"}
+              {failuresOpen ? "RECOLHER" : "VER TODAS"}
             </button>
-            <button
-              className="button danger ghost compact"
-              disabled={!hasClearableFailure}
-              type="button"
-              onClick={() => setClearConfirmOpen(true)}
-            >
-              LIMPAR
-            </button>
-          </div>
+          )}
 
-          {failuresOpen &&
-            (visibleFailuresForList.length > 0 ? (
-              <div className="review-list compact">
-                {visibleFailuresForList.map((mission) => {
-                  const failedAt = mission?.failed_at
-                    ? `Falhou em ${formatDateTime(mission.failed_at)}`
-                    : ""
-                  const requiresReview = reviewMissionIds.has(mission.id)
+          {visibleFailures.length > 0 ? (
+            <div className="review-list compact">
+              {visibleFailures.map((mission) => {
+                const failedAt = mission?.failed_at
+                  ? `Falhou em ${formatDateTime(mission.failed_at)}`
+                  : ""
 
-                  return (
-                    <article key={mission.id} className="review-card">
-                      <p className={`section-kicker ${requiresReview ? "danger" : "fire"}`}>
-                        {requiresReview ? "FALHA REGISTRADA" : "REGISTRO INFORMATIVO"}
-                      </p>
-                      <h3>{mission.titulo || "Sem título"}</h3>
-                      <p className="muted">
-                        Prazo: {mission.prazo || "Sem prazo"}
-                        {failedAt ? ` / ${failedAt}` : ""}
-                      </p>
-
-                      <div className="review-reason">
-                        <span>EVENTO OPERACIONAL</span>
-                        <strong>Falha registrada</strong>
-                        <p>A missão foi encerrada sem execução registrada.</p>
-                      </div>
-
-                      {requiresReview ? (
-                        <div className="actions-row">
-                          <button
-                            className="button secondary compact"
-                            disabled={loadingMissionId === mission.id}
-                            type="button"
-                            onClick={() => onReview(mission.id, true)}
-                          >
-                            {loadingMissionId === mission.id ? "AGUARDE" : "REGISTRAR LEITURA"}
-                          </button>
-                          <button
-                            className="button danger compact"
-                            disabled={loadingMissionId === mission.id}
-                            type="button"
-                            onClick={() => onReview(mission.id, false)}
-                          >
-                            {loadingMissionId === mission.id ? "AGUARDE" : "MANTER FALHA"}
-                          </button>
-                        </div>
-                      ) : (
-                        <p className="review-info-note">
-                          Falha registrada para leitura operacional.
-                        </p>
-                      )}
-                    </article>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="empty-state flat">
-                <h3>Sem relatório pendente</h3>
-                <p>Nenhuma falha está visível neste período.</p>
-              </div>
-            ))}
+                return (
+                  <article key={mission.id} className="review-card">
+                    <p className="section-kicker danger">FALHA REGISTRADA</p>
+                    <h3>{mission.titulo || "Sem título"}</h3>
+                    <p className="muted">
+                      Prazo: {mission.prazo || "Sem prazo"}
+                      {failedAt ? ` / ${failedAt}` : ""}
+                    </p>
+                    <div className="review-reason">
+                      <span>RESULTADO</span>
+                      <strong>Falha registrada</strong>
+                      <p>A missão foi encerrada sem execução.</p>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="empty-state flat">
+              <h3>Sem falhas</h3>
+              <p>Nenhuma falha está visível neste período.</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -462,7 +364,7 @@ export default function GeneralReviewPanel({
         <div className="asset-heading compact">
           <img src={archiveAsset} alt="" />
           <div>
-            <p className="section-kicker fire">ARQUIVO OPERACIONAL</p>
+            <p className="section-kicker fire">ARQUIVO</p>
             <h3>Semanas registradas</h3>
           </div>
         </div>
@@ -515,10 +417,7 @@ export default function GeneralReviewPanel({
             ) : (
               <div className="empty-state flat">
                 <h3>Selecione uma semana</h3>
-                <p>
-                  O registro operacional aparece aqui apenas quando uma semana arquivada é
-                  escolhida.
-                </p>
+                <p>O registro aparece aqui quando uma semana arquivada é escolhida.</p>
               </div>
             )}
           </>
@@ -526,19 +425,6 @@ export default function GeneralReviewPanel({
           <p className="muted">Nenhuma revisão semanal foi fechada ainda.</p>
         )}
       </div>
-      {clearConfirmOpen && (
-        <ConfirmDialog
-          title="Limpar relatório de falhas"
-          message="Os registros informativos deste período serão removidos."
-          confirmLabel="LIMPAR"
-          variant="danger"
-          onCancel={() => setClearConfirmOpen(false)}
-          onConfirm={() => {
-            clearFailureReport()
-            setClearConfirmOpen(false)
-          }}
-        />
-      )}
     </section>
   )
 }

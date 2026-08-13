@@ -10,10 +10,10 @@ describe("OperationalCalendarService", () => {
     expect(calendar.currentDateFor(moment, "Europe/Lisbon")).toBe("2026-04-25")
   })
 
-  it("does not apply the legacy 04:00 operational cutoff", () => {
-    const beforeLegacyCutoff = new Date("2026-04-25T06:30:00.000Z")
+  it("does not apply a fixed 04:00 cutoff", () => {
+    const earlyMorning = new Date("2026-04-25T06:30:00.000Z")
 
-    expect(calendar.currentDateFor(beforeLegacyCutoff, "America/Recife")).toBe("2026-04-25")
+    expect(calendar.currentDateFor(earlyMorning, "America/Recife")).toBe("2026-04-25")
   })
 
   it("calculates Monday-to-Sunday week bounds from the local date", () => {

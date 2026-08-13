@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react"
 
-import { isCompleted, isDoneNotMarked } from "../../../utils/missionStatus"
+import { isCompleted } from "../../../utils/missionStatus"
 
 function can(mission, key) {
   return Boolean(mission?.permissions?.[key]) && mission?.id !== undefined && mission?.id !== null
@@ -54,16 +54,9 @@ function formatDeadline(value) {
 }
 
 function statusText(mission) {
-  if (isDoneNotMarked(mission)) {
-    return "FORA DO APP"
-  }
-
   const compact = {
     CONCLUIDA: "",
     FALHA: "FALHOU",
-    FALHA_PENDENTE_JUSTIFICATIVA: "FALHOU",
-    FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHOU",
-    FALHA_REVISADA: "FALHA REVISADA",
   }
   const statusCode = String(mission?.status_code || "").toUpperCase()
   const fallbackLabel = String(mission?.status_label || "").trim()
@@ -77,12 +70,12 @@ function statusText(mission) {
 
 export default function MissionCard({
   completing = false,
-  justifying = false,
+  failing = false,
   mission,
   onComplete,
   onDelete = undefined,
   onEdit = undefined,
-  onJustify,
+  onFail,
   onReopen = undefined,
   onTogglePin,
   pinning = false,
@@ -96,15 +89,14 @@ export default function MissionCard({
   const title = mission?.titulo || "Sem título"
   const instruction = mission?.instrucao || ""
   const isPinned = mission?.is_pinned === true
-  const disabled = pinning || completing || justifying || reopening
+  const disabled = pinning || completing || failing || reopening
   const canComplete = can(mission, "can_complete")
   const canFail = can(mission, "can_fail")
   const completed = isCompleted(mission)
   const deadlineLabel = formatDeadline(mission?.prazo)
-  const failed = String(mission?.status_code || "").startsWith("FALHA")
-  const previousPending = mission?.is_previous_operational_pending === true
+  const failed = String(mission?.status_code || "") === "FALHA"
   const currentStatusText = statusText(mission)
-  const hasBadge = isPinned || currentStatusText || previousPending
+  const hasBadge = isPinned || currentStatusText
 
   useEffect(() => {
     setDetailsOpen(false)
@@ -140,9 +132,6 @@ export default function MissionCard({
             {hasBadge && (
               <div className="mission-badge-row">
                 {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
-                {previousPending && (
-                  <span className="meta-tag warning">PENDÊNCIA DO DIA ANTERIOR</span>
-                )}
                 {currentStatusText && <span className="meta-tag">{currentStatusText}</span>}
               </div>
             )}
@@ -178,19 +167,14 @@ export default function MissionCard({
                 {detailsOpen ? "Ocultar detalhes" : "Ver detalhes"}
               </button>
             )}
-            {previousPending && (
-              <p className="mission-instruction previous-pending-note">
-                Esta ordem ainda pertence ao ciclo operacional anterior.
-              </p>
-            )}
             {canFail && (
               <button
                 className="soldier-failure-trigger"
                 disabled={disabled}
                 type="button"
-                onClick={() => onJustify?.(mission.id)}
+                onClick={() => onFail?.(mission.id)}
               >
-                {justifying ? "Aguarde" : "Falhei."}
+                {failing ? "Aguarde" : "Falhei."}
               </button>
             )}
           </div>
@@ -291,9 +275,9 @@ export default function MissionCard({
             className="button danger ghost compact"
             disabled={disabled}
             type="button"
-            onClick={() => onJustify?.(mission.id)}
+            onClick={() => onFail?.(mission.id)}
           >
-            {justifying ? "AGUARDE" : "REGISTRAR FALHA"}
+            {failing ? "AGUARDE" : "REGISTRAR FALHA"}
           </button>
         )}
         {completed && can(mission, "can_edit") && onReopen && (

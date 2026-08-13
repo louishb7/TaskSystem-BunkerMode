@@ -41,16 +41,19 @@ function normalizeEmail(value: unknown): string {
 }
 
 function normalizeUsername(value: unknown): string {
-  const usuario = requireText(value, "Usuário deve ter pelo menos 3 caracteres.")
+  const usuario = requireText(value, "Usuário deve ter pelo menos 3 caracteres.").toLowerCase()
   if (usuario.length < 3) {
     throw new HttpException("Usuário deve ter pelo menos 3 caracteres.", HttpStatus.BAD_REQUEST)
+  }
+  if (!/^[a-z0-9._-]+$/.test(usuario)) {
+    throw new HttpException("Usuário deve usar apenas letras, números, ponto, hífen ou sublinhado.", HttpStatus.BAD_REQUEST)
   }
   return usuario
 }
 
 function normalizePassword(value: unknown, status = HttpStatus.BAD_REQUEST): string {
-  if (typeof value !== "string" || value.length < 6) {
-    throw new HttpException("Senha deve ter pelo menos 6 caracteres.", status)
+  if (typeof value !== "string" || value.length < 8) {
+    throw new HttpException("Senha deve ter pelo menos 8 caracteres.", status)
   }
   return value
 }
@@ -75,30 +78,31 @@ export class AuthService {
     const email = normalizeEmail(payload.email)
     const senha = normalizePassword(payload.senha)
 
-    const existing = await this.prisma.usuarios.findUnique({ where: { email } })
-    if (existing) {
-      throw new HttpException("E-mail já está em uso.", HttpStatus.BAD_REQUEST)
+    try {
+      return await this.prisma.usuarios.create({
+        data: {
+          usuario,
+          email,
+          senha_hash: hashPassword(senha),
+        },
+      })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new HttpException("E-mail ou usuário já está em uso.", HttpStatus.BAD_REQUEST)
+      }
+      throw error
     }
-
-    return this.prisma.usuarios.create({
-      data: {
-        usuario,
-        email,
-        senha_hash: hashPassword(senha),
-      },
-    })
   }
 
   async login(payload: LoginPayload): Promise<{ access_token: string; token_type: "bearer"; usuario: UserRecord }> {
     const identificador = requireText(payload.email, "Credenciais inválidas.")
     const senha = normalizePassword(payload.senha, HttpStatus.UNAUTHORIZED)
     const email = identificador.toLowerCase()
+    const usuarioLogin = identificador.toLowerCase()
 
-    const usuario =
-      (await this.prisma.usuarios.findUnique({ where: { email } })) ??
-      (await this.prisma.usuarios.findFirst({
-        where: { usuario: { equals: identificador, mode: Prisma.QueryMode.insensitive } },
-      }))
+    const usuario = identificador.includes("@")
+      ? await this.prisma.usuarios.findUnique({ where: { email } })
+      : await this.prisma.usuarios.findUnique({ where: { usuario: usuarioLogin } })
 
     if (!usuario || !verifyPassword(senha, usuario.senha_hash)) {
       throw new HttpException("Credenciais inválidas.", HttpStatus.UNAUTHORIZED)
@@ -119,6 +123,9 @@ export class AuthService {
     const usuario = await this.prisma.usuarios.findUnique({ where: { usuario_id: payload.sub } })
     if (!usuario) {
       throw new HttpException("Usuário autenticado não encontrado.", HttpStatus.UNAUTHORIZED)
+    }
+    if (!usuario.ativo) {
+      throw new HttpException("Usuário inativo.", HttpStatus.UNAUTHORIZED)
     }
     return usuario
   }

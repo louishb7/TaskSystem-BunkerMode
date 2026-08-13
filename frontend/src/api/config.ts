@@ -1,7 +1,9 @@
 const LOCAL_API_URL = "http://127.0.0.1:3000/api/v2"
 
 function normalizeApiUrl(apiUrl) {
-  return apiUrl.replace(/\/+$/, "")
+  const withoutTrailingSlash = apiUrl.replace(/\/+$/, "")
+  const withoutDuplicatedPrefix = withoutTrailingSlash.replace(/(\/api\/v2)+$/i, "")
+  return `${withoutDuplicatedPrefix}/api/v2`
 }
 
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim() || ""

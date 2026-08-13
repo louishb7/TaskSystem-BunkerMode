@@ -25,17 +25,14 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
   const [historicalMissions, setHistoricalMissions] = useState([])
   const [dailyProgressMissions, setDailyProgressMissions] = useState([])
   const [registeredOutcomeMissions, setRegisteredOutcomeMissions] = useState([])
-  const [operationalTurn, setOperationalTurn] = useState(null)
-  const [operationalTurnAcknowledged, setOperationalTurnAcknowledged] = useState(false)
   const [reviewState, setReviewState] = useState(null)
   const [weeklyReviews, setWeeklyReviews] = useState([])
   const [missionLoading, setMissionLoading] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
-  const [reviewLoadingId, setReviewLoadingId] = useState(null)
   const [pinLoadingId, setPinLoadingId] = useState(null)
   const [completeLoadingId, setCompleteLoadingId] = useState(null)
   const [reopenLoadingId, setReopenLoadingId] = useState(null)
-  const [justificationLoadingId, setJustificationLoadingId] = useState(null)
+  const [failLoadingId, setFailLoadingId] = useState(null)
   const [status, setStatus] = useState(emptyStatus)
   const [formStatus, setFormStatus] = useState(emptyStatus)
   const loadRequestRef = useRef(0)
@@ -103,8 +100,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
       setMissionLoading(true)
       setDailyProgressMissions([])
       setRegisteredOutcomeMissions([])
-      setOperationalTurn(null)
-      setOperationalTurnAcknowledged(false)
       const missionsResult = await api.listMissions(token)
       if (requestId !== loadRequestRef.current) {
         return false
@@ -147,7 +142,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
       setRegisteredOutcomeMissions([])
       setReviewState(null)
       setWeeklyReviews([])
-      setOperationalTurn(null)
       const result = await api.getSoldierBoard(token)
       if (requestId !== loadRequestRef.current) {
         return false
@@ -168,13 +162,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
 
       setMissions(result.data.missions)
       setDailyProgressMissions(result.data.daily_missions)
-      setOperationalTurn(result.data.turn)
-      setOperationalTurnAcknowledged((current) => {
-        if (!current) {
-          return false
-        }
-        return result.data.turn?.requires_decision === true
-      })
       setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus)
       return true
     },
@@ -188,8 +175,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
       setHistoricalMissions([])
       setDailyProgressMissions([])
       setRegisteredOutcomeMissions([])
-      setOperationalTurn(null)
-      setOperationalTurnAcknowledged(false)
       setReviewState(null)
       setWeeklyReviews([])
       setStatus(emptyStatus)
@@ -205,46 +190,10 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
     loadGeneralBoard()
   }, [activeMode, authenticated, loadGeneralBoard, loadSoldierBoard, token])
 
-  function continuePreviousOperationalTurn() {
-    setOperationalTurnAcknowledged(true)
-  }
-
   async function reloadCurrentBoard(successMessage = "") {
     return activeMode === "soldier"
       ? loadSoldierBoard(successMessage)
       : loadGeneralBoard(successMessage)
-  }
-
-  async function closePreviousOperationalTurn() {
-    if (!token || missionLoading) {
-      return false
-    }
-
-    setMissionLoading(true)
-    setStatus(emptyStatus)
-    const result = await api.closePreviousOperationalTurn(token)
-    setMissionLoading(false)
-
-    if (onUnauthorized(result)) {
-      return false
-    }
-
-    if (!result.ok) {
-      setStatus({
-        type: "error",
-        message: getErrorMessage(
-          result,
-          "Não foi possível encerrar as pendências do ciclo anterior."
-        ),
-      })
-      await loadSoldierBoard()
-      return false
-    }
-
-    setOperationalTurn(result.data)
-    setOperationalTurnAcknowledged(false)
-    await loadSoldierBoard("Ciclo anterior encerrado.")
-    return true
   }
 
   async function createMission(payload) {
@@ -386,7 +335,7 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
 
     setReopenLoadingId(mission.id)
     setStatus(emptyStatus)
-    const result = await api.updateMission(token, mission.id, { status: "Pendente" })
+    const result = await api.updateMission(token, mission.id, { status: "PENDENTE" })
     setReopenLoadingId(null)
 
     if (onUnauthorized(result)) {
@@ -406,11 +355,11 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
     return true
   }
 
-  async function submitFailureJustification(missionId, payload) {
-    setJustificationLoadingId(missionId)
+  async function failMission(missionId) {
+    setFailLoadingId(missionId)
     setStatus(emptyStatus)
-    const result = await api.submitFailureJustification(token, missionId, payload)
-    setJustificationLoadingId(null)
+    const result = await api.failMission(token, missionId)
+    setFailLoadingId(null)
 
     if (onUnauthorized(result)) {
       return { error: "Sessão expirada. Faça login novamente." }
@@ -426,49 +375,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
     await reloadCurrentBoard(activeMode === "soldier" ? "FALHA REGISTRADA" : "Falha registrada.")
     setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]))
     return { ok: true }
-  }
-
-  async function submitGeneralReview(missionId, accepted) {
-    setReviewLoadingId(missionId)
-    setStatus(emptyStatus)
-    const result = await api.submitGeneralReview(token, missionId, { accepted })
-    setReviewLoadingId(null)
-
-    if (onUnauthorized(result)) {
-      return false
-    }
-
-    if (!result.ok) {
-      setStatus({
-        type: "error",
-        message: getErrorMessage(result, "Não foi possível revisar a falha."),
-      })
-      return false
-    }
-
-    await loadGeneralBoard()
-    return true
-  }
-
-  async function clearFailureReport(payload) {
-    setStatus(emptyStatus)
-    const result = await api.clearFailureReport(token, payload)
-
-    if (onUnauthorized(result)) {
-      return false
-    }
-
-    if (!result.ok) {
-      setStatus({
-        type: "error",
-        message: getErrorMessage(result, "Não foi possível limpar o relatório de falhas."),
-      })
-      await loadGeneralBoard()
-      return false
-    }
-
-    await loadGeneralBoard("Relatório de falhas limpo.")
-    return true
   }
 
   async function closeWeeklyReview(payload) {
@@ -494,35 +400,28 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
 
   return {
     actionMissions,
-    clearFailureReport,
     closeWeeklyReview,
-    closePreviousOperationalTurn,
     completeLoadingId,
     completeMission,
     createMission,
-    continuePreviousOperationalTurn,
     dailyMissions,
     deleteMission,
+    failLoadingId,
+    failMission,
     formLoading,
     formStatus,
     hasRegisteredOutcomes: registeredOutcomeMissions.length > 0,
-    justificationLoadingId,
     missionLoading,
     missions,
-    operationalTurn,
-    operationalTurnAcknowledged,
     pinLoadingId,
     refreshGeneralBoard: loadGeneralBoard,
     reopenLoadingId,
     reopenMission,
-    reviewLoadingId,
     reviewMissions,
     reviewState,
     setFormStatus,
     setStatus,
     status,
-    submitFailureJustification,
-    submitGeneralReview,
     toggleMissionPin,
     updateMission,
     weeklyReviews,

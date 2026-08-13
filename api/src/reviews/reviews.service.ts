@@ -109,34 +109,6 @@ export class ReviewsService {
     return toReviewResponse(review)
   }
 
-  async clearFailureReport(user: UserRecord, startDate?: unknown, endDate?: unknown) {
-    ensureGeneral(user)
-    const range = this.resolveRange(user, startDate, endDate, "Datas do relatório devem usar o formato YYYY-MM-DD.", true)
-    const missions = await this.missionsService.listAllForUser(user)
-    const failures = missions.filter((mission) => {
-      if (mission.status !== MISSION_STATUS.failed || !mission.failed_at) {
-        return false
-      }
-      if (!range) {
-        return true
-      }
-      return this.isDateInRange(this.calendar.currentDateFor(mission.failed_at, user.timezone), range)
-    })
-    await this.prisma.$transaction(
-      failures.map((mission) =>
-        this.prisma.auditoria_eventos.create({
-          data: {
-            missao_id: mission.missao_id,
-            usuario_id: user.usuario_id,
-            acao: "relatorio_falha_limpo",
-            detalhes: `Falha informativa da missão '${mission.titulo}' removida do relatório.`,
-          },
-        }),
-      ),
-    )
-    return failures.map((mission) => toMissionResponse(mission, user))
-  }
-
   async generalSupport(user: UserRecord) {
     ensureGeneral(user)
     const [reviewMissions, historicalMissions, reviewState, weeklyReviews] = await Promise.all([
@@ -195,10 +167,6 @@ export class ReviewsService {
       failed_missions: failed.length,
       completion_rate: considered.length === 0 ? 0 : Math.round((completed.length / considered.length) * 10000) / 100,
       high_priority_missions: considered.filter((mission) => mission.is_pinned).length,
-      missions_waiting_justification: 0,
-      missions_waiting_review: 0,
-      reviewed_failures: failed.length,
-      failure_reasons: [],
     }
   }
 

@@ -2,17 +2,14 @@ const REQUIRED_PERMISSION_KEYS = Object.freeze([
   "can_complete",
   "can_edit",
   "can_delete",
-  "can_justify",
   "can_fail",
-  "can_review",
+  "can_pin",
   "can_view_history",
 ] as const)
 
 export type MissionPermissionKey = (typeof REQUIRED_PERMISSION_KEYS)[number]
 
-export type MissionPermissions = Record<MissionPermissionKey, boolean> & {
-  can_pin?: boolean
-}
+export type MissionPermissions = Record<MissionPermissionKey, boolean>
 
 export type Mission = {
   id: number
@@ -20,18 +17,17 @@ export type Mission = {
   instrucao?: string | null
   prioridade?: string | null
   prazo?: string | null
+  status: string
   status_code: string
   status_label: string
   is_pinned?: boolean
-  is_previous_operational_pending?: boolean
-  failure_reason?: string | null
   completed_at?: string | null
   failed_at?: string | null
   responsavel_id?: number | null
   criada_por_id?: number | null
   objetivo_id?: number | null
   sonho_id?: number | null
-  recurrence_weekdays?: string[] | null
+  recurrence_weekdays?: number[] | null
   permissions: MissionPermissions
 }
 

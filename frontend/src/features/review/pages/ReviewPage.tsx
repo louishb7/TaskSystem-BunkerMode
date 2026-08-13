@@ -7,12 +7,9 @@ import GeneralReviewPanel from "../components/GeneralReviewPanel"
 
 export default function ReviewPage({
   allMissions,
-  loadingMissionId,
   missions,
   onBack,
-  onClearFailures,
   onCloseReview,
-  onReview,
   reviewState,
   status,
   weeklyReviews,
@@ -38,11 +35,8 @@ export default function ReviewPage({
         <StatusNotice status={status} />
         <GeneralReviewPanel
           allMissions={allMissions}
-          loadingMissionId={loadingMissionId}
           missions={missions}
-          onClearFailures={onClearFailures}
           onCloseReview={onCloseReview}
-          onReview={onReview}
           reviewState={reviewState}
           weeklyReviews={weeklyReviews}
         />

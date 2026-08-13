@@ -13,6 +13,7 @@ web responsiva em React/Vite.
 
 ## Variáveis de ambiente
 - `DATABASE_URL`
+- `DIRECT_URL` (opcional localmente; recomendado para migrations em Neon)
 - `BUNKERMODE_AUTH_SECRET`
 - `BUNKERMODE_CORS_ALLOW_ORIGINS`
 - `PORT`
@@ -23,29 +24,63 @@ A API NestJS aceita origens locais por padrão. Em deploy, defina
 `BUNKERMODE_CORS_ALLOW_ORIGINS` com a origem pública do frontend. Use vírgula para mais de uma
 origem.
 
-## Deploy
+## Deploy Limpo
 
-No deploy do frontend, defina `VITE_API_URL` com a URL pública da API incluindo o prefixo
-`/api/v2`.
+O estado atual não possui dados de produção a preservar. Para o próximo deploy, recrie/reset o
+banco Neon e aplique a migration inicial limpa com Prisma.
 
-Exemplo:
+### Neon
+
+Use uma base PostgreSQL limpa.
+
+- `DATABASE_URL`: URL pooled do Neon para runtime da API.
+- `DIRECT_URL`: URL direct do Neon para operações administrativas/migrations.
+
+Aplicar schema:
 
 ```bash
-VITE_API_URL=https://api.exemplo.com/api/v2
+cd api
+DATABASE_URL="$DIRECT_URL" npm run prisma:migrate:deploy
 ```
 
-Sem essa variável, o frontend em produção não tenta usar `127.0.0.1` e exibe erro de
-configuração da API.
+### Render
 
-No deploy da API, defina:
+Configuração da API:
+
+- Root Directory: `api`
+- Build Command: `npm ci && npm run prisma:generate && npm run build`
+- Start Command: `npm run start`
+- Health Check Path: `/api/v2/health`
+
+Variáveis:
 
 ```bash
+NODE_ENV=production
 BUNKERMODE_AUTH_SECRET=valor-seguro
 BUNKERMODE_CORS_ALLOW_ORIGINS=https://app.exemplo.com
-DATABASE_URL=postgresql://usuario:senha@host:5432/banco
+DATABASE_URL=postgresql://usuario:senha@host-pooler.neon.tech/banco?sslmode=require
+DIRECT_URL=postgresql://usuario:senha@host.neon.tech/banco?sslmode=require
 PORT=3000
 HOST=0.0.0.0
 ```
+
+### Vercel
+
+Configuração do frontend:
+
+- Root Directory: `frontend`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+
+Defina `VITE_API_URL` com a URL pública da API. O frontend normaliza o prefixo `/api/v2`, então
+estes dois formatos são válidos:
+
+```bash
+VITE_API_URL=https://api.exemplo.com
+VITE_API_URL=https://api.exemplo.com/api/v2
+```
+
+Sem essa variável, o frontend em produção exibe erro de configuração da API.
 
 ## Rodar a API
 ```bash
@@ -54,21 +89,18 @@ npm install
 npm run start:dev
 ```
 
-Por padrão, a API escuta em `127.0.0.1:3000` se `HOST` e `PORT` não forem definidos.
+Por padrão, a API escuta em `0.0.0.0:3000` se `HOST` e `PORT` não forem definidos.
 
 ## Migrations
 
-O schema Prisma atual é baseline de preservação do PostgreSQL. Não rode migrations destrutivas
-sem revisão explícita.
+Prisma é a fonte canônica do schema. Não existem dados de produção a preservar neste estágio:
+o banco pode ser recriado/resetado para o próximo deploy limpo.
 
 ```bash
 npm run prisma:validate
 npm run prisma:generate
-npm run baseline:check
+npm run prisma:migrate:deploy
 ```
-
-Antes de deploy definitivo, compare o baseline com o banco real autorizado. O baseline atual foi
-validado localmente.
 
 ## Documentação
 - `AGENTS.md`
@@ -89,7 +121,6 @@ validado localmente.
 cd api
 npm run prisma:validate
 npm run prisma:generate
-npm run baseline:check
 npm run lint
 npm run build
 npm run test

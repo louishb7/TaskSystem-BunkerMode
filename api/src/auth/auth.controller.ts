@@ -2,22 +2,40 @@ import { Body, Controller, Get, HttpCode, Patch, Post, Req, UseGuards } from "@n
 
 import { AuthenticatedRequest } from "./auth.types"
 import { AuthGuard } from "./auth.guard"
+import { AuthRateLimitService } from "./rate-limit.service"
 import { AuthService } from "./auth.service"
 import { toUserResponse } from "./user-response"
 
+type RequestLike = {
+  ip?: string
+  socket?: { remoteAddress?: string }
+  headers?: Record<string, string | string[] | undefined>
+}
+
+function clientAddress(request: RequestLike): string {
+  const forwardedFor = request.headers?.["x-forwarded-for"]
+  const headerValue = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor
+  return headerValue?.split(",")[0]?.trim() || request.ip || request.socket?.remoteAddress || "unknown"
+}
+
 @Controller("api/v2")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly rateLimit: AuthRateLimitService,
+  ) {}
 
   @Post("auth/register")
-  async register(@Body() payload: unknown) {
+  async register(@Req() request: RequestLike, @Body() payload: unknown) {
+    this.rateLimit.check(`register:${clientAddress(request)}`, 5, 60_000)
     const usuario = await this.authService.register(payload ?? {})
     return toUserResponse(usuario)
   }
 
   @Post("auth/login")
   @HttpCode(200)
-  async login(@Body() payload: unknown) {
+  async login(@Req() request: RequestLike, @Body() payload: unknown) {
+    this.rateLimit.check(`login:${clientAddress(request)}`, 10, 60_000)
     const result = await this.authService.login(payload ?? {})
     return {
       access_token: result.access_token,

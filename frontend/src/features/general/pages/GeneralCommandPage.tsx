@@ -206,13 +206,13 @@ export default function GeneralCommandPage({
 
           <OrdersPanel
             completeLoadingId={board.completeLoadingId}
-            justificationLoadingId={board.justificationLoadingId}
+            failLoadingId={board.failLoadingId}
             loading={board.missionLoading}
             onCompleteMission={board.completeMission}
             onCreateOrder={openCreateForm}
             onDeleteMission={setDeleteTarget}
             onEditMission={openEditForm}
-            onJustifyMission={board.submitFailureJustification}
+            onFailMission={board.failMission}
             onReopenMission={board.reopenMission}
             onTogglePin={board.toggleMissionPin}
             pinLoadingId={board.pinLoadingId}

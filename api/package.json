@@ -2,17 +2,20 @@
   "name": "bunkermode-api",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22 <27"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "jest --runInBand",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"scripts/**/*.mjs\"",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "prisma:validate": "prisma validate --schema prisma/schema.prisma",
-    "prisma:pull": "prisma db pull --schema prisma/schema.prisma",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
-    "baseline:check": "node scripts/check-prisma-baseline.mjs"
+    "prisma:migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
+    "prisma:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",
@@ -29,9 +32,11 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.4",
     "@types/pg": "^8.21.0",
+    "@types/supertest": "^7.2.1",
     "jest": "^30.2.0",
     "prettier": "^3.8.3",
     "prisma": "^7.9.1",
+    "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"

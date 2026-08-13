@@ -2,26 +2,16 @@ export const STATUS_MISSAO = Object.freeze({
   PENDENTE: "PENDENTE",
   CONCLUIDA: "CONCLUIDA",
   FALHA: "FALHA",
-  FALHA_PENDENTE_JUSTIFICATIVA: "FALHA_PENDENTE_JUSTIFICATIVA",
-  FALHA_JUSTIFICADA_PENDENTE_REVISAO: "FALHA_JUSTIFICADA_PENDENTE_REVISAO",
-  FALHA_REVISADA: "FALHA_REVISADA",
 })
 
 const STATUS_LABELS = Object.freeze({
   [STATUS_MISSAO.PENDENTE]: "Pendente",
   [STATUS_MISSAO.CONCLUIDA]: "Concluída",
   [STATUS_MISSAO.FALHA]: "Falha",
-  [STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA]: "Falha",
-  [STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO]: "Falha",
-  [STATUS_MISSAO.FALHA_REVISADA]: "Falha",
 })
 
 function getMissionStatusCode(mission) {
-  return mission?.status_code || ""
-}
-
-export function isDoneNotMarked(mission) {
-  return mission?.failure_reason_type === "done_not_marked"
+  return mission?.status_code || mission?.status || ""
 }
 
 export function getStatusLabel(status) {
@@ -36,45 +26,40 @@ export function isFinalizada(mission) {
   return isFinalizedMission(mission)
 }
 
-export function isRevisavel(mission) {
-  return requiresGeneralReview(mission)
+export function isRevisavel() {
+  return false
 }
 
 export function isCompleted(mission) {
-  return getMissionStatusCode(mission) === STATUS_MISSAO.CONCLUIDA || isDoneNotMarked(mission)
+  return getMissionStatusCode(mission) === STATUS_MISSAO.CONCLUIDA
 }
 
 export function isReviewedFailure(mission) {
-  return (
-    getMissionStatusCode(mission) === STATUS_MISSAO.FALHA ||
-    getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_REVISADA ||
-    getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA ||
-    getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO
-  )
+  return getMissionStatusCode(mission) === STATUS_MISSAO.FALHA
 }
 
-export function isFailedWaitingJustification(mission) {
-  return getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_PENDENTE_JUSTIFICATIVA
+export function isFailedWaitingJustification() {
+  return false
 }
 
-export function isFailedWaitingReview(mission) {
-  return getMissionStatusCode(mission) === STATUS_MISSAO.FALHA_JUSTIFICADA_PENDENTE_REVISAO
+export function isFailedWaitingReview() {
+  return false
 }
 
 export function isFinalizedMission(mission) {
   return isCompleted(mission) || isReviewedFailure(mission)
 }
 
-export function requiresSoldierJustification(_mission) {
+export function requiresSoldierJustification() {
   return false
 }
 
-export function requiresGeneralReview(_mission) {
+export function requiresGeneralReview() {
   return false
 }
 
 export function isOperationalMission(mission) {
-  return !isFinalizedMission(mission) && !requiresGeneralReview(mission)
+  return !isFinalizedMission(mission)
 }
 
 export function canShowGeneralActions(mission) {

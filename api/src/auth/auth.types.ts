@@ -6,10 +6,9 @@ export type UserRecord = {
   ativo: boolean
   nome_general: string | null
   active_mode: string
-  planning_window: string
   timezone: string
-  emergency_unlock_date: Date | null
-  timezone_updated_at: Date | null
+  created_at: Date
+  updated_at: Date
 }
 
 export type UserResponse = {
@@ -18,10 +17,9 @@ export type UserResponse = {
   email: string
   nome_general: string | null
   active_mode: string
-  planning_window: string
   timezone: string
-  emergency_unlock_date: string | null
-  timezone_updated_at: string | null
+  created_at: string
+  updated_at: string
   ativo?: boolean
 }
 

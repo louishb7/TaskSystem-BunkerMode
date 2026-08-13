@@ -1,26 +1,35 @@
-import { pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto"
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto"
 
-const ITERATIONS = 100_000
-const KEY_LENGTH = 32
-const DIGEST = "sha256"
+const KEY_LENGTH = 64
+const COST = 16_384
+const BLOCK_SIZE = 8
+const PARALLELIZATION = 1
 
 export function hashPassword(password: string): string {
-  if (typeof password !== "string" || password.length < 6) {
-    throw new Error("Senha deve ter pelo menos 6 caracteres.")
+  if (typeof password !== "string" || password.length < 8) {
+    throw new Error("Senha deve ter pelo menos 8 caracteres.")
   }
 
   const salt = randomBytes(16).toString("hex")
-  const digest = pbkdf2Sync(password, salt, ITERATIONS, KEY_LENGTH, DIGEST).toString("hex")
-  return `${salt}$${digest}`
+  const digest = scryptSync(password, salt, KEY_LENGTH, {
+    N: COST,
+    r: BLOCK_SIZE,
+    p: PARALLELIZATION,
+  }).toString("hex")
+  return `scrypt$${COST}$${BLOCK_SIZE}$${PARALLELIZATION}$${salt}$${digest}`
 }
 
 export function verifyPassword(password: string, passwordHash: string): boolean {
-  const [salt, digest] = passwordHash.split("$", 2)
-  if (!salt || !digest) {
+  const [algorithm, cost, blockSize, parallelization, salt, digest] = passwordHash.split("$")
+  if (algorithm !== "scrypt" || !cost || !blockSize || !parallelization || !salt || !digest) {
     return false
   }
 
-  const current = pbkdf2Sync(password, salt, ITERATIONS, KEY_LENGTH, DIGEST)
   const expected = Buffer.from(digest, "hex")
+  const current = scryptSync(password, salt, expected.length, {
+    N: Number(cost),
+    r: Number(blockSize),
+    p: Number(parallelization),
+  })
   return current.length === expected.length && timingSafeEqual(current, expected)
 }

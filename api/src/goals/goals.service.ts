@@ -131,7 +131,7 @@ export class GoalsService {
       where: { id: existing.id },
       data: {
         status,
-        concluded_at: status === GOAL_STATUS.concluded ? now : existing.concluded_at,
+        concluded_at: status === GOAL_STATUS.concluded ? now : null,
         updated_at: now,
       },
     })
@@ -182,8 +182,8 @@ export class GoalsService {
     const dream = await this.prisma.sonhos.findFirst({
       where: { id: dreamId, usuario_id: user.usuario_id },
     })
-    if (!dream) {
-      throw new HttpException("Sonho vinculado não encontrado.", HttpStatus.BAD_REQUEST)
+    if (!dream || dream.status !== "ativo") {
+      throw new HttpException("Sonho vinculado não está ativo.", HttpStatus.BAD_REQUEST)
     }
   }
 

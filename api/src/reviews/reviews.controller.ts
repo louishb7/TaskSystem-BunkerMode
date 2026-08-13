@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Query, Req, UseGuards } from "@nestjs/common"
+import { Body, Controller, Get, Post, Query, Req, UseGuards } from "@nestjs/common"
 
 import { AuthGuard } from "../auth/auth.guard"
 import { AuthenticatedRequest } from "../auth/auth.types"
@@ -16,12 +16,6 @@ export class ReviewsController {
     @Query("end_date") endDate?: string,
   ) {
     return this.reviewsService.weeklyReport(request.currentUser!, startDate, endDate)
-  }
-
-  @Post("relatorios/falhas/limpar")
-  @HttpCode(200)
-  clearFailureReport(@Req() request: AuthenticatedRequest, @Body() payload: { start_date?: unknown; end_date?: unknown }) {
-    return this.reviewsService.clearFailureReport(request.currentUser!, payload?.start_date, payload?.end_date)
   }
 
   @Get("revisoes/estado")

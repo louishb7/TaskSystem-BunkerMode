@@ -1,12 +1,5 @@
 import { UserRecord, UserResponse } from "./auth.types"
 
-function dateOnly(value: Date | null): string | null {
-  if (!value) {
-    return null
-  }
-  return value.toISOString().slice(0, 10)
-}
-
 function dateTime(value: Date | null): string | null {
   if (!value) {
     return null
@@ -21,10 +14,9 @@ export function toUserResponse(user: UserRecord, includeAtivo = true): UserRespo
     email: user.email,
     nome_general: user.nome_general,
     active_mode: user.active_mode,
-    planning_window: user.planning_window,
     timezone: user.timezone,
-    emergency_unlock_date: dateOnly(user.emergency_unlock_date),
-    timezone_updated_at: dateTime(user.timezone_updated_at),
+    created_at: dateTime(user.created_at)!,
+    updated_at: dateTime(user.updated_at)!,
   }
 
   if (includeAtivo) {

@@ -3,7 +3,7 @@ import { API_CONFIG_ERROR, API_URL } from "./config"
 const REQUEST_TIMEOUT_MS = 30000
 
 export type ApiErrorData = {
-  detail?: string
+  message?: string
   [key: string]: unknown
 }
 
@@ -43,7 +43,7 @@ async function parseResponse(response: Response): Promise<ApiResult> {
     return {
       ok: false,
       status: response.status,
-      data: { detail: "Resposta inválida ou vazia do servidor." },
+      data: { message: "Resposta inválida ou vazia do servidor." },
     }
   }
 }
@@ -52,7 +52,8 @@ export function getErrorMessage(result: ApiResult | null | undefined, fallback: 
   if (result?.status === 0) {
     return "Não foi possível conectar à API."
   }
-  return result?.data?.detail || fallback
+  const message = result?.data?.message
+  return typeof message === "string" ? message : fallback
 }
 
 export async function request(path: string, { token, method = "GET", body }: RequestOptions = {}): Promise<ApiResult> {
@@ -61,7 +62,7 @@ export async function request(path: string, { token, method = "GET", body }: Req
       ok: false,
       status: 0,
       data: {
-        detail:
+        message:
           API_CONFIG_ERROR ||
           "Configuração da API ausente. Defina a URL pública da API antes de usar o sistema.",
       },
@@ -93,13 +94,13 @@ export async function request(path: string, { token, method = "GET", body }: Req
       return {
         ok: false,
         status: 0,
-        data: { detail: "A API demorou demais para responder. Tente novamente." },
+        data: { message: "A API demorou demais para responder. Tente novamente." },
       }
     }
     return {
       ok: false,
       status: 0,
-      data: { detail: "Não foi possível conectar à API." },
+      data: { message: "Não foi possível conectar à API." },
     }
   } finally {
     window.clearTimeout(timeoutId)
