@@ -57,9 +57,12 @@ model missoes {
   sonho_id            Int?
   objetivos           objetivos? @relation(fields: [objetivo_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "missoes_objetivo_id_fkey")
   sonhos              sonhos?    @relation(fields: [sonho_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "missoes_sonho_id_fkey")
+
+  @@index([prazo], map: "idx_missoes_prazo", where: raw("(prazo IS NOT NULL)"))
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// PostgreSQL CHECK constraints preserved manually: objetivos_progresso_check, objetivos_status_check.
 model objetivos {
   id           Int       @id @default(autoincrement())
   usuario_id   Int
@@ -113,6 +116,7 @@ model revisoes_semanais {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// PostgreSQL CHECK constraints preserved manually: sonhos_tipo_check, sonhos_status_check.
 model sonhos {
   id                         Int         @id @default(autoincrement())
   usuario_id                 Int
