@@ -9,5 +9,6 @@ import { MissionsService } from "./missions.service"
   imports: [AuthModule, PrismaModule],
   controllers: [MissionsController],
   providers: [MissionsService],
+  exports: [MissionsService],
 })
 export class MissionsModule {}

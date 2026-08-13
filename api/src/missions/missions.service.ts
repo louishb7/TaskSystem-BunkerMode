@@ -132,12 +132,7 @@ export class MissionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async listForGeneralBoard(user: UserRecord): Promise<MissionRecord[]> {
-    const contexts = await this.prisma.missao_contextos.findMany({
-      where: {
-        responsavel_id: user.usuario_id,
-      },
-    })
-    const contextByMissionId = new Map(contexts.map((context) => [context.missao_id, context]))
+    const { contexts, contextByMissionId } = await this.contextsForUser(user)
     const missions = await this.prisma.missoes.findMany({
       where: {
         missao_id: { in: contexts.map((context) => context.missao_id) },
@@ -149,6 +144,37 @@ export class MissionsService {
       ...mission,
       missao_contextos: contextByMissionId.get(mission.missao_id) ?? null,
     })) as MissionRecord[]
+  }
+
+  async listAllForUser(user: UserRecord): Promise<MissionRecord[]> {
+    const { contexts, contextByMissionId } = await this.contextsForUser(user)
+    if (contexts.length === 0) {
+      return []
+    }
+    const missions = await this.prisma.missoes.findMany({
+      where: { missao_id: { in: contexts.map((context) => context.missao_id) } },
+      orderBy: [
+        { is_pinned: "desc" },
+        { status: "asc" },
+        { prazo: "asc" },
+        { missao_id: "asc" },
+      ],
+    })
+    return missions.map((mission) => ({
+      ...mission,
+      missao_contextos: contextByMissionId.get(mission.missao_id) ?? null,
+    })) as MissionRecord[]
+  }
+
+  async listHistorical(user: UserRecord): Promise<MissionRecord[]> {
+    ensureGeneral(user)
+    const missions = await this.listAllForUser(user)
+    return missions.filter((mission) => mission.status === MISSION_STATUS.completed || mission.status === MISSION_STATUS.failed)
+  }
+
+  async listForReview(user: UserRecord): Promise<MissionRecord[]> {
+    ensureGeneral(user)
+    return []
   }
 
   async create(payload: CreateMissionPayload, user: UserRecord): Promise<MissionRecord> {
@@ -230,5 +256,17 @@ export class MissionsService {
     })
 
     return created as MissionRecord
+  }
+
+  private async contextsForUser(user: UserRecord) {
+    const contexts = await this.prisma.missao_contextos.findMany({
+      where: {
+        responsavel_id: user.usuario_id,
+      },
+    })
+    return {
+      contexts,
+      contextByMissionId: new Map(contexts.map((context) => [context.missao_id, context])),
+    }
   }
 }
