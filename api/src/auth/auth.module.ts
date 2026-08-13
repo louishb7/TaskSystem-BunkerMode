@@ -10,5 +10,6 @@ import { TokenService } from "./token.service"
   imports: [PrismaModule],
   controllers: [AuthController],
   providers: [AuthGuard, AuthService, TokenService],
+  exports: [AuthGuard, AuthService],
 })
 export class AuthModule {}
