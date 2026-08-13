@@ -9,13 +9,10 @@ import { toUserResponse } from "./user-response"
 type RequestLike = {
   ip?: string
   socket?: { remoteAddress?: string }
-  headers?: Record<string, string | string[] | undefined>
 }
 
 function clientAddress(request: RequestLike): string {
-  const forwardedFor = request.headers?.["x-forwarded-for"]
-  const headerValue = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor
-  return headerValue?.split(",")[0]?.trim() || request.ip || request.socket?.remoteAddress || "unknown"
+  return request.ip || request.socket?.remoteAddress || "unknown"
 }
 
 @Controller("api/v2")

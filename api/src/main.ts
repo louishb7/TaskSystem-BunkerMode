@@ -21,7 +21,7 @@ async function bootstrap() {
   validateEnvironment()
   const app = await NestFactory.create(AppModule)
   app.getHttpAdapter().getInstance().disable("x-powered-by")
-  app.getHttpAdapter().getInstance().set("trust proxy", 1)
+  app.getHttpAdapter().getInstance().set("trust proxy", process.env.NODE_ENV === "production" ? 1 : false)
   app.use(applySecurityHeaders)
   app.enableShutdownHooks()
   app.enableCors({

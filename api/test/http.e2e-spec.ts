@@ -187,6 +187,12 @@ class InMemoryPrisma {
           (where.missao_id === undefined || mission.missao_id === where.missao_id) &&
           (where.responsavel_id === undefined || mission.responsavel_id === where.responsavel_id),
       ) ?? null,
+    findUnique: async ({ where }: { where: { missao_id?: number; recurrence_key?: string | null } }) =>
+      this.missions.find(
+        (mission) =>
+          (where.missao_id !== undefined && mission.missao_id === where.missao_id) ||
+          (where.recurrence_key !== undefined && mission.recurrence_key === where.recurrence_key),
+      ) ?? null,
     update: async ({ where, data }: { where: { missao_id: number }; data: Partial<MissionRow> }) => {
       const mission = this.missions.find((item) => item.missao_id === where.missao_id)
       if (!mission) {

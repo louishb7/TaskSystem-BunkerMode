@@ -59,6 +59,7 @@ function prismaMock() {
       delete: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn().mockResolvedValue(null),
       update: jest.fn(),
     },
     objetivos: {
@@ -104,7 +105,7 @@ describe("Missions clean domain", () => {
     prisma.$transaction.mockImplementation(async (callback) =>
       callback({
         auditoria_eventos: prisma.auditoria_eventos,
-        missoes: { create },
+        missoes: { create, findUnique: prisma.missoes.findUnique },
       }),
     )
     const service = new MissionsService(prisma as unknown as PrismaService, calendar)
@@ -155,7 +156,7 @@ describe("Missions clean domain", () => {
     prisma.$transaction.mockImplementation(async (callback) =>
       callback({
         auditoria_eventos: prisma.auditoria_eventos,
-        missoes: { create },
+        missoes: { create, findUnique: prisma.missoes.findUnique },
       }),
     )
     const service = new MissionsService(prisma as unknown as PrismaService, calendar)

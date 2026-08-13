@@ -271,24 +271,29 @@ export class MissionsService {
               prazo: date,
             })
           : null
-        const mission = await this.createMissionSkippingDuplicate(tx, {
-          titulo: title,
-          prioridade: priority(payload.prioridade),
-          prazo: date,
-          instrucao: instruction,
-          status: MISSION_STATUS.pending,
-          objetivo_id: objetivoId,
-          sonho_id: sonhoId,
-          recurrence_weekdays: isRecurring ? weekdays : [],
-          recurrence_end_date: isRecurring ? recurrenceEndDate : null,
-          duration_type: isStrategic ? duration : null,
-          recurrence_key: key,
-          criada_por_id: user.usuario_id,
-          responsavel_id: responsavelId,
-        })
-        if (!mission) {
-          continue
+        if (key !== null) {
+          const existing = await tx.missoes.findUnique({ where: { recurrence_key: key } })
+          if (existing) {
+            continue
+          }
         }
+        const mission = await tx.missoes.create({
+          data: {
+            titulo: title,
+            prioridade: priority(payload.prioridade),
+            prazo: date,
+            instrucao: instruction,
+            status: MISSION_STATUS.pending,
+            objetivo_id: objetivoId,
+            sonho_id: sonhoId,
+            recurrence_weekdays: isRecurring ? weekdays : [],
+            recurrence_end_date: isRecurring ? recurrenceEndDate : null,
+            duration_type: isStrategic ? duration : null,
+            recurrence_key: key,
+            criada_por_id: user.usuario_id,
+            responsavel_id: responsavelId,
+          },
+        })
         await tx.auditoria_eventos.create({
           data: {
             missao_id: mission.missao_id,
@@ -531,24 +536,27 @@ export class MissionsService {
         }
         for (const date of datesForRecurrence(today, limit, mission.recurrence_weekdays)) {
           const key = this.recurrenceKey({ ...mission, prazo: date })
-          const created = await this.createMissionSkippingDuplicate(tx, {
-            titulo: mission.titulo,
-            prioridade: mission.prioridade,
-            prazo: date,
-            instrucao: mission.instrucao,
-            status: MISSION_STATUS.pending,
-            objetivo_id: mission.objetivo_id,
-            sonho_id: mission.sonho_id,
-            recurrence_weekdays: mission.recurrence_weekdays,
-            recurrence_end_date: mission.recurrence_end_date,
-            duration_type: mission.duration_type,
-            recurrence_key: key,
-            criada_por_id: mission.criada_por_id,
-            responsavel_id: mission.responsavel_id,
-          })
-          if (!created) {
+          const existing = await tx.missoes.findUnique({ where: { recurrence_key: key } })
+          if (existing) {
             continue
           }
+          const created = await tx.missoes.create({
+            data: {
+              titulo: mission.titulo,
+              prioridade: mission.prioridade,
+              prazo: date,
+              instrucao: mission.instrucao,
+              status: MISSION_STATUS.pending,
+              objetivo_id: mission.objetivo_id,
+              sonho_id: mission.sonho_id,
+              recurrence_weekdays: mission.recurrence_weekdays,
+              recurrence_end_date: mission.recurrence_end_date,
+              duration_type: mission.duration_type,
+              recurrence_key: key,
+              criada_por_id: mission.criada_por_id,
+              responsavel_id: mission.responsavel_id,
+            },
+          })
           await tx.auditoria_eventos.create({
             data: {
               missao_id: created.missao_id,
@@ -637,20 +645,6 @@ export class MissionsService {
         }),
       ]),
     )
-  }
-
-  private async createMissionSkippingDuplicate(
-    tx: Prisma.TransactionClient,
-    data: Prisma.missoesUncheckedCreateInput,
-  ): Promise<MissionRecord | null> {
-    try {
-      return await tx.missoes.create({ data })
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        return null
-      }
-      throw error
-    }
   }
 
   private today(user: UserRecord): string {
