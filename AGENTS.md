@@ -85,10 +85,10 @@ Não renomeie arquivos, componentes, rotas, campos de API ou contratos apenas pa
 
 ## Escopo Atual
 
-Foco atual: Web.
+Foco atual: Web responsiva.
 
-Mobile existe no repositório, mas não é prioridade até consolidação da experiência web.
-Não iniciar features mobile sem pedido explícito.
+Mobile React Native/Expo não faz parte da arquitetura BunkerMode 2.0.
+Não recriar app mobile sem pedido explícito.
 
 Integração inicial ainda não está implementada.
 Não implementar sem pedido explícito.
@@ -99,15 +99,17 @@ Rank, métricas avançadas e gamificação seguem fora do escopo atual.
 
 ## Arquitetura
 
-Stack:
-- Backend: Python + FastAPI + PostgreSQL + pytest.
-- Web: React em `frontend/`.
-- Mobile: React Native + Expo em `mobile/`.
+Stack alvo:
+- Backend: TypeScript + NestJS + Prisma + PostgreSQL.
+- Web: React + Vite em `frontend/`.
+
+Stack temporária de referência:
+- Backend Python + FastAPI + SQLAlchemy + Alembic + pytest em `backend/`.
 
 Arquitetura:
 - API -> Service -> Repositório -> Banco.
 
-Estrutura relevante do backend:
+Estrutura relevante do backend Python temporário:
 - `backend/api/main.py`: cria a aplicação FastAPI, configura CORS e registra routers.
 - `backend/api/entrypoint.py`: ponto de execução por Uvicorn.
 - `backend/core/settings.py`: carrega `.env` local e centraliza configuração.
@@ -129,15 +131,15 @@ Regras estruturais:
 - Services concentram regras e orquestração de repositório.
 - Não tocar em `frontend/` durante refatorações de backend, salvo pedido explícito.
 
-### Persistência E Migrations
+### Persistência E Migrations Do Backend Python Temporário
 
-O BunkerMode usa SQLAlchemy ORM com `psycopg` como driver.
+O backend Python de referência usa SQLAlchemy ORM com `psycopg` como driver.
 
 Regras:
 - Models ORM ficam em `backend/database/orm_models.py`.
 - Models de domínio ficam em `backend/models/` e não devem virar SQLAlchemy.
 - O repositório usa SQLAlchemy Session; não usar `psycopg` direto em código de aplicação.
-- Migrations são controladas pelo Alembic com autogenerate.
+- Migrations Python são controladas pelo Alembic com autogenerate.
 - Não criar schema manualmente no repositório.
 - Não editar banco de produção fora de migration revisada.
 
@@ -198,7 +200,7 @@ Campos conhecidos:
 - `failed_at`
 - `responsavel_id`
 
-`permissions` é calculado no servidor e consumido por frontend/mobile.
+`permissions` é calculado no servidor e consumido pelo frontend.
 
 ---
 

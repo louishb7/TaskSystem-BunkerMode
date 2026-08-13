@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from backend.models.missao import StatusMissao
 from backend.models.revisao import RevisaoSemanal
-from backend.services.exceptions import PermissaoNegadaError
+from backend.core.exceptions import PermissaoNegadaError
 from backend.services.operational_day import operational_date_for, previous_operational_week_bounds
 from backend.services.relatorio_service import RelatorioService
 

@@ -30,7 +30,7 @@ from backend.core.exceptions import MissaoNaoEncontrada
 from backend.core.settings import get_connection_string
 from backend.database.repositorio import RepositorioPostgres
 from backend.services.auth_service import AuthService
-from backend.services.exceptions import (
+from backend.core.exceptions import (
     AutenticacaoError,
     PermissaoNegadaError,
     UsuarioJaExisteError,

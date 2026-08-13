@@ -1,13 +1,16 @@
 # BunkerMode — Sistema de Execução
 
-Backend em FastAPI para autenticação, criação de missões, listagem de missões e histórico de auditoria.
+BunkerMode está em migração para a versão 2.0.
+
+O backend Python/FastAPI atual permanece como referência temporária de comportamento até a
+paridade dos módulos em TypeScript/NestJS. A interface principal é a web responsiva em
+React/Vite.
 
 ## Stack técnico
-- FastAPI
-- PostgreSQL com SQLAlchemy ORM e psycopg 3
-- Alembic
-- Pytest
-- React com Vite
+- Alvo backend: TypeScript + NestJS
+- Banco: PostgreSQL + Prisma
+- Frontend: React + Vite
+- Referência temporária: Python + FastAPI + SQLAlchemy + Alembic + pytest
 
 ## Variáveis de ambiente
 - `BUNKERMODE_DB_URL` ou
@@ -105,7 +108,8 @@ pytest
 
 ## Frontend
 
-A interface principal fica em `frontend/`.
+A interface principal fica em `frontend/`. A experiência mobile é atendida pela web
+responsiva; não há app React Native/Expo na arquitetura 2.0.
 
 ```bash
 cd frontend

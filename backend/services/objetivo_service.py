@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from backend.models.objetivo import Objetivo
-from backend.services.exceptions import PermissaoNegadaError
+from backend.core.exceptions import PermissaoNegadaError
 
 
 class ObjetivoService:

@@ -6,7 +6,7 @@ import pytest
 from backend.models.missao import Missao
 from backend.models.objetivo import Objetivo
 from backend.models.sonho import Sonho
-from backend.services.exceptions import PermissaoNegadaError
+from backend.core.exceptions import PermissaoNegadaError
 from backend.services.montanha_service import MontanhaService
 
 

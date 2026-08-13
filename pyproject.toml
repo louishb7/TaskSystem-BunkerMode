@@ -35,7 +35,7 @@ target-version = "py312"
 
 [tool.setuptools.packages.find]
 include = ["backend*"]
-exclude = ["frontend*", "mobile*"]
+exclude = ["frontend*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]

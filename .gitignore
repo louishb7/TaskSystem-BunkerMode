@@ -37,8 +37,6 @@ frontend/node_modules/
 frontend/dist/
 frontend/dist-test/
 .expo/
-mobile/.expo/
-mobile/dist-test/
 dist-test/
 
 # Temp
@@ -62,3 +60,8 @@ frontend/.vite/
 # Documentos locais — não publicar
 CONCEITO.md
 DECISOES.md
+DEPLOY_API.md
+MIGRATION_AUDIT.md
+MIGRATION_CHECKLIST.md
+.codex
+.agents

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from backend.services.exceptions import PermissaoNegadaError
+from backend.core.exceptions import PermissaoNegadaError
 from backend.models.sonho import Sonho, TipoSonho
 
 

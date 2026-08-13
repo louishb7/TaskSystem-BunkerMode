@@ -5,7 +5,7 @@ import pytest
 
 from backend.models.missao import Missao, StatusMissao
 from backend.services.comando_service import ComandoService
-from backend.services.exceptions import PermissaoNegadaError
+from backend.core.exceptions import PermissaoNegadaError
 
 
 INSTANTE_TESTE = datetime(2026, 5, 20, 10, 0, 0)

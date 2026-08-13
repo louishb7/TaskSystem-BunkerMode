@@ -2,7 +2,7 @@ from datetime import datetime, time, timedelta, timezone as utc_timezone
 from zoneinfo import ZoneInfo
 
 from backend.core.auth import decode_token, generate_token, hash_password, verify_password
-from backend.services.exceptions import (
+from backend.core.exceptions import (
     AutenticacaoError,
     PermissaoNegadaError,
     UsuarioJaExisteError,

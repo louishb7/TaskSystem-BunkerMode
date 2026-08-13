@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from backend.models.missao import Missao, StatusMissao
 from backend.models.operacao import Operacao
-from backend.services.exceptions import PermissaoNegadaError
+from backend.core.exceptions import PermissaoNegadaError
 from backend.services.missao_service import LEGACY_DEFAULT_PRIORITY
 from backend.services.operational_day import (
     calendar_date_for,

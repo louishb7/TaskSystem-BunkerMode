@@ -5,7 +5,7 @@ import pytest
 
 from backend.core.auth import decode_token, generate_token, hash_password
 from backend.services.auth_service import AuthService
-from backend.services.exceptions import AutenticacaoError, PermissaoNegadaError
+from backend.core.exceptions import AutenticacaoError, PermissaoNegadaError
 from backend.models.usuario import Usuario
 
 

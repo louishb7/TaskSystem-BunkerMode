@@ -1,10 +1,10 @@
 # migrations/
 
-Os arquivos .sql neste diretório são o histórico do schema manual antes da adoção do
-Alembic.
+Este diretório não contém migrations ativas.
 
-Eles NAO devem ser aplicados manualmente.
-O schema atual e gerenciado exclusivamente pelo Alembic.
+O schema atual do backend Python de referência é gerenciado pelo Alembic em
+`alembic/versions/`. Os arquivos históricos manuais, se existirem em branches antigas, não
+devem ser reaplicados.
 
 Para subir o schema em um ambiente novo:
 

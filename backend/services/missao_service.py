@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from backend.models.auditoria import EventoAuditoria
 from backend.core.exceptions import MissaoNaoEncontrada
 from backend.models.missao import Missao, StatusMissao
-from backend.services.exceptions import PermissaoNegadaError
+from backend.core.exceptions import PermissaoNegadaError
 from backend.services.mission_permissions import MissionPermissions
 from backend.services.operational_day import (
     calendar_date_for,

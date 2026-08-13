@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from backend.services.exceptions import PermissaoNegadaError
+from backend.core.exceptions import PermissaoNegadaError
 from backend.services.operational_day import operational_date_for, operational_week_bounds
 
 
