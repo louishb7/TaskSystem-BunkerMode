@@ -1,0 +1,152 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model alembic_version {
+  version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
+}
+
+model auditoria_eventos {
+  evento_id  Int       @id @default(autoincrement())
+  missao_id  Int?
+  usuario_id Int?
+  acao       String
+  detalhes   String
+  criado_em  DateTime  @default(now()) @db.Timestamp(6)
+  usuarios   usuarios? @relation(fields: [usuario_id], references: [usuario_id], onUpdate: NoAction)
+}
+
+model missao_contextos {
+  missao_id                                          Int        @id
+  criada_por_id                                      Int?
+  responsavel_id                                     Int?
+  operacao_id                                        Int?
+  operacao_dia                                       DateTime?  @db.Date
+  usuarios_missao_contextos_criada_por_idTousuarios  usuarios?  @relation("missao_contextos_criada_por_idTousuarios", fields: [criada_por_id], references: [usuario_id], onUpdate: NoAction)
+  operacoes                                          operacoes? @relation(fields: [operacao_id], references: [operacao_id], onUpdate: NoAction)
+  usuarios_missao_contextos_responsavel_idTousuarios usuarios?  @relation("missao_contextos_responsavel_idTousuarios", fields: [responsavel_id], references: [usuario_id], onUpdate: NoAction)
+
+  @@unique([operacao_id, operacao_dia], map: "idx_missao_contextos_operacao_dia", where: raw("((operacao_id IS NOT NULL) AND (operacao_dia IS NOT NULL))"))
+  @@index([responsavel_id], map: "idx_missao_contextos_responsavel_id", where: raw("(responsavel_id IS NOT NULL)"))
+}
+
+model missoes {
+  missao_id           Int        @id @default(autoincrement())
+  titulo              String
+  prioridade          Int
+  prazo               DateTime?  @db.Date
+  instrucao           String?
+  status              String
+  is_pinned           Boolean    @default(false)
+  created_at          DateTime   @default(now()) @db.Timestamp(6)
+  completed_at        DateTime?  @db.Timestamp(6)
+  failed_at           DateTime?  @db.Timestamp(6)
+  failure_reason_type String?
+  failure_reason      String?
+  soldier_excuse      String?
+  general_verdict     String?
+  recurrence_weekdays String?
+  recurrence_end_date DateTime?  @db.Date
+  duration_type       String?
+  objetivo_id         Int?
+  sonho_id            Int?
+  objetivos           objetivos? @relation(fields: [objetivo_id], references: [id], onUpdate: NoAction)
+  sonhos              sonhos?    @relation(fields: [sonho_id], references: [id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model objetivos {
+  id           Int       @id @default(autoincrement())
+  usuario_id   Int
+  sonho_id     Int?
+  titulo       String    @db.VarChar(200)
+  descricao    String?
+  data_alvo    DateTime? @db.Date
+  progresso    Int       @default(0)
+  status       String    @default("ativo") @db.VarChar(20)
+  created_at   DateTime  @default(now()) @db.Timestamp(6)
+  updated_at   DateTime  @default(now()) @db.Timestamp(6)
+  concluded_at DateTime? @db.Timestamp(6)
+  order_index  Int       @default(0)
+  missoes      missoes[]
+  sonhos       sonhos?   @relation(fields: [sonho_id], references: [id], onUpdate: NoAction)
+  usuarios     usuarios  @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model operacoes {
+  operacao_id      Int                @id @default(autoincrement())
+  usuario_id       Int
+  nome             String
+  descricao        String?
+  start_date       DateTime           @db.Date
+  end_date         DateTime           @db.Date
+  weekdays         String
+  ordem_titulo     String
+  ordem_instrucao  String?
+  is_pinned        Boolean            @default(false)
+  status           String             @default("ativa")
+  created_at       DateTime           @default(now()) @db.Timestamp(6)
+  missao_contextos missao_contextos[]
+  usuarios         usuarios           @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model revisoes_semanais {
+  revisao_id             Int      @id @default(autoincrement())
+  usuario_id             Int
+  start_date             DateTime @db.Date
+  end_date               DateTime @db.Date
+  reviewed_at            DateTime @default(now()) @db.Timestamp(6)
+  resumo_operacional     String
+  completed_missions     Int      @default(0)
+  pending_missions       Int      @default(0)
+  failed_missions        Int      @default(0)
+  high_priority_missions Int      @default(0)
+  observacao             String?
+  usuarios               usuarios @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([usuario_id, start_date, end_date])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model sonhos {
+  id                         Int         @id @default(autoincrement())
+  usuario_id                 Int
+  titulo                     String      @db.VarChar(200)
+  descricao                  String?
+  tipo                       String      @db.VarChar(20)
+  status                     String      @default("ativo") @db.VarChar(20)
+  justificativa_arquivamento String?
+  created_at                 DateTime    @default(now()) @db.Timestamp(6)
+  updated_at                 DateTime    @default(now()) @db.Timestamp(6)
+  archived_at                DateTime?   @db.Timestamp(6)
+  concluded_at               DateTime?   @db.Timestamp(6)
+  missoes                    missoes[]
+  objetivos                  objetivos[]
+  usuarios                   usuarios    @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model usuarios {
+  usuario_id                                                 Int                 @id @default(autoincrement())
+  usuario                                                    String
+  email                                                      String              @unique
+  senha_hash                                                 String
+  ativo                                                      Boolean             @default(true)
+  nome_general                                               String?
+  active_mode                                                String              @default("general")
+  planning_window                                            String              @default("night")
+  timezone                                                   String              @default("America/Recife")
+  emergency_unlock_date                                      DateTime?           @db.Date
+  timezone_updated_at                                        DateTime?           @db.Timestamptz(6)
+  auditoria_eventos                                          auditoria_eventos[]
+  missao_contextos_missao_contextos_criada_por_idTousuarios  missao_contextos[]  @relation("missao_contextos_criada_por_idTousuarios")
+  missao_contextos_missao_contextos_responsavel_idTousuarios missao_contextos[]  @relation("missao_contextos_responsavel_idTousuarios")
+  objetivos                                                  objetivos[]
+  operacoes                                                  operacoes[]
+  revisoes_semanais                                          revisoes_semanais[]
+  sonhos                                                     sonhos[]
+}

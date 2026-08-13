@@ -8,12 +8,17 @@
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "jest --runInBand",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"scripts/**/*.mjs\"",
+    "prisma:validate": "prisma validate --schema prisma/schema.prisma",
+    "prisma:pull": "prisma db pull --schema prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "baseline:check": "node scripts/check-prisma-baseline.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",
     "@nestjs/core": "^11.1.9",
     "@nestjs/platform-express": "^11.1.9",
+    "@prisma/client": "^7.9.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -23,6 +28,7 @@
     "@types/node": "^24.10.4",
     "jest": "^30.2.0",
     "prettier": "^3.8.3",
+    "prisma": "^7.9.1",
     "ts-jest": "^29.4.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"
