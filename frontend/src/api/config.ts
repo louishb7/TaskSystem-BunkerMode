@@ -1,4 +1,4 @@
-const LOCAL_API_URL = "http://127.0.0.1:8000/api/v2"
+const LOCAL_API_URL = "http://127.0.0.1:3000/api/v2"
 
 function normalizeApiUrl(apiUrl) {
   return apiUrl.replace(/\/+$/, "")

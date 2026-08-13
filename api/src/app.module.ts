@@ -6,10 +6,11 @@ import { GoalsModule } from "./goals/goals.module"
 import { HealthController } from "./health.controller"
 import { MissionsModule } from "./missions/missions.module"
 import { MountainModule } from "./mountain/mountain.module"
+import { PrismaModule } from "./prisma/prisma.module"
 import { ReviewsModule } from "./reviews/reviews.module"
 
 @Module({
-  imports: [AuthModule, DreamsModule, GoalsModule, MissionsModule, MountainModule, ReviewsModule],
+  imports: [AuthModule, DreamsModule, GoalsModule, MissionsModule, MountainModule, PrismaModule, ReviewsModule],
   controllers: [HealthController],
 })
 export class AppModule {}

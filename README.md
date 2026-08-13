@@ -1,27 +1,32 @@
 # BunkerMode — Sistema de Execução
 
-BunkerMode está em migração para a versão 2.0.
+BunkerMode é um sistema pessoal de execução. A versão 2.0 separa planejamento e execução:
+o General planeja, o Soldado executa, e o histórico alimenta a revisão.
 
 O backend ativo é TypeScript/NestJS com Prisma sobre PostgreSQL. A interface principal é a
 web responsiva em React/Vite.
 
-## Stack técnico
+## Stack
 - Backend: TypeScript + NestJS
 - Banco: PostgreSQL + Prisma
-- Frontend: React + Vite
+- Frontend: React + Vite + TypeScript
 
 ## Variáveis de ambiente
 - `DATABASE_URL`
 - `BUNKERMODE_AUTH_SECRET`
+- `BUNKERMODE_CORS_ALLOW_ORIGINS`
 - `PORT`
+- `HOST`
 
 ## CORS
-A API NestJS usa CORS básico para a web. O hardening de CORS por ambiente fica na etapa final
-de deploy.
+A API NestJS aceita origens locais por padrão. Em deploy, defina
+`BUNKERMODE_CORS_ALLOW_ORIGINS` com a origem pública do frontend. Use vírgula para mais de uma
+origem.
 
 ## Deploy
 
-No deploy do frontend, defina `VITE_API_URL` com a URL pública da API incluindo o prefixo `/api/v2`.
+No deploy do frontend, defina `VITE_API_URL` com a URL pública da API incluindo o prefixo
+`/api/v2`.
 
 Exemplo:
 
@@ -29,13 +34,17 @@ Exemplo:
 VITE_API_URL=https://api.exemplo.com/api/v2
 ```
 
-Sem essa variável, o frontend em produção não tenta usar `127.0.0.1` e exibe erro de configuração da API.
+Sem essa variável, o frontend em produção não tenta usar `127.0.0.1` e exibe erro de
+configuração da API.
 
 No deploy da API, defina:
 
 ```bash
 BUNKERMODE_AUTH_SECRET=valor-seguro
+BUNKERMODE_CORS_ALLOW_ORIGINS=https://app.exemplo.com
 DATABASE_URL=postgresql://usuario:senha@host:5432/banco
+PORT=3000
+HOST=0.0.0.0
 ```
 
 ## Rodar a API
@@ -45,7 +54,7 @@ npm install
 npm run start:dev
 ```
 
-Por padrão, a API escuta na porta `8000` se `PORT` não for definido.
+Por padrão, a API escuta em `127.0.0.1:3000` se `HOST` e `PORT` não forem definidos.
 
 ## Migrations
 
@@ -58,11 +67,15 @@ npm run prisma:generate
 npm run baseline:check
 ```
 
+Antes de deploy definitivo, compare o baseline com o banco real autorizado. O baseline atual foi
+validado localmente.
+
 ## Documentação
 - `AGENTS.md`
 
 ## Endpoints úteis para integração
 - `GET /api/v2/health`
+- `GET /api/v2/health/database`
 - `POST /api/v2/auth/register`
 - `POST /api/v2/auth/login`
 - `GET /api/v2/usuarios/me`
@@ -74,6 +87,9 @@ npm run baseline:check
 ## Testes
 ```bash
 cd api
+npm run prisma:validate
+npm run prisma:generate
+npm run baseline:check
 npm run lint
 npm run build
 npm run test
@@ -90,11 +106,11 @@ npm install
 npm run dev
 ```
 
-Por padrão, o frontend usa a API em `http://127.0.0.1:8000/api/v2`.
+Por padrão, o frontend usa a API em `http://127.0.0.1:3000/api/v2`.
 Para alterar:
 
 ```bash
-VITE_API_URL=http://127.0.0.1:8000/api/v2 npm run dev
+VITE_API_URL=http://127.0.0.1:3000/api/v2 npm run dev
 ```
 
 Check web disponível:

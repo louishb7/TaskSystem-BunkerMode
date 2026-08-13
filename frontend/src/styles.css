@@ -4286,6 +4286,18 @@ h3 {
 }
 
 @media (max-width: 900px) {
+  .auth-page {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(520px, 100%);
+    align-content: center;
+    justify-items: stretch;
+    gap: 24px;
+  }
+
+  .auth-card {
+    width: 100%;
+  }
+
   .general-board {
     order: 1;
   }

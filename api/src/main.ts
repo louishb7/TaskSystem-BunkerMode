@@ -20,8 +20,24 @@ function getAllowedOrigins(): string[] {
     .filter(Boolean)
 }
 
+type ResponseWithSecurityHeaders = {
+  setHeader(name: string, value: string): void
+}
+
+type NextHandler = () => void
+
+function applySecurityHeaders(_request: unknown, response: ResponseWithSecurityHeaders, next: NextHandler) {
+  response.setHeader("X-Content-Type-Options", "nosniff")
+  response.setHeader("X-Frame-Options", "DENY")
+  response.setHeader("Referrer-Policy", "no-referrer")
+  response.setHeader("Cross-Origin-Opener-Policy", "same-origin")
+  next()
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
+  app.getHttpAdapter().getInstance().disable("x-powered-by")
+  app.use(applySecurityHeaders)
   app.enableCors({
     origin: getAllowedOrigins(),
     credentials: true,
