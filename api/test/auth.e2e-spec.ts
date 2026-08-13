@@ -41,7 +41,7 @@ describe("Auth phase 3", () => {
     process.env.BUNKERMODE_AUTH_SECRET = "fase-3-test-secret"
   })
 
-  it("uses the Python-compatible password hash format", () => {
+  it("uses the legacy PBKDF2 password hash format", () => {
     const passwordHash = hashPassword("senha123")
 
     expect(passwordHash).toMatch(/^[0-9a-f]{32}\$[0-9a-f]{64}$/)

@@ -78,7 +78,7 @@ Textos visíveis ao usuário devem estar em português:
 - modais;
 - textos dinâmicos.
 
-Código técnico pode permanecer em inglês quando isso preservar padrões de React, FastAPI, API ou domínio.
+Código técnico pode permanecer em inglês quando isso preservar padrões de React, NestJS, API ou domínio.
 Não renomeie arquivos, componentes, rotas, campos de API ou contratos apenas para traduzir.
 
 ---
@@ -103,62 +103,32 @@ Stack alvo:
 - Backend: TypeScript + NestJS + Prisma + PostgreSQL.
 - Web: React + Vite em `frontend/`.
 
-Stack temporária de referência:
-- Backend Python + FastAPI + SQLAlchemy + Alembic + pytest em `backend/`.
-
 Arquitetura:
-- API -> Service -> Repositório -> Banco.
-
-Estrutura relevante do backend Python temporário:
-- `backend/api/main.py`: cria a aplicação FastAPI, configura CORS e registra routers.
-- `backend/api/entrypoint.py`: ponto de execução por Uvicorn.
-- `backend/core/settings.py`: carrega `.env` local e centraliza configuração.
-- `backend/core/auth.py`: hashing, verificação de senha e tokens.
-- `backend/core/exceptions.py`: exceções compartilhadas.
-- `backend/database/repositorio.py`: acesso ao banco.
-- `backend/database/orm_models.py`: models SQLAlchemy que mapeiam o schema do banco.
-- `backend/models/`: entidades de domínio puras.
-- `backend/schemas/`: payloads Pydantic.
-- `backend/routes/`: adaptação HTTP.
-- `backend/services/`: casos de uso e regras de negócio.
-- `alembic/`: migrations versionadas do banco.
-- `backend/tests/`: testes do backend.
+- Controller -> Service -> Prisma -> Banco.
 
 Regras estruturais:
-- Não recriar arquivos de domínio soltos na raiz de `backend/`.
-- Não importar `backend.api.routes` nem `backend.api.schemas`; use `backend.routes.*` e `backend.schemas.*`.
-- Rotas não devem conter regra de negócio.
+- Backend NestJS fica em `api/`.
+- Prisma fica em `api/prisma/`.
+- Controllers não devem conter regra de negócio.
 - Services concentram regras e orquestração de repositório.
-- Não tocar em `frontend/` durante refatorações de backend, salvo pedido explícito.
+- Não tocar em `frontend/` durante refatorações de backend, salvo quando a mudança afetar contrato consumido pela web.
 
-### Persistência E Migrations Do Backend Python Temporário
+### Persistência E Migrations
 
-O backend Python de referência usa SQLAlchemy ORM com `psycopg` como driver.
+O BunkerMode 2.0 usa Prisma Client com PostgreSQL.
 
 Regras:
-- Models ORM ficam em `backend/database/orm_models.py`.
-- Models de domínio ficam em `backend/models/` e não devem virar SQLAlchemy.
-- O repositório usa SQLAlchemy Session; não usar `psycopg` direto em código de aplicação.
-- Migrations Python são controladas pelo Alembic com autogenerate.
-- Não criar schema manualmente no repositório.
-- Não editar banco de produção fora de migration revisada.
+- Preserve o schema físico mapeado em `api/prisma/schema.prisma` até uma migration aprovada.
+- Não execute migration destrutiva contra banco real sem estratégia revisada.
+- CHECK constraints e índices parciais documentados no baseline devem ser preservados manualmente quando necessário.
+- `alembic_version` é legado de infraestrutura e só deve ser removido por migration aprovada na verificação final de banco.
 
-Para criar nova migration após alterar `orm_models.py`:
+Checks úteis:
 ```bash
-alembic revision --autogenerate -m "descrição"
-# revisar o arquivo gerado em alembic/versions/
-alembic upgrade head
-```
-
-Para novo ambiente:
-```bash
-alembic upgrade head
-```
-
-Para verificar estado:
-```bash
-alembic current
-alembic history
+cd api
+npm run prisma:validate
+npm run prisma:generate
+npm run baseline:check
 ```
 
 ---

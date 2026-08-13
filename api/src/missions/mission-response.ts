@@ -36,16 +36,17 @@ export function missionPermissions(mission: MissionRecord, user: MissionUser): M
   const isGeneral = user.active_mode === "general"
   const canExecute = isGeneral || user.active_mode === "soldier"
   const pending = isPending(mission)
+  const finalized = isFinalized(mission)
 
   return {
     can_complete: canExecute && pending,
-    can_edit: isGeneral && pending,
-    can_delete: isGeneral && pending,
+    can_edit: isGeneral && (pending || finalized),
+    can_delete: isGeneral && (pending || mission.status === MISSION_STATUS.failed),
     can_justify: false,
     can_fail: canExecute && pending,
     can_pin: canExecute && pending,
     can_review: false,
-    can_view_history: isGeneral && isFinalized(mission),
+    can_view_history: isGeneral && finalized,
   }
 }
 

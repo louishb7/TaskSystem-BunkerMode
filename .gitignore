@@ -2,21 +2,9 @@
 .env
 .env.*
 !.env.example
-!backend/.env.example
 .envrc
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Virtualenv
-.venv/
-venv/
-
-# Pytest / coverage
-.pytest_cache/
+# Coverage
 .coverage
 coverage/
 htmlcov/

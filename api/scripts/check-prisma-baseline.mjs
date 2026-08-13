@@ -82,4 +82,4 @@ if (warnings.length > 0) {
   console.warn(warnings.join("\n"))
 }
 
-console.log("Baseline Prisma cobre as tabelas e colunas esperadas do ORM SQLAlchemy.")
+console.log("Baseline Prisma cobre as tabelas e colunas esperadas do PostgreSQL auditado.")

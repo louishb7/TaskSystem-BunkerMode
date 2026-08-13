@@ -36,6 +36,8 @@ export type MissionRecord = {
   objetivo_id: number | null
   sonho_id: number | null
   missao_contextos?: {
+    missao_id?: number
+    criada_por_id?: number | null
     responsavel_id: number | null
   } | null
 }

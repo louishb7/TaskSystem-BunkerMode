@@ -2,41 +2,22 @@
 
 BunkerMode está em migração para a versão 2.0.
 
-O backend Python/FastAPI atual permanece como referência temporária de comportamento até a
-paridade dos módulos em TypeScript/NestJS. A interface principal é a web responsiva em
-React/Vite.
+O backend ativo é TypeScript/NestJS com Prisma sobre PostgreSQL. A interface principal é a
+web responsiva em React/Vite.
 
 ## Stack técnico
-- Alvo backend: TypeScript + NestJS
+- Backend: TypeScript + NestJS
 - Banco: PostgreSQL + Prisma
 - Frontend: React + Vite
-- Referência temporária: Python + FastAPI + SQLAlchemy + Alembic + pytest
 
 ## Variáveis de ambiente
-- `BUNKERMODE_DB_URL` ou
-- `BUNKERMODE_DB_NAME`
-- `BUNKERMODE_DB_USER`
-- `BUNKERMODE_DB_PASSWORD`
-- `BUNKERMODE_DB_HOST`
-- `BUNKERMODE_DB_PORT`
+- `DATABASE_URL`
 - `BUNKERMODE_AUTH_SECRET`
-- `BUNKERMODE_ENV`
-- `BUNKERMODE_API_HOST`
-- `BUNKERMODE_API_PORT`
-- `BUNKERMODE_API_RELOAD`
-- `BUNKERMODE_CORS_ALLOW_ORIGINS`
+- `PORT`
 
 ## CORS
-A API aceita origens configuradas pela variável `BUNKERMODE_CORS_ALLOW_ORIGINS`.
-
-Exemplo:
-
-```bash
-BUNKERMODE_CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:5173
-```
-
-Se a variável não for definida em desenvolvimento, a API permite apenas origens locais conhecidas.
-Em produção (`BUNKERMODE_ENV=production`), `BUNKERMODE_CORS_ALLOW_ORIGINS` é obrigatório.
+A API NestJS usa CORS básico para a web. O hardening de CORS por ambiente fica na etapa final
+de deploy.
 
 ## Deploy
 
@@ -53,43 +34,32 @@ Sem essa variável, o frontend em produção não tenta usar `127.0.0.1` e exibe
 No deploy da API, defina:
 
 ```bash
-BUNKERMODE_ENV=production
-BUNKERMODE_CORS_ALLOW_ORIGINS=https://site.exemplo.com
 BUNKERMODE_AUTH_SECRET=valor-seguro
-BUNKERMODE_DB_URL=postgresql://usuario:senha@host:5432/banco
+DATABASE_URL=postgresql://usuario:senha@host:5432/banco
 ```
-
-Se iniciar a API por `python -m api`, o host padrão já escuta em `0.0.0.0`. É possível sobrescrever com `BUNKERMODE_API_HOST`.
 
 ## Rodar a API
 ```bash
-cd backend
-uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+cd api
+npm install
+npm run start:dev
 ```
 
-O atalho `python -m api` continua disponível e usa o mesmo entrypoint.
+Por padrão, a API escuta na porta `8000` se `PORT` não for definido.
 
 ## Migrations
 
-Novo ambiente:
+O schema Prisma atual é baseline de preservação do PostgreSQL. Não rode migrations destrutivas
+sem revisão explícita.
 
 ```bash
-alembic upgrade head
-```
-
-Nova migration após alterar `backend/database/orm_models.py`:
-
-```bash
-alembic revision --autogenerate -m "descrição da mudança"
-# revisar o arquivo gerado em alembic/versions/
-alembic upgrade head
+npm run prisma:validate
+npm run prisma:generate
+npm run baseline:check
 ```
 
 ## Documentação
-- `/docs`
-- `/redoc`
-- `API.md`
-- `AUTH.md`
+- `AGENTS.md`
 
 ## Endpoints úteis para integração
 - `GET /api/v2/health`
@@ -103,7 +73,10 @@ alembic upgrade head
 
 ## Testes
 ```bash
-pytest
+cd api
+npm run lint
+npm run build
+npm run test
 ```
 
 ## Frontend

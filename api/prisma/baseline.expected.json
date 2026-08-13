@@ -1,5 +1,5 @@
 {
-  "source": "backend/database/orm_models.py",
+  "source": "Phase 2 PostgreSQL baseline audit",
   "infrastructureTables": {
     "alembic_version": [
       "version_num"

@@ -1,6 +1,5 @@
-import { HttpException } from "@nestjs/common"
-
 import { UserRecord } from "../src/auth/auth.types"
+import { OperationalCalendarService } from "../src/calendar/operational-calendar.service"
 import { toMissionResponse } from "../src/missions/mission-response"
 import { MissionsService } from "../src/missions/missions.service"
 import { MISSION_STATUS, MissionRecord } from "../src/missions/mission.types"
@@ -56,14 +55,21 @@ function prismaMock() {
     $transaction: jest.fn(),
     auditoria_eventos: {
       create: jest.fn(),
+      deleteMany: jest.fn(),
+      findMany: jest.fn(),
     },
     missao_contextos: {
       create: jest.fn(),
-      findMany: jest.fn(),
+      deleteMany: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     missoes: {
       create: jest.fn(),
-      findMany: jest.fn(),
+      delete: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
     },
     objetivos: {
       findFirst: jest.fn(),
@@ -75,6 +81,8 @@ function prismaMock() {
 }
 
 describe("Missions phase 5", () => {
+  const calendar = new OperationalCalendarService()
+
   it("maps the mission contract consumed by the web", () => {
     const response = toMissionResponse(mission(), user())
 
@@ -115,7 +123,7 @@ describe("Missions phase 5", () => {
         },
       }),
     )
-    const service = new MissionsService(prisma as unknown as PrismaService)
+    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
 
     const result = await service.create(
       {
@@ -149,7 +157,7 @@ describe("Missions phase 5", () => {
   })
 
   it("rejects planning while the user is in Soldier mode", async () => {
-    const service = new MissionsService(prismaMock() as unknown as PrismaService)
+    const service = new MissionsService(prismaMock() as unknown as PrismaService, calendar)
 
     await expect(
       service.create({ titulo: "Ordem", responsavel_id: 7 }, user({ active_mode: "soldier" })),
@@ -167,7 +175,7 @@ describe("Missions phase 5", () => {
       },
     ])
     prisma.missoes.findMany.mockResolvedValue([mission({ missao_contextos: undefined })])
-    const service = new MissionsService(prisma as unknown as PrismaService)
+    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
 
     const result = await service.listForGeneralBoard(user())
 
@@ -184,19 +192,134 @@ describe("Missions phase 5", () => {
     })
   })
 
-  it("keeps recurring missions outside this slice", async () => {
-    const service = new MissionsService(prismaMock() as unknown as PrismaService)
+  it("materializes recurring strategic missions in the current 14-day window", async () => {
+    const prisma = prismaMock()
+    const createdMissions = [
+      mission({ missao_id: 10, prazo: new Date("2026-04-24T00:00:00.000Z") }),
+      mission({ missao_id: 11, prazo: new Date("2026-04-27T00:00:00.000Z") }),
+      mission({ missao_id: 12, prazo: new Date("2026-04-29T00:00:00.000Z") }),
+      mission({ missao_id: 13, prazo: new Date("2026-05-01T00:00:00.000Z") }),
+      mission({ missao_id: 14, prazo: new Date("2026-05-04T00:00:00.000Z") }),
+      mission({ missao_id: 15, prazo: new Date("2026-05-06T00:00:00.000Z") }),
+    ]
+    const create = jest.fn()
+    createdMissions.forEach((created) => create.mockResolvedValueOnce(created))
+    prisma.objetivos.findFirst.mockResolvedValue({ id: 7, usuario_id: 7 })
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({
+        auditoria_eventos: prisma.auditoria_eventos,
+        missao_contextos: prisma.missao_contextos,
+        missoes: { create },
+      }),
+    )
+    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
 
-    await expect(
-      service.create(
-        {
-          titulo: "Treinar",
-          responsavel_id: 7,
-          recurrence_weekdays: [0, 2],
-          duration_type: "prazo",
+    const result = await service.create(
+      {
+        titulo: "Treinar escrita",
+        prazo: "24-04-2026",
+        objetivo_id: 7,
+        responsavel_id: 7,
+        recurrence_weekdays: [0, 2, 4],
+        duration_type: "ate_objetivo",
+      },
+      user(),
+    )
+
+    expect(result.missao_id).toBe(10)
+    expect(create).toHaveBeenCalledTimes(6)
+    expect(create.mock.calls.map(([call]) => call.data.prazo.toISOString().slice(0, 10))).toEqual([
+      "2026-04-24",
+      "2026-04-27",
+      "2026-04-29",
+      "2026-05-01",
+      "2026-05-04",
+      "2026-05-06",
+    ])
+  })
+
+  it("shows previous pending missions as Soldier actions without a time cutoff", async () => {
+    const prisma = prismaMock()
+    prisma.missao_contextos.findMany.mockResolvedValue([
+      { missao_id: 10, criada_por_id: 7, responsavel_id: 7 },
+      { missao_id: 11, criada_por_id: 7, responsavel_id: 7 },
+    ])
+    prisma.missoes.findMany.mockResolvedValue([
+      mission({ missao_id: 10, prazo: new Date("2026-08-12T00:00:00.000Z") }),
+      mission({ missao_id: 11, prazo: new Date("2026-08-13T00:00:00.000Z") }),
+    ])
+    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"))
+
+    const board = await service.soldierBoard(user({ active_mode: "soldier" }))
+
+    expect(board.turn).toMatchObject({
+      active_date: "2026-08-13",
+      before_cutoff: false,
+      requires_decision: true,
+      previous_pending_count: 1,
+    })
+    expect(board.action_missions.map((item) => item.missao_id)).toEqual([10])
+    jest.useRealTimers()
+  })
+
+  it("completes a mission and records audit in the same transaction", async () => {
+    const prisma = prismaMock()
+    prisma.missao_contextos.findFirst.mockResolvedValue({
+      missao_id: 10,
+      criada_por_id: 7,
+      responsavel_id: 7,
+    })
+    prisma.missoes.findUnique.mockResolvedValue(mission())
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({
+        auditoria_eventos: prisma.auditoria_eventos,
+        missoes: {
+          update: jest.fn().mockResolvedValue(
+            mission({
+              status: MISSION_STATUS.completed,
+              completed_at: new Date("2026-08-13T12:00:00.000Z"),
+            }),
+          ),
         },
-        user(),
-      ),
-    ).rejects.toBeInstanceOf(HttpException)
+      }),
+    )
+    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
+
+    const result = await service.complete(10, user())
+
+    expect(result.status).toBe(MISSION_STATUS.completed)
+    expect(prisma.auditoria_eventos.create).toHaveBeenCalledWith({
+      data: {
+        missao_id: 10,
+        usuario_id: 7,
+        acao: "missao_concluida",
+        detalhes: "Missão 'Revisar plano semanal' concluída.",
+      },
+    })
+  })
+
+  it("deletes only removable General missions and removes dependent runtime records", async () => {
+    const prisma = prismaMock()
+    prisma.missao_contextos.findFirst.mockResolvedValue({
+      missao_id: 10,
+      criada_por_id: 7,
+      responsavel_id: 7,
+    })
+    prisma.missoes.findUnique.mockResolvedValue(mission({ status: MISSION_STATUS.failed }))
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({
+        auditoria_eventos: prisma.auditoria_eventos,
+        missao_contextos: prisma.missao_contextos,
+        missoes: prisma.missoes,
+      }),
+    )
+    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
+
+    await service.delete(10, user())
+
+    expect(prisma.auditoria_eventos.deleteMany).toHaveBeenCalledWith({ where: { missao_id: 10 } })
+    expect(prisma.missao_contextos.deleteMany).toHaveBeenCalledWith({ where: { missao_id: 10 } })
+    expect(prisma.missoes.delete).toHaveBeenCalledWith({ where: { missao_id: 10 } })
   })
 })
