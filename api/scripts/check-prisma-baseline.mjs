@@ -42,7 +42,12 @@ const actualTables = new Map(
 const failures = []
 const warnings = []
 
-for (const [tableName, expectedColumns] of Object.entries(expected.tables)) {
+const expectedTableGroups = {
+  ...expected.infrastructureTables,
+  ...expected.tables,
+}
+
+for (const [tableName, expectedColumns] of Object.entries(expectedTableGroups)) {
   const actualColumns = actualTables.get(tableName)
   if (!actualColumns) {
     failures.push(`Tabela ausente no Prisma: ${tableName}`)

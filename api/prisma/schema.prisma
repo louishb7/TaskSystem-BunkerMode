@@ -18,7 +18,7 @@ model auditoria_eventos {
   acao       String
   detalhes   String
   criado_em  DateTime  @default(now()) @db.Timestamp(6)
-  usuarios   usuarios? @relation(fields: [usuario_id], references: [usuario_id], onUpdate: NoAction)
+  usuarios   usuarios? @relation(fields: [usuario_id], references: [usuario_id], onDelete: SetNull, onUpdate: NoAction, map: "auditoria_eventos_usuario_id_fkey")
 }
 
 model missao_contextos {
@@ -27,9 +27,9 @@ model missao_contextos {
   responsavel_id                                     Int?
   operacao_id                                        Int?
   operacao_dia                                       DateTime?  @db.Date
-  usuarios_missao_contextos_criada_por_idTousuarios  usuarios?  @relation("missao_contextos_criada_por_idTousuarios", fields: [criada_por_id], references: [usuario_id], onUpdate: NoAction)
-  operacoes                                          operacoes? @relation(fields: [operacao_id], references: [operacao_id], onUpdate: NoAction)
-  usuarios_missao_contextos_responsavel_idTousuarios usuarios?  @relation("missao_contextos_responsavel_idTousuarios", fields: [responsavel_id], references: [usuario_id], onUpdate: NoAction)
+  usuarios_missao_contextos_criada_por_idTousuarios  usuarios?  @relation("missao_contextos_criada_por_idTousuarios", fields: [criada_por_id], references: [usuario_id], onDelete: SetNull, onUpdate: NoAction, map: "missao_contextos_criada_por_id_fkey")
+  operacoes                                          operacoes? @relation(fields: [operacao_id], references: [operacao_id], onDelete: SetNull, onUpdate: NoAction, map: "missao_contextos_operacao_id_fkey")
+  usuarios_missao_contextos_responsavel_idTousuarios usuarios?  @relation("missao_contextos_responsavel_idTousuarios", fields: [responsavel_id], references: [usuario_id], onDelete: SetNull, onUpdate: NoAction, map: "missao_contextos_responsavel_id_fkey")
 
   @@unique([operacao_id, operacao_dia], map: "idx_missao_contextos_operacao_dia", where: raw("((operacao_id IS NOT NULL) AND (operacao_dia IS NOT NULL))"))
   @@index([responsavel_id], map: "idx_missao_contextos_responsavel_id", where: raw("(responsavel_id IS NOT NULL)"))
@@ -55,8 +55,8 @@ model missoes {
   duration_type       String?
   objetivo_id         Int?
   sonho_id            Int?
-  objetivos           objetivos? @relation(fields: [objetivo_id], references: [id], onUpdate: NoAction)
-  sonhos              sonhos?    @relation(fields: [sonho_id], references: [id], onUpdate: NoAction)
+  objetivos           objetivos? @relation(fields: [objetivo_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "missoes_objetivo_id_fkey")
+  sonhos              sonhos?    @relation(fields: [sonho_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "missoes_sonho_id_fkey")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -74,8 +74,8 @@ model objetivos {
   concluded_at DateTime? @db.Timestamp(6)
   order_index  Int       @default(0)
   missoes      missoes[]
-  sonhos       sonhos?   @relation(fields: [sonho_id], references: [id], onUpdate: NoAction)
-  usuarios     usuarios  @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction)
+  sonhos       sonhos?   @relation(fields: [sonho_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "objetivos_sonho_id_fkey")
+  usuarios     usuarios  @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction, map: "objetivos_usuario_id_fkey")
 }
 
 model operacoes {
@@ -92,7 +92,7 @@ model operacoes {
   status           String             @default("ativa")
   created_at       DateTime           @default(now()) @db.Timestamp(6)
   missao_contextos missao_contextos[]
-  usuarios         usuarios           @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction)
+  usuarios         usuarios           @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction, map: "operacoes_usuario_id_fkey")
 }
 
 model revisoes_semanais {
@@ -107,9 +107,9 @@ model revisoes_semanais {
   failed_missions        Int      @default(0)
   high_priority_missions Int      @default(0)
   observacao             String?
-  usuarios               usuarios @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction)
+  usuarios               usuarios @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction, map: "revisoes_semanais_usuario_id_fkey")
 
-  @@unique([usuario_id, start_date, end_date])
+  @@unique([usuario_id, start_date, end_date], map: "revisoes_semanais_usuario_id_start_date_end_date_key")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -127,7 +127,7 @@ model sonhos {
   concluded_at               DateTime?   @db.Timestamp(6)
   missoes                    missoes[]
   objetivos                  objetivos[]
-  usuarios                   usuarios    @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction)
+  usuarios                   usuarios    @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction, map: "sonhos_usuario_id_fkey")
 }
 
 model usuarios {

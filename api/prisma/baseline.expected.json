@@ -1,5 +1,10 @@
 {
   "source": "backend/database/orm_models.py",
+  "infrastructureTables": {
+    "alembic_version": [
+      "version_num"
+    ]
+  },
   "tables": {
     "usuarios": [
       "usuario_id",
