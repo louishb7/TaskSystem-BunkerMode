@@ -13,7 +13,6 @@ from backend.schemas.objetivo import (
     ObjetivoStatusPayload,
     ObjetivoUpdatePayload,
 )
-from backend.schemas.operacao import OperacaoCreatePayload, OperacaoMaterializarPayload
 from backend.schemas.revisao import FecharRevisaoPayload, LimparRelatorioFalhasPayload
 from backend.schemas.sonho import SonhoArquivarPayload, SonhoCreatePayload, SonhoUpdatePayload
 from backend.schemas.usuario import (

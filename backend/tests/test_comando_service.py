@@ -16,7 +16,6 @@ class RepositorioComandoFake:
         self.missoes = []
         self.contextos = {}
         self.revisoes = []
-        self.operacoes_lidas = 0
         self.revisoes_lidas = 0
 
     def carregar_dados_por_responsavel(self, responsavel_id):
@@ -43,11 +42,6 @@ class RepositorioComandoFake:
         self.revisoes_lidas += 1
         return self.revisoes
 
-    def listar_operacoes_por_usuario(self, usuario_id):
-        self.operacoes_lidas += 1
-        return []
-
-
 def usuario_general():
     return SimpleNamespace(usuario_id=1, active_mode="general")
 
@@ -72,9 +66,7 @@ def test_comando_agrega_suporte_general_em_um_payload():
     assert payload["historical_missions"][0]["titulo"] == "Ordem concluída"
     assert payload["review_state"]["pending"] is True
     assert payload["weekly_reviews"] == []
-    assert payload["operations"] == []
     assert repo.revisoes_lidas == 1
-    assert repo.operacoes_lidas == 1
 
 
 def test_comando_agregado_respeita_bloqueio_do_modo_soldado():

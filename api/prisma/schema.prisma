@@ -25,13 +25,9 @@ model missao_contextos {
   missao_id                                          Int        @id
   criada_por_id                                      Int?
   responsavel_id                                     Int?
-  operacao_id                                        Int?
-  operacao_dia                                       DateTime?  @db.Date
   usuarios_missao_contextos_criada_por_idTousuarios  usuarios?  @relation("missao_contextos_criada_por_idTousuarios", fields: [criada_por_id], references: [usuario_id], onDelete: SetNull, onUpdate: NoAction, map: "missao_contextos_criada_por_id_fkey")
-  operacoes                                          operacoes? @relation(fields: [operacao_id], references: [operacao_id], onDelete: SetNull, onUpdate: NoAction, map: "missao_contextos_operacao_id_fkey")
   usuarios_missao_contextos_responsavel_idTousuarios usuarios?  @relation("missao_contextos_responsavel_idTousuarios", fields: [responsavel_id], references: [usuario_id], onDelete: SetNull, onUpdate: NoAction, map: "missao_contextos_responsavel_id_fkey")
 
-  @@unique([operacao_id, operacao_dia], map: "idx_missao_contextos_operacao_dia", where: raw("((operacao_id IS NOT NULL) AND (operacao_dia IS NOT NULL))"))
   @@index([responsavel_id], map: "idx_missao_contextos_responsavel_id", where: raw("(responsavel_id IS NOT NULL)"))
 }
 
@@ -79,23 +75,6 @@ model objetivos {
   missoes      missoes[]
   sonhos       sonhos?   @relation(fields: [sonho_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "objetivos_sonho_id_fkey")
   usuarios     usuarios  @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction, map: "objetivos_usuario_id_fkey")
-}
-
-model operacoes {
-  operacao_id      Int                @id @default(autoincrement())
-  usuario_id       Int
-  nome             String
-  descricao        String?
-  start_date       DateTime           @db.Date
-  end_date         DateTime           @db.Date
-  weekdays         String
-  ordem_titulo     String
-  ordem_instrucao  String?
-  is_pinned        Boolean            @default(false)
-  status           String             @default("ativa")
-  created_at       DateTime           @default(now()) @db.Timestamp(6)
-  missao_contextos missao_contextos[]
-  usuarios         usuarios           @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: NoAction, map: "operacoes_usuario_id_fkey")
 }
 
 model revisoes_semanais {
@@ -150,7 +129,6 @@ model usuarios {
   missao_contextos_missao_contextos_criada_por_idTousuarios  missao_contextos[]  @relation("missao_contextos_criada_por_idTousuarios")
   missao_contextos_missao_contextos_responsavel_idTousuarios missao_contextos[]  @relation("missao_contextos_responsavel_idTousuarios")
   objetivos                                                  objetivos[]
-  operacoes                                                  operacoes[]
   revisoes_semanais                                          revisoes_semanais[]
   sonhos                                                     sonhos[]
 }

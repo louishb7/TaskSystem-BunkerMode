@@ -46,8 +46,6 @@ function mission(overrides: Partial<MissionRecord> = {}): MissionRecord {
     sonho_id: null,
     missao_contextos: {
       responsavel_id: 7,
-      operacao_id: null,
-      operacoes: null,
     },
     ...overrides,
   }
@@ -166,8 +164,6 @@ describe("Missions phase 5", () => {
       {
         missao_id: 10,
         responsavel_id: 7,
-        operacao_id: null,
-        operacoes: null,
       },
     ])
     prisma.missoes.findMany.mockResolvedValue([mission({ missao_contextos: undefined })])
@@ -178,7 +174,6 @@ describe("Missions phase 5", () => {
     expect(result[0].missao_contextos?.responsavel_id).toBe(7)
     expect(prisma.missao_contextos.findMany).toHaveBeenCalledWith({
       where: { responsavel_id: 7 },
-      include: { operacoes: true },
     })
     expect(prisma.missoes.findMany).toHaveBeenCalledWith({
       where: {

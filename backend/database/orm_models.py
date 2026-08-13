@@ -232,47 +232,6 @@ class MissaoORM(Base):
     )
 
 
-class OperacaoORM(Base):
-    __tablename__ = "operacoes"
-
-    operacao_id: Mapped[int] = mapped_column(
-        Integer,
-        Identity(
-            always=True,
-            start=1,
-            increment=1,
-            minvalue=1,
-            maxvalue=2147483647,
-            cycle=False,
-            cache=1,
-        ),
-        primary_key=True,
-    )
-    usuario_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("usuarios.usuario_id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    nome: Mapped[str] = mapped_column(Text, nullable=False)
-    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
-    start_date: Mapped[date] = mapped_column(Date, nullable=False)
-    end_date: Mapped[date] = mapped_column(Date, nullable=False)
-    weekdays: Mapped[str] = mapped_column(Text, nullable=False)
-    ordem_titulo: Mapped[str] = mapped_column(Text, nullable=False)
-    ordem_instrucao: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
-    status: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        server_default=text("'ativa'"),
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        server_default=text("CURRENT_TIMESTAMP"),
-    )
-
-
 class MissaoContextoORM(Base):
     __tablename__ = "missao_contextos"
     __table_args__ = (
@@ -280,13 +239,6 @@ class MissaoContextoORM(Base):
             "idx_missao_contextos_responsavel_id",
             "responsavel_id",
             postgresql_where=text("responsavel_id IS NOT NULL"),
-        ),
-        Index(
-            "idx_missao_contextos_operacao_dia",
-            "operacao_id",
-            "operacao_dia",
-            unique=True,
-            postgresql_where=text("operacao_id IS NOT NULL AND operacao_dia IS NOT NULL"),
         ),
     )
 
@@ -301,12 +253,6 @@ class MissaoContextoORM(Base):
         ForeignKey("usuarios.usuario_id", ondelete="SET NULL"),
         nullable=True,
     )
-    operacao_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("operacoes.operacao_id", ondelete="SET NULL"),
-        nullable=True,
-    )
-    operacao_dia: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 class AuditoriaEventoORM(Base):

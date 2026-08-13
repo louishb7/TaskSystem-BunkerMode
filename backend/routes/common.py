@@ -14,8 +14,6 @@ from backend.schemas import (
     ObjetivoProgressoPayload,
     ObjetivoStatusPayload,
     ObjetivoUpdatePayload,
-    OperacaoCreatePayload,
-    OperacaoMaterializarPayload,
     PlanningWindowPayload,
     RevisaoJustificativaPayload,
     SessionModePayload,
@@ -38,7 +36,6 @@ from backend.core.exceptions import (
 )
 from backend.services.missao_service import MissaoService
 from backend.services.objetivo_service import ObjetivoService
-from backend.services.operacao_service import OperacaoService
 from backend.services.operational_day import parse_iso_date
 from backend.services.relatorio_service import RelatorioService
 from backend.services.revisao_service import RevisaoService
@@ -75,12 +72,6 @@ def get_revisao_service(
     repositorio: RepositorioPostgres = Depends(get_repositorio),
 ) -> RevisaoService:
     return RevisaoService(repositorio)
-
-
-def get_operacao_service(
-    repositorio: RepositorioPostgres = Depends(get_repositorio),
-) -> OperacaoService:
-    return OperacaoService(repositorio)
 
 
 def get_sonho_service(
@@ -166,8 +157,6 @@ __all__ = [
     "ObjetivoProgressoPayload",
     "ObjetivoStatusPayload",
     "ObjetivoUpdatePayload",
-    "OperacaoCreatePayload",
-    "OperacaoMaterializarPayload",
     "PlanningWindowPayload",
     "RevisaoJustificativaPayload",
     "SessionModePayload",
@@ -186,7 +175,6 @@ __all__ = [
     "AuthService",
     "MissaoService",
     "ObjetivoService",
-    "OperacaoService",
     "RelatorioService",
     "RevisaoService",
     "SonhoService",
@@ -195,7 +183,6 @@ __all__ = [
     "get_missao_service",
     "get_relatorio_service",
     "get_revisao_service",
-    "get_operacao_service",
     "get_sonho_service",
     "get_objetivo_service",
     "get_current_user",

@@ -2,7 +2,6 @@ from datetime import datetime
 
 from backend.services.missao_service import MissaoService
 from backend.services.objetivo_service import ObjetivoService
-from backend.services.operacao_service import OperacaoService
 from backend.services.sonho_service import SonhoService
 
 
@@ -17,9 +16,7 @@ class MontanhaService:
         sonho_service = SonhoService(self.repositorio, now_provider=self._now)
         objetivo_service = ObjetivoService(self.repositorio, now_provider=self._now)
         missao_service = MissaoService(self.repositorio, now_provider=self._now)
-        operacao_service = OperacaoService(self.repositorio, now_provider=self._now)
 
-        operacao_service.materializar_dia_operacional(usuario=usuario)
         missoes = missao_service.listar_missoes(usuario=usuario)
         missoes_do_dia = missao_service.listar_missoes_do_dia_operacional(usuario=usuario)
 

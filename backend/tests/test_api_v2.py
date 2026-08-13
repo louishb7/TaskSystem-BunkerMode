@@ -23,13 +23,6 @@ from backend.routes.missoes import (
     remover_missao,
     revisar_justificativa,
 )
-from backend.routes.operacoes import (
-    cancelar_operacao,
-    criar_operacao,
-    encerrar_operacao,
-    listar_operacoes,
-    materializar_operacoes,
-)
 from backend.routes.revisoes import (
     fechar_revisao,
     limpar_relatorio_falhas,
@@ -53,8 +46,6 @@ from backend.schemas import (
     MissaoCreatePayload,
     MissaoUpdatePayload,
     NomeGeneralPayload,
-    OperacaoCreatePayload,
-    OperacaoMaterializarPayload,
     PlanningWindowPayload,
     RegistroPayload,
     RevisaoJustificativaPayload,
@@ -66,7 +57,6 @@ from backend.schemas import (
 from backend.models.missao import MISSAO_INSTRUCAO_MAX_LENGTH, Missao, StatusMissao
 from backend.services.auth_service import AuthService
 from backend.services.missao_service import MissaoService
-from backend.services.operacao_service import OperacaoService
 from backend.services.relatorio_service import RelatorioService
 from backend.services.revisao_service import RevisaoService
 
@@ -81,11 +71,9 @@ class RepositorioV2Fake:
         self.contextos = {}
         self.auditoria = []
         self.revisoes = []
-        self.operacoes = []
         self.proximo_missao_id = 1
         self.proximo_usuario_id = 1
         self.proximo_evento_id = 1
-        self.proximo_operacao_id = 1
         self.current_date = DATA_TESTE.date()
 
     def carregar_dados(self):
@@ -176,18 +164,11 @@ class RepositorioV2Fake:
         if usuario is not None:
             usuario.registrar_uso_emergencia_general(local_date)
 
-    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id, operacao_id=None, operacao_dia=None):
+    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id):
         self.contextos[missao_id] = {
             "criada_por_id": criada_por_id,
             "responsavel_id": responsavel_id,
-            "operacao_id": operacao_id,
-            "operacao_dia": operacao_dia,
         }
-        missao = self.buscar_por_id(missao_id)
-        if missao is not None and operacao_id is not None:
-            operacao = self.buscar_operacao_por_id(operacao_id)
-            missao.operacao_id = operacao_id
-            missao.operacao_nome = None if operacao is None else operacao.nome
 
     def buscar_contexto_missao(self, missao_id):
         return self.contextos.get(missao_id)
@@ -216,82 +197,6 @@ class RepositorioV2Fake:
     def salvar_revisao_semanal(self, revisao):
         revisao.atualizar_revisao_id(len(self.revisoes) + 1)
         self.revisoes.append(revisao)
-
-    def adicionar_operacao(self, operacao):
-        operacao.atualizar_operacao_id(self.proximo_operacao_id)
-        self.proximo_operacao_id += 1
-        self.operacoes.append(operacao)
-
-    def listar_operacoes_por_usuario(self, usuario_id):
-        return [operacao for operacao in self.operacoes if operacao.usuario_id == usuario_id]
-
-    def buscar_operacao_por_id(self, operacao_id):
-        for operacao in self.operacoes:
-            if operacao.operacao_id == operacao_id:
-                return operacao
-        return None
-
-    def atualizar_operacao(self, operacao_atualizada):
-        for indice, operacao in enumerate(self.operacoes):
-            if operacao.operacao_id == operacao_atualizada.operacao_id:
-                self.operacoes[indice] = operacao_atualizada
-                return
-
-    def remover_operacao(self, operacao_id, usuario_id):
-        missao_ids = [
-            missao.missao_id
-            for missao in self.missoes
-            if self.contextos.get(missao.missao_id, {}).get("operacao_id") == operacao_id
-            and (missao.due_date is None or missao.due_date >= self.current_date)
-        ]
-        self.operacoes = [
-            operacao
-            for operacao in self.operacoes
-            if not (operacao.operacao_id == operacao_id and operacao.usuario_id == usuario_id)
-        ]
-        self.missoes = [missao for missao in self.missoes if missao.missao_id not in missao_ids]
-        for missao_id in missao_ids:
-            self.contextos.pop(missao_id, None)
-        for missao_id, contexto in self.contextos.items():
-            if contexto.get("operacao_id") == operacao_id:
-                contexto["operacao_id"] = None
-                contexto["operacao_dia"] = None
-                missao = self.buscar_por_id(missao_id)
-                if missao is not None:
-                    missao.operacao_id = None
-                    missao.operacao_nome = None
-        self.auditoria = [evento for evento in self.auditoria if evento.missao_id not in missao_ids]
-
-    def buscar_missao_de_operacao_por_data(self, operacao_id, prazo):
-        for missao in self.missoes:
-            contexto = self.contextos.get(missao.missao_id, {})
-            if (
-                contexto.get("operacao_id") == operacao_id
-                and (contexto.get("operacao_dia") == prazo or missao.due_date == prazo)
-            ):
-                return missao
-        return None
-
-    def listar_missoes_por_operacao(self, operacao_id):
-        return [
-            missao
-            for missao in self.missoes
-            if self.contextos.get(missao.missao_id, {}).get("operacao_id") == operacao_id
-        ]
-
-    def criar_missao_de_operacao_se_ausente(self, missao, criada_por_id, responsavel_id, operacao_id, operacao_dia):
-        if self.buscar_missao_de_operacao_por_data(operacao_id, operacao_dia) is not None:
-            return None
-        self.adicionar_missao(missao)
-        self.salvar_contexto_missao(
-            missao.missao_id,
-            criada_por_id,
-            responsavel_id,
-            operacao_id=operacao_id,
-            operacao_dia=operacao_dia,
-        )
-        return missao
-
 
 def preparar_ambiente():
     repo = RepositorioV2Fake()
@@ -478,68 +383,8 @@ def test_soldado_nao_conclui_missao_vencida_apos_corte_operacional():
     assert missoes.buscar_por_id(1).failed_at is not None
 
 
-def test_quadro_soldado_nao_reconsulta_cada_operacao_ja_materializada():
-    repo, auth, missoes, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=missoes._now_provider)
-    for indice in range(5):
-        criar_operacao(
-            OperacaoCreatePayload(
-                nome=f"Operação {indice}",
-                start_date="24-04-2026",
-                end_date="24-04-2026",
-                weekdays=[4],
-                ordem_titulo=f"Ordem {indice}",
-                ordem_instrucao="Executar",
-            ),
-            usuario=usuario,
-            operacao_service=operacoes,
-        )
-    atualizar_modo_sessao(
-        SessionModePayload(mode="soldier"),
-        usuario=usuario,
-        auth_service=auth,
-    )
-    obter_quadro_soldado(
-        usuario=usuario,
-        missao_service=missoes,
-        operacao_service=operacoes,
-    )
-
-    chamadas = {"bulk": 0, "unitaria": 0}
-    buscar_original = repo.buscar_missao_de_operacao_por_data
-
-    def listar_chaves_missoes_de_operacoes(operacao_ids, dias):
-        chamadas["bulk"] += 1
-        chaves = set()
-        for missao_id, contexto in repo.contextos.items():
-            operacao_id = contexto.get("operacao_id")
-            if operacao_id not in operacao_ids:
-                continue
-            missao = repo.buscar_por_id(missao_id)
-            dia = contexto.get("operacao_dia") or missao.due_date
-            if dia in dias:
-                chaves.add((operacao_id, dia))
-        return chaves
-
-    def buscar_missao_de_operacao_por_data(operacao_id, prazo):
-        chamadas["unitaria"] += 1
-        return buscar_original(operacao_id, prazo)
-
-    repo.listar_chaves_missoes_de_operacoes = listar_chaves_missoes_de_operacoes
-    repo.buscar_missao_de_operacao_por_data = buscar_missao_de_operacao_por_data
-
-    obter_quadro_soldado(
-        usuario=usuario,
-        missao_service=missoes,
-        operacao_service=operacoes,
-    )
-
-    assert chamadas == {"bulk": 1, "unitaria": 0}
-
-
 def test_endpoints_legados_do_soldado_reutilizam_um_quadro_por_request():
     repo, auth, missoes, _, usuario_dict, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=missoes._now_provider)
     criar_missao(
         MissaoCreatePayload(
             titulo="Ordem do turno",
@@ -569,17 +414,14 @@ def test_endpoints_legados_do_soldado_reutilizam_um_quadro_por_request():
     listar_missoes_operacionais(
         usuario=usuario,
         missao_service=missoes,
-        operacao_service=operacoes,
     )
     listar_missoes_do_dia_operacional(
         usuario=usuario,
         missao_service=missoes,
-        operacao_service=operacoes,
     )
     obter_turno_operacional(
         usuario=usuario,
         missao_service=missoes,
-        operacao_service=operacoes,
     )
 
     assert chamadas == {"quadro": 3}
@@ -1574,148 +1416,6 @@ def test_revisao_general_bloqueada_no_modo_soldado():
         raise AssertionError("Revisão do General deveria retornar 403 no modo Soldado.")
 
 
-def test_operacao_materializa_ordem_do_dia_sem_duplicar_e_encerramento_bloqueia_novas():
-    repo, _, missoes, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-
-    operacao = criar_operacao(
-        OperacaoCreatePayload(
-            nome="Reconstrução Física",
-            descricao="Treino de base.",
-            start_date="2026-04-20",
-            end_date="2026-05-08",
-            weekdays=[4],
-            ordem_titulo="Treinar por 45 minutos",
-            ordem_instrucao=None,
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    primeira = materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    segunda = materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    quadro = listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)
-    historico_operacoes = listar_operacoes(usuario=usuario, operacao_service=operacoes)
-
-    assert operacao["nome"] == "Reconstrução Física"
-    assert historico_operacoes[0]["id"] == operacao["id"]
-    assert primeira["generated"] == 1
-    assert segunda["generated"] == 0
-    assert len(quadro) == 1
-    assert quadro[0]["operacao_id"] == operacao["id"]
-    assert quadro[0]["operacao_nome"] == "Reconstrução Física"
-    assert quadro[0]["is_pinned"] is False
-    assert quadro[0]["permissions"]["can_edit"] is False
-    assert quadro[0]["permissions"]["can_delete"] is False
-
-    usuario.definir_modo("soldier")
-    soldado = listar_missoes_operacionais(
-        usuario=usuario,
-        missao_service=missoes,
-        operacao_service=operacoes,
-    )
-    assert [missao["titulo"] for missao in soldado] == ["Treinar por 45 minutos"]
-
-    usuario.definir_modo("general")
-    operacoes_pos_periodo = OperacaoService(
-        repo,
-        now_provider=lambda: datetime(2026, 5, 9, 10, 0, 0),
-    )
-    encerrada = encerrar_operacao(
-        operacao["id"],
-        usuario=usuario,
-        operacao_service=operacoes_pos_periodo,
-    )
-    nova = materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-05-01", end_date="2026-05-01"),
-        usuario=usuario,
-        operacao_service=operacoes_pos_periodo,
-    )
-
-    assert encerrada["status"] == "encerrada"
-    assert nova["generated"] == 0
-
-
-def test_operacao_encerrada_lista_metricas_reais_de_execucao():
-    repo, _, missoes, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-
-    operacao = criar_operacao(
-        OperacaoCreatePayload(
-            nome="Reconstrução Física",
-            start_date="2026-04-20",
-            end_date="2026-04-24",
-            weekdays=[4],
-            ordem_titulo="Treinar por 45 minutos",
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    ordem = listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)[0]
-
-    usuario.definir_modo("soldier")
-    concluir_missao(ordem["id"], usuario=usuario, missao_service=missoes)
-    usuario.definir_modo("general")
-
-    operacoes_pos_periodo = OperacaoService(
-        repo,
-        now_provider=lambda: datetime(2026, 4, 25, 10, 0, 0),
-    )
-    encerrar_operacao(operacao["id"], usuario=usuario, operacao_service=operacoes_pos_periodo)
-
-    historico = listar_operacoes(usuario=usuario, operacao_service=operacoes_pos_periodo)
-
-    assert historico[0]["status"] == "encerrada"
-    assert historico[0]["metrics"] == {
-        "total_missions": 1,
-        "completed_missions": 1,
-        "failed_missions": 0,
-        "completion_rate": 100.0,
-    }
-
-
-def test_operacao_cancelada_remove_ordens_atuais_e_preserva_historico():
-    repo, _, missoes, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-    operacao = criar_operacao(
-        OperacaoCreatePayload(
-            nome="Criar disciplina",
-            start_date="2026-04-23",
-            end_date="2026-04-27",
-            weekdays=[0, 3, 4],
-            ordem_titulo="Executar bloco de disciplina",
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-04-23", end_date="2026-04-27"),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-
-    assert len(listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)) == 2
-
-    cancelar_operacao(operacao["id"], usuario=usuario, operacao_service=operacoes)
-
-    missoes_restantes = listar_missoes(usuario=usuario, missao_service=missoes, operacao_service=operacoes)
-
-    assert listar_operacoes(usuario=usuario, operacao_service=operacoes) == []
-    assert len(missoes_restantes) == 0
-
-
 def test_soldado_migra_para_dia_atual_antes_das_quatro_sem_pendencias_anteriores():
     repo, _, missoes, _, _, usuario = preparar_ambiente()
     criar_missao(
@@ -1729,17 +1429,13 @@ def test_soldado_migra_para_dia_atual_antes_das_quatro_sem_pendencias_anteriores
         today_provider=lambda: datetime(2026, 4, 25).date(),
         now_provider=lambda: datetime(2026, 4, 25, 2, 0, 0),
     )
-    operacoes_madrugada = OperacaoService(repo, now_provider=lambda: datetime(2026, 4, 25, 2, 0, 0))
-
     estado = obter_turno_operacional(
         usuario=usuario,
         missao_service=missoes_madrugada,
-        operacao_service=operacoes_madrugada,
     )
     cacada = listar_missoes_do_dia_operacional(
         usuario=usuario,
         missao_service=missoes_madrugada,
-        operacao_service=operacoes_madrugada,
     )
 
     assert estado["active_date_label"] == "2026-04-25"
@@ -1767,37 +1463,15 @@ def test_quadro_soldado_retorna_turno_acoes_e_progresso_em_uma_chamada():
         today_provider=lambda: agora.date(),
         now_provider=lambda: agora,
     )
-    operacoes_madrugada = OperacaoService(repo, now_provider=lambda: agora)
-
     quadro = obter_quadro_soldado(
         usuario=usuario,
         missao_service=missoes_madrugada,
-        operacao_service=operacoes_madrugada,
     )
 
     assert quadro["turn"]["active_date_label"] == "2026-04-24"
     assert quadro["turn"]["requires_decision"] is True
     assert [missao["titulo"] for missao in quadro["missions"]] == ["Pendente de sexta"]
     assert [missao["titulo"] for missao in quadro["daily_missions"]] == ["Pendente de sexta"]
-
-
-def test_materializacao_do_turno_soldado_lista_operacoes_uma_vez_antes_do_corte():
-    repo, _, _, _, _, usuario = preparar_ambiente()
-    chamadas = {"listar_operacoes": 0}
-    listar_original = repo.listar_operacoes_por_usuario
-
-    def listar_operacoes_por_usuario(usuario_id):
-        chamadas["listar_operacoes"] += 1
-        return listar_original(usuario_id)
-
-    repo.listar_operacoes_por_usuario = listar_operacoes_por_usuario
-    usuario.definir_modo("soldier")
-    agora = datetime(2026, 4, 25, 2, 0, 0)
-    operacoes_madrugada = OperacaoService(repo, now_provider=lambda: agora)
-
-    operacoes_madrugada.materializar_turno_soldado(usuario=usuario)
-
-    assert chamadas == {"listar_operacoes": 1}
 
 
 def test_soldado_mostra_transicao_com_pendencias_e_pode_encerrar_ciclo_anterior():
@@ -1819,17 +1493,13 @@ def test_soldado_mostra_transicao_com_pendencias_e_pode_encerrar_ciclo_anterior(
         today_provider=lambda: agora.date(),
         now_provider=lambda: agora,
     )
-    operacoes_madrugada = OperacaoService(repo, now_provider=lambda: agora)
-
     estado = obter_turno_operacional(
         usuario=usuario,
         missao_service=missoes_madrugada,
-        operacao_service=operacoes_madrugada,
     )
     ciclo_anterior = listar_missoes_do_dia_operacional(
         usuario=usuario,
         missao_service=missoes_madrugada,
-        operacao_service=operacoes_madrugada,
     )
 
     assert estado["active_date_label"] == "2026-04-24"
@@ -1840,12 +1510,10 @@ def test_soldado_mostra_transicao_com_pendencias_e_pode_encerrar_ciclo_anterior(
     estado_pos_encerramento = encerrar_pendencias_turno_operacional(
         usuario=usuario,
         missao_service=missoes_madrugada,
-        operacao_service=operacoes_madrugada,
     )
     nova_cacada = listar_missoes_do_dia_operacional(
         usuario=usuario,
         missao_service=missoes_madrugada,
-        operacao_service=operacoes_madrugada,
     )
 
     assert estado_pos_encerramento["active_date_label"] == "2026-04-25"
@@ -1860,250 +1528,6 @@ def test_soldado_mostra_transicao_com_pendencias_e_pode_encerrar_ciclo_anterior(
         end_date="2026-04-26",
     )
     assert relatorio["failed_missions"] == 1
-
-
-def test_operacao_nao_encerra_antes_da_data_final():
-    repo, _, _, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-    operacao = criar_operacao(
-        OperacaoCreatePayload(
-            nome="Criar disciplina",
-            start_date="2026-04-20",
-            end_date="2026-04-30",
-            weekdays=[0, 1, 2, 3, 4],
-            ordem_titulo="Executar bloco de disciplina",
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-
-    try:
-        encerrar_operacao(operacao["id"], usuario=usuario, operacao_service=operacoes)
-    except HTTPException as erro:
-        assert erro.status_code == 400
-        assert "período registrado" in erro.detail
-    else:
-        raise AssertionError("Operação dentro do período não deveria ser encerrada.")
-
-    historico = listar_operacoes(usuario=usuario, operacao_service=operacoes)
-
-    assert historico[0]["status"] == "ativa"
-
-
-def test_operacao_encerrada_indevidamente_e_reativada_ao_listar():
-    repo, _, _, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-    operacao = criar_operacao(
-        OperacaoCreatePayload(
-            nome="Criar disciplina",
-            start_date="2026-04-20",
-            end_date="2026-04-30",
-            weekdays=[4],
-            ordem_titulo="Executar disciplina",
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    persistida = repo.buscar_operacao_por_id(operacao["id"])
-    persistida.encerrar()
-    repo.atualizar_operacao(persistida)
-
-    historico = listar_operacoes(usuario=usuario, operacao_service=operacoes)
-
-    assert historico[0]["status"] == "ativa"
-    assert repo.buscar_operacao_por_id(operacao["id"]).status == "ativa"
-
-
-def test_operacao_materializa_sem_impedir_dia_off_manual():
-    repo, _, _, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-    criar_operacao(
-        OperacaoCreatePayload(
-            nome="Treino",
-            start_date="2026-04-20",
-            end_date="2026-04-26",
-            weekdays=[4],
-            ordem_titulo="Treinar",
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-
-    gerada = materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    duplicada = materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-
-    assert gerada["generated"] == 1
-    assert duplicada["generated"] == 0
-
-
-def test_operacao_bloqueada_no_modo_soldado():
-    repo, _, _, _, _, usuario = preparar_ambiente()
-    usuario.definir_modo("soldier")
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-
-    try:
-        criar_operacao(
-            OperacaoCreatePayload(
-                nome="Base Financeira",
-                start_date="2026-04-20",
-                end_date="2026-04-30",
-                weekdays=[0],
-                ordem_titulo="Revisar orçamento",
-            ),
-            usuario=usuario,
-            operacao_service=operacoes,
-        )
-    except HTTPException as erro:
-        assert erro.status_code == 403
-    else:
-        raise AssertionError("Operação não deveria ser criada no modo Soldado.")
-
-
-def test_operacao_nao_materializa_fora_do_periodo_ou_encerrada():
-    repo, _, _, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-
-    futura = criar_operacao(
-        OperacaoCreatePayload(
-            nome="Começa amanhã",
-            start_date="2026-04-25",
-            end_date="2026-04-30",
-            weekdays=[4],
-            ordem_titulo="Executar amanhã",
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    encerrada = criar_operacao(
-        OperacaoCreatePayload(
-            nome="Já terminou",
-            start_date="2026-04-01",
-            end_date="2026-04-23",
-            weekdays=[4],
-            ordem_titulo="Não deve aparecer",
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    ativa = criar_operacao(
-        OperacaoCreatePayload(
-            nome="Encerrada manualmente",
-            start_date="2026-04-20",
-            end_date="2026-04-30",
-            weekdays=[4],
-            ordem_titulo="Também não deve aparecer",
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    operacoes_pos_periodo = OperacaoService(
-        repo,
-        now_provider=lambda: datetime(2026, 5, 1, 10, 0, 0),
-    )
-    encerrar_operacao(ativa["id"], usuario=usuario, operacao_service=operacoes_pos_periodo)
-
-    resultado = materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
-        usuario=usuario,
-        operacao_service=operacoes_pos_periodo,
-    )
-
-    assert futura["status"] == "ativa"
-    assert encerrada["status"] == "ativa"
-    assert resultado["generated"] == 0
-    assert repo.missoes == []
-
-
-def test_operacao_valida_payloads_invalidos_sem_exception_crua():
-    repo, _, _, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-
-    casos = [
-        OperacaoCreatePayload(
-            nome="Datas invertidas",
-            start_date="2026-04-30",
-            end_date="2026-04-20",
-            weekdays=[0],
-            ordem_titulo="Falhar",
-        ),
-        OperacaoCreatePayload(
-            nome="Dia inválido",
-            start_date="2026-04-20",
-            end_date="2026-04-30",
-            weekdays=[7],
-            ordem_titulo="Falhar",
-        ),
-    ]
-
-    for payload in casos:
-        try:
-            criar_operacao(payload, usuario=usuario, operacao_service=operacoes)
-        except HTTPException as erro:
-            assert erro.status_code == 400
-            assert erro.detail
-        else:
-            raise AssertionError("Payload inválido deveria retornar HTTP 400.")
-
-    try:
-        materializar_operacoes(
-            OperacaoMaterializarPayload(start_date="2026-01-01", end_date="2026-04-30"),
-            usuario=usuario,
-            operacao_service=operacoes,
-        )
-    except HTTPException as erro:
-        assert erro.status_code == 400
-        assert "limitada" in erro.detail
-    else:
-        raise AssertionError("Período gigante deveria retornar HTTP 400.")
-
-
-def test_operacao_fluxo_soldado_general_nao_deixa_active_mode_fantasma():
-    repo, _, missoes, _, _, usuario = preparar_ambiente()
-    operacoes = OperacaoService(repo, now_provider=lambda: DATA_TESTE)
-
-    criar_operacao(
-        OperacaoCreatePayload(
-            nome="Reconstrução Física",
-            start_date="2026-04-20",
-            end_date="2026-04-30",
-            weekdays=[4],
-            ordem_titulo="Treinar por 45 minutos",
-        ),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-    materializar_operacoes(
-        OperacaoMaterializarPayload(start_date="2026-04-24", end_date="2026-04-24"),
-        usuario=usuario,
-        operacao_service=operacoes,
-    )
-
-    usuario.definir_modo("soldier")
-    ordens_soldado = listar_missoes_operacionais(
-        usuario=usuario,
-        missao_service=missoes,
-        operacao_service=operacoes,
-    )
-    concluida = concluir_missao(ordens_soldado[0]["id"], usuario=usuario, missao_service=missoes)
-
-    usuario.definir_modo("general")
-    manual = criar_missao(
-        MissaoCreatePayload(titulo="Ordem manual pós-execução", prazo="24-04-2026"),
-        usuario=usuario,
-        missao_service=missoes,
-    )
-
-    assert concluida["status_code"] == "CONCLUIDA"
-    assert manual["titulo"] == "Ordem manual pós-execução"
-    assert usuario.active_mode == "general"
 
 
 def test_relatorio_semanal_retorna_400_para_intervalo_invertido():

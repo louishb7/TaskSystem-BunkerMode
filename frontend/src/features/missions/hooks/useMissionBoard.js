@@ -29,9 +29,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
   const [operationalTurnAcknowledged, setOperationalTurnAcknowledged] = useState(false)
   const [reviewState, setReviewState] = useState(null)
   const [weeklyReviews, setWeeklyReviews] = useState([])
-  const [operations, setOperations] = useState([])
-  const [operationLoading, setOperationLoading] = useState(false)
-  const [operationStatus, setOperationStatus] = useState(emptyStatus)
   const [missionLoading, setMissionLoading] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [reviewLoadingId, setReviewLoadingId] = useState(null)
@@ -42,7 +39,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
   const [status, setStatus] = useState(emptyStatus)
   const [formStatus, setFormStatus] = useState(emptyStatus)
   const loadRequestRef = useRef(0)
-  const materializingOperationsRef = useRef(new Set())
 
   const actionMissions = useMemo(() => getActionMissions(missions), [missions])
   const dailyMissions = useMemo(
@@ -73,7 +69,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
         setHistoricalMissions([])
         setReviewState(null)
         setWeeklyReviews([])
-        setOperations([])
         setStatus({
           type: "error",
           message: getErrorMessage(
@@ -92,33 +87,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
       )
       setReviewState(result.data?.review_state || null)
       setWeeklyReviews(Array.isArray(result.data?.weekly_reviews) ? result.data.weekly_reviews : [])
-      setOperations(Array.isArray(result.data?.operations) ? result.data.operations : [])
-      return true
-    },
-    [onUnauthorized, token]
-  )
-
-  const refreshMissionsOnly = useCallback(
-    async (successMessage = "", requestId = loadRequestRef.current) => {
-      if (!token) {
-        return false
-      }
-      const result = await api.listMissions(token)
-      if (requestId !== loadRequestRef.current) {
-        return false
-      }
-      if (onUnauthorized(result)) {
-        return false
-      }
-      if (!result.ok) {
-        setStatus({
-          type: "error",
-          message: getErrorMessage(result, "Não foi possível carregar ordens."),
-        })
-        return false
-      }
-      setMissions(result.data)
-      setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus)
       return true
     },
     [onUnauthorized, token]
@@ -179,8 +147,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
       setRegisteredOutcomeMissions([])
       setReviewState(null)
       setWeeklyReviews([])
-      setOperations([])
-      setOperationStatus(emptyStatus)
       setOperationalTurn(null)
       const result = await api.getSoldierBoard(token)
       if (requestId !== loadRequestRef.current) {
@@ -226,8 +192,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
       setOperationalTurnAcknowledged(false)
       setReviewState(null)
       setWeeklyReviews([])
-      setOperations([])
-      setOperationStatus(emptyStatus)
       setStatus(emptyStatus)
       setFormStatus(emptyStatus)
       return
@@ -274,123 +238,6 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
     setOperationalTurn(result.data)
     setOperationalTurnAcknowledged(false)
     await loadSoldierBoard("Ciclo anterior encerrado.")
-    return true
-  }
-
-  const materializeOperations = useCallback(
-    async (payload) => {
-      if (!token) {
-        return false
-      }
-      const key = `${payload?.start_date || ""}:${payload?.end_date || ""}`
-      if (materializingOperationsRef.current.has(key)) {
-        return true
-      }
-
-      materializingOperationsRef.current.add(key)
-      const requestId = loadRequestRef.current
-      try {
-        const result = await api.materializeOperations(token, payload)
-        if (requestId !== loadRequestRef.current) {
-          return false
-        }
-        if (onUnauthorized(result)) {
-          return false
-        }
-        if (!result.ok) {
-          setStatus({
-            type: "error",
-            message: getErrorMessage(result, "Não foi possível preparar as ordens da operação."),
-          })
-          return false
-        }
-        const generated = Number(result.data?.generated || 0)
-        if (generated > 0) {
-          await refreshMissionsOnly("", requestId)
-        }
-        return true
-      } finally {
-        materializingOperationsRef.current.delete(key)
-      }
-    },
-    [onUnauthorized, refreshMissionsOnly, token]
-  )
-
-  async function createOperation(payload) {
-    if (operationLoading) {
-      return false
-    }
-    setOperationLoading(true)
-    setOperationStatus(emptyStatus)
-    const result = await api.createOperation(token, payload)
-    setOperationLoading(false)
-
-    if (onUnauthorized(result)) {
-      return false
-    }
-
-    if (!result.ok) {
-      setOperationStatus({
-        type: "error",
-        message: getErrorMessage(result, "Não foi possível registrar a operação."),
-      })
-      return false
-    }
-
-    await loadGeneralBoard("Operação registrada.")
-    setOperationStatus({ type: "success", message: "Operação registrada." })
-    return true
-  }
-
-  async function closeOperation(operationId) {
-    if (operationLoading) {
-      return false
-    }
-    setOperationLoading(true)
-    setOperationStatus(emptyStatus)
-    const result = await api.closeOperation(token, operationId)
-    setOperationLoading(false)
-
-    if (onUnauthorized(result)) {
-      return false
-    }
-
-    if (!result.ok) {
-      setOperationStatus({
-        type: "error",
-        message: getErrorMessage(result, "Não foi possível encerrar a operação."),
-      })
-      return false
-    }
-
-    await loadGeneralBoard("Operação encerrada.")
-    setOperationStatus({ type: "success", message: "Operação encerrada." })
-    return true
-  }
-
-  async function deleteOperation(operationId) {
-    if (operationLoading) {
-      return false
-    }
-    setOperationLoading(true)
-    setOperationStatus(emptyStatus)
-    const result = await api.deleteOperation(token, operationId)
-    setOperationLoading(false)
-
-    if (onUnauthorized(result)) {
-      return false
-    }
-
-    if (!result.ok) {
-      setOperationStatus({
-        type: "error",
-        message: getErrorMessage(result, "Não foi possível cancelar a operação."),
-      })
-      return false
-    }
-
-    await loadGeneralBoard("Operação cancelada.")
-    setOperationStatus({ type: "success", message: "Operação cancelada." })
     return true
   }
 
@@ -667,15 +514,12 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
     actionMissions,
     clearFailureReport,
     closeWeeklyReview,
-    closeOperation,
     closePreviousOperationalTurn,
     completeLoadingId,
     completeMission,
-    createOperation,
     createMission,
     continuePreviousOperationalTurn,
     dailyMissions,
-    deleteOperation,
     deleteMission,
     formLoading,
     formStatus,
@@ -683,12 +527,8 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
     justificationLoadingId,
     missionLoading,
     missions,
-    materializeOperations,
-    operationLoading,
-    operationStatus,
     operationalTurn,
     operationalTurnAcknowledged,
-    operations,
     pinLoadingId,
     refreshGeneralBoard: loadGeneralBoard,
     reopenLoadingId,

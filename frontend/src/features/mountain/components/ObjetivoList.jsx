@@ -67,13 +67,13 @@ export default function ObjetivoList({
   }
 
   return (
-    <section className="mountain-section isolated-objectives-section mountain-unlinked-ops">
+    <section className="mountain-section isolated-objectives-section mountain-unlinked-objectives">
       <div className="mountain-section-head">
         <div>
-          <p className="section-kicker">OPERAÇÕES SEM TOPO DEFINIDO</p>
+          <p className="section-kicker">OBJETIVOS SEM TOPO DEFINIDO</p>
           <h2>Objetivos fora da escalada principal</h2>
           <p className="muted">
-            Operações úteis podem existir sem Sonho, mas ficam fora da trilha estratégica principal.
+            Objetivos úteis podem existir sem Sonho, mas ficam fora da trilha estratégica principal.
           </p>
         </div>
         <button

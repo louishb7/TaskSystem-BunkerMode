@@ -114,7 +114,7 @@ function recurrenceWeekdays(value: unknown): string | null {
   if (Array.isArray(value) && value.length === 0) {
     return null
   }
-  throw new HttpException("Recorrência será migrada junto da etapa de Operações/Montanha.", HttpStatus.BAD_REQUEST)
+  throw new HttpException("Recorrência será migrada junto da etapa de Montanha.", HttpStatus.BAD_REQUEST)
 }
 
 function durationType(value: unknown): string | null {
@@ -136,9 +136,6 @@ export class MissionsService {
       where: {
         responsavel_id: user.usuario_id,
       },
-      include: {
-        operacoes: true,
-      },
     })
     const contextByMissionId = new Map(contexts.map((context) => [context.missao_id, context]))
     const missions = await this.prisma.missoes.findMany({
@@ -159,7 +156,7 @@ export class MissionsService {
 
     const recurrence = recurrenceWeekdays(payload.recurrence_weekdays)
     const duration = durationType(payload.duration_type)
-    unsupportedPhase5Field(payload.recurrence_end_date, "Recorrência será migrada junto da etapa de Operações/Montanha.")
+    unsupportedPhase5Field(payload.recurrence_end_date, "Recorrência será migrada junto da etapa de Montanha.")
 
     const objetivoId = optionalId(payload.objetivo_id, "Objetivo vinculado não encontrado.")
     const sonhoId = optionalId(payload.sonho_id, "Sonho vinculado não encontrado.")
@@ -228,9 +225,6 @@ export class MissionsService {
           missao_id: mission.missao_id,
           criada_por_id: user.usuario_id,
           responsavel_id: responsavelId,
-          operacao_id: null,
-          operacao_dia: null,
-          operacoes: null,
         },
       }
     })

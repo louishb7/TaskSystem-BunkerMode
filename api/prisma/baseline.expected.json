@@ -67,26 +67,10 @@
       "objetivo_id",
       "sonho_id"
     ],
-    "operacoes": [
-      "operacao_id",
-      "usuario_id",
-      "nome",
-      "descricao",
-      "start_date",
-      "end_date",
-      "weekdays",
-      "ordem_titulo",
-      "ordem_instrucao",
-      "is_pinned",
-      "status",
-      "created_at"
-    ],
     "missao_contextos": [
       "missao_id",
       "criada_por_id",
-      "responsavel_id",
-      "operacao_id",
-      "operacao_dia"
+      "responsavel_id"
     ],
     "auditoria_eventos": [
       "evento_id",
@@ -112,8 +96,7 @@
   },
   "indexes": [
     "idx_missoes_prazo",
-    "idx_missao_contextos_responsavel_id",
-    "idx_missao_contextos_operacao_dia"
+    "idx_missao_contextos_responsavel_id"
   ],
   "constraints": [
     "sonhos_tipo_check",

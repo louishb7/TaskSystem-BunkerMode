@@ -227,18 +227,12 @@ def test_orm_para_missao_preserva_instrucao_legada_acima_do_limite(monkeypatch):
         is_pinned=True,
         created_at=datetime(2026, 4, 1, 8, 0),
     )
-    contexto = MissaoContextoORM(
-        missao_id=1,
-        responsavel_id=3,
-        operacao_id=4,
-    )
+    contexto = MissaoContextoORM(missao_id=1, responsavel_id=3)
 
-    missao = repositorio._orm_para_missao(orm, contexto, "Operação Atlas")
+    missao = repositorio._orm_para_missao(orm, contexto)
 
     assert missao.instrucao == instrucao_legada
     assert missao.is_pinned is True
-    assert missao.operacao_id == 4
-    assert missao.operacao_nome == "Operação Atlas"
 
 
 def test_orm_para_usuario_reconstroi_campos_de_sessao(monkeypatch):

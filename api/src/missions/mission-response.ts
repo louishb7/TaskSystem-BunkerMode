@@ -39,8 +39,8 @@ export function missionPermissions(mission: MissionRecord, user: MissionUser): M
 
   return {
     can_complete: canExecute && pending,
-    can_edit: isGeneral && pending && mission.missao_contextos?.operacao_id == null,
-    can_delete: isGeneral && pending && mission.missao_contextos?.operacao_id == null,
+    can_edit: isGeneral && pending,
+    can_delete: isGeneral && pending,
     can_justify: false,
     can_fail: canExecute && pending,
     can_pin: canExecute && pending,
@@ -72,8 +72,6 @@ export function toMissionResponse(mission: MissionRecord, user: MissionUser): Mi
     soldier_excuse: mission.failure_reason,
     general_verdict: mission.general_verdict,
     user_id: mission.missao_contextos?.responsavel_id ?? null,
-    operacao_id: mission.missao_contextos?.operacao_id ?? null,
-    operacao_nome: mission.missao_contextos?.operacoes?.nome ?? null,
     objetivo_id: mission.objetivo_id,
     sonho_id: mission.sonho_id,
     recurrence_weekdays: recurrenceWeekdays(mission.recurrence_weekdays),

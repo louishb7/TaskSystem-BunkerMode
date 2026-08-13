@@ -1,6 +1,5 @@
 import React from "react"
 
-import operationsAsset from "../../../assets/bunkermode/operations/operacoes.png"
 import reviewAsset from "../../../assets/bunkermode/review/revisao-relatorio.png"
 import BrandSymbol from "../../../components/ui/BrandSymbol.jsx"
 
@@ -8,7 +7,6 @@ export default function CommandRail({
   generalName,
   onLogout,
   onOpenMountain,
-  onOpenOperations,
   onOpenReview,
   reviewCount,
 }) {
@@ -29,12 +27,6 @@ export default function CommandRail({
               ▲
             </span>
             A MONTANHA
-          </span>
-        </button>
-        <button className="button secondary" type="button" onClick={onOpenOperations}>
-          <span className="button-asset-label">
-            <img src={operationsAsset} alt="" />
-            OPERAÇÕES
           </span>
         </button>
         <button className="button secondary" type="button" onClick={onOpenReview}>

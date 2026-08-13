@@ -116,12 +116,10 @@ class RepositorioOwnershipFake:
         self.missao = missao
         self.missao_adicionada = missao
 
-    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id, operacao_id=None, operacao_dia=None):
+    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id):
         self.contexto = {
             "criada_por_id": criada_por_id,
             "responsavel_id": responsavel_id,
-            "operacao_id": operacao_id,
-            "operacao_dia": operacao_dia,
         }
 
     def remover_missao(self, missao_id):
@@ -199,12 +197,10 @@ class RepositorioFluxoFake:
                 return
         self.missoes.append(missao)
 
-    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id, operacao_id=None, operacao_dia=None):
+    def salvar_contexto_missao(self, missao_id, criada_por_id, responsavel_id):
         self.contextos[missao_id] = {
             "criada_por_id": criada_por_id,
             "responsavel_id": responsavel_id,
-            "operacao_id": operacao_id,
-            "operacao_dia": operacao_dia,
         }
 
     def remover_missao(self, missao_id):

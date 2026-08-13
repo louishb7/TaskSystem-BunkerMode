@@ -20,18 +20,7 @@ def criar_missao(
 def _listar_missoes_operacionais(
     usuario=Depends(get_current_user),
     missao_service: MissaoService = Depends(get_missao_service),
-    operacao_service: OperacaoService = Depends(get_operacao_service),
 ):
-    materializar = (
-        getattr(operacao_service, "materializar_turno_soldado", None)
-        if getattr(usuario, "active_mode", "general") == "soldier"
-        else getattr(operacao_service, "materializar_dia_operacional", None)
-    )
-    if callable(materializar):
-        try:
-            materializar(usuario=usuario)
-        except (PermissaoNegadaError, ValueError) as erro:
-            _raise_http_from_domain_error(erro)
     if getattr(usuario, "active_mode", "general") == "soldier":
         quadro = missao_service.quadro_turno_soldado(usuario=usuario)
         return missao_service.to_response_list(
@@ -49,12 +38,10 @@ def _listar_missoes_operacionais(
 def listar_missoes(
     usuario=Depends(get_current_user),
     missao_service: MissaoService = Depends(get_missao_service),
-    operacao_service: OperacaoService = Depends(get_operacao_service),
 ):
     return _listar_missoes_operacionais(
         usuario=usuario,
         missao_service=missao_service,
-        operacao_service=operacao_service,
     )
 
 
@@ -62,12 +49,10 @@ def listar_missoes(
 def listar_missoes_operacionais(
     usuario=Depends(get_current_user),
     missao_service: MissaoService = Depends(get_missao_service),
-    operacao_service: OperacaoService = Depends(get_operacao_service),
 ):
     return _listar_missoes_operacionais(
         usuario=usuario,
         missao_service=missao_service,
-        operacao_service=operacao_service,
     )
 
 
@@ -75,18 +60,7 @@ def listar_missoes_operacionais(
 def listar_missoes_do_dia_operacional(
     usuario=Depends(get_current_user),
     missao_service: MissaoService = Depends(get_missao_service),
-    operacao_service: OperacaoService = Depends(get_operacao_service),
 ):
-    materializar = (
-        getattr(operacao_service, "materializar_turno_soldado", None)
-        if getattr(usuario, "active_mode", "general") == "soldier"
-        else getattr(operacao_service, "materializar_dia_operacional", None)
-    )
-    if callable(materializar):
-        try:
-            materializar(usuario=usuario)
-        except (PermissaoNegadaError, ValueError) as erro:
-            _raise_http_from_domain_error(erro)
     if getattr(usuario, "active_mode", "general") == "soldier":
         quadro = missao_service.quadro_turno_soldado(usuario=usuario)
         return missao_service.to_response_list(
@@ -104,14 +78,7 @@ def listar_missoes_do_dia_operacional(
 def obter_turno_operacional(
     usuario=Depends(get_current_user),
     missao_service: MissaoService = Depends(get_missao_service),
-    operacao_service: OperacaoService = Depends(get_operacao_service),
 ):
-    materializar = getattr(operacao_service, "materializar_turno_soldado", None)
-    if callable(materializar):
-        try:
-            materializar(usuario=usuario)
-        except (PermissaoNegadaError, ValueError) as erro:
-            _raise_http_from_domain_error(erro)
     try:
         return missao_service.estado_turno_soldado(usuario=usuario)
     except (PermissaoNegadaError, ValueError) as erro:
@@ -122,14 +89,7 @@ def obter_turno_operacional(
 def obter_quadro_soldado(
     usuario=Depends(get_current_user),
     missao_service: MissaoService = Depends(get_missao_service),
-    operacao_service: OperacaoService = Depends(get_operacao_service),
 ):
-    materializar = getattr(operacao_service, "materializar_turno_soldado", None)
-    if callable(materializar):
-        try:
-            materializar(usuario=usuario)
-        except (PermissaoNegadaError, ValueError) as erro:
-            _raise_http_from_domain_error(erro)
     try:
         quadro = missao_service.quadro_turno_soldado(usuario=usuario)
     except (PermissaoNegadaError, ValueError) as erro:
@@ -153,14 +113,7 @@ def obter_quadro_soldado(
 def encerrar_pendencias_turno_operacional(
     usuario=Depends(get_current_user),
     missao_service: MissaoService = Depends(get_missao_service),
-    operacao_service: OperacaoService = Depends(get_operacao_service),
 ):
-    materializar = getattr(operacao_service, "materializar_turno_soldado", None)
-    if callable(materializar):
-        try:
-            materializar(usuario=usuario)
-        except (PermissaoNegadaError, ValueError) as erro:
-            _raise_http_from_domain_error(erro)
     try:
         return missao_service.encerrar_pendencias_do_ciclo_anterior(usuario=usuario)
     except (PermissaoNegadaError, ValueError) as erro:

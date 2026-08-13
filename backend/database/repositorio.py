@@ -5,7 +5,7 @@ import shlex
 from urllib.parse import quote_plus, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import and_, create_engine, delete, func, or_, select, text, update
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from backend.database.orm_models import (
@@ -13,7 +13,6 @@ from backend.database.orm_models import (
     MissaoContextoORM,
     MissaoORM,
     ObjetivoORM,
-    OperacaoORM,
     RevisaoSemanalORM,
     SonhoORM,
     UsuarioORM,
@@ -21,7 +20,6 @@ from backend.database.orm_models import (
 from backend.models.auditoria import EventoAuditoria
 from backend.models.missao import Missao
 from backend.models.objetivo import Objetivo
-from backend.models.operacao import Operacao
 from backend.models.revisao import RevisaoSemanal
 from backend.models.sonho import Sonho
 from backend.models.usuario import Usuario
@@ -158,7 +156,6 @@ class RepositorioPostgres:
         self,
         orm: MissaoORM,
         contexto: MissaoContextoORM | None = None,
-        operacao_nome: str | None = None,
     ) -> Missao:
         return Missao(
             missao_id=orm.missao_id,
@@ -174,8 +171,6 @@ class RepositorioPostgres:
             failure_reason=orm.failure_reason,
             soldier_excuse=orm.soldier_excuse,
             general_verdict=orm.general_verdict,
-            operacao_id=None if contexto is None else contexto.operacao_id,
-            operacao_nome=operacao_nome,
             objetivo_id=orm.objetivo_id,
             sonho_id=orm.sonho_id,
             recurrence_weekdays=_json_lista_ou_none(orm.recurrence_weekdays),
@@ -225,22 +220,6 @@ class RepositorioPostgres:
             observacao=orm.observacao,
         )
 
-    def _orm_para_operacao(self, orm: OperacaoORM) -> Operacao:
-        return Operacao(
-            operacao_id=orm.operacao_id,
-            usuario_id=orm.usuario_id,
-            nome=orm.nome,
-            descricao=orm.descricao,
-            start_date=orm.start_date,
-            end_date=orm.end_date,
-            weekdays=json.loads(orm.weekdays),
-            ordem_titulo=orm.ordem_titulo,
-            ordem_instrucao=orm.ordem_instrucao,
-            is_pinned=orm.is_pinned,
-            status=orm.status,
-            created_at=orm.created_at,
-        )
-
     def _orm_para_sonho(self, orm: SonhoORM) -> Sonho:
         return Sonho(
             sonho_id=orm.id,
@@ -274,14 +253,10 @@ class RepositorioPostgres:
 
     def _select_missoes_com_contexto(self):
         return (
-            select(MissaoORM, MissaoContextoORM, OperacaoORM.nome)
+            select(MissaoORM, MissaoContextoORM)
             .outerjoin(
                 MissaoContextoORM,
                 MissaoContextoORM.missao_id == MissaoORM.missao_id,
-            )
-            .outerjoin(
-                OperacaoORM,
-                OperacaoORM.operacao_id == MissaoContextoORM.operacao_id,
             )
         )
 
@@ -343,8 +318,8 @@ class RepositorioPostgres:
                     )
                 ).all()
                 return [
-                    self._orm_para_missao(missao, contexto, operacao_nome)
-                    for missao, contexto, operacao_nome in linhas
+                    self._orm_para_missao(missao, contexto)
+                    for missao, contexto in linhas
                 ]
         except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
@@ -360,8 +335,8 @@ class RepositorioPostgres:
                     .order_by(MissaoORM.prioridade, MissaoORM.missao_id)
                 ).all()
                 return [
-                    self._orm_para_missao(missao, contexto, operacao_nome)
-                    for missao, contexto, operacao_nome in linhas
+                    self._orm_para_missao(missao, contexto)
+                    for missao, contexto in linhas
                 ]
         except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
@@ -391,8 +366,8 @@ class RepositorioPostgres:
                     .order_by(MissaoORM.prioridade, MissaoORM.missao_id)
                 ).all()
                 return [
-                    self._orm_para_missao(missao, contexto, operacao_nome)
-                    for missao, contexto, operacao_nome in linhas
+                    self._orm_para_missao(missao, contexto)
+                    for missao, contexto in linhas
                 ]
         except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
@@ -409,8 +384,8 @@ class RepositorioPostgres:
                 ).first()
                 if linha is None:
                     return None
-                missao, contexto, operacao_nome = linha
-                return self._orm_para_missao(missao, contexto, operacao_nome)
+                missao, contexto = linha
+                return self._orm_para_missao(missao, contexto)
         except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar missão no banco de dados."
@@ -612,8 +587,6 @@ class RepositorioPostgres:
         missao_id: int,
         criada_por_id: int | None,
         responsavel_id: int | None,
-        operacao_id: int | None = None,
-        operacao_dia=None,
     ) -> None:
         try:
             with self._session() as session:
@@ -623,8 +596,6 @@ class RepositorioPostgres:
                     session.add(contexto)
                 contexto.criada_por_id = criada_por_id
                 contexto.responsavel_id = responsavel_id
-                contexto.operacao_id = operacao_id
-                contexto.operacao_dia = operacao_dia
         except SQLAlchemyError as erro:
             raise EscritaRepositorioError(
                 "Erro ao salvar contexto da missão no banco de dados."
@@ -639,271 +610,10 @@ class RepositorioPostgres:
                 return {
                     "criada_por_id": contexto.criada_por_id,
                     "responsavel_id": contexto.responsavel_id,
-                    "operacao_id": contexto.operacao_id,
-                    "operacao_dia": contexto.operacao_dia,
                 }
         except SQLAlchemyError as erro:
             raise LeituraRepositorioError(
                 "Erro ao buscar contexto da missão no banco de dados."
-            ) from erro
-
-    def adicionar_operacao(self, operacao: Operacao) -> None:
-        try:
-            with self._session() as session:
-                orm = OperacaoORM(
-                    usuario_id=operacao.usuario_id,
-                    nome=operacao.nome,
-                    descricao=operacao.descricao,
-                    start_date=operacao.start_date,
-                    end_date=operacao.end_date,
-                    weekdays=json.dumps(operacao.weekdays),
-                    ordem_titulo=operacao.ordem_titulo,
-                    ordem_instrucao=operacao.ordem_instrucao,
-                    is_pinned=operacao.is_pinned,
-                    status=operacao.status,
-                    created_at=operacao.created_at,
-                )
-                session.add(orm)
-                session.flush()
-                operacao.atualizar_operacao_id(orm.operacao_id)
-        except SQLAlchemyError as erro:
-            raise EscritaRepositorioError(
-                "Erro ao adicionar operação no banco de dados."
-            ) from erro
-
-    def listar_operacoes_por_usuario(self, usuario_id: int) -> list[Operacao]:
-        try:
-            with self._session() as session:
-                operacoes = session.execute(
-                    select(OperacaoORM)
-                    .where(OperacaoORM.usuario_id == usuario_id)
-                    .order_by(
-                        OperacaoORM.status.asc(),
-                        OperacaoORM.start_date.desc(),
-                        OperacaoORM.operacao_id.desc(),
-                    )
-                ).scalars()
-                return [self._orm_para_operacao(operacao) for operacao in operacoes]
-        except SQLAlchemyError as erro:
-            raise LeituraRepositorioError(
-                "Erro ao listar operações no banco de dados."
-            ) from erro
-
-    def buscar_operacao_por_id(self, operacao_id: int) -> Operacao | None:
-        try:
-            with self._session() as session:
-                orm = session.get(OperacaoORM, operacao_id)
-                return None if orm is None else self._orm_para_operacao(orm)
-        except SQLAlchemyError as erro:
-            raise LeituraRepositorioError(
-                "Erro ao buscar operação no banco de dados."
-            ) from erro
-
-    def atualizar_operacao(self, operacao: Operacao) -> None:
-        try:
-            with self._session() as session:
-                orm = session.get(OperacaoORM, operacao.operacao_id)
-                if orm is None or orm.usuario_id != operacao.usuario_id:
-                    raise EscritaRepositorioError(
-                        f"Operação {operacao.operacao_id} não encontrada para atualização."
-                    )
-                orm.nome = operacao.nome
-                orm.descricao = operacao.descricao
-                orm.start_date = operacao.start_date
-                orm.end_date = operacao.end_date
-                orm.weekdays = json.dumps(operacao.weekdays)
-                orm.ordem_titulo = operacao.ordem_titulo
-                orm.ordem_instrucao = operacao.ordem_instrucao
-                orm.is_pinned = operacao.is_pinned
-                orm.status = operacao.status
-        except ErroRepositorio:
-            raise
-        except SQLAlchemyError as erro:
-            raise EscritaRepositorioError(
-                "Erro ao atualizar operação no banco de dados."
-            ) from erro
-
-    def remover_operacao(self, operacao_id: int, usuario_id: int) -> None:
-        try:
-            with self._session() as session:
-                operacao = session.get(OperacaoORM, operacao_id)
-                if operacao is None or operacao.usuario_id != usuario_id:
-                    raise EscritaRepositorioError(
-                        f"Operação {operacao_id} não encontrada para remoção."
-                    )
-
-                missao_ids = list(
-                    session.execute(
-                        select(MissaoContextoORM.missao_id)
-                        .join(
-                            MissaoORM,
-                            MissaoORM.missao_id == MissaoContextoORM.missao_id,
-                        )
-                        .where(
-                            MissaoContextoORM.operacao_id == operacao_id,
-                            or_(
-                                MissaoORM.prazo.is_(None),
-                                MissaoORM.prazo >= func.current_date(),
-                            ),
-                        )
-                    ).scalars()
-                )
-                if missao_ids:
-                    session.execute(
-                        delete(AuditoriaEventoORM).where(
-                            AuditoriaEventoORM.missao_id.in_(missao_ids)
-                        )
-                    )
-                    session.execute(
-                        delete(MissaoContextoORM).where(
-                            MissaoContextoORM.missao_id.in_(missao_ids)
-                        )
-                    )
-                    session.execute(
-                        delete(MissaoORM).where(MissaoORM.missao_id.in_(missao_ids))
-                    )
-                session.execute(
-                    update(MissaoContextoORM)
-                    .where(MissaoContextoORM.operacao_id == operacao_id)
-                    .values(operacao_id=None, operacao_dia=None)
-                )
-                session.delete(operacao)
-        except ErroRepositorio:
-            raise
-        except SQLAlchemyError as erro:
-            raise EscritaRepositorioError(
-                "Erro ao remover operação no banco de dados."
-            ) from erro
-
-    def listar_missoes_por_operacao(self, operacao_id: int) -> list[Missao]:
-        try:
-            with self._session() as session:
-                linhas = session.execute(
-                    self._select_missoes_com_contexto()
-                    .where(MissaoContextoORM.operacao_id == operacao_id)
-                    .order_by(MissaoORM.prazo.asc(), MissaoORM.missao_id.asc())
-                ).all()
-                return [
-                    self._orm_para_missao(missao, contexto, operacao_nome)
-                    for missao, contexto, operacao_nome in linhas
-                ]
-        except SQLAlchemyError as erro:
-            raise LeituraRepositorioError(
-                "Erro ao listar ordens da operação no banco de dados."
-            ) from erro
-
-    def buscar_missao_de_operacao_por_data(self, operacao_id: int, prazo) -> Missao | None:
-        try:
-            with self._session() as session:
-                linha = session.execute(
-                    self._select_missoes_com_contexto()
-                    .where(
-                        MissaoContextoORM.operacao_id == operacao_id,
-                        or_(
-                            MissaoContextoORM.operacao_dia == prazo,
-                            MissaoORM.prazo == prazo,
-                        ),
-                    )
-                    .limit(1)
-                ).first()
-                if linha is None:
-                    return None
-                missao, contexto, operacao_nome = linha
-                return self._orm_para_missao(missao, contexto, operacao_nome)
-        except SQLAlchemyError as erro:
-            raise LeituraRepositorioError(
-                "Erro ao buscar ordem de operação no banco de dados."
-            ) from erro
-
-    def listar_chaves_missoes_de_operacoes(
-        self,
-        operacao_ids: list[int],
-        dias: list[date],
-    ) -> set[tuple[int, date]]:
-        operacao_ids_unicos = sorted(
-            {operacao_id for operacao_id in operacao_ids if operacao_id}
-        )
-        dias_unicos = sorted({dia for dia in dias if isinstance(dia, date)})
-        if not operacao_ids_unicos or not dias_unicos:
-            return set()
-
-        try:
-            with self._session() as session:
-                linhas = session.execute(
-                    select(
-                        MissaoContextoORM.operacao_id,
-                        MissaoContextoORM.operacao_dia,
-                        MissaoORM.prazo,
-                    )
-                    .join(
-                        MissaoORM,
-                        MissaoORM.missao_id == MissaoContextoORM.missao_id,
-                    )
-                    .where(
-                        MissaoContextoORM.operacao_id.in_(operacao_ids_unicos),
-                        or_(
-                            MissaoContextoORM.operacao_dia.in_(dias_unicos),
-                            MissaoORM.prazo.in_(dias_unicos),
-                        ),
-                    )
-                ).all()
-                return {
-                    (operacao_id, operacao_dia or prazo)
-                    for operacao_id, operacao_dia, prazo in linhas
-                    if operacao_id is not None and (operacao_dia or prazo) is not None
-                }
-        except SQLAlchemyError as erro:
-            raise LeituraRepositorioError(
-                "Erro ao listar ordens existentes de operações no banco de dados."
-            ) from erro
-
-    def criar_missao_de_operacao_se_ausente(
-        self,
-        missao: Missao,
-        criada_por_id: int,
-        responsavel_id: int,
-        operacao_id: int,
-        operacao_dia,
-    ) -> Missao | None:
-        try:
-            with self._session() as session:
-                existente = session.execute(
-                    select(MissaoORM)
-                    .join(
-                        MissaoContextoORM,
-                        MissaoContextoORM.missao_id == MissaoORM.missao_id,
-                    )
-                    .where(
-                        MissaoContextoORM.operacao_id == operacao_id,
-                        or_(
-                            MissaoContextoORM.operacao_dia == operacao_dia,
-                            MissaoORM.prazo == operacao_dia,
-                        ),
-                    )
-                    .limit(1)
-                ).scalar_one_or_none()
-                if existente is not None:
-                    return None
-
-                orm = self._mission_orm(missao)
-                session.add(orm)
-                session.flush()
-                session.add(
-                    MissaoContextoORM(
-                        missao_id=orm.missao_id,
-                        criada_por_id=criada_por_id,
-                        responsavel_id=responsavel_id,
-                        operacao_id=operacao_id,
-                        operacao_dia=operacao_dia,
-                    )
-                )
-                missao.atualizar_missao_id(orm.missao_id)
-                return missao
-        except IntegrityError:
-            return None
-        except SQLAlchemyError as erro:
-            raise EscritaRepositorioError(
-                "Erro ao criar ordem de operação no banco de dados."
             ) from erro
 
     def criar_sonho(self, sonho: Sonho) -> None:

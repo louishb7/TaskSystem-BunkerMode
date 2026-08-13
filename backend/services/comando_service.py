@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from backend.services.missao_service import MissaoService
-from backend.services.operacao_service import OperacaoService
 from backend.services.revisao_service import RevisaoService
 
 
@@ -15,7 +14,6 @@ class ComandoService:
     def obter_suporte_general(self, usuario) -> dict:
         missao_service = MissaoService(self.repositorio, now_provider=self._now)
         revisao_service = RevisaoService(self.repositorio, now_provider=self._now)
-        operacao_service = OperacaoService(self.repositorio, now_provider=self._now)
 
         return {
             "review_missions": missao_service.to_response_list(
@@ -28,7 +26,6 @@ class ComandoService:
             ),
             "review_state": revisao_service.obter_estado(usuario),
             "weekly_reviews": revisao_service.listar_revisoes(usuario),
-            "operations": operacao_service.listar_operacoes(usuario=usuario),
         }
 
     def _now(self):

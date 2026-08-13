@@ -101,11 +101,10 @@ export default function MissionCard({
   const canFail = can(mission, "can_fail")
   const completed = isCompleted(mission)
   const deadlineLabel = formatDeadline(mission?.prazo)
-  const operationName = mission?.operacao_nome
   const failed = String(mission?.status_code || "").startsWith("FALHA")
   const previousPending = mission?.is_previous_operational_pending === true
   const currentStatusText = statusText(mission)
-  const hasBadge = isPinned || operationName || currentStatusText || previousPending
+  const hasBadge = isPinned || currentStatusText || previousPending
 
   useEffect(() => {
     setDetailsOpen(false)
@@ -141,7 +140,6 @@ export default function MissionCard({
             {hasBadge && (
               <div className="mission-badge-row">
                 {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
-                {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
                 {previousPending && (
                   <span className="meta-tag warning">PENDÊNCIA DO DIA ANTERIOR</span>
                 )}
@@ -163,7 +161,6 @@ export default function MissionCard({
                 </button>
               )}
             </div>
-            {operationName && <p className="mission-origin">Operação: {operationName}</p>}
             {instruction && (
               <p
                 ref={instructionRef}
@@ -222,7 +219,6 @@ export default function MissionCard({
       <div className="mission-compact-head">
         <div className="mission-title-stack">
           <h3>{title}</h3>
-          {operationName && <p className="mission-origin">Operação: {operationName}</p>}
         </div>
         <div className="mission-head-actions">
           <button
@@ -240,7 +236,6 @@ export default function MissionCard({
 
       <div className="mission-badge-row mission-context-row">
         {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
-        {operationName && <span className="meta-tag operation">OPERAÇÃO</span>}
         {deadlineLabel !== "HOJE" && <span className="meta-tag">{deadlineLabel}</span>}
       </div>
 

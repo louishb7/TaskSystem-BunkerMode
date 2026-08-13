@@ -19,7 +19,6 @@ class RepositorioMontanhaAgregadaFake:
         self.objetivos = []
         self.missoes = []
         self.contextos = {}
-        self.operacoes_lidas = 0
 
     def listar_sonhos_por_usuario(self, usuario_id):
         return [sonho for sonho in self.sonhos if sonho.usuario_id == usuario_id]
@@ -34,10 +33,6 @@ class RepositorioMontanhaAgregadaFake:
             if contexto.get("responsavel_id") == responsavel_id
         }
         return [missao for missao in self.missoes if missao.missao_id in ids]
-
-    def listar_operacoes_por_usuario(self, usuario_id):
-        self.operacoes_lidas += 1
-        return []
 
     def buscar_objetivo_por_id(self, objetivo_id):
         for objetivo in self.objetivos:
@@ -93,7 +88,6 @@ def test_montanha_agregada_retorna_sonhos_objetivos_e_ordens_em_uma_leitura():
 
     payload = MontanhaService(repo, now_provider=lambda: INSTANTE_TESTE).obter_montanha(usuario_general())
 
-    assert repo.operacoes_lidas == 1
     assert payload["sonhos"][0]["titulo"] == "Campanha principal"
     assert payload["objetivos"][0]["titulo"] == "Tomar posição"
     assert payload["missions"][0]["titulo"] == "Executar ordem"

@@ -33,22 +33,9 @@ def upgrade() -> None:
         if_not_exists=True,
         postgresql_where=sa.text("responsavel_id IS NOT NULL"),
     )
-    op.create_index(
-        "idx_missao_contextos_operacao_dia",
-        "missao_contextos",
-        ["operacao_id", "operacao_dia"],
-        unique=True,
-        if_not_exists=True,
-        postgresql_where=sa.text("operacao_id IS NOT NULL AND operacao_dia IS NOT NULL"),
-    )
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "idx_missao_contextos_operacao_dia",
-        table_name="missao_contextos",
-        if_exists=True,
-    )
     op.drop_index(
         "idx_missao_contextos_responsavel_id",
         table_name="missao_contextos",

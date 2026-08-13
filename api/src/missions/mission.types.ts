@@ -37,10 +37,6 @@ export type MissionRecord = {
   sonho_id: number | null
   missao_contextos?: {
     responsavel_id: number | null
-    operacao_id: number | null
-    operacoes?: {
-      nome: string
-    } | null
   } | null
 }
 
@@ -76,8 +72,6 @@ export type MissionResponse = {
   soldier_excuse: string | null
   general_verdict: string | null
   user_id: number | null
-  operacao_id: number | null
-  operacao_nome: string | null
   objetivo_id: number | null
   sonho_id: number | null
   recurrence_weekdays: number[] | null
