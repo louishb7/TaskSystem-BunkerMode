@@ -2045,27 +2045,6 @@ h3 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.failure-justification-form {
-  display: grid;
-  gap: 10px;
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-}
-
-.failure-justification-form fieldset {
-  min-width: 0;
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.failure-justification-form legend {
-  margin-bottom: 8px;
-  color: var(--red);
-  font-size: 0.68rem;
-  font-weight: 900;
-}
-
 .failure-reason-options {
   display: flex;
   flex-wrap: wrap;

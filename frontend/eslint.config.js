@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import reactPlugin from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
 
 const browserGlobals = {
   console: "readonly",
@@ -14,8 +15,9 @@ const browserGlobals = {
 
 export default [
   js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
-    files: ["src/**/*.{js,jsx}"],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: "latest",
       globals: browserGlobals,
@@ -35,9 +37,13 @@ export default [
       "react/prop-types": "off",
       "react-hooks/immutability": "off",
       "react-hooks/set-state-in-effect": "off",
-      "no-unused-vars": [
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^React$" },
+      ],
+      "no-unused-vars": [
+        "off"
       ],
     },
     settings: {
