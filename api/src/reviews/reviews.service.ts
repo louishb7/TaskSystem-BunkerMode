@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common"
 
 import { UserRecord } from "../auth/auth.types"
 import { OperationalCalendarService } from "../calendar/operational-calendar.service"
-import { dateOnly, ensureGeneral, parseIsoDate } from "../common/domain-helpers"
+import { dateOnly, parseIsoDate } from "../common/domain-helpers"
 import { toMissionResponse } from "../missions/mission-response"
 import { MissionsService } from "../missions/missions.service"
 import { MISSION_STATUS, MissionRecord } from "../missions/mission.types"
@@ -42,14 +42,12 @@ export class ReviewsService {
   ) {}
 
   async weeklyReport(user: UserRecord, startDate?: unknown, endDate?: unknown): Promise<WeeklyReport> {
-    ensureGeneral(user, "Relatório semanal disponível apenas com o modo General ativo.")
     const range = this.resolveRange(user, startDate, endDate, "Datas do relatório devem usar o formato YYYY-MM-DD.")
     const missions = await this.missionsService.listAllForUser(user)
     return this.calculateWeeklyReport(user, missions, range!)
   }
 
   async reviewState(user: UserRecord) {
-    ensureGeneral(user, "Revisão do General disponível apenas com o modo General ativo.")
     const period = this.previousWeek(user)
     const existing = await this.prisma.revisoes_semanais.findFirst({
       where: {
@@ -69,7 +67,6 @@ export class ReviewsService {
   }
 
   async listReviews(user: UserRecord) {
-    ensureGeneral(user, "Revisão do General disponível apenas com o modo General ativo.")
     const reviews = await this.prisma.revisoes_semanais.findMany({
       where: { usuario_id: user.usuario_id },
       orderBy: [{ start_date: "desc" }, { revisao_id: "desc" }],
@@ -78,7 +75,6 @@ export class ReviewsService {
   }
 
   async closeReview(user: UserRecord, payload: CloseReviewPayload) {
-    ensureGeneral(user, "Revisão do General disponível apenas com o modo General ativo.")
     const period = this.previousWeek(user)
     const start = parseIsoDate(period.start_date, "Período da revisão inválido.")!
     const end = parseIsoDate(period.end_date, "Período da revisão inválido.")!
@@ -110,7 +106,6 @@ export class ReviewsService {
   }
 
   async generalSupport(user: UserRecord) {
-    ensureGeneral(user)
     const [reviewMissions, historicalMissions, reviewState, weeklyReviews] = await Promise.all([
       this.missionsService.listForReview(user),
       this.missionsService.listHistorical(user),

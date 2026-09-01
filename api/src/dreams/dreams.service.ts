@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common"
 
 import { UserRecord } from "../auth/auth.types"
-import { ensureGeneral, optionalText, positiveInt, requiredText } from "../common/domain-helpers"
+import { optionalText, positiveInt, requiredText } from "../common/domain-helpers"
 import { PrismaService } from "../prisma/prisma.service"
 import { DREAM_STATUS, DREAM_TYPE, DreamResponse, toDreamResponse } from "./dreams.types"
 
@@ -32,7 +32,6 @@ export class DreamsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(user: UserRecord): Promise<DreamResponse[]> {
-    ensureGeneral(user)
     const dreams = await this.prisma.sonhos.findMany({
       where: { usuario_id: user.usuario_id },
       orderBy: [{ status: "asc" }, { tipo: "asc" }, { updated_at: "desc" }, { id: "desc" }],
@@ -41,7 +40,6 @@ export class DreamsService {
   }
 
   async create(user: UserRecord, payload: CreateDreamPayload): Promise<DreamResponse> {
-    ensureGeneral(user)
     const tipo = dreamType(payload.tipo)
     await this.ensureActiveLimits(user.usuario_id, tipo)
     const now = new Date()
@@ -60,7 +58,6 @@ export class DreamsService {
   }
 
   async update(user: UserRecord, dreamId: number, payload: UpdateDreamPayload): Promise<DreamResponse> {
-    ensureGeneral(user)
     const existing = await this.findOwned(user, dreamId)
     const dream = await this.prisma.sonhos.update({
       where: { id: existing.id },
@@ -74,7 +71,6 @@ export class DreamsService {
   }
 
   async archive(user: UserRecord, dreamId: number, payload: ArchiveDreamPayload): Promise<DreamResponse> {
-    ensureGeneral(user)
     const existing = await this.findOwned(user, dreamId)
     const now = new Date()
     const dream = await this.prisma.sonhos.update({
@@ -90,7 +86,6 @@ export class DreamsService {
   }
 
   async promote(user: UserRecord, dreamId: number): Promise<DreamResponse> {
-    ensureGeneral(user)
     const id = positiveInt(dreamId, "Sonho não encontrado.")
     const promoted = await this.prisma.$transaction(async (tx) => {
       const target = await tx.sonhos.findFirst({

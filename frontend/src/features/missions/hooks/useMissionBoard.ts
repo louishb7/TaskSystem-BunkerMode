@@ -19,7 +19,7 @@ function mergeMissionLists(...missionLists) {
   return Array.from(missionsById.values())
 }
 
-export function useMissionBoard({ activeMode, authenticated, onUnauthorized, token }) {
+export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode }) {
   const [missions, setMissions] = useState([])
   const [reviewMissions, setReviewMissions] = useState([])
   const [historicalMissions, setHistoricalMissions] = useState([])
@@ -182,16 +182,16 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
       return
     }
 
-    if (activeMode === "soldier") {
+    if (viewMode === "soldier") {
       loadSoldierBoard()
       return
     }
 
     loadGeneralBoard()
-  }, [activeMode, authenticated, loadGeneralBoard, loadSoldierBoard, token])
+  }, [authenticated, loadGeneralBoard, loadSoldierBoard, token, viewMode])
 
   async function reloadCurrentBoard(successMessage = "") {
-    return activeMode === "soldier"
+    return viewMode === "soldier"
       ? loadSoldierBoard(successMessage)
       : loadGeneralBoard(successMessage)
   }
@@ -322,7 +322,7 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
       return false
     }
 
-    await reloadCurrentBoard(activeMode === "soldier" ? "LEÃO ABATIDO" : "Ordem executada.")
+    await reloadCurrentBoard(viewMode === "soldier" ? "LEÃO ABATIDO" : "Ordem executada.")
     setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]))
     return true
   }
@@ -372,7 +372,7 @@ export function useMissionBoard({ activeMode, authenticated, onUnauthorized, tok
       return { error: message }
     }
 
-    await reloadCurrentBoard(activeMode === "soldier" ? "FALHA REGISTRADA" : "Falha registrada.")
+    await reloadCurrentBoard(viewMode === "soldier" ? "FALHA REGISTRADA" : "Falha registrada.")
     setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]))
     return { ok: true }
   }

@@ -99,7 +99,7 @@ describe("Execution Block B strategic modules", () => {
     }
     const service = new DreamsService(prisma as never)
 
-    const result = await service.create(user(), {
+    const result = await service.create(user({ active_mode: "soldier" }), {
       titulo: " Campanha principal ",
       descricao: "",
       tipo: "principal",
@@ -122,6 +122,28 @@ describe("Execution Block B strategic modules", () => {
     })
   })
 
+  it("updates an owned goal when soldier is the persisted interface preference", async () => {
+    const prisma = {
+      sonhos: {
+        findFirst: jest.fn(),
+      },
+      objetivos: {
+        findFirst: jest.fn().mockResolvedValue(goal({ sonho_id: null })),
+        update: jest.fn().mockResolvedValue(goal({ sonho_id: null, titulo: "Posição ajustada" })),
+      },
+    }
+    const service = new GoalsService(prisma as never)
+
+    const result = await service.update(user({ active_mode: "soldier" }), 3, {
+      titulo: "Posição ajustada",
+    })
+
+    expect(result.titulo).toBe("Posição ajustada")
+    expect(prisma.objetivos.findFirst).toHaveBeenCalledWith({
+      where: { id: 3, usuario_id: 7 },
+    })
+  })
+
   it("creates goals linked to owned dreams with the next route order", async () => {
     const prisma = {
       sonhos: {
@@ -134,7 +156,7 @@ describe("Execution Block B strategic modules", () => {
     }
     const service = new GoalsService(prisma as never)
 
-    const result = await service.create(user(), {
+    const result = await service.create(user({ active_mode: "soldier" }), {
       titulo: " Tomar posição ",
       sonho_id: 1,
       data_alvo: "2026-06-01",

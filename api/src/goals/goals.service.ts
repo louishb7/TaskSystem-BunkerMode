@@ -2,7 +2,6 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common"
 
 import { UserRecord } from "../auth/auth.types"
 import {
-  ensureGeneral,
   optionalPositiveInt,
   optionalText,
   parseIsoDate,
@@ -62,7 +61,6 @@ export class GoalsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(user: UserRecord): Promise<GoalResponse[]> {
-    ensureGeneral(user)
     const goals = await this.prisma.objetivos.findMany({
       where: { usuario_id: user.usuario_id },
       orderBy: [{ order_index: "asc" }, { created_at: "asc" }, { id: "asc" }],
@@ -71,7 +69,6 @@ export class GoalsService {
   }
 
   async create(user: UserRecord, payload: CreateGoalPayload): Promise<GoalResponse> {
-    ensureGeneral(user)
     const sonhoId = optionalPositiveInt(payload.sonho_id, "Sonho vinculado não encontrado.")
     await this.ensureOwnedDream(user, sonhoId)
     const orderIndex = await this.nextOrderIndex(user.usuario_id, sonhoId)
@@ -94,7 +91,6 @@ export class GoalsService {
   }
 
   async update(user: UserRecord, goalId: number, payload: UpdateGoalPayload): Promise<GoalResponse> {
-    ensureGeneral(user)
     const existing = await this.findOwned(user, goalId)
     const sonhoId = payload.sonho_id === undefined ? existing.sonho_id : optionalPositiveInt(payload.sonho_id, "Sonho vinculado não encontrado.")
     await this.ensureOwnedDream(user, sonhoId)
@@ -113,7 +109,6 @@ export class GoalsService {
   }
 
   async updateProgress(user: UserRecord, goalId: number, value: unknown): Promise<GoalResponse> {
-    ensureGeneral(user)
     const existing = await this.findOwned(user, goalId)
     const goal = await this.prisma.objetivos.update({
       where: { id: existing.id },
@@ -123,7 +118,6 @@ export class GoalsService {
   }
 
   async updateStatus(user: UserRecord, goalId: number, value: unknown): Promise<GoalResponse> {
-    ensureGeneral(user)
     const existing = await this.findOwned(user, goalId)
     const status = goalStatus(value)
     const now = new Date()
@@ -139,7 +133,6 @@ export class GoalsService {
   }
 
   async reorder(user: UserRecord, payload: GoalOrderPayload): Promise<GoalResponse[]> {
-    ensureGeneral(user)
     if (!Array.isArray(payload.objetivo_ids) || payload.objetivo_ids.length === 0) {
       throw new HttpException("Lista de objetivos contém duplicidade.", HttpStatus.BAD_REQUEST)
     }
@@ -170,7 +163,6 @@ export class GoalsService {
   }
 
   async delete(user: UserRecord, goalId: number): Promise<void> {
-    ensureGeneral(user)
     const existing = await this.findOwned(user, goalId)
     await this.prisma.$transaction(async (tx) => {
       await tx.series_recorrencia.updateMany({

@@ -1,5 +1,3 @@
-import { HttpException } from "@nestjs/common"
-
 import { AuthService } from "../src/auth/auth.service"
 import { hashPassword, verifyPassword } from "../src/auth/password"
 import { TokenService } from "../src/auth/token.service"
@@ -124,12 +122,16 @@ describe("Auth phase 3", () => {
     })
   })
 
-  it("keeps General name changes restricted to General mode", async () => {
+  it("updates the General name when soldier is the persisted interface preference", async () => {
     const prisma = prismaMock()
     prisma.usuarios.findUnique.mockResolvedValue(user({ active_mode: "soldier" }))
+    prisma.usuarios.update.mockResolvedValue(user({ active_mode: "soldier", nome_general: "Ares" }))
     const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
 
-    await expect(service.setGeneralName(1, "Ares")).rejects.toBeInstanceOf(HttpException)
-    await expect(service.setGeneralName(1, "Ares")).rejects.toMatchObject({ status: 403 })
+    await expect(service.setGeneralName(1, "Ares")).resolves.toMatchObject({ nome_general: "Ares" })
+    expect(prisma.usuarios.update).toHaveBeenCalledWith({
+      where: { usuario_id: 1 },
+      data: { nome_general: "Ares" },
+    })
   })
 })

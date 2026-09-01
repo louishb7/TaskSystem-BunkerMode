@@ -48,7 +48,7 @@ export type MissionRecord = {
   sonho_id: number | null
 }
 
-export type MissionUser = Pick<UserRecord, "usuario_id" | "active_mode">
+export type MissionUser = Pick<UserRecord, "usuario_id">
 
 export type MissionPermissions = {
   can_complete: boolean

@@ -131,11 +131,7 @@ export class AuthService {
   }
 
   async setGeneralName(usuarioId: number, nomeGeneral: unknown): Promise<UserRecord> {
-    const usuario = await this.getUserById(usuarioId)
-    if (usuario.active_mode !== "general") {
-      throw new HttpException("Identidade do General só pode ser alterada no modo General.", HttpStatus.FORBIDDEN)
-    }
-
+    await this.getUserById(usuarioId)
     const nome = requireText(nomeGeneral, "Nome do General é obrigatório.")
     return this.prisma.usuarios.update({
       where: { usuario_id: usuarioId },

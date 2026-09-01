@@ -1,13 +1,5 @@
 import { HttpException, HttpStatus } from "@nestjs/common"
 
-import { UserRecord } from "../auth/auth.types"
-
-export function ensureGeneral(user: UserRecord, message = "Planejamento indisponível enquanto o modo Soldado estiver ativo."): void {
-  if (user.active_mode !== "general") {
-    throw new HttpException(message, HttpStatus.FORBIDDEN)
-  }
-}
-
 export function requiredText(value: unknown, message: string, maxLength?: number): string {
   if (typeof value !== "string") {
     throw new HttpException(message, HttpStatus.BAD_REQUEST)

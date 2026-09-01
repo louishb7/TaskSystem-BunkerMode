@@ -106,6 +106,22 @@ describe("Missions clean domain", () => {
     })
   })
 
+  it("keeps mission permissions independent from active mode and restricted by ownership", () => {
+    const generalPermissions = toMissionResponse(mission(), user({ active_mode: "general" })).permissions
+    const soldierPermissions = toMissionResponse(mission(), user({ active_mode: "soldier" })).permissions
+    const foreignPermissions = toMissionResponse(mission(), user({ usuario_id: 99, active_mode: "soldier" })).permissions
+
+    expect(soldierPermissions).toEqual(generalPermissions)
+    expect(foreignPermissions).toEqual({
+      can_complete: false,
+      can_edit: false,
+      can_delete: false,
+      can_fail: false,
+      can_pin: false,
+      can_view_history: false,
+    })
+  })
+
   it("uses the recurrence series as the V2 recurrence response source", () => {
     const response = toMissionResponse(
       mission({
@@ -120,7 +136,7 @@ describe("Missions clean domain", () => {
           end_date: new Date("2026-05-15T00:00:00.000Z"),
         },
       }),
-      user(),
+      user({ active_mode: "soldier" }),
     )
 
     expect(response.recurrence).toEqual({
@@ -129,6 +145,39 @@ describe("Missions clean domain", () => {
       termination_policy: "ate_data",
       end_date: "15-05-2026",
     })
+  })
+
+  it("allows a soldier preference to edit and delete an owned pending mission", async () => {
+    const prisma = prismaMock()
+    prisma.missoes.findFirst.mockResolvedValue(mission())
+    prisma.missoes.update.mockResolvedValue(mission({ titulo: "Ordem ajustada" }))
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({
+        auditoria_eventos: prisma.auditoria_eventos,
+        missoes: prisma.missoes,
+      }),
+    )
+    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
+    const soldier = user({ active_mode: "soldier" })
+
+    await expect(service.update(10, { titulo: "Ordem ajustada" }, soldier)).resolves.toMatchObject({
+      titulo: "Ordem ajustada",
+    })
+    await expect(service.delete(10, soldier)).resolves.toBeUndefined()
+
+    expect(prisma.missoes.update).toHaveBeenCalled()
+    expect(prisma.missoes.delete).toHaveBeenCalledWith({ where: { missao_id: 10 } })
+  })
+
+  it("keeps ownership protection independent from active mode", async () => {
+    const prisma = prismaMock()
+    prisma.missoes.findFirst.mockResolvedValue(null)
+    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
+
+    await expect(
+      service.update(10, { titulo: "Acesso indevido" }, user({ usuario_id: 99, active_mode: "soldier" })),
+    ).rejects.toMatchObject({ status: 404 })
+    expect(prisma.missoes.update).not.toHaveBeenCalled()
   })
 
   it("keeps legacy recurrence fields readable while the series migration coexists", () => {
@@ -168,7 +217,7 @@ describe("Missions clean domain", () => {
         prazo: "25-04-2026",
         responsavel_id: 7,
       },
-      user(),
+      user({ active_mode: "soldier" }),
     )
 
     expect(result.missao_id).toBe(10)
@@ -270,7 +319,7 @@ describe("Missions clean domain", () => {
     )
   })
 
-  it("fails overdue pending missions before showing the Soldier board", async () => {
+  it("builds the Soldier board independently from active mode", async () => {
     const prisma = prismaMock()
     prisma.missoes.findMany
       .mockResolvedValueOnce([mission({ missao_id: 10, prazo: new Date("2026-08-12T00:00:00.000Z") })])
@@ -288,7 +337,7 @@ describe("Missions clean domain", () => {
     const service = new MissionsService(prisma as unknown as PrismaService, calendar)
     jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"))
 
-    const board = await service.soldierBoard(user({ active_mode: "soldier" }))
+    const board = await service.soldierBoard(user({ active_mode: "general" }))
 
     expect(board.action_missions.map((item) => item.missao_id)).toEqual([11])
     expect(prisma.$transaction).toHaveBeenCalled()

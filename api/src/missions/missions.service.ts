@@ -29,18 +29,6 @@ const RECURRENCE_WINDOW_DAYS = 14
 
 type RecurrenceTerminationPolicy = "sem_termino" | "ate_data" | "ate_objetivo"
 
-function ensureGeneral(user: UserRecord): void {
-  if (user.active_mode !== "general") {
-    throw new HttpException("Planejamento indisponível enquanto o modo Soldado estiver ativo.", HttpStatus.FORBIDDEN)
-  }
-}
-
-function ensureExecutionMode(user: UserRecord): void {
-  if (user.active_mode !== "general" && user.active_mode !== "soldier") {
-    throw new HttpException("Execução disponível apenas em modo válido.", HttpStatus.FORBIDDEN)
-  }
-}
-
 function text(value: unknown, message: string): string {
   if (typeof value !== "string") {
     throw new HttpException(message, HttpStatus.BAD_REQUEST)
@@ -253,19 +241,15 @@ export class MissionsService {
   }
 
   async listHistorical(user: UserRecord): Promise<MissionRecord[]> {
-    ensureGeneral(user)
     const missions = await this.listAllForUser(user, { materializeRecurrences: false })
     return missions.filter((mission) => mission.status === MISSION_STATUS.completed || mission.status === MISSION_STATUS.failed)
   }
 
   async listForReview(user: UserRecord): Promise<MissionRecord[]> {
-    ensureGeneral(user)
     return this.listHistorical(user)
   }
 
   async create(payload: CreateMissionPayload, user: UserRecord): Promise<MissionRecord> {
-    ensureGeneral(user)
-
     const title = text(payload.titulo, "Título da missão é obrigatório.")
     const instruction = optionalText(payload.instrucao, MISSION_INSTRUCTION_MAX_LENGTH)
     const weekdays = recurrenceWeekdays(payload.recurrence_weekdays)
@@ -361,10 +345,6 @@ export class MissionsService {
   }
 
   async listDailyOperational(user: UserRecord): Promise<MissionRecord[]> {
-    if (user.active_mode === "soldier") {
-      return (await this.soldierBoard(user)).daily_missions
-    }
-
     const today = this.today(user)
     const missions = await this.listAllForUser(user)
     return this.sortForBoard(missions.filter((mission) => this.belongsToOperationalDate(mission, today)))
@@ -374,9 +354,6 @@ export class MissionsService {
     action_missions: MissionRecord[]
     daily_missions: MissionRecord[]
   }> {
-    if (user.active_mode !== "soldier") {
-      throw new HttpException("Quadro do Soldado disponível apenas no modo Soldado.", HttpStatus.FORBIDDEN)
-    }
     await this.failOverdueMissions(user)
     const today = this.today(user)
     const missions = await this.listAllForUser(user)
@@ -390,7 +367,6 @@ export class MissionsService {
   }
 
   async update(id: number, payload: UpdateMissionPayload, user: UserRecord): Promise<MissionRecord> {
-    ensureGeneral(user)
     const current = await this.getMissionForUser(id, user)
     if (current.status !== MISSION_STATUS.pending) {
       throw new HttpException("Apenas missão pendente pode ser editada.", HttpStatus.BAD_REQUEST)
@@ -463,7 +439,6 @@ export class MissionsService {
   }
 
   async complete(id: number, user: UserRecord): Promise<MissionRecord> {
-    ensureExecutionMode(user)
     const current = await this.getMissionForUser(id, user)
     if (current.status !== MISSION_STATUS.pending || current.completed_at !== null) {
       throw new HttpException("Missão não pode ser concluída neste estado.", HttpStatus.BAD_REQUEST)
@@ -481,7 +456,6 @@ export class MissionsService {
   }
 
   async fail(id: number, user: UserRecord): Promise<MissionRecord> {
-    ensureExecutionMode(user)
     const current = await this.getMissionForUser(id, user)
     if (current.status !== MISSION_STATUS.pending) {
       throw new HttpException("Apenas missão pendente pode ser registrada como falha.", HttpStatus.BAD_REQUEST)
@@ -499,7 +473,6 @@ export class MissionsService {
   }
 
   async togglePin(id: number, user: UserRecord): Promise<MissionRecord> {
-    ensureExecutionMode(user)
     const current = await this.getMissionForUser(id, user)
     if (current.status !== MISSION_STATUS.pending) {
       throw new HttpException("Prioridade disponível apenas para ordens pendentes.", HttpStatus.BAD_REQUEST)
@@ -513,7 +486,6 @@ export class MissionsService {
   }
 
   async delete(id: number, user: UserRecord): Promise<void> {
-    ensureGeneral(user)
     const current = await this.getMissionForUser(id, user)
     if (current.status !== MISSION_STATUS.pending) {
       throw new HttpException("Apenas missão pendente pode ser removida. Resultados ficam no histórico.", HttpStatus.BAD_REQUEST)
@@ -533,7 +505,6 @@ export class MissionsService {
   }
 
   async missionHistory(id: number, user: UserRecord) {
-    ensureGeneral(user)
     await this.getMissionForUser(id, user)
     return this.prisma.auditoria_eventos.findMany({
       where: { missao_id: id },

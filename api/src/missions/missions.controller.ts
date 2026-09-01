@@ -21,10 +21,6 @@ export class MissionsController {
   @Get("missoes")
   async listMissions(@Req() request: AuthenticatedRequest) {
     const user = request.currentUser!
-    if (user.active_mode === "soldier") {
-      const board = await this.missionsService.soldierBoard(user)
-      return board.action_missions.map((mission) => toMissionResponse(mission, user))
-    }
     const missions = await this.missionsService.listForGeneralBoard(user)
     return missions.map((mission) => toMissionResponse(mission, user))
   }

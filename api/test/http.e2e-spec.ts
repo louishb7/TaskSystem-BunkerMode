@@ -545,6 +545,134 @@ describe("HTTP application", () => {
       })
   })
 
+  it("treats active mode as an interface preference across protected resources", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-09-01T12:00:00.000Z"))
+    try {
+      await request(app.getHttpServer())
+        .post("/api/v2/auth/register")
+        .send({ usuario: "preferencia", email: "preferencia@bunker.local", senha: "senha1234" })
+        .expect(201)
+
+      const login = await request(app.getHttpServer())
+        .post("/api/v2/auth/login")
+        .send({ email: "preferencia", senha: "senha1234" })
+        .expect(200)
+      const token = login.body.access_token
+
+      const original = await request(app.getHttpServer())
+        .post("/api/v2/missoes")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ titulo: "Ordem original", prazo: "2026-09-01" })
+        .expect(201)
+
+      const generalList = await request(app.getHttpServer())
+        .get("/api/v2/missoes")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+
+      await request(app.getHttpServer())
+        .get("/api/v2/missoes/quadro-soldado")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .expect((response) => {
+          expect(response.body.missions.map((mission: { id: number }) => mission.id)).toContain(original.body.id)
+        })
+
+      await request(app.getHttpServer())
+        .patch("/api/v2/session/mode")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ mode: "soldier" })
+        .expect(200)
+        .expect((response) => {
+          expect(response.body.active_mode).toBe("soldier")
+        })
+
+      const soldierList = await request(app.getHttpServer())
+        .get("/api/v2/missoes")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+
+      expect(soldierList.body.map((mission: { id: number }) => mission.id)).toEqual(
+        generalList.body.map((mission: { id: number }) => mission.id),
+      )
+      expect(soldierList.body.find((mission: { id: number }) => mission.id === original.body.id).permissions).toEqual(
+        generalList.body.find((mission: { id: number }) => mission.id === original.body.id).permissions,
+      )
+
+      const createdAsSoldier = await request(app.getHttpServer())
+        .post("/api/v2/missoes")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ titulo: "Criada com preferência Soldado", prazo: "2026-09-01" })
+        .expect(201)
+
+      await request(app.getHttpServer())
+        .patch(`/api/v2/missoes/${createdAsSoldier.body.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ titulo: "Editada com preferência Soldado" })
+        .expect(200)
+        .expect((response) => {
+          expect(response.body.titulo).toBe("Editada com preferência Soldado")
+        })
+
+      const objective = await request(app.getHttpServer())
+        .post("/api/v2/objetivos")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ titulo: "Objetivo criado no Soldado" })
+        .expect(201)
+
+      await request(app.getHttpServer())
+        .patch(`/api/v2/objetivos/${objective.body.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ titulo: "Objetivo editado no Soldado" })
+        .expect(200)
+        .expect((response) => {
+          expect(response.body.titulo).toBe("Objetivo editado no Soldado")
+        })
+
+      await request(app.getHttpServer())
+        .post("/api/v2/auth/register")
+        .send({ usuario: "intruso", email: "intruso@bunker.local", senha: "senha1234" })
+        .expect(201)
+      const foreignLogin = await request(app.getHttpServer())
+        .post("/api/v2/auth/login")
+        .send({ email: "intruso", senha: "senha1234" })
+        .expect(200)
+
+      await request(app.getHttpServer())
+        .patch(`/api/v2/missoes/${original.body.id}`)
+        .set("Authorization", `Bearer ${foreignLogin.body.access_token}`)
+        .send({ titulo: "Tentativa indevida" })
+        .expect(404)
+
+      await request(app.getHttpServer())
+        .delete(`/api/v2/missoes/${createdAsSoldier.body.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(204)
+
+      await request(app.getHttpServer())
+        .patch("/api/v2/usuarios/me/nome-general")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ nome_general: "Atena" })
+        .expect(200)
+
+      await request(app.getHttpServer())
+        .patch("/api/v2/session/mode")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ mode: "general" })
+        .expect(200)
+
+      await request(app.getHttpServer())
+        .get("/api/v2/usuarios/me")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .expect((response) => {
+          expect(response.body).toMatchObject({ active_mode: "general", nome_general: "Atena" })
+        })
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
   it("validates the representative clean product flow over HTTP", async () => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"))
     try {

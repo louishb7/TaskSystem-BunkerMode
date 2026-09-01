@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common"
 
 import { UserRecord } from "../auth/auth.types"
-import { ensureGeneral } from "../common/domain-helpers"
 import { DreamsService } from "../dreams/dreams.service"
 import { GoalsService } from "../goals/goals.service"
 import { toMissionResponse } from "../missions/mission-response"
@@ -16,7 +15,6 @@ export class MountainService {
   ) {}
 
   async getMountain(user: UserRecord) {
-    ensureGeneral(user)
     const [sonhos, objetivos, missions] = await Promise.all([
       this.dreamsService.list(user),
       this.goalsService.list(user),

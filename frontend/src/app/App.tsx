@@ -14,6 +14,10 @@ import SoldierExecutionPage from "../features/soldier/pages/SoldierExecutionPage
 import { APP_ROUTES } from "../routes/routeConstants"
 import { api } from "../services/bunkermodeApi"
 
+function preferredLanding(activeMode) {
+  return activeMode === "soldier" ? APP_ROUTES.SOLDIER : APP_ROUTES.GENERAL_HOME
+}
+
 export default function App() {
   const auth = useAuth()
 
@@ -31,7 +35,10 @@ export default function App() {
       <Route
         path="*"
         element={
-          <Navigate to={auth.authenticated ? APP_ROUTES.GENERAL_HOME : APP_ROUTES.AUTH} replace />
+          <Navigate
+            to={auth.authenticated ? preferredLanding(auth.activeMode) : APP_ROUTES.AUTH}
+            replace
+          />
         }
       />
     </Routes>
@@ -42,12 +49,7 @@ function AuthRoute() {
   const auth = useAuth()
 
   if (auth.authenticated) {
-    return (
-      <Navigate
-        to={auth.activeMode === "soldier" ? APP_ROUTES.SOLDIER : APP_ROUTES.GENERAL_HOME}
-        replace
-      />
-    )
+    return <Navigate to={preferredLanding(auth.activeMode)} replace />
   }
 
   return (
@@ -67,12 +69,8 @@ function ProtectedRoute({ routeMode }) {
     return <Navigate to={APP_ROUTES.AUTH} replace />
   }
 
-  if (auth.activeMode === "soldier") {
-    return routeMode === "soldier" ? <SoldierRoute /> : <Navigate to={APP_ROUTES.SOLDIER} replace />
-  }
-
   if (routeMode === "soldier") {
-    return <Navigate to={APP_ROUTES.GENERAL_HOME} replace />
+    return <SoldierRoute />
   }
 
   if (routeMode === "review") {

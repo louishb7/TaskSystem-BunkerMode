@@ -21,17 +21,16 @@ function isFinalized(mission: MissionRecord): boolean {
 }
 
 export function missionPermissions(mission: MissionRecord, user: MissionUser): MissionPermissions {
-  const isGeneral = user.active_mode === "general"
-  const canExecute = isGeneral || user.active_mode === "soldier"
+  const owned = mission.responsavel_id === user.usuario_id
   const pending = isPending(mission)
 
   return {
-    can_complete: canExecute && pending,
-    can_edit: isGeneral && pending,
-    can_delete: isGeneral && pending,
-    can_fail: canExecute && pending,
-    can_pin: canExecute && pending,
-    can_view_history: isGeneral && isFinalized(mission),
+    can_complete: owned && pending,
+    can_edit: owned && pending,
+    can_delete: owned && pending,
+    can_fail: owned && pending,
+    can_pin: owned && pending,
+    can_view_history: owned && isFinalized(mission),
   }
 }
 
