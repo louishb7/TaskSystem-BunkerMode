@@ -37,6 +37,14 @@ export function missionPermissions(mission: MissionRecord, user: MissionUser): M
 
 export function toMissionResponse(mission: MissionRecord, user: MissionUser): MissionResponse {
   const status = mission.status as keyof typeof MISSION_STATUS_LABEL
+  const recurrence = mission.serie_recorrencia
+    ? {
+        series_id: mission.serie_recorrencia.recurrence_series_id,
+        weekdays: mission.serie_recorrencia.recurrence_weekdays,
+        termination_policy: mission.serie_recorrencia.termination_policy,
+        end_date: dateOnly(mission.serie_recorrencia.end_date),
+      }
+    : null
 
   return {
     id: mission.missao_id,
@@ -60,6 +68,7 @@ export function toMissionResponse(mission: MissionRecord, user: MissionUser): Mi
     recurrence_weekdays: mission.recurrence_weekdays,
     recurrence_end_date: dateOnly(mission.recurrence_end_date),
     duration_type: mission.duration_type,
+    recurrence,
     permissions: missionPermissions(mission, user),
   }
 }

@@ -231,6 +231,7 @@ export class MissionsService {
   async listForGeneralBoard(user: UserRecord): Promise<MissionRecord[]> {
     return this.prisma.missoes.findMany({
       where: { responsavel_id: user.usuario_id, status: MISSION_STATUS.pending },
+      include: { serie_recorrencia: true },
       orderBy: [{ is_pinned: "desc" }, { prazo: "asc" }, { missao_id: "asc" }],
     })
   }
@@ -241,6 +242,7 @@ export class MissionsService {
     }
     return this.prisma.missoes.findMany({
       where: { responsavel_id: user.usuario_id },
+      include: { serie_recorrencia: true },
       orderBy: [
         { is_pinned: "desc" },
         { status: "asc" },
@@ -318,7 +320,7 @@ export class MissionsService {
         if (!firstMission) {
           throw new HttpException("A frequência semanal não gera novas ordens dentro da janela permitida.", HttpStatus.BAD_REQUEST)
         }
-        return firstMission
+        return { ...firstMission, serie_recorrencia: series }
       })
     }
 
@@ -446,6 +448,7 @@ export class MissionsService {
       const mission = await tx.missoes.update({
         where: { missao_id: id },
         data,
+        include: { serie_recorrencia: true },
       })
       await tx.auditoria_eventos.create({
         data: {
@@ -770,6 +773,7 @@ export class MissionsService {
       const mission = await tx.missoes.update({
         where: { missao_id: id },
         data: options.data,
+        include: { serie_recorrencia: true },
       })
       await tx.auditoria_eventos.create({
         data: {

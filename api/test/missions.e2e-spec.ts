@@ -106,6 +106,49 @@ describe("Missions clean domain", () => {
     })
   })
 
+  it("uses the recurrence series as the V2 recurrence response source", () => {
+    const response = toMissionResponse(
+      mission({
+        recurrence_series_id: 21,
+        recurrence_weekdays: [6],
+        recurrence_end_date: new Date("2026-05-30T00:00:00.000Z"),
+        duration_type: "ate_objetivo",
+        serie_recorrencia: {
+          recurrence_series_id: 21,
+          recurrence_weekdays: [0, 2, 4],
+          termination_policy: "ate_data",
+          end_date: new Date("2026-05-15T00:00:00.000Z"),
+        },
+      }),
+      user(),
+    )
+
+    expect(response.recurrence).toEqual({
+      series_id: 21,
+      weekdays: [0, 2, 4],
+      termination_policy: "ate_data",
+      end_date: "15-05-2026",
+    })
+  })
+
+  it("keeps legacy recurrence fields readable while the series migration coexists", () => {
+    const response = toMissionResponse(
+      mission({
+        recurrence_weekdays: [1, 3],
+        recurrence_end_date: new Date("2026-05-30T00:00:00.000Z"),
+        duration_type: "prazo",
+      }),
+      user(),
+    )
+
+    expect(response).toMatchObject({
+      recurrence: null,
+      recurrence_weekdays: [1, 3],
+      recurrence_end_date: "30-05-2026",
+      duration_type: "prazo",
+    })
+  })
+
   it("creates a manual mission with direct ownership and audit event", async () => {
     const prisma = prismaMock()
     const createdMission = mission()

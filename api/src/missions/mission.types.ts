@@ -17,6 +17,13 @@ export const DEFAULT_PRIORITY = 2
 
 export type MissionStatus = (typeof MISSION_STATUS)[keyof typeof MISSION_STATUS]
 
+export type RecurrenceSeriesRecord = {
+  recurrence_series_id: number
+  recurrence_weekdays: number[]
+  termination_policy: string
+  end_date: Date | null
+}
+
 export type MissionRecord = {
   missao_id: number
   titulo: string
@@ -34,6 +41,7 @@ export type MissionRecord = {
   duration_type: string | null
   recurrence_key: string | null
   recurrence_series_id: number | null
+  serie_recorrencia?: RecurrenceSeriesRecord | null
   criada_por_id: number
   responsavel_id: number
   objetivo_id: number | null
@@ -73,5 +81,11 @@ export type MissionResponse = {
   recurrence_weekdays: number[]
   recurrence_end_date: string | null
   duration_type: string | null
+  recurrence: {
+    series_id: number
+    weekdays: number[]
+    termination_policy: string
+    end_date: string | null
+  } | null
   permissions: MissionPermissions
 }

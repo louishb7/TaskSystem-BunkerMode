@@ -38,12 +38,18 @@ function isPastDate(value) {
 }
 
 function isRecurringMission(mission) {
-  return Array.isArray(mission?.recurrence_weekdays) && mission.recurrence_weekdays.length > 0
+  return (
+    (Array.isArray(mission?.recurrence?.weekdays) && mission.recurrence.weekdays.length > 0) ||
+    (Array.isArray(mission?.recurrence_weekdays) && mission.recurrence_weekdays.length > 0)
+  )
 }
 
 function recurringMissionKey(mission) {
   if (!isRecurringMission(mission)) {
     return `missao:${mission?.id}`
+  }
+  if (mission?.recurrence?.series_id) {
+    return `serie:${mission.recurrence.series_id}`
   }
   return [
     "recorrente",

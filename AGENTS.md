@@ -277,6 +277,13 @@ Ao alterar código:
 - preserve contratos de API, salvo mudança explicitamente aprovada e executada em migração própria;
 - atualize testes quando comportamento mudar.
 
+### Workflow e commits
+
+- Após qualquer bloco que altere arquivos, sempre sugerir uma mensagem de commit.
+- Preferir mensagens curtas no padrão Conventional Commits.
+- Não executar `git commit` automaticamente, salvo pedido explícito do usuário.
+- A sugestão deve refletir apenas o escopo efetivamente concluído.
+
 Pare e reporte quando:
 - houver divergência inesperada;
 - o estado real não estiver claro;

@@ -3,15 +3,18 @@ import React, { useEffect, useState } from "react"
 import { getErrorMessage } from "../../../api/httpClient"
 import { api } from "../../../services/bunkermodeApi"
 
+const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
+const BUSINESS_WEEKDAYS = [0, 1, 2, 3, 4]
+
 const emptyForm = {
   titulo: "",
   instrucao: "",
   objetivo_id: "",
-  sonho_id: "",
-  recurrence_weekdays: [],
-  duration_type: "pontual",
-  recurrence_end_date: "",
   prazo: "",
+  repeat_type: "nao",
+  recurrence_weekdays: [],
+  termination_policy: "sem_termino",
+  recurrence_end_date: "",
 }
 
 const MISSION_INSTRUCTION_MAX_LENGTH = 280
@@ -49,6 +52,21 @@ function todayInputValue() {
   const month = String(today.getMonth() + 1).padStart(2, "0")
   const day = String(today.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
+}
+
+function normalizeWeekdays(values: unknown): number[] {
+  if (!Array.isArray(values)) {
+    return []
+  }
+  return [...new Set(values.filter(Number.isInteger))].sort((left, right) => left - right)
+}
+
+function weekdayForDate(value) {
+  const [year, month, day] = String(value).split("-").map(Number)
+  if (!year || !month || !day) {
+    return 0
+  }
+  return (new Date(year, month - 1, day).getDay() + 6) % 7
 }
 
 function defaultPrazo(initialPrazo) {
@@ -94,16 +112,92 @@ function toApiDateValue(value) {
   return value.split("-")[0]?.length === 4 ? fromDateInputValue(value) : value
 }
 
+function repeatTypeFor(weekdays, prazo) {
+  const normalized = normalizeWeekdays(weekdays)
+  if (normalized.length === 0) {
+    return "nao"
+  }
+  if (normalized.join(",") === WEEKDAYS.join(",")) {
+    return "todos_dias"
+  }
+  if (normalized.join(",") === BUSINESS_WEEKDAYS.join(",")) {
+    return "dias_uteis"
+  }
+  if (normalized.length === 1 && normalized[0] === weekdayForDate(toDateInputValue(prazo))) {
+    return "semanal"
+  }
+  return "personalizado"
+}
+
+function terminationPolicyFor(mission) {
+  if (mission?.recurrence?.termination_policy) {
+    return mission.recurrence.termination_policy
+  }
+  if (mission?.duration_type === "prazo" || mission?.duration_type === "ate_data") {
+    return "ate_data"
+  }
+  if (mission?.duration_type === "ate_objetivo") {
+    return "ate_objetivo"
+  }
+  return "sem_termino"
+}
+
+function recurrenceWeekdaysFor(mission) {
+  if (Array.isArray(mission?.recurrence?.weekdays)) {
+    return normalizeWeekdays(mission.recurrence.weekdays)
+  }
+  return Array.isArray(mission?.recurrence_weekdays)
+    ? normalizeWeekdays(mission.recurrence_weekdays)
+    : []
+}
+
+function formForNewMission(initialObjetivoId, initialPrazo) {
+  return {
+    ...emptyForm,
+    objetivo_id: initialObjetivoId ? String(initialObjetivoId) : "",
+    prazo: defaultPrazo(initialPrazo),
+  }
+}
+
+function formForExistingMission(mission, initialPrazo) {
+  const recurrenceWeekdays = recurrenceWeekdaysFor(mission)
+  const prazo = toApiDateValue(mission.prazo || initialPrazo || "")
+
+  return {
+    ...emptyForm,
+    titulo: mission.titulo || "",
+    instrucao: mission.instrucao || "",
+    objetivo_id: mission.objetivo_id ? String(mission.objetivo_id) : "",
+    prazo,
+    repeat_type: repeatTypeFor(recurrenceWeekdays, prazo),
+    recurrence_weekdays: recurrenceWeekdays,
+    termination_policy: terminationPolicyFor(mission),
+    recurrence_end_date: toApiDateValue(
+      mission.recurrence?.end_date || mission.recurrence_end_date || ""
+    ),
+  }
+}
+
+function weekdaysForRepeatType(repeatType, prazo) {
+  if (repeatType === "todos_dias") {
+    return WEEKDAYS
+  }
+  if (repeatType === "dias_uteis") {
+    return BUSINESS_WEEKDAYS
+  }
+  if (repeatType === "semanal") {
+    return [weekdayForDate(toDateInputValue(prazo))]
+  }
+  return []
+}
+
 export default function MissionForm({
   currentUser = null,
   editingMission = null,
   initialObjetivoId = null,
   initialObjetivoTitulo = "",
   initialPrazo = "",
-  initialSonhoId = null,
-  initialSonhoTitulo = "",
   lockObjetivo = false,
-  lockSonho = false,
   loading,
   onCancel,
   onCreate,
@@ -112,44 +206,25 @@ export default function MissionForm({
   status,
   token = null,
 }) {
-  const [form, setForm] = useState({
-    ...emptyForm,
-    objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
-    sonho_id: initialSonhoId ? String(initialSonhoId) : emptyForm.sonho_id,
-    prazo: defaultPrazo(initialPrazo),
-  })
+  const [form, setForm] = useState(() => formForNewMission(initialObjetivoId, initialPrazo))
   const [objetivos, setObjetivos] = useState([])
-  const [sonhos, setSonhos] = useState([])
   const [objetivoStatus, setObjetivoStatus] = useState("")
+  const [recurrenceError, setRecurrenceError] = useState("")
 
   const isEditing = Boolean(editingMission)
+  const isSeriesOccurrence = Boolean(editingMission?.recurrence?.series_id)
+  const isRecurring = form.repeat_type !== "nao"
   const lockedInitialPrazo = Boolean(initialPrazo && !isEditing)
   const prazoContext = formatPrazoContext(initialPrazo)
 
   useEffect(() => {
     if (!editingMission) {
-      setForm({
-        ...emptyForm,
-        objetivo_id: initialObjetivoId ? String(initialObjetivoId) : emptyForm.objetivo_id,
-        sonho_id: initialSonhoId ? String(initialSonhoId) : emptyForm.sonho_id,
-        prazo: defaultPrazo(initialPrazo),
-      })
+      setForm(formForNewMission(initialObjetivoId, initialPrazo))
       return
     }
 
-    setForm({
-      titulo: editingMission.titulo || "",
-      instrucao: editingMission.instrucao || "",
-      objetivo_id: editingMission.objetivo_id ? String(editingMission.objetivo_id) : "",
-      sonho_id: editingMission.sonho_id ? String(editingMission.sonho_id) : "",
-      recurrence_weekdays: Array.isArray(editingMission.recurrence_weekdays)
-        ? editingMission.recurrence_weekdays
-        : [],
-      duration_type: editingMission.duration_type || "pontual",
-      recurrence_end_date: toApiDateValue(editingMission.recurrence_end_date || ""),
-      prazo: toApiDateValue(editingMission.prazo || initialPrazo || ""),
-    })
-  }, [editingMission, initialObjetivoId, initialPrazo, initialSonhoId])
+    setForm(formForExistingMission(editingMission, initialPrazo))
+  }, [editingMission, initialObjetivoId, initialPrazo])
 
   useEffect(() => {
     async function loadObjetivos() {
@@ -178,32 +253,6 @@ export default function MissionForm({
     loadObjetivos()
   }, [onUnauthorized, token])
 
-  useEffect(() => {
-    async function loadSonhos() {
-      if (!token) {
-        return
-      }
-
-      const result = await api.listSonhos(token)
-      if (onUnauthorized?.(result)) {
-        return
-      }
-
-      if (!result.ok) {
-        setObjetivoStatus(
-          getErrorMessage(result, "Não foi possível carregar vínculos estratégicos.")
-        )
-        return
-      }
-
-      setSonhos(
-        (Array.isArray(result.data) ? result.data : []).filter((sonho) => sonho.status === "ativo")
-      )
-    }
-
-    loadSonhos()
-  }, [onUnauthorized, token])
-
   function updateField(event) {
     const { name, value } = event.target
     setForm((current) => ({
@@ -212,12 +261,28 @@ export default function MissionForm({
     }))
   }
 
-  function updateStrategicLink(event) {
-    const [type, id = ""] = event.target.value.split(":")
+  function handleObjetivoChange(event) {
+    const objetivoId = event.target.value
     setForm((current) => ({
       ...current,
-      objetivo_id: type === "objetivo" ? id : "",
-      sonho_id: type === "sonho" ? id : "",
+      objetivo_id: objetivoId,
+      termination_policy:
+        !objetivoId && current.termination_policy === "ate_objetivo"
+          ? "sem_termino"
+          : current.termination_policy,
+    }))
+  }
+
+  function handleRepeatChange(event) {
+    const repeatType = event.target.value
+    setRecurrenceError("")
+    setForm((current) => ({
+      ...current,
+      repeat_type: repeatType,
+      recurrence_weekdays:
+        repeatType === "personalizado"
+          ? current.recurrence_weekdays
+          : weekdaysForRepeatType(repeatType, current.prazo),
     }))
   }
 
@@ -229,62 +294,70 @@ export default function MissionForm({
   }
 
   function handlePrazoChange(event) {
+    const prazo = fromDateInputValue(event.target.value)
     setForm((current) => ({
       ...current,
-      prazo: fromDateInputValue(event.target.value),
+      prazo,
+      recurrence_weekdays:
+        current.repeat_type === "semanal"
+          ? weekdaysForRepeatType("semanal", prazo)
+          : current.recurrence_weekdays,
     }))
   }
 
   function toggleWeekday(weekday) {
+    setRecurrenceError("")
     setForm((current) => {
-      const selected = current.recurrence_weekdays.includes(weekday)
+      const weekdays = current.recurrence_weekdays.includes(weekday)
         ? current.recurrence_weekdays.filter((item) => item !== weekday)
-        : [...current.recurrence_weekdays, weekday].sort()
-      return { ...current, recurrence_weekdays: selected }
+        : [...current.recurrence_weekdays, weekday]
+      return {
+        ...current,
+        repeat_type: "personalizado",
+        recurrence_weekdays: normalizeWeekdays(weekdays),
+      }
     })
   }
 
   function submit(event) {
     event.preventDefault()
-    const linkedToObjective = Boolean(form.objetivo_id)
-    const linkedToSonho = Boolean(form.sonho_id)
-  const payload = {
-      recurrence_weekdays: null,
-      duration_type: null,
-      recurrence_end_date: null,
-      responsavel_id: null,
-      titulo: form.titulo.trim(),
-      instrucao: form.instrucao.trim(),
-      objetivo_id: linkedToObjective ? Number(form.objetivo_id) : null,
-      sonho_id: linkedToSonho ? Number(form.sonho_id) : null,
-      prazo: form.prazo ? form.prazo.trim() : null,
-    }
+    const recurrenceWeekdays = normalizeWeekdays(form.recurrence_weekdays)
 
-    if (linkedToObjective || linkedToSonho) {
-      const isSingleOrder = form.duration_type === "pontual"
-      payload.recurrence_weekdays =
-        !isSingleOrder && form.recurrence_weekdays.length > 0 ? form.recurrence_weekdays : null
-      payload.duration_type = form.duration_type
-      payload.recurrence_end_date =
-        !isSingleOrder &&
-        form.recurrence_weekdays.length > 0 &&
-        form.duration_type === "prazo" &&
-        form.recurrence_end_date
-          ? form.recurrence_end_date
-          : null
-    } else {
-      payload.recurrence_weekdays = null
-      payload.duration_type = null
-      payload.recurrence_end_date = null
+    if (isRecurring && recurrenceWeekdays.length === 0) {
+      setRecurrenceError("Selecione ao menos um dia para a recorrência.")
+      return
     }
-
-    if (isEditing) {
-      onUpdate(editingMission.id, payload)
+    if (isRecurring && form.termination_policy === "ate_data" && !form.recurrence_end_date) {
+      setRecurrenceError("Informe a data final da recorrência.")
       return
     }
 
-    payload.responsavel_id = getUserId(currentUser)
-    onCreate(payload)
+    const payload = {
+      titulo: form.titulo.trim(),
+      instrucao: form.instrucao.trim(),
+      objetivo_id: form.objetivo_id ? Number(form.objetivo_id) : null,
+      prazo: form.prazo ? form.prazo.trim() : null,
+    }
+
+    // PATCH em uma ocorrência de Série V2 altera somente essa ocorrência.
+    // A edição da Série ainda não está disponível neste formulário.
+    if (!isEditing || !isSeriesOccurrence) {
+      Object.assign(payload, {
+        recurrence_weekdays: isRecurring ? recurrenceWeekdays : [],
+        duration_type: isRecurring ? form.termination_policy : "pontual",
+        recurrence_end_date:
+          isRecurring && form.termination_policy === "ate_data"
+            ? form.recurrence_end_date
+            : null,
+      })
+    }
+
+    if (isEditing) {
+      onUpdate?.(editingMission.id, payload)
+      return
+    }
+
+    onCreate?.({ ...payload, responsavel_id: getUserId(currentUser) })
   }
 
   return (
@@ -297,6 +370,16 @@ export default function MissionForm({
       </div>
 
       <form className="form-stack" onSubmit={submit}>
+        <label>
+          Título
+          <input
+            name="titulo"
+            onChange={updateField}
+            placeholder="Ex.: Revisar plano semanal"
+            value={form.titulo}
+          />
+        </label>
+
         {lockedInitialPrazo && (
           <div className="deadline-context">
             <span>DATA DEFINIDA</span>
@@ -316,15 +399,101 @@ export default function MissionForm({
           </label>
         )}
 
+        {lockObjetivo ? (
+          <div className="deadline-context objective-context">
+            <span>OBJETIVO VINCULADO</span>
+            <strong>{initialObjetivoTitulo || "Objetivo selecionado"}</strong>
+          </div>
+        ) : (
+          <label>
+            Objetivo opcional
+            <select name="objetivo_id" onChange={handleObjetivoChange} value={form.objetivo_id}>
+              <option value="">Sem objetivo vinculado</option>
+              {objetivos.map((objetivo) => (
+                <option key={objetivo.id} value={objetivo.id}>
+                  {objetivo.titulo}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {objetivoStatus && <p className="feedback error">{objetivoStatus}</p>}
+
         <label>
-          Título
-          <input
-            name="titulo"
-            onChange={updateField}
-            placeholder="Ex.: Revisar plano semanal"
-            value={form.titulo}
-          />
+          Repetir
+          <select
+            disabled={isSeriesOccurrence}
+            name="repeat_type"
+            onChange={handleRepeatChange}
+            value={form.repeat_type}
+          >
+            <option value="nao">Não</option>
+            <option value="todos_dias">Todos os dias</option>
+            <option value="dias_uteis">Dias úteis</option>
+            <option value="semanal">Semanalmente</option>
+            <option value="personalizado">Personalizado</option>
+          </select>
         </label>
+
+        {isSeriesOccurrence && (
+          <p className="muted">
+            Esta é uma ocorrência recorrente. As alterações serão aplicadas somente a esta ordem;
+            a série não será modificada.
+          </p>
+        )}
+
+        {isRecurring && !isSeriesOccurrence && (
+          <details className="linked-mission-options" open>
+            <summary>Detalhes da recorrência</summary>
+            <fieldset className="weekday-fieldset">
+              <legend>Dias da semana</legend>
+              <div className="weekday-options">
+                {weekdayOptions.map(([value, label]) => (
+                  <label
+                    key={value}
+                    className={form.recurrence_weekdays.includes(value) ? "active" : ""}
+                  >
+                    <input
+                      checked={form.recurrence_weekdays.includes(value)}
+                      onChange={() => toggleWeekday(value)}
+                      type="checkbox"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <label>
+              Término
+              <select
+                name="termination_policy"
+                onChange={updateField}
+                value={form.termination_policy}
+              >
+                <option value="sem_termino">Sem término</option>
+                <option value="ate_data">Até uma data</option>
+                <option disabled={!form.objetivo_id} value="ate_objetivo">
+                  Até o objetivo
+                </option>
+              </select>
+            </label>
+
+            {form.termination_policy === "ate_data" && (
+              <label>
+                Data final
+                <input
+                  name="recurrence_end_date"
+                  onChange={handleRecurrenceEndDateChange}
+                  required
+                  type="date"
+                  value={toDateInputValue(form.recurrence_end_date)}
+                />
+              </label>
+            )}
+          </details>
+        )}
+        {recurrenceError && <p className="feedback error">{recurrenceError}</p>}
 
         <label>
           Instrução opcional
@@ -340,96 +509,6 @@ export default function MissionForm({
             {form.instrucao.length}/{MISSION_INSTRUCTION_MAX_LENGTH}
           </span>
         </label>
-
-        {lockObjetivo ? (
-          <div className="deadline-context objective-context">
-            <span>OBJETIVO VINCULADO</span>
-            <strong>{initialObjetivoTitulo || "Objetivo selecionado"}</strong>
-          </div>
-        ) : lockSonho ? (
-          <div className="deadline-context objective-context">
-            <span>SONHO VINCULADO</span>
-            <strong>{initialSonhoTitulo || "Sonho selecionado"}</strong>
-          </div>
-        ) : (
-          <label>
-            Vínculo estratégico
-            <select
-              name="strategic_link"
-              onChange={updateStrategicLink}
-              value={
-                form.objetivo_id
-                  ? `objetivo:${form.objetivo_id}`
-                  : form.sonho_id
-                    ? `sonho:${form.sonho_id}`
-                    : ""
-              }
-            >
-              <option value="">Apenas cronograma de caça</option>
-              {sonhos.map((sonho) => (
-                <option key={sonho.id} value={`sonho:${sonho.id}`}>
-                  {`Sonho: ${sonho.titulo}`}
-                </option>
-              ))}
-              {objetivos.map((objetivo) => (
-                <option key={objetivo.id} value={`objetivo:${objetivo.id}`}>
-                  {`Objetivo: ${objetivo.titulo}`}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {objetivoStatus && <p className="feedback error">{objetivoStatus}</p>}
-
-        {(form.objetivo_id || form.sonho_id) && (
-          <div className="linked-mission-options">
-            <label>
-              Duração
-              <select name="duration_type" onChange={updateField} value={form.duration_type}>
-                <option value="pontual">Ordem única</option>
-                <option value="ate_objetivo">
-                  {form.sonho_id ? "Até tomar o sonho" : "Até atingir o objetivo"}
-                </option>
-                <option value="prazo">Prazo determinado</option>
-              </select>
-            </label>
-
-            {form.duration_type !== "pontual" && (
-              <>
-                {form.duration_type === "prazo" && (
-                  <label>
-                    Encerrar em
-                    <input
-                      name="recurrence_end_date"
-                      type="date"
-                      onChange={handleRecurrenceEndDateChange}
-                      value={toDateInputValue(form.recurrence_end_date)}
-                    />
-                  </label>
-                )}
-
-                <fieldset className="weekday-fieldset">
-                  <legend>Frequência semanal</legend>
-                  <div className="weekday-options">
-                    {weekdayOptions.map(([value, label]) => (
-                      <label
-                        key={value}
-                        className={form.recurrence_weekdays.includes(value) ? "active" : ""}
-                      >
-                        <input
-                          checked={form.recurrence_weekdays.includes(value)}
-                          onChange={() => toggleWeekday(value)}
-                          type="checkbox"
-                        />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-              </>
-            )}
-          </div>
-        )}
 
         {status.message && <p className={`feedback ${status.type}`}>{status.message}</p>}
 

@@ -8,12 +8,18 @@ import SonhoForm from "./SonhoForm"
 import MissionForm from "../../missions/components/MissionForm"
 
 function isRecurringMission(mission) {
-  return Array.isArray(mission?.recurrence_weekdays) && mission.recurrence_weekdays.length > 0
+  return (
+    (Array.isArray(mission?.recurrence?.weekdays) && mission.recurrence.weekdays.length > 0) ||
+    (Array.isArray(mission?.recurrence_weekdays) && mission.recurrence_weekdays.length > 0)
+  )
 }
 
 function directSonhoMissionKey(mission) {
   if (!isRecurringMission(mission)) {
     return `missao:${mission?.id}`
+  }
+  if (mission?.recurrence?.series_id) {
+    return `serie:${mission.recurrence.series_id}`
   }
   return [
     "sonho-recorrente",
@@ -440,9 +446,6 @@ export default function SonhoPanel({
             </p>
           </div>
           <MissionForm
-            initialSonhoId={ordemSonho.id}
-            initialSonhoTitulo={ordemSonho.titulo}
-            lockSonho
             loading={loading}
             onCancel={() => setOrdemSonho(null)}
             onCreate={submitOrdemDoSonho}
