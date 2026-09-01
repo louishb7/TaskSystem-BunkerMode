@@ -7,13 +7,7 @@ const emptyForm = {
   sem_prazo: true,
 }
 
-export default function ObjetivoForm({
-  editingObjetivo = null,
-  initialSonhoId = null,
-  loading,
-  onCancel,
-  onSubmit,
-}) {
+export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel, onSubmit }) {
   const [form, setForm] = useState(emptyForm)
   const isEditing = Boolean(editingObjetivo)
 
@@ -45,7 +39,6 @@ export default function ObjetivoForm({
       titulo: form.titulo.trim(),
       descricao: form.descricao.trim() || null,
       data_alvo: form.sem_prazo ? null : form.data_alvo || null,
-      sonho_id: isEditing ? (editingObjetivo.sonho_id ?? null) : initialSonhoId,
     })
   }
 
@@ -76,7 +69,7 @@ export default function ObjetivoForm({
           {!form.sem_prazo && (
             <label>
               Data alvo
-              <input name="data_alvo" onChange={updateField} type="date" value={form.data_alvo} />
+              <input name="data_alvo" onChange={updateField} required type="date" value={form.data_alvo} />
             </label>
           )}
         </div>

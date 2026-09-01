@@ -7,6 +7,7 @@ export default function CommandRail({
   generalName,
   onLogout,
   onOpenMountain,
+  onOpenObjectives,
   onOpenReview,
   reviewCount,
 }) {
@@ -21,6 +22,9 @@ export default function CommandRail({
       </div>
       <p className="rail-note">Revise o quadro, abra o relatório e mantenha o comando limpo.</p>
       <div className="rail-actions rail-nav">
+        <button className="button secondary" type="button" onClick={onOpenObjectives}>
+          OBJETIVOS
+        </button>
         <button className="button secondary" type="button" onClick={onOpenMountain}>
           <span className="button-asset-label">
             <span className="rail-symbol" aria-hidden="true">

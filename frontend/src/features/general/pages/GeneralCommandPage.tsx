@@ -27,6 +27,7 @@ export default function GeneralCommandPage({
   onActivateSoldier,
   onLogout,
   onOpenMountain,
+  onOpenObjectives,
   onOpenReview,
   onUnauthorized,
   token,
@@ -143,6 +144,7 @@ export default function GeneralCommandPage({
             generalName={generalName}
             onLogout={onLogout}
             onOpenMountain={onOpenMountain}
+            onOpenObjectives={onOpenObjectives}
             onOpenReview={onOpenReview}
             reviewCount={reviewCount}
           />

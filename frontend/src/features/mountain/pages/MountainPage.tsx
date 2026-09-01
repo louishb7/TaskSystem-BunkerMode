@@ -2,7 +2,6 @@ import React from "react"
 
 import StatusNotice from "../../../components/ui/StatusNotice"
 import TacticalShell from "../../../components/tactical/TacticalShell"
-import ObjetivoList from "../components/ObjetivoList"
 import SonhoPanel from "../components/SonhoPanel"
 import { useMountain } from "../hooks/useMountain"
 
@@ -25,31 +24,12 @@ export default function MountainPage({ embedded = false, onClose, onUnauthorized
       <SonhoPanel
         loading={busy}
         onArchive={mountain.archiveSonho}
-        onCreateObjetivo={mountain.createObjetivo}
         onCreate={mountain.createSonho}
         onCreateMission={mountain.createMission}
         missions={mountain.missions}
-        objetivos={mountain.objetivos}
-        onDeleteObjetivo={mountain.deleteObjetivo}
         onPromote={mountain.promoteSonho}
-        onUpdateObjetivo={mountain.updateObjetivo}
-        onUpdateObjetivoStatus={mountain.updateObjetivoStatus}
-        onReorderObjetivos={mountain.reorderObjetivos}
         onUpdate={mountain.updateSonho}
         sonhos={mountain.sonhos}
-      />
-
-      <ObjetivoList
-        loading={busy}
-        missions={mountain.missions}
-        objetivos={mountain.objetivos}
-        onCreate={mountain.createObjetivo}
-        onCreateMission={mountain.createMission}
-        onDelete={mountain.deleteObjetivo}
-        onUpdate={mountain.updateObjetivo}
-        onUpdateStatus={mountain.updateObjetivoStatus}
-        onReorder={mountain.reorderObjetivos}
-        sonhos={mountain.sonhosAtivos}
       />
     </section>
   )

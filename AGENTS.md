@@ -281,6 +281,7 @@ Ao alterar código:
 
 - Após qualquer bloco que altere arquivos, sempre sugerir uma mensagem de commit.
 - Preferir mensagens curtas no padrão Conventional Commits.
+- Todas as mensagens de commit devem ser escritas em inglês.
 - Não executar `git commit` automaticamente, salvo pedido explícito do usuário.
 - A sugestão deve refletir apenas o escopo efetivamente concluído.
 

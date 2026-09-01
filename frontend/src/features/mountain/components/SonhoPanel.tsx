@@ -1,8 +1,6 @@
 import React, { useMemo, useState } from "react"
 
 import MountainDialog from "./MountainDialog"
-import ObjetivoCard from "./ObjetivoCard"
-import ObjetivoForm from "./ObjetivoForm"
 import SonhoArquivarDialog from "./SonhoArquivarDialog"
 import SonhoForm from "./SonhoForm"
 import MissionForm from "../../missions/components/MissionForm"
@@ -48,16 +46,6 @@ function missionStatusLabel(mission) {
     : mission?.status_label || mission?.status_code || "Pendente"
 }
 
-function sortObjetivosByOrder(objetivos = []) {
-  return [...objetivos].sort((a, b) => {
-    const orderDiff = Number(a.order_index || 0) - Number(b.order_index || 0)
-    if (orderDiff !== 0) {
-      return orderDiff
-    }
-    return Number(a.id || 0) - Number(b.id || 0)
-  })
-}
-
 function summarizeDirectSonhoMissions(missions) {
   const groups = new Map()
   missions.forEach((mission) => {
@@ -81,15 +69,9 @@ export default function SonhoPanel({
   loading,
   missions = [],
   onArchive,
-  onCreateObjetivo,
   onCreate,
   onCreateMission,
-  objetivos,
-  onDeleteObjetivo,
   onPromote,
-  onReorderObjetivos,
-  onUpdateObjetivo,
-  onUpdateObjetivoStatus,
   onUpdate,
   sonhos,
 }) {
@@ -97,7 +79,6 @@ export default function SonhoPanel({
   const [editingSonho, setEditingSonho] = useState(null)
   const [initialTipo, setInitialTipo] = useState("principal")
   const [archiveTarget, setArchiveTarget] = useState(null)
-  const [objetivoSonho, setObjetivoSonho] = useState(null)
   const [ordemSonho, setOrdemSonho] = useState(null)
   const principal = useMemo(
     () => sonhos.find((sonho) => sonho.status === "ativo" && sonho.tipo === "principal"),
@@ -108,32 +89,6 @@ export default function SonhoPanel({
     [sonhos]
   )
   const hasActivePrincipal = Boolean(principal)
-  const objetivosPorSonho = useMemo(
-    () =>
-      (objetivos || []).reduce((groups, objetivo) => {
-        if (!objetivo.sonho_id) {
-          return groups
-        }
-        const key = String(objetivo.sonho_id)
-        groups[key] = groups[key] || []
-        groups[key].push(objetivo)
-        return groups
-      }, {}),
-    [objetivos]
-  )
-  const missionsPorObjetivo = useMemo(
-    () =>
-      (missions || []).reduce((groups, mission) => {
-        if (!mission.objetivo_id) {
-          return groups
-        }
-        const key = String(mission.objetivo_id)
-        groups[key] = groups[key] || []
-        groups[key].push(mission)
-        return groups
-      }, {}),
-    [missions]
-  )
   const missionsPorSonho = useMemo(
     () =>
       (missions || []).reduce((groups, mission) => {
@@ -172,13 +127,6 @@ export default function SonhoPanel({
     }
   }
 
-  async function submitObjetivo(payload) {
-    const saved = await onCreateObjetivo?.(payload)
-    if (saved) {
-      setObjetivoSonho(null)
-    }
-  }
-
   async function submitOrdemDoSonho(payload) {
     const saved = await onCreateMission?.({
       ...payload,
@@ -206,53 +154,6 @@ export default function SonhoPanel({
             <span>{missionStatusLabel(mission)}</span>
           </div>
         ))}
-      </div>
-    )
-  }
-
-  function renderObjetivosDoSonho(sonho) {
-    const vinculados = sortObjetivosByOrder(objetivosPorSonho[String(sonho.id)] || [])
-    function moveObjetivoToTop(index) {
-      if (index <= 0 || index >= vinculados.length) {
-        return
-      }
-      const reordered = [...vinculados]
-      const [selected] = reordered.splice(index, 1)
-      reordered.unshift(selected)
-      onReorderObjetivos?.(reordered.map((objetivo) => objetivo.id))
-    }
-
-    return (
-      <div className="sonho-objective-branch mountain-ascent-path">
-        {vinculados.length > 0 && (
-          <div className="branch-line mountain-path-line" aria-hidden="true" />
-        )}
-        {vinculados.length > 0 && (
-          <div className="objetivo-list nested mountain-camp-list">
-            {vinculados.map((objetivo, index) => (
-              <div className="mountain-camp-node" key={objetivo.id}>
-                <ObjetivoCard
-                  loading={loading}
-                  missions={missionsPorObjetivo[String(objetivo.id)] || []}
-                  objetivo={objetivo}
-                  onDelete={onDeleteObjetivo}
-                  onCreateMission={onCreateMission}
-                  onUpdate={onUpdateObjetivo}
-                  onUpdateStatus={onUpdateObjetivoStatus}
-                  onMoveToTop={index > 0 ? () => moveObjetivoToTop(index) : null}
-                  sonhos={sonhos}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        {vinculados.length === 0 && (
-          <p className="mountain-empty-route muted">
-            {sonho.tipo === "principal"
-              ? "Topo definido. A rota ainda não tem acampamentos."
-              : "Rota secundária sem acampamentos definidos."}
-          </p>
-        )}
       </div>
     )
   }
@@ -325,14 +226,6 @@ export default function SonhoPanel({
             {principal ? (
               <>
                 <button
-                  className="button fire compact"
-                  disabled={loading}
-                  type="button"
-                  onClick={() => setObjetivoSonho(principal)}
-                >
-                  NOVO OBJETIVO
-                </button>
-                <button
                   className="button secondary compact"
                   disabled={loading}
                   type="button"
@@ -366,7 +259,6 @@ export default function SonhoPanel({
         </article>
         {principal && renderOrdensDiretasDoSonho(principal)}
 
-        {principal && renderObjetivosDoSonho(principal)}
       </div>
 
       {secundarios.length > 0 && (
@@ -382,14 +274,6 @@ export default function SonhoPanel({
                 <h3>{sonho.titulo}</h3>
                 {sonho.descricao && <p>{sonho.descricao}</p>}
                 <div className="mountain-card-actions">
-                  <button
-                    className="button fire compact"
-                    disabled={loading}
-                    type="button"
-                    onClick={() => setObjetivoSonho(sonho)}
-                  >
-                    NOVO OBJETIVO
-                  </button>
                   <button
                     className="button secondary compact"
                     disabled={loading}
@@ -411,28 +295,10 @@ export default function SonhoPanel({
                   </button>
                 </div>
                 {renderOrdensDiretasDoSonho(sonho)}
-                {renderObjetivosDoSonho(sonho)}
               </article>
             ))}
           </div>
         </section>
-      )}
-
-      {objetivoSonho && (
-        <MountainDialog label="Novo objetivo" onClose={() => setObjetivoSonho(null)}>
-          <div className="section-heading compact">
-            <div>
-              <p className="section-kicker fire">NOVO OBJETIVO</p>
-              <h3>{objetivoSonho.titulo}</h3>
-            </div>
-          </div>
-          <ObjetivoForm
-            initialSonhoId={objetivoSonho.id}
-            loading={loading}
-            onCancel={() => setObjetivoSonho(null)}
-            onSubmit={submitObjetivo}
-          />
-        </MountainDialog>
       )}
 
       {ordemSonho && (
