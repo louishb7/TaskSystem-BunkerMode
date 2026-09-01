@@ -80,6 +80,7 @@ function mission(overrides: Partial<MissionRecord> = {}): MissionRecord {
     recurrence_end_date: null,
     duration_type: null,
     recurrence_key: null,
+    recurrence_series_id: null,
     criada_por_id: 7,
     responsavel_id: 7,
     objetivo_id: 3,

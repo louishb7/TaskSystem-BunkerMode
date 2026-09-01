@@ -36,10 +36,27 @@ type MissionRow = {
   recurrence_end_date: Date | null
   duration_type: string | null
   recurrence_key: string | null
+  recurrence_series_id: number | null
   criada_por_id: number
   responsavel_id: number
   objetivo_id: number | null
   sonho_id: number | null
+}
+
+type RecurrenceSeriesRow = {
+  recurrence_series_id: number
+  responsavel_id: number
+  objetivo_id: number | null
+  titulo: string
+  instrucao: string | null
+  prioridade: number
+  recurrence_weekdays: number[]
+  start_date: Date
+  termination_policy: string
+  end_date: Date | null
+  ativo: boolean
+  created_at: Date
+  updated_at: Date
 }
 
 type DreamRow = {
@@ -91,11 +108,13 @@ class InMemoryPrisma {
   private eventId = 1
   private dreamId = 1
   private goalId = 1
+  private recurrenceSeriesId = 1
   private reviewId = 1
   readonly users: UserRow[] = []
   readonly missions: MissionRow[] = []
   readonly dreams: DreamRow[] = []
   readonly goals: GoalRow[] = []
+  readonly recurrenceSeries: RecurrenceSeriesRow[] = []
   readonly reviews: ReviewRow[] = []
   readonly events: Array<{ evento_id: number; missao_id: number | null; usuario_id: number | null; acao: string; detalhes: string; criado_em: Date }> = []
 
@@ -160,6 +179,7 @@ class InMemoryPrisma {
         recurrence_end_date: data.recurrence_end_date ?? null,
         duration_type: data.duration_type ?? null,
         recurrence_key: data.recurrence_key ?? null,
+        recurrence_series_id: data.recurrence_series_id ?? null,
         criada_por_id: data.criada_por_id,
         responsavel_id: data.responsavel_id,
         objetivo_id: data.objetivo_id ?? null,
@@ -167,6 +187,29 @@ class InMemoryPrisma {
       }
       this.missions.push(mission)
       return mission
+    },
+    createManyAndReturn: async ({
+      data,
+      skipDuplicates,
+    }: {
+      data: Array<Partial<MissionRow> & Pick<MissionRow, "titulo" | "status" | "criada_por_id" | "responsavel_id">>
+      skipDuplicates?: boolean
+    }) => {
+      const created: MissionRow[] = []
+      for (const item of data) {
+        const duplicate = this.missions.some(
+          (mission) =>
+            item.recurrence_series_id !== null &&
+            item.recurrence_series_id !== undefined &&
+            mission.recurrence_series_id === item.recurrence_series_id &&
+            mission.prazo?.getTime() === item.prazo?.getTime(),
+        )
+        if (duplicate && skipDuplicates) {
+          continue
+        }
+        created.push(await this.missoes.create({ data: item }))
+      }
+      return created
     },
     findMany: async ({ where }: { where?: { responsavel_id?: number; status?: string; prazo?: { lt: Date } } } = {}) => {
       let missions = [...this.missions]
@@ -215,6 +258,12 @@ class InMemoryPrisma {
       this.events.push(event)
       return event
     },
+    createMany: async ({ data }: { data: Array<{ missao_id: number | null; usuario_id: number | null; acao: string; detalhes: string }> }) => {
+      for (const item of data) {
+        await this.auditoria_eventos.create({ data: item })
+      }
+      return { count: data.length }
+    },
     deleteMany: async ({ where }: { where: { missao_id: number } }) => {
       for (let index = this.events.length - 1; index >= 0; index -= 1) {
         if (this.events[index].missao_id === where.missao_id) {
@@ -223,6 +272,45 @@ class InMemoryPrisma {
       }
     },
     findMany: async ({ where }: { where: { missao_id: number } }) => this.events.filter((event) => event.missao_id === where.missao_id),
+  }
+
+  readonly series_recorrencia = {
+    create: async ({ data }: { data: Omit<RecurrenceSeriesRow, "recurrence_series_id" | "created_at" | "updated_at"> }) => {
+      const now = new Date()
+      const series: RecurrenceSeriesRow = {
+        recurrence_series_id: this.recurrenceSeriesId++,
+        created_at: now,
+        updated_at: now,
+        ...data,
+      }
+      this.recurrenceSeries.push(series)
+      return series
+    },
+    findMany: async ({
+      where,
+      include,
+    }: {
+      where: { responsavel_id: number; ativo: boolean }
+      include?: { objetivos?: boolean }
+    }) =>
+      this.recurrenceSeries
+        .filter((series) => series.responsavel_id === where.responsavel_id && series.ativo === where.ativo)
+        .map((series) =>
+          include?.objetivos
+            ? { ...series, objetivos: this.goals.find((goal) => goal.id === series.objetivo_id) ?? null }
+            : series,
+        ),
+    updateMany: async ({ where, data }: { where: Partial<RecurrenceSeriesRow>; data: Partial<RecurrenceSeriesRow> }) => {
+      const matching = this.recurrenceSeries.filter(
+        (series) =>
+          (where.recurrence_series_id === undefined || series.recurrence_series_id === where.recurrence_series_id) &&
+          (where.objetivo_id === undefined || series.objetivo_id === where.objetivo_id) &&
+          (where.termination_policy === undefined || series.termination_policy === where.termination_policy) &&
+          (where.ativo === undefined || series.ativo === where.ativo),
+      )
+      matching.forEach((series) => Object.assign(series, data, { updated_at: new Date() }))
+      return { count: matching.length }
+    },
   }
 
   readonly objetivos = {
@@ -251,12 +339,13 @@ class InMemoryPrisma {
       this.goals.push(goal)
       return goal
     },
-    findFirst: async ({ where, include }: { where: { id?: number; usuario_id?: number }; include?: { sonhos?: boolean } }) => {
+    findFirst: async ({ where, include }: { where: { id?: number; usuario_id?: number; status?: string }; include?: { sonhos?: boolean } }) => {
       const goal =
         this.goals.find(
           (item) =>
             (where.id === undefined || item.id === where.id) &&
-            (where.usuario_id === undefined || item.usuario_id === where.usuario_id),
+            (where.usuario_id === undefined || item.usuario_id === where.usuario_id) &&
+            (where.status === undefined || item.status === where.status),
         ) ?? null
       if (!goal) {
         return null

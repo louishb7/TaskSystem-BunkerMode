@@ -172,7 +172,16 @@ export class GoalsService {
   async delete(user: UserRecord, goalId: number): Promise<void> {
     ensureGeneral(user)
     const existing = await this.findOwned(user, goalId)
-    await this.prisma.objetivos.delete({ where: { id: existing.id } })
+    await this.prisma.$transaction(async (tx) => {
+      await tx.series_recorrencia.updateMany({
+        where: {
+          objetivo_id: existing.id,
+          termination_policy: "ate_objetivo",
+        },
+        data: { ativo: false },
+      })
+      await tx.objetivos.delete({ where: { id: existing.id } })
+    })
   }
 
   private async ensureOwnedDream(user: UserRecord, dreamId: number | null): Promise<void> {

@@ -33,6 +33,7 @@ export type MissionRecord = {
   recurrence_end_date: Date | null
   duration_type: string | null
   recurrence_key: string | null
+  recurrence_series_id: number | null
   criada_por_id: number
   responsavel_id: number
   objetivo_id: number | null

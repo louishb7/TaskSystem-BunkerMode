@@ -38,6 +38,7 @@ function mission(overrides: Partial<MissionRecord> = {}): MissionRecord {
     recurrence_end_date: null,
     duration_type: null,
     recurrence_key: null,
+    recurrence_series_id: null,
     criada_por_id: 7,
     responsavel_id: 7,
     objetivo_id: null,
@@ -51,11 +52,13 @@ function prismaMock() {
     $transaction: jest.fn(),
     auditoria_eventos: {
       create: jest.fn(),
+      createMany: jest.fn(),
       deleteMany: jest.fn(),
       findMany: jest.fn(),
     },
     missoes: {
       create: jest.fn(),
+      createManyAndReturn: jest.fn(),
       delete: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
@@ -64,6 +67,11 @@ function prismaMock() {
     },
     objetivos: {
       findFirst: jest.fn(),
+    },
+    series_recorrencia: {
+      create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn(),
     },
     sonhos: {
       findFirst: jest.fn(),
@@ -140,7 +148,7 @@ describe("Missions clean domain", () => {
     })
   })
 
-  it("materializes recurring strategic missions with deterministic recurrence keys", async () => {
+  it("creates a recurrence series and materializes occurrences without legacy keys", async () => {
     const prisma = prismaMock()
     const createdMissions = [
       mission({ missao_id: 10, prazo: new Date("2026-04-24T00:00:00.000Z") }),
@@ -150,13 +158,29 @@ describe("Missions clean domain", () => {
       mission({ missao_id: 14, prazo: new Date("2026-05-04T00:00:00.000Z") }),
       mission({ missao_id: 15, prazo: new Date("2026-05-06T00:00:00.000Z") }),
     ]
-    const create = jest.fn()
-    createdMissions.forEach((created) => create.mockResolvedValueOnce(created))
+    const series = {
+      recurrence_series_id: 21,
+      responsavel_id: 7,
+      objetivo_id: 7,
+      titulo: "Treinar escrita",
+      instrucao: null,
+      prioridade: 2,
+      recurrence_weekdays: [0, 2, 4],
+      start_date: new Date("2026-04-24T00:00:00.000Z"),
+      termination_policy: "ate_objetivo",
+      end_date: null,
+      ativo: true,
+      created_at: new Date("2026-04-24T12:00:00.000Z"),
+      updated_at: new Date("2026-04-24T12:00:00.000Z"),
+    }
+    prisma.series_recorrencia.create.mockResolvedValue(series)
+    prisma.missoes.createManyAndReturn.mockResolvedValue(createdMissions)
     prisma.objetivos.findFirst.mockResolvedValue({ id: 7, usuario_id: 7, status: "ativo", sonhos: null })
     prisma.$transaction.mockImplementation(async (callback) =>
       callback({
         auditoria_eventos: prisma.auditoria_eventos,
-        missoes: { create, findUnique: prisma.missoes.findUnique },
+        missoes: { createManyAndReturn: prisma.missoes.createManyAndReturn },
+        series_recorrencia: prisma.series_recorrencia,
       }),
     )
     const service = new MissionsService(prisma as unknown as PrismaService, calendar)
@@ -174,8 +198,15 @@ describe("Missions clean domain", () => {
     )
 
     expect(result.missao_id).toBe(10)
-    expect(create).toHaveBeenCalledTimes(6)
-    expect(create.mock.calls.map(([call]) => call.data.prazo.toISOString().slice(0, 10))).toEqual([
+    expect(prisma.series_recorrencia.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        objetivo_id: 7,
+        recurrence_weekdays: [0, 2, 4],
+        termination_policy: "ate_objetivo",
+      }),
+    })
+    const occurrenceCall = prisma.missoes.createManyAndReturn.mock.calls[0][0]
+    expect(occurrenceCall.data.map((item: { prazo: Date }) => item.prazo.toISOString().slice(0, 10))).toEqual([
       "2026-04-24",
       "2026-04-27",
       "2026-04-29",
@@ -183,7 +214,17 @@ describe("Missions clean domain", () => {
       "2026-05-04",
       "2026-05-06",
     ])
-    expect(create.mock.calls.every(([call]) => typeof call.data.recurrence_key === "string")).toBe(true)
+    expect(occurrenceCall.skipDuplicates).toBe(true)
+    expect(occurrenceCall.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          recurrence_series_id: 21,
+          recurrence_key: null,
+          recurrence_weekdays: [],
+          sonho_id: null,
+        }),
+      ]),
+    )
   })
 
   it("fails overdue pending missions before showing the Soldier board", async () => {

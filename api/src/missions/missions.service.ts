@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common"
-import { Prisma } from "@prisma/client"
+import { Prisma, series_recorrencia } from "@prisma/client"
 
 import { DREAM_STATUS } from "../dreams/dreams.types"
 import { GOAL_STATUS } from "../goals/goals.types"
@@ -26,6 +26,8 @@ type UpdateMissionPayload = Partial<CreateMissionPayload> & {
 }
 
 const RECURRENCE_WINDOW_DAYS = 14
+
+type RecurrenceTerminationPolicy = "sem_termino" | "ate_data" | "ate_objetivo"
 
 function ensureGeneral(user: UserRecord): void {
   if (user.active_mode !== "general") {
@@ -168,6 +170,37 @@ function durationType(value: unknown): string | null {
   throw new HttpException("Duração da missão vinculada é inválida.", HttpStatus.BAD_REQUEST)
 }
 
+function recurrenceTerminationPolicy(value: unknown, weekdays: number[]): RecurrenceTerminationPolicy | null {
+  if (value === "pontual") {
+    return null
+  }
+
+  let policy: RecurrenceTerminationPolicy | null = null
+  if (value === null || value === undefined || value === "") {
+    policy = weekdays.length > 0 ? "sem_termino" : null
+  } else if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === "sem_termino") {
+      policy = "sem_termino"
+    } else if (normalized === "prazo" || normalized === "ate_data") {
+      policy = "ate_data"
+    } else if (normalized === "ate_objetivo") {
+      policy = "ate_objetivo"
+    } else if (normalized === "pontual") {
+      return null
+    } else {
+      throw new HttpException("Política de término da recorrência é inválida.", HttpStatus.BAD_REQUEST)
+    }
+  } else {
+    throw new HttpException("Política de término da recorrência é inválida.", HttpStatus.BAD_REQUEST)
+  }
+
+  if (policy !== null && weekdays.length === 0) {
+    throw new HttpException("Informe ao menos um dia da frequência semanal.", HttpStatus.BAD_REQUEST)
+  }
+  return policy
+}
+
 function addDays(value: Date, amount: number): Date {
   const next = new Date(value)
   next.setUTCDate(next.getUTCDate() + amount)
@@ -234,7 +267,7 @@ export class MissionsService {
     const title = text(payload.titulo, "Título da missão é obrigatório.")
     const instruction = optionalText(payload.instrucao, MISSION_INSTRUCTION_MAX_LENGTH)
     const weekdays = recurrenceWeekdays(payload.recurrence_weekdays)
-    const duration = durationType(payload.duration_type)
+    const recurrencePolicy = recurrenceTerminationPolicy(payload.duration_type, weekdays)
     const recurrenceEndDate = dateFromPayload(payload.recurrence_end_date)
     const objetivoId = optionalId(payload.objetivo_id, "Objetivo vinculado não encontrado.")
     const sonhoId = optionalId(payload.sonho_id, "Sonho vinculado não encontrado.")
@@ -246,68 +279,80 @@ export class MissionsService {
       throw new HttpException("Responsável inválido.", HttpStatus.BAD_REQUEST)
     }
 
-    await this.ensureStrategicLinks(user, objetivoId, sonhoId)
-    const isStrategic = objetivoId !== null || sonhoId !== null
-    const isRecurring = isStrategic && weekdays.length > 0 && (duration === "ate_objetivo" || duration === "prazo")
-    if (duration === "prazo" && isRecurring && recurrenceEndDate === null) {
-      throw new HttpException("Informe a data final da recorrência.", HttpStatus.BAD_REQUEST)
+    const dueDate = dateFromPayload(payload.prazo) ?? startOfIsoDate(this.today(user))
+    if (recurrencePolicy !== null) {
+      if (sonhoId !== null) {
+        throw new HttpException("Recorrência não pode ser vinculada a Sonho.", HttpStatus.BAD_REQUEST)
+      }
+      if (recurrencePolicy === "ate_data" && recurrenceEndDate === null) {
+        throw new HttpException("Informe a data final da recorrência.", HttpStatus.BAD_REQUEST)
+      }
+      if (recurrencePolicy === "ate_objetivo" && objetivoId === null) {
+        throw new HttpException("Recorrência até o objetivo exige um Objetivo vinculado.", HttpStatus.BAD_REQUEST)
+      }
+      await this.ensureActiveRecurrenceGoal(user, objetivoId)
+
+      const endDate = recurrencePolicy === "ate_data" ? recurrenceEndDate : null
+      const dates = this.recurrenceDates(dueDate, endDate, weekdays)
+      if (dates.length === 0) {
+        throw new HttpException("A frequência semanal não gera ordens dentro da janela permitida.", HttpStatus.BAD_REQUEST)
+      }
+
+      return this.prisma.$transaction(async (tx) => {
+        const series = await tx.series_recorrencia.create({
+          data: {
+            responsavel_id: responsavelId,
+            objetivo_id: objetivoId,
+            titulo: title,
+            instrucao: instruction,
+            prioridade: priority(payload.prioridade),
+            recurrence_weekdays: weekdays,
+            start_date: dueDate,
+            termination_policy: recurrencePolicy,
+            end_date: endDate,
+            ativo: true,
+          },
+        })
+        const created = await this.createSeriesOccurrences(tx, series, dates, user.usuario_id)
+        const firstMission = this.firstMission(created)
+        if (!firstMission) {
+          throw new HttpException("A frequência semanal não gera novas ordens dentro da janela permitida.", HttpStatus.BAD_REQUEST)
+        }
+        return firstMission
+      })
     }
 
-    const dueDate = dateFromPayload(payload.prazo) ?? startOfIsoDate(this.today(user))
-    const dates = isRecurring ? this.recurrenceDates(dueDate, recurrenceEndDate, weekdays) : [dueDate]
-    if (dates.length === 0) {
-      throw new HttpException("A frequência semanal não gera ordens dentro da janela permitida.", HttpStatus.BAD_REQUEST)
-    }
+    const duration = durationType(payload.duration_type)
+    await this.ensureStrategicLinks(user, objetivoId, sonhoId)
 
     const created = await this.prisma.$transaction(async (tx) => {
-      let firstMission: MissionRecord | null = null
-      for (const date of dates) {
-        const key = isRecurring
-          ? this.recurrenceKey({
-              objetivo_id: objetivoId,
-              sonho_id: sonhoId,
-              titulo: title,
-              instrucao: instruction,
-              prazo: date,
-            })
-          : null
-        if (key !== null) {
-          const existing = await tx.missoes.findUnique({ where: { recurrence_key: key } })
-          if (existing) {
-            continue
-          }
-        }
-        const mission = await tx.missoes.create({
-          data: {
-            titulo: title,
-            prioridade: priority(payload.prioridade),
-            prazo: date,
-            instrucao: instruction,
-            status: MISSION_STATUS.pending,
-            objetivo_id: objetivoId,
-            sonho_id: sonhoId,
-            recurrence_weekdays: isRecurring ? weekdays : [],
-            recurrence_end_date: isRecurring ? recurrenceEndDate : null,
-            duration_type: isStrategic ? duration : null,
-            recurrence_key: key,
-            criada_por_id: user.usuario_id,
-            responsavel_id: responsavelId,
-          },
-        })
-        await tx.auditoria_eventos.create({
-          data: {
-            missao_id: mission.missao_id,
-            usuario_id: user.usuario_id,
-            acao: isRecurring ? "missao_recorrente_criada" : "missao_criada",
-            detalhes: isRecurring ? `Recorrência gerou a ordem '${mission.titulo}'.` : `Missão '${mission.titulo}' criada.`,
-          },
-        })
-        firstMission ??= mission
-      }
-      if (!firstMission) {
-        throw new HttpException("A frequência semanal não gera novas ordens dentro da janela permitida.", HttpStatus.BAD_REQUEST)
-      }
-      return firstMission
+      const mission = await tx.missoes.create({
+        data: {
+          titulo: title,
+          prioridade: priority(payload.prioridade),
+          prazo: dueDate,
+          instrucao: instruction,
+          status: MISSION_STATUS.pending,
+          objetivo_id: objetivoId,
+          sonho_id: sonhoId,
+          recurrence_weekdays: [],
+          recurrence_end_date: null,
+          duration_type: objetivoId !== null || sonhoId !== null ? duration : null,
+          recurrence_key: null,
+          recurrence_series_id: null,
+          criada_por_id: user.usuario_id,
+          responsavel_id: responsavelId,
+        },
+      })
+      await tx.auditoria_eventos.create({
+        data: {
+          missao_id: mission.missao_id,
+          usuario_id: user.usuario_id,
+          acao: "missao_criada",
+          detalhes: `Missão '${mission.titulo}' criada.`,
+        },
+      })
+      return mission
     })
 
     return created
@@ -507,11 +552,64 @@ export class MissionsService {
   }
 
   private async materializeRecurrences(user: UserRecord): Promise<void> {
+    await this.materializeSeriesRecurrences(user)
+    await this.materializeLegacyRecurrences(user)
+  }
+
+  private async materializeSeriesRecurrences(user: UserRecord): Promise<void> {
+    const today = startOfIsoDate(this.today(user))
+    const windowEnd = addDays(today, RECURRENCE_WINDOW_DAYS - 1)
+    const seriesList = await this.prisma.series_recorrencia.findMany({
+      where: {
+        responsavel_id: user.usuario_id,
+        ativo: true,
+      },
+      include: { objetivos: true },
+    })
+    if (seriesList.length === 0) {
+      return
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const series of seriesList) {
+        if (series.termination_policy === "ate_objetivo") {
+          if (series.objetivo_id === null || series.objetivos === null) {
+            await tx.series_recorrencia.updateMany({
+              where: {
+                recurrence_series_id: series.recurrence_series_id,
+                ativo: true,
+              },
+              data: { ativo: false },
+            })
+            continue
+          }
+          if (series.objetivos.status !== GOAL_STATUS.active) {
+            continue
+          }
+        }
+
+        const start = series.start_date > today ? series.start_date : today
+        const limit =
+          series.termination_policy === "ate_data" && series.end_date && series.end_date < windowEnd
+            ? series.end_date
+            : windowEnd
+        if (limit < start) {
+          continue
+        }
+
+        const dates = datesForRecurrence(start, limit, series.recurrence_weekdays)
+        await this.createSeriesOccurrences(tx, series, dates, user.usuario_id)
+      }
+    })
+  }
+
+  private async materializeLegacyRecurrences(user: UserRecord): Promise<void> {
     const today = startOfIsoDate(this.today(user))
     const windowEnd = addDays(today, RECURRENCE_WINDOW_DAYS - 1)
     const candidates = await this.prisma.missoes.findMany({
       where: {
         responsavel_id: user.usuario_id,
+        recurrence_series_id: null,
         recurrence_weekdays: { isEmpty: false },
         duration_type: { in: ["ate_objetivo", "prazo"] },
         OR: [
@@ -568,6 +666,75 @@ export class MissionsService {
         }
       }
     })
+  }
+
+  private async createSeriesOccurrences(
+    tx: Prisma.TransactionClient,
+    series: series_recorrencia,
+    dates: Date[],
+    auditUserId: number,
+  ): Promise<MissionRecord[]> {
+    if (dates.length === 0) {
+      return []
+    }
+
+    const created = await tx.missoes.createManyAndReturn({
+      data: dates.map((date) => ({
+        titulo: series.titulo,
+        prioridade: series.prioridade,
+        prazo: date,
+        instrucao: series.instrucao,
+        status: MISSION_STATUS.pending,
+        objetivo_id: series.objetivo_id,
+        sonho_id: null,
+        recurrence_weekdays: [],
+        recurrence_end_date: null,
+        duration_type: null,
+        recurrence_key: null,
+        recurrence_series_id: series.recurrence_series_id,
+        criada_por_id: series.responsavel_id,
+        responsavel_id: series.responsavel_id,
+      })),
+      skipDuplicates: true,
+    })
+
+    if (created.length > 0) {
+      await tx.auditoria_eventos.createMany({
+        data: created.map((mission) => ({
+          missao_id: mission.missao_id,
+          usuario_id: auditUserId,
+          acao: "missao_recorrente_criada",
+          detalhes: `Recorrência gerou a ordem '${mission.titulo}'.`,
+        })),
+      })
+    }
+    return created
+  }
+
+  private firstMission(missions: MissionRecord[]): MissionRecord | null {
+    return (
+      [...missions].sort((left, right) => {
+        const leftDate = left.prazo?.getTime() ?? Number.MAX_SAFE_INTEGER
+        const rightDate = right.prazo?.getTime() ?? Number.MAX_SAFE_INTEGER
+        return leftDate - rightDate || left.missao_id - right.missao_id
+      })[0] ?? null
+    )
+  }
+
+  private async ensureActiveRecurrenceGoal(user: UserRecord, objetivoId: number | null): Promise<void> {
+    if (objetivoId === null) {
+      return
+    }
+    const objetivo = await this.prisma.objetivos.findFirst({
+      where: {
+        id: objetivoId,
+        usuario_id: user.usuario_id,
+        status: GOAL_STATUS.active,
+      },
+    })
+    if (!objetivo) {
+      throw new HttpException("Objetivo vinculado não está ativo.", HttpStatus.BAD_REQUEST)
+    }
   }
 
   private async ensureStrategicLinks(user: UserRecord, objetivoId: number | null, sonhoId: number | null): Promise<void> {
