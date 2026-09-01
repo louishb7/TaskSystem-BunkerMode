@@ -49,5 +49,7 @@ frontend/.vite/
 *.md
 !/README.md
 !/AGENTS.md
+!/DECISOES.md
+!/CONCEITO.md
 .codex
 .agents

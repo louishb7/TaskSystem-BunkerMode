@@ -17,12 +17,12 @@ Seja direto. Sem enchimento. Sem teoria não solicitada. Critique quando necess�
 Leia este arquivo antes de agir.
 
 Ordem de autoridade:
-1. Código real.
-2. `AGENTS.md`.
-3. `DECISOES.md`.
+1. Código real para identificar o estado atual da implementação.
+2. `AGENTS.md` para regras de trabalho e direção canônica do produto.
+3. `DECISOES.md` para decisões registradas.
 4. Prompts externos.
 
-Se houver conflito, reporte a divergência e use código real + `AGENTS.md` como base.
+Se houver conflito, reporte a divergência. Código legado descreve o que existe, não o que deve permanecer na V2. Para mudanças de produto já decididas nestes documentos, use `AGENTS.md` + `DECISOES.md` como estado alvo e trate a diferença no código como trabalho de migração.
 
 Leia `CONCEITO.md` quando a tarefa envolver UX, fluxo ou decisão de produto.
 Leia `DECISOES.md` quando a tarefa envolver decisão registrada, arquitetura ou escopo.
@@ -38,16 +38,18 @@ Problema central:
 
 Solução:
 - General planeja, decide e organiza.
-- Soldado executa sem renegociar.
+- Soldado reduz a interface para executar as ordens do dia.
 
 Loop central:
 - General cria;
-- sistema trava decisões;
 - Soldado executa;
 - resultado é registrado;
-- histórico alimenta a próxima revisão do General.
+- histórico objetivo pode orientar decisões futuras do General.
 
 Se uma funcionalidade não fortalece esse ciclo, ela não pertence ao produto.
+
+General e Soldado são modos de uso e interface. Não são papéis de autorização.
+O usuário pode retornar do Soldado ao General a qualquer momento.
 
 ---
 
@@ -57,9 +59,14 @@ Se uma funcionalidade não fortalece esse ciclo, ela não pertence ao produto.
 - "Comprometida" significa responsabilidade, não punição.
 - Preserve conclusão e registre falhas sem exigir escrita manual.
 - Clareza de execução > riqueza conceitual.
+- O domínio pode ser complexo sem expor complexidade desnecessária na interface.
 - Frontend não é fonte da verdade.
+- Autenticação, ownership e integridade são validados no servidor.
+- General e Soldado não substituem autenticação ou autorização.
 - Depois de qualquer mutação, recarregue da API.
 - Não use update otimista como verdade.
+- Não adicione gamificação, métricas ou abstrações sem necessidade concreta.
+- Novas features precisam justificar sua existência pelo fluxo real do produto.
 
 ---
 
@@ -86,6 +93,33 @@ Não renomeie arquivos, componentes, rotas, campos de API ou contratos apenas pa
 ## Escopo Atual
 
 Foco atual: Web responsiva.
+
+Escopo funcional alvo da V2:
+- autenticação;
+- usuários;
+- modos General e Soldado;
+- ordens/missões;
+- calendário semanal;
+- recorrência;
+- Objetivos independentes;
+- vínculo opcional `Ordem -> Objetivo`;
+- conclusão e falha de ordens;
+- histórico/auditoria objetiva quando tecnicamente útil.
+
+Removidos da visão de produto V2:
+- Montanha;
+- Sonhos, inclusive principal/secundários;
+- vínculo `Ordem -> Sonho`;
+- vínculo `Objetivo -> Sonho`;
+- Leão do Dia;
+- Caçada;
+- Relatório/Revisão semanal atual e sua obrigatoriedade;
+- rail lateral atual da home;
+- painel tático lateral atual da home;
+- cards de métricas da home;
+- terminologia militar decorativa ou excessiva.
+
+A existência temporária desses conceitos no código ou no banco representa legado de migração, não escopo vigente do produto.
 
 Mobile React Native/Expo não faz parte da arquitetura BunkerMode 2.0.
 Não recriar app mobile sem pedido explícito.
@@ -158,7 +192,7 @@ Não adicionar:
 
 ### Missão
 
-Campos conhecidos:
+Estado atual da implementação — campos conhecidos:
 - `id`
 - `titulo`
 - `instrucao`
@@ -178,6 +212,25 @@ Campos conhecidos:
 
 `permissions` é calculado no servidor e consumido pelo frontend.
 
+Estado alvo V2:
+- `objetivo_id` permanece opcional;
+- `sonho_id` será removido do contrato de Missão em migração posterior;
+- recorrência permanece propriedade da Ordem e não exige Objetivo;
+- uma Ordem pode pertencer a no máximo um Objetivo.
+
+Não remover campos físicos nem antecipar contratos sem executar o bloco de migração correspondente.
+
+### Objetivo
+
+Estado atual:
+- `sonho_id` ainda pode existir temporariamente no schema e no código legado.
+
+Estado alvo V2:
+- Objetivo é uma feature independente;
+- pode possuir várias Ordens;
+- não depende de Sonho;
+- `sonho_id` será removido em migração posterior.
+
 ---
 
 ## Regras Inegociáveis De Produto
@@ -186,9 +239,10 @@ Campos conhecidos:
 
 - Apenas missões de hoje.
 - Apenas ações de execução.
-- Sem edição.
-- Sem planejamento.
-- Sem navegação fora da execução.
+- Sem elementos de edição ou planejamento na própria tela do Soldado.
+- Entrada explícita e passível de confirmação visual.
+- Retorno ao General disponível a qualquer momento.
+- `active_mode` pode persistir como preferência de interface, mas não pode causar `403` em operações normais do usuário.
 
 ### Missões Comprometidas
 
@@ -197,10 +251,13 @@ Campos conhecidos:
 - Falha não exige justificativa.
 - Falha deve ser registrada objetivamente.
 
-### Revisão Semanal
+### Recorrência
 
-- Obrigatória.
-- Baseada em dados reais, não estimativas.
+- É propriedade da Ordem.
+- Ordem sem Objetivo pode ser recorrente.
+- Ordem com Objetivo pode ser recorrente.
+- Sonho não pode ser requisito para criar ou materializar recorrência.
+- A opção "até o objetivo" pode existir apenas para Ordem recorrente vinculada a Objetivo; não é requisito geral.
 
 ---
 
@@ -217,7 +274,7 @@ Ao alterar código:
 - sem duplicação;
 - sem abstração desnecessária;
 - sem refatoração não relacionada;
-- preserve contratos de API;
+- preserve contratos de API, salvo mudança explicitamente aprovada e executada em migração própria;
 - atualize testes quando comportamento mudar.
 
 Pare e reporte quando:
