@@ -4,62 +4,12 @@ export const STATUS_MISSAO = Object.freeze({
   FALHA: "FALHA",
 })
 
-const STATUS_LABELS = Object.freeze({
-  [STATUS_MISSAO.PENDENTE]: "Pendente",
-  [STATUS_MISSAO.CONCLUIDA]: "Concluída",
-  [STATUS_MISSAO.FALHA]: "Falha",
-})
-
 function getMissionStatusCode(mission) {
   return mission?.status_code || mission?.status || ""
 }
 
-export function getStatusLabel(status) {
-  return STATUS_LABELS[status] || status
-}
-
-export function isOperacional(mission) {
-  return isOperationalMission(mission)
-}
-
-export function isFinalizada(mission) {
-  return isFinalizedMission(mission)
-}
-
-export function isRevisavel() {
-  return false
-}
-
 export function isCompleted(mission) {
   return getMissionStatusCode(mission) === STATUS_MISSAO.CONCLUIDA
-}
-
-export function isReviewedFailure(mission) {
-  return getMissionStatusCode(mission) === STATUS_MISSAO.FALHA
-}
-
-export function isFailedWaitingJustification() {
-  return false
-}
-
-export function isFailedWaitingReview() {
-  return false
-}
-
-export function isFinalizedMission(mission) {
-  return isCompleted(mission) || isReviewedFailure(mission)
-}
-
-export function requiresSoldierJustification() {
-  return false
-}
-
-export function requiresGeneralReview() {
-  return false
-}
-
-export function isOperationalMission(mission) {
-  return !isFinalizedMission(mission)
 }
 
 export function canShowGeneralActions(mission) {

@@ -16,9 +16,7 @@ import {
   startOfDay,
 } from "../../calendar/calendarUtils"
 import ActivateSoldierDialog from "../components/ActivateSoldierDialog"
-import CommandRail from "../components/CommandRail"
 import OrdersPanel from "../components/OrdersPanel"
-import TacticalSidePanel from "../components/TacticalSidePanel"
 import WeekPanel from "../components/WeekPanel"
 
 export default function GeneralCommandPage({
@@ -26,9 +24,7 @@ export default function GeneralCommandPage({
   generalName,
   onActivateSoldier,
   onLogout,
-  onOpenMountain,
   onOpenObjectives,
-  onOpenReview,
   onUnauthorized,
   token,
   user,
@@ -76,19 +72,6 @@ export default function GeneralCommandPage({
       ),
     [board.dailyMissions, todayDate]
   )
-  const selectedCompleted = selectedMissions.filter(isCompleted).length
-  const selectedFailures = selectedMissions.filter((mission) =>
-    String(mission?.status_code || "").startsWith("FALHA")
-  ).length
-  const selectedHighPriority = selectedMissions.filter(
-    (mission) => mission?.is_pinned === true
-  ).length
-  const selectedPending = Math.max(
-    0,
-    selectedMissions.length - selectedCompleted - selectedFailures
-  )
-  const reviewCount = board.reviewMissions.length + (board.reviewState?.pending ? 1 : 0)
-
   function openCreateForm() {
     setEditingMission(null)
     board.setFormStatus(emptyStatus)
@@ -139,29 +122,18 @@ export default function GeneralCommandPage({
   return (
     <TacticalShell mode="general">
       <section className="general-layout">
-        <aside className="general-side command-side">
-          <CommandRail
-            generalName={generalName}
-            onLogout={onLogout}
-            onOpenMountain={onOpenMountain}
-            onOpenObjectives={onOpenObjectives}
-            onOpenReview={onOpenReview}
-            reviewCount={reviewCount}
-          />
-        </aside>
-
         <section className="general-board">
           <header className="app-header general-command-header">
             <div>
-              <p className="panel-kicker">SALA DE GUERRA</p>
+              <p className="panel-kicker">GENERAL</p>
               <h1>Comando operacional</h1>
               <p className="muted">
                 {generalName} / {selectedDateLabel}
               </p>
             </div>
             <div className="header-actions">
-              <button className="button secondary compact" type="button" onClick={onOpenReview}>
-                RELATÓRIO
+              <button className="button secondary compact" type="button" onClick={onOpenObjectives}>
+                OBJETIVOS
               </button>
               <button
                 className="button fire compact"
@@ -171,27 +143,11 @@ export default function GeneralCommandPage({
               >
                 {modeLoading ? "ATIVANDO" : "MODO SOLDADO"}
               </button>
+              <button className="button secondary compact" type="button" onClick={onLogout}>
+                SAIR
+              </button>
             </div>
           </header>
-
-          <div className="metric-grid" aria-label="Resumo operacional do dia">
-            <div className="metric-card">
-              <span>ORDENS DO DIA</span>
-              <strong>{selectedMissions.length}</strong>
-            </div>
-            <div className="metric-card success">
-              <span>CUMPRIDAS</span>
-              <strong>{selectedCompleted}</strong>
-            </div>
-            <div className="metric-card">
-              <span>PENDENTES</span>
-              <strong>{selectedPending}</strong>
-            </div>
-            <div className="metric-card priority">
-              <span>PRIORIDADE</span>
-              <strong>{selectedHighPriority}</strong>
-            </div>
-          </div>
 
           <WeekPanel
             missionStatsByDate={missionStatsByDate}
@@ -222,17 +178,6 @@ export default function GeneralCommandPage({
             selectedMissions={selectedMissions}
           />
         </section>
-
-        <aside className="general-side operational-side">
-          <TacticalSidePanel
-            loading={modeLoading}
-            onActivateSoldier={() => setShowSoldierConfirm(true)}
-            selectedDate={selectedDate}
-            selectedDateLabel={selectedDateLabel}
-            selectedMissions={selectedMissions}
-            todayDate={todayDate}
-          />
-        </aside>
       </section>
 
       {formOpen && (

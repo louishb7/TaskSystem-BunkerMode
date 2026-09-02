@@ -105,15 +105,6 @@ export const api = {
   getSoldierBoard(token) {
     return requestSoldierBoard("/missoes/quadro-soldado", { token })
   },
-  getGeneralSupport(token) {
-    return request("/comando-general/suporte", { token })
-  },
-  listReviewMissions(token) {
-    return requestMissionList("/missoes/revisao", { token })
-  },
-  listHistoricalMissions(token) {
-    return requestMissionList("/missoes/historico", { token })
-  },
   createMission(token, payload) {
     return requestMission("/missoes", { token, method: "POST", body: payload })
   },
@@ -135,38 +126,11 @@ export const api = {
       method: "POST",
     })
   },
-  getReviewState(token) {
-    return request("/revisoes/estado", { token })
-  },
-  listWeeklyReviews(token) {
-    return request("/revisoes", { token })
-  },
-  closeWeeklyReview(token, payload) {
-    return request("/revisoes/fechar", { token, method: "POST", body: payload })
-  },
   deleteMission(token, missionId) {
     return request(`/missoes/${missionId}`, { token, method: "DELETE" })
   },
   getMissionHistory(token, missionId) {
     return request(`/missoes/${missionId}/historico`, { token })
-  },
-  getMountain(token) {
-    return request("/montanha", { token })
-  },
-  listSonhos(token) {
-    return request("/sonhos", { token })
-  },
-  createSonho(token, payload) {
-    return request("/sonhos", { token, method: "POST", body: payload })
-  },
-  updateSonho(token, sonhoId, payload) {
-    return request(`/sonhos/${sonhoId}`, { token, method: "PATCH", body: payload })
-  },
-  archiveSonho(token, sonhoId, payload) {
-    return request(`/sonhos/${sonhoId}/arquivar`, { token, method: "POST", body: payload })
-  },
-  promoteSonho(token, sonhoId) {
-    return request(`/sonhos/${sonhoId}/promover`, { token, method: "POST" })
   },
   listObjetivos(token) {
     return request("/objetivos", { token })

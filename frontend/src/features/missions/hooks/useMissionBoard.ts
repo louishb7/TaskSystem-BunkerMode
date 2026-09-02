@@ -21,12 +21,8 @@ function mergeMissionLists(...missionLists) {
 
 export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode }) {
   const [missions, setMissions] = useState([])
-  const [reviewMissions, setReviewMissions] = useState([])
-  const [historicalMissions, setHistoricalMissions] = useState([])
   const [dailyProgressMissions, setDailyProgressMissions] = useState([])
   const [registeredOutcomeMissions, setRegisteredOutcomeMissions] = useState([])
-  const [reviewState, setReviewState] = useState(null)
-  const [weeklyReviews, setWeeklyReviews] = useState([])
   const [missionLoading, setMissionLoading] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [pinLoadingId, setPinLoadingId] = useState(null)
@@ -43,50 +39,9 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       mergeMissionLists(
         missions,
         dailyProgressMissions,
-        reviewMissions,
-        historicalMissions,
         registeredOutcomeMissions
       ),
-    [dailyProgressMissions, historicalMissions, missions, registeredOutcomeMissions, reviewMissions]
-  )
-
-  const loadGeneralSupport = useCallback(
-    async (requestId) => {
-      const result = await api.getGeneralSupport(token)
-      if (requestId !== loadRequestRef.current) {
-        return false
-      }
-
-      if (onUnauthorized(result)) {
-        return false
-      }
-
-      if (!result.ok) {
-        setReviewMissions([])
-        setHistoricalMissions([])
-        setReviewState(null)
-        setWeeklyReviews([])
-        setStatus({
-          type: "error",
-          message: getErrorMessage(
-            result,
-            "Não foi possível carregar dados de suporte do comando."
-          ),
-        })
-        return false
-      }
-
-      setReviewMissions(
-        Array.isArray(result.data?.review_missions) ? result.data.review_missions : []
-      )
-      setHistoricalMissions(
-        Array.isArray(result.data?.historical_missions) ? result.data.historical_missions : []
-      )
-      setReviewState(result.data?.review_state || null)
-      setWeeklyReviews(Array.isArray(result.data?.weekly_reviews) ? result.data.weekly_reviews : [])
-      return true
-    },
-    [onUnauthorized, token]
+    [dailyProgressMissions, missions, registeredOutcomeMissions]
   )
 
   const loadGeneralBoard = useCallback(
@@ -120,10 +75,9 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
 
       setMissions(missionsResult.data)
       setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus)
-      loadGeneralSupport(requestId)
       return true
     },
-    [loadGeneralSupport, onUnauthorized, token]
+    [onUnauthorized, token]
   )
 
   const loadSoldierBoard = useCallback(
@@ -137,11 +91,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       setMissionLoading(true)
       setMissions([])
       setDailyProgressMissions([])
-      setReviewMissions([])
-      setHistoricalMissions([])
       setRegisteredOutcomeMissions([])
-      setReviewState(null)
-      setWeeklyReviews([])
       const result = await api.getSoldierBoard(token)
       if (requestId !== loadRequestRef.current) {
         return false
@@ -171,12 +121,8 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
   useEffect(() => {
     if (!authenticated) {
       setMissions([])
-      setReviewMissions([])
-      setHistoricalMissions([])
       setDailyProgressMissions([])
       setRegisteredOutcomeMissions([])
-      setReviewState(null)
-      setWeeklyReviews([])
       setStatus(emptyStatus)
       setFormStatus(emptyStatus)
       return
@@ -322,7 +268,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return false
     }
 
-    await reloadCurrentBoard(viewMode === "soldier" ? "LEÃO ABATIDO" : "Ordem executada.")
+    await reloadCurrentBoard("Ordem executada.")
     setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]))
     return true
   }
@@ -372,35 +318,13 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return { error: message }
     }
 
-    await reloadCurrentBoard(viewMode === "soldier" ? "FALHA REGISTRADA" : "Falha registrada.")
+    await reloadCurrentBoard("Falha registrada.")
     setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]))
     return { ok: true }
   }
 
-  async function closeWeeklyReview(payload) {
-    setStatus(emptyStatus)
-    const result = await api.closeWeeklyReview(token, payload)
-
-    if (onUnauthorized(result)) {
-      return false
-    }
-
-    if (!result.ok) {
-      setStatus({
-        type: "error",
-        message: getErrorMessage(result, "Não foi possível fechar a revisão do General."),
-      })
-      await loadGeneralBoard()
-      return false
-    }
-
-    await loadGeneralBoard("Revisão do General fechada.")
-    return true
-  }
-
   return {
     actionMissions,
-    closeWeeklyReview,
     completeLoadingId,
     completeMission,
     createMission,
@@ -410,20 +334,16 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     failMission,
     formLoading,
     formStatus,
-    hasRegisteredOutcomes: registeredOutcomeMissions.length > 0,
     missionLoading,
     missions,
     pinLoadingId,
     refreshGeneralBoard: loadGeneralBoard,
     reopenLoadingId,
     reopenMission,
-    reviewMissions,
-    reviewState,
     setFormStatus,
     setStatus,
     status,
     toggleMissionPin,
     updateMission,
-    weeklyReviews,
   }
 }

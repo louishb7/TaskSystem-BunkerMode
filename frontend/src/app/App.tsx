@@ -8,9 +8,7 @@ import { useAuth } from "../context/AuthContext"
 import { useMissionBoardContext } from "../context/MissionBoardContext"
 import AuthScreen from "../features/auth/components/AuthScreen"
 import GeneralCommandPage from "../features/general/pages/GeneralCommandPage"
-import MountainPage from "../features/mountain/pages/MountainPage"
 import ObjectivesPage from "../features/objectives/pages/ObjectivesPage"
-import ReviewPage from "../features/review/pages/ReviewPage"
 import SoldierExecutionPage from "../features/soldier/pages/SoldierExecutionPage"
 import { APP_ROUTES } from "../routes/routeConstants"
 import { api } from "../services/bunkermodeApi"
@@ -31,8 +29,6 @@ export default function App() {
       <Route path={APP_ROUTES.AUTH} element={<AuthRoute />} />
       <Route path={APP_ROUTES.SOLDIER} element={<ProtectedRoute routeMode="soldier" />} />
       <Route path={APP_ROUTES.OBJECTIVES} element={<ProtectedRoute routeMode="objectives" />} />
-      <Route path={APP_ROUTES.REVIEW} element={<ProtectedRoute routeMode="review" />} />
-      <Route path={APP_ROUTES.MOUNTAIN} element={<ProtectedRoute routeMode="mountain" />} />
       <Route path={APP_ROUTES.GENERAL_HOME} element={<ProtectedRoute routeMode="general" />} />
       <Route
         path="*"
@@ -73,14 +69,6 @@ function ProtectedRoute({ routeMode }) {
 
   if (routeMode === "soldier") {
     return <SoldierRoute />
-  }
-
-  if (routeMode === "review") {
-    return <ReviewRoute />
-  }
-
-  if (routeMode === "mountain") {
-    return <MountainRoute />
   }
 
   if (routeMode === "objectives") {
@@ -139,9 +127,7 @@ function GeneralRoute() {
       generalName={generalName}
       onActivateSoldier={activateSoldierMode}
       onLogout={clearSession}
-      onOpenMountain={() => navigate(APP_ROUTES.MOUNTAIN)}
       onOpenObjectives={() => navigate(APP_ROUTES.OBJECTIVES)}
-      onOpenReview={() => navigate(APP_ROUTES.REVIEW)}
       onUnauthorized={auth.handleUnauthorized}
       token={auth.token}
       user={auth.user}
@@ -207,40 +193,6 @@ function SoldierRoute() {
       dailyMissions={board.dailyMissions}
       missions={board.missions}
       onReturnToCommand={returnToCommand}
-    />
-  )
-}
-
-function ReviewRoute() {
-  const navigate = useNavigate()
-  const board = useMissionBoardContext()
-
-  return (
-    <ReviewPage
-      allMissions={board.dailyMissions}
-      missions={board.reviewMissions}
-      onBack={() => navigate(APP_ROUTES.GENERAL_HOME)}
-      onCloseReview={board.closeWeeklyReview}
-      reviewState={board.reviewState}
-      status={board.status}
-      weeklyReviews={board.weeklyReviews}
-    />
-  )
-}
-
-function MountainRoute() {
-  const navigate = useNavigate()
-  const auth = useAuth()
-  const board = useMissionBoardContext()
-
-  return (
-    <MountainPage
-      onClose={async () => {
-        navigate(APP_ROUTES.GENERAL_HOME)
-        await board.refreshGeneralBoard()
-      }}
-      onUnauthorized={auth.handleUnauthorized}
-      token={auth.token}
     />
   )
 }

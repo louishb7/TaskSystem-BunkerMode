@@ -22,7 +22,7 @@ export default function DaySelector({
   weekDays,
 }) {
   return (
-    <div className="week-board" aria-label="Cronograma de caça">
+    <div className="week-board" aria-label="Calendário semanal">
       {weekDays.map((date) => {
         const apiDate = formatDateForApi(date)
         const selected = date.getTime() === selectedDate.getTime()
@@ -47,7 +47,7 @@ export default function DaySelector({
               {executionLabel && (
                 <span
                   className="day-status day-execution"
-                  aria-label={isDayOff ? "Dia off" : `${percent}% do Leão do Dia`}
+                  aria-label={isDayOff ? "Dia sem ordens" : `${percent}% das ordens concluídas`}
                 >
                   {executionLabel}
                 </span>

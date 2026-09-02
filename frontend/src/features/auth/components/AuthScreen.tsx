@@ -40,7 +40,7 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
       <section className="auth-identity">
         <BrandSymbol size="xl" />
         <h1>BUNKERMODE</h1>
-        <p className="auth-lion">TODO DIA EXISTE UM LEÃO.</p>
+        <p className="auth-lion">TODO DIA IMPORTA.</p>
         <p className="auth-support">PLANEJE COMO GENERAL. EXECUTE COMO SOLDADO.</p>
       </section>
 

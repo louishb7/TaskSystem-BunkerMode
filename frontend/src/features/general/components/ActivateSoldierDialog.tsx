@@ -19,7 +19,7 @@ export default function ActivateSoldierDialog({
   return (
     <div className="modal-backdrop" role="presentation">
       <section className="modal-card" role="dialog" aria-modal="true">
-        <p className="section-kicker fire">LEÃO DO DIA</p>
+        <p className="section-kicker fire">ORDENS DE HOJE</p>
         <h2>{formatCurrentDay()}</h2>
         {todayMissions.length > 0 ? (
           <ul className="protocol-brief">
@@ -42,7 +42,7 @@ export default function ActivateSoldierDialog({
             CANCELAR
           </button>
           <button className="button fire" type="button" onClick={onConfirm} disabled={loading}>
-            {loading ? "ATIVANDO" : "SAIR PARA A CAÇA"}
+            {loading ? "ATIVANDO" : "ENTRAR NO SOLDADO"}
           </button>
         </div>
       </section>

@@ -1,7 +1,6 @@
 import React, { useState } from "react"
 
 import EmptyState from "../../../components/ui/EmptyState"
-import LionEmblem from "../../../components/ui/LionEmblem"
 import StatusNotice from "../../../components/ui/StatusNotice"
 import TacticalShell from "../../../components/tactical/TacticalShell"
 import { isCompleted } from "../../../utils/missionStatus"
@@ -32,14 +31,13 @@ export default function SoldierExecutionPage({
             <span>FOCO OPERACIONAL</span>
           </div>
           <div className="soldier-briefing">
-            <LionEmblem variant="hero" />
             <div className="soldier-briefing-copy">
-              <h1>LEÃO DO DIA</h1>
+              <h1>Ordens de hoje</h1>
               <div className="soldier-briefing-meta">
                 <span>{formatCurrentDay()}</span>
               </div>
               <MissionProgress
-                label="CAÇADA"
+                label="PROGRESSO"
                 missions={dailyMissions.length > 0 ? dailyMissions : missions}
               />
             </div>
@@ -82,8 +80,8 @@ export default function SoldierExecutionPage({
               />
             ) : hasCompletedMissions ? (
               <EmptyState
-                title="Caçada concluída"
-                message="Todos os leões do dia foram abatidos."
+                title="Ordens concluídas"
+                message="Todas as ordens do dia foram concluídas."
               />
             ) : (
               <EmptyState

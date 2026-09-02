@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { getErrorMessage } from "../../../api/httpClient"
 import { emptyStatus } from "../../../constants/uiState"
 import { api } from "../../../services/bunkermodeApi"
+import { STATUS_MISSAO } from "../../../utils/missionStatus"
 
 function sortObjetivosByOrder(objetivos = []) {
   return [...objetivos].sort((left, right) => {
@@ -59,7 +60,7 @@ export function useObjectives({ onUnauthorized, token }) {
   const missionCounts = useMemo(
     () =>
       missions.reduce((counts, mission) => {
-        if (!mission.objetivo_id) {
+        if (!mission.objetivo_id || mission.status_code !== STATUS_MISSAO.PENDENTE) {
           return counts
         }
         const key = String(mission.objetivo_id)
