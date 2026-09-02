@@ -576,9 +576,9 @@ h3 {
 
 .general-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 368px) minmax(0, 1fr) minmax(246px, 300px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  width: min(1540px, 100%);
+  width: min(1180px, 100%);
   margin: 0 auto;
   gap: 14px;
 }
@@ -2977,16 +2977,11 @@ h3 {
 
 @media (max-width: 1180px) {
   .general-layout {
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .general-board {
     padding-right: 0;
-  }
-
-  .general-side {
-    grid-column: 1 / -1;
-    position: static;
   }
 }
 
@@ -3030,10 +3025,6 @@ h3 {
   .auth-page,
   .general-layout {
     grid-template-columns: 1fr;
-  }
-
-  .command-rail {
-    position: static;
   }
 
   .section-heading {
@@ -3314,13 +3305,15 @@ h3 {
 }
 
 .general-layout {
-  grid-template-columns: minmax(210px, 244px) minmax(0, 1fr) minmax(280px, 320px);
-  width: min(1500px, 100%);
+  grid-template-columns: minmax(0, 1fr);
+  width: min(1180px, 100%);
   gap: 16px;
 }
 
 .general-board {
   display: grid;
+  width: 100%;
+  min-width: 0;
   gap: 16px;
   border: 0;
   background: transparent;
@@ -3766,11 +3759,7 @@ h3 {
 
 @media (max-width: 1180px) {
   .general-layout {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
-
-  .operational-side {
-    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .metric-grid {
@@ -3785,10 +3774,6 @@ h3 {
 
   .general-layout {
     grid-template-columns: 1fr;
-  }
-
-  .command-rail {
-    min-height: auto;
   }
 
   .app-header,
@@ -4227,7 +4212,7 @@ h3 {
 
 @media (max-width: 1180px) {
   .general-layout {
-    grid-template-columns: minmax(194px, 220px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -4242,31 +4227,6 @@ h3 {
 
   .auth-card {
     width: 100%;
-  }
-
-  .general-board {
-    order: 1;
-  }
-
-  .operational-side {
-    order: 2;
-  }
-
-  .command-side {
-    order: 3;
-  }
-
-  .command-rail {
-    position: static;
-  }
-
-  .rail-note {
-    margin-bottom: 12px;
-  }
-
-  .rail-session {
-    align-self: auto;
-    margin-top: 12px;
   }
 
   .week-navigation {
