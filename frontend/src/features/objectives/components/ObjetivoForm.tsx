@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react"
 
+import Button from "../../../components/ui/Button"
+
 const emptyForm = {
   titulo: "",
   descricao: "",
   data_alvo: "",
   sem_prazo: true,
 }
+
+const fieldClass =
+  "min-h-11 w-full rounded-control border border-control-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-app disabled:text-text-secondary disabled:opacity-70"
+const labelClass = "grid gap-2 text-sm font-medium normal-case text-text-primary"
 
 export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel, onSubmit }) {
   const [form, setForm] = useState(emptyForm)
@@ -43,11 +49,11 @@ export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel
   }
 
   return (
-    <form className="form-stack objetivo-form" onSubmit={submit}>
-      <div className="form-grid">
-        <label>
+    <form className="grid gap-5" onSubmit={submit}>
+        <label className={labelClass}>
           Título
           <input
+            className={fieldClass}
             name="titulo"
             onChange={updateField}
             placeholder="Ex.: Consolidar rotina de treino"
@@ -56,10 +62,15 @@ export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel
           />
         </label>
 
-        <div className="date-target-field">
-          <label className="toggle-row checkbox-row">
+        <section className="grid gap-3 rounded-card border border-border p-4" aria-labelledby="prazo-title">
+          <div>
+            <h3 id="prazo-title" className="m-0 text-base font-semibold normal-case text-text-primary">Prazo</h3>
+            <p className="mt-1 mb-0 text-sm text-text-secondary">Opcional. Você pode definir uma data alvo.</p>
+          </div>
+          <label className="inline-flex min-h-11 items-center gap-3 text-sm font-medium normal-case text-text-primary">
             <input
               checked={form.sem_prazo}
+              className="size-5 min-h-0 w-5 accent-accent"
               name="sem_prazo"
               onChange={updateField}
               type="checkbox"
@@ -67,17 +78,17 @@ export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel
             Até conseguir
           </label>
           {!form.sem_prazo && (
-            <label>
+            <label className={labelClass}>
               Data alvo
-              <input name="data_alvo" onChange={updateField} required type="date" value={form.data_alvo} />
+              <input className={fieldClass} name="data_alvo" onChange={updateField} required type="date" value={form.data_alvo} />
             </label>
           )}
-        </div>
-      </div>
+        </section>
 
-      <label>
+      <label className={labelClass}>
         Descrição
         <textarea
+          className={`${fieldClass} min-h-28 resize-y`}
           name="descricao"
           onChange={updateField}
           placeholder="Contexto opcional para orientar decisões futuras"
@@ -86,18 +97,13 @@ export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel
         />
       </label>
 
-      <div className="actions-row">
-        <button className="button fire compact" disabled={loading} type="submit">
-          {loading ? "AGUARDE" : isEditing ? "SALVAR OBJETIVO" : "REGISTRAR OBJETIVO"}
-        </button>
-        <button
-          className="button secondary compact"
-          disabled={loading}
-          type="button"
-          onClick={onCancel}
-        >
-          CANCELAR
-        </button>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button disabled={loading} variant="secondary" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button loading={loading} type="submit">
+          {isEditing ? "Salvar objetivo" : "Registrar objetivo"}
+        </Button>
       </div>
     </form>
   )

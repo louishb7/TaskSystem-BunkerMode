@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 
 import ConfirmDialog from "../../../components/ui/ConfirmDialog"
+import Dialog from "../../../components/ui/Dialog"
 import StatusNotice from "../../../components/ui/StatusNotice"
 import { emptyStatus } from "../../../constants/uiState"
 import MissionForm from "../../missions/components/MissionForm"
@@ -75,14 +76,18 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
         <StatusNotice status={objectives.status} />
 
         {formOpen && (
-          <section className="panel">
+          <Dialog
+            closeOnBackdrop={false}
+            onClose={closeObjectiveForm}
+            title={editingObjetivo ? "Editar objetivo" : "Novo objetivo"}
+          >
             <ObjetivoForm
               editingObjetivo={editingObjetivo}
               loading={busy}
               onCancel={closeObjectiveForm}
               onSubmit={submitObjetivo}
             />
-          </section>
+          </Dialog>
         )}
 
         <ObjetivoList
@@ -100,13 +105,14 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
         />
 
         {missionObjetivo && (
-          <section className="panel mission-form">
-            <div className="section-heading compact">
-              <div>
-                <p className="section-kicker fire">ORDEM DO OBJETIVO</p>
-                <h2>{missionObjetivo.titulo}</h2>
-              </div>
-            </div>
+          <Dialog
+            closeOnBackdrop={false}
+            onClose={() => {
+              setMissionObjetivo(null)
+              board.setFormStatus(emptyStatus)
+            }}
+            title="Nova ordem"
+          >
             <MissionForm
               currentUser={user}
               initialObjetivoId={missionObjetivo.id}
@@ -123,7 +129,7 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
               token={token}
               timezone={user?.timezone}
             />
-          </section>
+          </Dialog>
         )}
 
         {deleteTarget && (

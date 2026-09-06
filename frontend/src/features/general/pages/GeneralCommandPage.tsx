@@ -176,7 +176,6 @@ export default function GeneralCommandPage({
 
       {formOpen && (
         <Dialog
-          ariaLabel={editingMission ? "Editar ordem" : "Nova ordem"}
           className="max-w-2xl"
           closeOnBackdrop={false}
           onClose={() => {
@@ -184,6 +183,7 @@ export default function GeneralCommandPage({
             setEditingMission(null)
             board.setFormStatus(emptyStatus)
           }}
+          title={editingMission ? "Editar ordem" : "Nova ordem"}
         >
           <MissionForm
             currentUser={user}

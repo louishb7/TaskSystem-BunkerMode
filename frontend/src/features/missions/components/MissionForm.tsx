@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react"
 
 import { getErrorMessage } from "../../../api/httpClient"
+import Button from "../../../components/ui/Button"
+import StatusNotice from "../../../components/ui/StatusNotice"
 import { api } from "../../../services/bunkermodeApi"
 import { formatDateForApi } from "../../../utils/date"
 import { operationalDateFor } from "../../calendar/calendarUtils"
@@ -31,6 +33,10 @@ const weekdayOptions = [
   [6, "Dom"],
 ]
 
+const fieldClass =
+  "min-h-11 w-full rounded-control border border-control-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-app disabled:text-text-secondary disabled:opacity-70"
+const labelClass = "grid gap-2 text-sm font-medium normal-case text-text-primary"
+
 function getUserId(user) {
   return user?.usuario_id ?? user?.id
 }
@@ -40,12 +46,13 @@ function formatPrazoContext(prazo) {
     return ""
   }
 
-  const [day, month] = prazo.split("-")
+  const normalized = toDateInputValue(prazo)
+  const [year, month, day] = normalized.split("-")
   if (!day || !month) {
     return prazo
   }
 
-  return `${day}/${month}`
+  return year ? `${day}/${month}/${year}` : `${day}/${month}`
 }
 
 function normalizeWeekdays(values: unknown): number[] {
@@ -342,18 +349,11 @@ export default function MissionForm({
   }
 
   return (
-    <section className="panel mission-form">
-      <div className="section-heading compact">
-        <div>
-          <h2>{isEditing ? "Editar ordem" : "Nova ordem"}</h2>
-          <p className="muted">A ordem deve dizer exatamente o que será executado.</p>
-        </div>
-      </div>
-
-      <form className="form-stack" onSubmit={submit}>
-        <label>
+    <form className="grid gap-5" onSubmit={submit}>
+        <label className={labelClass}>
           Título
           <input
+            className={fieldClass}
             name="titulo"
             onChange={updateField}
             placeholder="Ex.: Revisar plano semanal"
@@ -361,41 +361,33 @@ export default function MissionForm({
           />
         </label>
 
-        {lockedInitialPrazo && (
-          <div className="deadline-context">
-            <span>DATA DEFINIDA</span>
-            <strong>{prazoContext}</strong>
-          </div>
-        )}
-
-        {isSeriesOccurrence && (
-          <div className="deadline-context">
-            <span>DATA DA OCORRÊNCIA</span>
-            <strong>{prazoContext}</strong>
-          </div>
-        )}
-
-        {!lockedInitialPrazo && !isSeriesOccurrence && (
-          <label>
-            Data de execução
-            <input
-              name="prazo"
-              onChange={handlePrazoChange}
-              type="date"
-              value={toDateInputValue(form.prazo)}
-            />
-          </label>
-        )}
+        <label className={labelClass}>
+          Instrução opcional
+          <textarea
+            className={`${fieldClass} min-h-28 resize-y`}
+            maxLength={MISSION_INSTRUCTION_MAX_LENGTH}
+            name="instrucao"
+            onChange={updateField}
+            placeholder="Detalhe apenas se a ordem precisar de contexto"
+            rows={5}
+            value={form.instrucao}
+          />
+          <span className="text-right text-xs text-text-secondary">
+            {form.instrucao.length}/{MISSION_INSTRUCTION_MAX_LENGTH}
+          </span>
+        </label>
 
         {lockObjetivo ? (
-          <div className="deadline-context objective-context">
-            <span>OBJETIVO VINCULADO</span>
-            <strong>{initialObjetivoTitulo || "Objetivo selecionado"}</strong>
+          <div className="rounded-control border border-border bg-app p-3">
+            <p className="m-0 text-sm font-medium text-text-primary">Objetivo vinculado</p>
+            <p className="mt-1 mb-0 text-sm text-text-secondary">
+              {initialObjetivoTitulo || "Objetivo selecionado"}
+            </p>
           </div>
         ) : (
-          <label>
+          <label className={labelClass}>
             Objetivo opcional
-            <select name="objetivo_id" onChange={handleObjetivoChange} value={form.objetivo_id}>
+            <select className={fieldClass} name="objetivo_id" onChange={handleObjetivoChange} value={form.objetivo_id}>
               <option value="">Sem objetivo vinculado</option>
               {objetivos.map((objetivo) => (
                 <option key={objetivo.id} value={objetivo.id}>
@@ -405,11 +397,54 @@ export default function MissionForm({
             </select>
           </label>
         )}
-        {objetivoStatus && <p className="feedback error">{objetivoStatus}</p>}
+        {objetivoStatus && <StatusNotice status={{ type: "error", message: objetivoStatus }} />}
 
-        <label>
+        {lockedInitialPrazo && (
+          <div className="rounded-control border border-border bg-app p-3">
+            <p className="m-0 text-sm font-medium text-text-primary">Data definida</p>
+            <p className="mt-1 mb-0 text-sm text-text-secondary">{prazoContext}</p>
+          </div>
+        )}
+
+        {isSeriesOccurrence && (
+          <div className="rounded-control border border-border bg-app p-3">
+            <p className="m-0 text-sm font-medium text-text-primary">Data da ocorrência</p>
+            <p className="mt-1 mb-0 text-sm text-text-secondary">{prazoContext}</p>
+            <p className="mt-2 mb-0 text-sm text-text-secondary">
+              Esta data pertence à série recorrente.
+            </p>
+          </div>
+        )}
+
+        {!lockedInitialPrazo && !isSeriesOccurrence && (
+          <label className={labelClass}>
+            Data de execução
+            <input
+              className={fieldClass}
+              name="prazo"
+              onChange={handlePrazoChange}
+              type="date"
+              value={toDateInputValue(form.prazo)}
+            />
+          </label>
+        )}
+
+        <section className="grid gap-4 rounded-card border border-border p-4" aria-labelledby="recorrencia-title">
+          <div>
+            <h3 id="recorrencia-title" className="m-0 text-base font-semibold normal-case text-text-primary">Recorrência</h3>
+            {isEditing && !isSeriesOccurrence && (
+              <p className="mt-1 mb-0 text-sm text-text-secondary">A recorrência é definida ao criar uma nova ordem.</p>
+            )}
+            {isSeriesOccurrence && (
+              <p className="mt-1 mb-0 text-sm text-text-secondary">
+                As alterações serão aplicadas somente a esta ordem; a série não será modificada.
+              </p>
+            )}
+          </div>
+          <label className={labelClass}>
           Repetir
           <select
+            className={fieldClass}
             disabled={isEditing}
             name="repeat_type"
             onChange={handleRepeatChange}
@@ -423,30 +458,21 @@ export default function MissionForm({
           </select>
         </label>
 
-        {isEditing && !isSeriesOccurrence && (
-          <p className="muted">A recorrência é definida ao criar uma nova ordem.</p>
-        )}
-
-        {isSeriesOccurrence && (
-          <p className="muted">
-            Esta é uma ocorrência recorrente. As alterações serão aplicadas somente a esta ordem; a
-            série não será modificada.
-          </p>
-        )}
-
         {isRecurring && !isEditing && (
-          <details className="linked-mission-options" open>
-            <summary>Detalhes da recorrência</summary>
-            <fieldset className="weekday-fieldset">
-              <legend>Dias da semana</legend>
-              <div className="weekday-options">
+          <details className="grid gap-4" open>
+            <summary className="cursor-pointer text-sm font-medium text-text-primary">Detalhes da recorrência</summary>
+            <div className="grid gap-4">
+            <fieldset className="m-0 border-0 p-0">
+              <legend className="mb-2 text-sm font-medium text-text-primary">Dias da semana</legend>
+              <div className="flex flex-wrap gap-2">
                 {weekdayOptions.map(([value, label]) => (
                   <label
                     key={value}
-                    className={form.recurrence_weekdays.includes(value) ? "active" : ""}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-control border px-3 text-sm font-medium normal-case ${form.recurrence_weekdays.includes(value) ? "border-accent bg-accent-soft text-text-primary" : "border-control-border bg-surface text-text-secondary"}`}
                   >
                     <input
                       checked={form.recurrence_weekdays.includes(value)}
+                      className="size-5 min-h-0 w-5 accent-accent"
                       onChange={() => toggleWeekday(value)}
                       type="checkbox"
                     />
@@ -456,9 +482,10 @@ export default function MissionForm({
               </div>
             </fieldset>
 
-            <label>
+            <label className={labelClass}>
               Término
               <select
+                className={fieldClass}
                 name="termination_policy"
                 onChange={updateField}
                 value={form.termination_policy}
@@ -472,9 +499,10 @@ export default function MissionForm({
             </label>
 
             {form.termination_policy === "ate_data" && (
-              <label>
+              <label className={labelClass}>
                 Data final
                 <input
+                  className={fieldClass}
                   name="recurrence_end_date"
                   onChange={handleRecurrenceEndDateChange}
                   required
@@ -483,36 +511,22 @@ export default function MissionForm({
                 />
               </label>
             )}
+            </div>
           </details>
         )}
-        {recurrenceError && <p className="feedback error">{recurrenceError}</p>}
+        </section>
+        {recurrenceError && <StatusNotice status={{ type: "error", message: recurrenceError }} />}
 
-        <label>
-          Instrução opcional
-          <textarea
-            maxLength={MISSION_INSTRUCTION_MAX_LENGTH}
-            name="instrucao"
-            onChange={updateField}
-            placeholder="Detalhe apenas se a ordem precisar de contexto"
-            rows={5}
-            value={form.instrucao}
-          />
-          <span className="field-counter">
-            {form.instrucao.length}/{MISSION_INSTRUCTION_MAX_LENGTH}
-          </span>
-        </label>
+        <StatusNotice status={status} />
 
-        {status.message && <p className={`feedback ${status.type}`}>{status.message}</p>}
-
-        <div className="actions-row">
-          <button className="button fire" disabled={loading} type="submit">
-            {loading ? "AGUARDE" : isEditing ? "SALVAR EDIÇÃO" : "REGISTRAR ORDEM"}
-          </button>
-          <button className="button secondary" type="button" onClick={onCancel} disabled={loading}>
-            CANCELAR
-          </button>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button disabled={loading} variant="secondary" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button loading={loading} type="submit">
+            {isEditing ? "Salvar edição" : "Registrar ordem"}
+          </Button>
         </div>
-      </form>
-    </section>
+    </form>
   )
 }

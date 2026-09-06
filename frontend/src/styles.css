@@ -82,15 +82,6 @@ textarea {
   resize: vertical;
 }
 
-.field-counter {
-  display: block;
-  margin-top: 4px;
-  color: var(--text-dim);
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-align: right;
-}
-
 input:focus,
 select:focus,
 textarea:focus {
@@ -264,11 +255,6 @@ h3 {
   width: 100%;
 }
 
-.form-stack {
-  display: grid;
-  gap: 14px;
-}
-
 .actions-row {
   display: flex;
   flex-wrap: wrap;
@@ -323,34 +309,6 @@ h3 {
 
 .section-heading.compact {
   align-items: flex-start;
-}
-
-.feedback {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-muted);
-  margin: 0 0 14px;
-  padding: 10px 12px;
-  font-size: 0.88rem;
-  font-weight: 800;
-}
-
-.feedback.success {
-  color: var(--text);
-}
-
-.feedback.error {
-  border-color: var(--red);
-  background: var(--red-wash);
-  color: var(--red);
-}
-
-.feedback.warning {
-  border-color: var(--amber);
-  background: var(--amber-wash);
-  color: var(--amber);
 }
 
 .deadline-control {
@@ -1127,15 +1085,6 @@ h3 {
   padding-top: 8px;
 }
 
-.toggle-row {
-  grid-template-columns: auto 1fr;
-  align-items: center;
-}
-
-.toggle-row input {
-  width: auto;
-}
-
 .mission-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1168,25 +1117,6 @@ h3 {
 .mission-actions .button.subtle {
   border-color: rgba(237, 237, 237, 0.18);
   color: rgba(237, 237, 237, 0.72);
-}
-
-.deadline-context {
-  display: grid;
-  gap: 4px;
-  border: 1px solid var(--fire-border);
-  background: var(--fire-wash);
-  padding: 12px;
-}
-
-.deadline-context span {
-  color: var(--fire);
-  font-size: 0.68rem;
-  font-weight: 900;
-}
-
-.deadline-context strong {
-  font-size: 1.15rem;
-  text-transform: uppercase;
 }
 
 .tactical-side-panel {
@@ -2073,17 +2003,6 @@ h3 {
   padding: 8px;
 }
 
-.mission-form input[type="date"] {
-  color-scheme: dark;
-  cursor: pointer;
-}
-
-.mission-form input[type="date"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.72;
-  filter: invert(1);
-}
-
 .mountain-modal-card {
   width: min(1120px, 100%);
 }
@@ -2158,8 +2077,7 @@ h3 {
 }
 
 .sonho-card,
-.objetivo-card,
-.objetivo-form-panel {
+.objetivo-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background:
@@ -2319,33 +2237,14 @@ h3 {
   font-size: 1.05rem;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr);
-  gap: 12px;
-}
-
 .form-note {
   margin-bottom: 0;
   font-size: 0.78rem;
 }
 
-.edit-secondary-actions,
-.date-target-field {
+.edit-secondary-actions {
   display: grid;
   gap: 10px;
-}
-
-.checkbox-row {
-  display: flex;
-  width: fit-content;
-  min-height: 36px;
-  align-items: center;
-  gap: 8px;
-}
-
-.checkbox-row input {
-  min-height: auto;
 }
 
 .objetivo-group {
@@ -2462,53 +2361,9 @@ h3 {
   font-size: 0.78rem;
 }
 
-.linked-mission-options,
-.weekday-fieldset,
 .objective-linked-missions {
   display: grid;
   gap: 10px;
-}
-
-.linked-mission-options {
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-}
-
-.weekday-fieldset {
-  border: 0;
-  padding: 0;
-}
-
-.weekday-fieldset legend {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.weekday-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.weekday-options label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-  padding: 6px 8px;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.weekday-options label.active {
-  border-color: var(--fire-border);
-  color: var(--fire);
 }
 
 .objective-linked-missions {
@@ -2636,19 +2491,6 @@ h3 {
   color: var(--text);
 }
 
-.objetivo-form input[type="date"],
-.mission-form input[type="date"] {
-  color-scheme: dark;
-  cursor: pointer;
-}
-
-.objetivo-form input[type="date"]::-webkit-calendar-picker-indicator,
-.mission-form input[type="date"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.72;
-  filter: invert(1);
-}
-
 @media (max-width: 1180px) {
   .general-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -2660,10 +2502,6 @@ h3 {
 }
 
 @media (max-width: 900px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
   .sonho-objective-branch {
     margin-left: 12px;
     padding-left: 16px;
@@ -2831,8 +2669,7 @@ textarea:hover {
   border-color: var(--border-strong);
 }
 
-label,
-.weekday-fieldset legend {
+label {
   gap: 6px;
   color: var(--text-dim);
   font-size: 0.68rem;
@@ -2915,16 +2752,13 @@ h3 {
 .panel,
 .sonho-card,
 .objetivo-card,
-.objetivo-form-panel,
 .review-card,
 .selected-review-card,
 .weekly-review-panel,
 .weekly-review-history,
 .weekly-failure-table,
 .review-close-form,
-.side-block,
-.deadline-context,
-.linked-mission-options {
+.side-block {
   border-radius: var(--radius-lg);
 }
 
@@ -3304,8 +3138,7 @@ h3 {
 }
 
 .sonho-card,
-.objetivo-card,
-.objetivo-form-panel {
+.objetivo-card {
   border-color: var(--border);
   background:
     linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent 86px), rgba(10, 11, 12, 0.54);
@@ -3534,26 +3367,6 @@ h3 {
   color: #ffc2be;
 }
 
-.feedback {
-  border-radius: var(--radius-lg);
-}
-
-.feedback {
-  border-color: var(--border);
-  background: linear-gradient(180deg, rgba(237, 237, 237, 0.026), transparent), rgba(0, 0, 0, 0.22);
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-.feedback.error {
-  border-color: rgba(229, 57, 53, 0.36);
-}
-
-.feedback.success {
-  border-color: rgba(103, 197, 135, 0.28);
-  background: rgba(103, 197, 135, 0.075);
-}
-
 .command-rail {
   grid-template-rows: auto auto auto 1fr;
   gap: 0;
@@ -3655,36 +3468,6 @@ h3 {
 
 .mission-card.completed h3 {
   color: rgba(242, 240, 235, 0.76);
-}
-
-.mission-form {
-  background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.032), transparent 120px), rgba(16, 17, 18, 0.96);
-}
-
-.mission-form .section-heading {
-  border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 12px;
-}
-
-.mission-form .form-stack {
-  gap: 13px;
-}
-
-.mission-form textarea {
-  min-height: 116px;
-}
-
-.linked-mission-options,
-.deadline-context {
-  border-color: rgba(255, 138, 42, 0.18);
-  background: rgba(255, 138, 42, 0.055);
-}
-
-.weekday-options label {
-  min-height: 34px;
-  border-radius: var(--radius-lg);
-  background: rgba(237, 237, 237, 0.03);
 }
 
 .tactical-side-panel {
@@ -4366,22 +4149,6 @@ h3 {
 
 .mountain-form-modal-card {
   width: min(560px, 100%);
-}
-
-.mountain-form-modal-card .mission-form,
-.mountain-form-modal-card .objetivo-form-panel {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-}
-
-.mountain-form-modal-card .mission-form .section-heading {
-  margin-bottom: 10px;
-}
-
-.mountain-form-modal-card .mission-form textarea {
-  min-height: 76px;
 }
 
 @media (prefers-reduced-motion: reduce) {
