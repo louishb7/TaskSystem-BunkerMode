@@ -129,6 +129,7 @@ export default function ObjectivesPage({ board, onBack, onUnauthorized, token, u
               onUnauthorized={onUnauthorized}
               status={board.formStatus}
               token={token}
+              timezone={user?.timezone}
             />
           </section>
         )}

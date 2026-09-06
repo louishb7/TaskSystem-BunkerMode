@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react"
 
 import { getErrorMessage } from "../../../api/httpClient"
 import { api } from "../../../services/bunkermodeApi"
+import { formatDateForApi } from "../../../utils/date"
+import { operationalDateFor } from "../../calendar/calendarUtils"
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
 const BUSINESS_WEEKDAYS = [0, 1, 2, 3, 4]
@@ -46,14 +48,6 @@ function formatPrazoContext(prazo) {
   return `${day}/${month}`
 }
 
-function todayInputValue() {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, "0")
-  const day = String(today.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
-}
-
 function normalizeWeekdays(values: unknown): number[] {
   if (!Array.isArray(values)) {
     return []
@@ -69,8 +63,8 @@ function weekdayForDate(value) {
   return (new Date(year, month - 1, day).getDay() + 6) % 7
 }
 
-function defaultPrazo(initialPrazo) {
-  return initialPrazo || fromDateInputValue(todayInputValue())
+function defaultPrazo(initialPrazo, timezone) {
+  return initialPrazo || formatDateForApi(operationalDateFor(timezone))
 }
 
 // Converte DD-MM-AAAA -> AAAA-MM-DD para o input type="date".
@@ -129,11 +123,11 @@ function repeatTypeFor(weekdays, prazo) {
   return "personalizado"
 }
 
-function formForNewMission(initialObjetivoId, initialPrazo) {
+function formForNewMission(initialObjetivoId, initialPrazo, timezone) {
   return {
     ...emptyForm,
     objetivo_id: initialObjetivoId ? String(initialObjetivoId) : "",
-    prazo: defaultPrazo(initialPrazo),
+    prazo: defaultPrazo(initialPrazo, timezone),
   }
 }
 
@@ -181,8 +175,9 @@ export default function MissionForm({
   onUpdate = undefined,
   status,
   token = null,
+  timezone = undefined,
 }) {
-  const [form, setForm] = useState(() => formForNewMission(initialObjetivoId, initialPrazo))
+  const [form, setForm] = useState(() => formForNewMission(initialObjetivoId, initialPrazo, timezone))
   const [objetivos, setObjetivos] = useState([])
   const [objetivoStatus, setObjetivoStatus] = useState("")
   const [recurrenceError, setRecurrenceError] = useState("")
@@ -195,12 +190,12 @@ export default function MissionForm({
 
   useEffect(() => {
     if (!editingMission) {
-      setForm(formForNewMission(initialObjetivoId, initialPrazo))
+      setForm(formForNewMission(initialObjetivoId, initialPrazo, timezone))
       return
     }
 
     setForm(formForExistingMission(editingMission, initialPrazo))
-  }, [editingMission, initialObjetivoId, initialPrazo])
+  }, [editingMission, initialObjetivoId, initialPrazo, timezone])
 
   useEffect(() => {
     async function loadObjetivos() {

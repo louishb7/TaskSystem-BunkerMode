@@ -16,7 +16,8 @@ export default function SoldierExecutionPage({
   timezone,
 }) {
   const [returnLoading, setReturnLoading] = useState(false)
-  const hasCompletedMissions = dailyMissions.some(isCompleted)
+  const allDailyMissionsCompleted =
+    dailyMissions.length > 0 && dailyMissions.every(isCompleted)
 
   async function handleReturnToCommand() {
     setReturnLoading(true)
@@ -78,7 +79,7 @@ export default function SoldierExecutionPage({
                 title="Nenhuma ordem para hoje"
                 message="O General não definiu missões para este dia."
               />
-            ) : hasCompletedMissions ? (
+            ) : allDailyMissionsCompleted ? (
               <EmptyState
                 title="Ordens concluídas"
                 message="Todas as ordens do dia foram concluídas."
@@ -86,7 +87,7 @@ export default function SoldierExecutionPage({
             ) : (
               <EmptyState
                 title="Sem ordens em aberto"
-                message="As missões do dia foram registradas como falha."
+                message="Não há mais ações disponíveis para as ordens de hoje."
               />
             )}
           </>

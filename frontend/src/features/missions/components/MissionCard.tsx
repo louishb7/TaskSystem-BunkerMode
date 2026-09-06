@@ -93,6 +93,7 @@ export default function MissionCard({
   const disabled = pinning || completing || failing || reopening
   const canComplete = can(mission, "can_complete")
   const canFail = can(mission, "can_fail")
+  const canTogglePin = !soldier && can(mission, "can_pin") && typeof onTogglePin === "function"
   const completed = isCompleted(mission)
   const deadlineLabel = formatDeadline(mission?.prazo, timezone)
   const failed = String(mission?.status_code || "") === "FALHA"
@@ -193,18 +194,20 @@ export default function MissionCard({
         <div className="mission-title-stack">
           <h3>{title}</h3>
         </div>
-        <div className="mission-head-actions">
-          <button
-            className={`priority-icon-button ${isPinned ? "active" : ""}`}
-            aria-label={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
-            disabled={disabled}
-            title={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
-            type="button"
-            onClick={() => onTogglePin?.(mission)}
-          >
-            <span aria-hidden="true" />
-          </button>
-        </div>
+        {canTogglePin && (
+          <div className="mission-head-actions">
+            <button
+              className={`priority-icon-button ${isPinned ? "active" : ""}`}
+              aria-label={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
+              disabled={disabled}
+              title={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
+              type="button"
+              onClick={() => onTogglePin(mission)}
+            >
+              <span aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mission-badge-row mission-context-row">

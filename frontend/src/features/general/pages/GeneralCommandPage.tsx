@@ -205,6 +205,7 @@ export default function GeneralCommandPage({
               onUpdate={updateMission}
               status={board.formStatus}
               token={token}
+              timezone={user?.timezone}
             />
           </div>
         </div>
