@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react"
 
 import ConfirmDialog from "../../../components/ui/ConfirmDialog"
+import Dialog from "../../../components/ui/Dialog"
 import StatusNotice from "../../../components/ui/StatusNotice"
 import TacticalShell from "../../../components/tactical/TacticalShell"
 import { emptyStatus } from "../../../constants/uiState"
@@ -183,32 +184,34 @@ export default function GeneralCommandPage({
       </section>
 
       {formOpen && (
-        <div className="modal-backdrop command-modal-backdrop" role="presentation">
-          <div
-            className="command-modal-card order-modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-label={editingMission ? "Editar ordem" : "Nova ordem"}
-          >
-            <MissionForm
-              currentUser={user}
-              editingMission={editingMission}
-              initialPrazo={editingMission ? undefined : selectedDateApi}
-              loading={board.formLoading}
-              onUnauthorized={onUnauthorized}
-              onCancel={() => {
-                setFormOpen(false)
-                setEditingMission(null)
-                board.setFormStatus(emptyStatus)
-              }}
-              onCreate={createMission}
-              onUpdate={updateMission}
-              status={board.formStatus}
-              token={token}
-              timezone={user?.timezone}
-            />
-          </div>
-        </div>
+        <Dialog
+          ariaLabel={editingMission ? "Editar ordem" : "Nova ordem"}
+          className="max-w-2xl"
+          closeOnBackdrop={false}
+          onClose={() => {
+            setFormOpen(false)
+            setEditingMission(null)
+            board.setFormStatus(emptyStatus)
+          }}
+        >
+          <MissionForm
+            currentUser={user}
+            editingMission={editingMission}
+            initialPrazo={editingMission ? undefined : selectedDateApi}
+            loading={board.formLoading}
+            onUnauthorized={onUnauthorized}
+            onCancel={() => {
+              setFormOpen(false)
+              setEditingMission(null)
+              board.setFormStatus(emptyStatus)
+            }}
+            onCreate={createMission}
+            onUpdate={updateMission}
+            status={board.formStatus}
+            token={token}
+            timezone={user?.timezone}
+          />
+        </Dialog>
       )}
 
       {showSoldierConfirm && (

@@ -19,7 +19,10 @@
   --color-accent: #ff7a1a;
   --color-accent-hover: #ed6c0b;
   --color-danger: #d92d20;
+  --color-danger-hover: #b42318;
+  --color-danger-soft: #fef0ef;
   --color-success: #15803d;
+  --color-success-soft: #eaf7ee;
   --color-accent-soft: #fff1e6;
   --color-accent-text: #b54708;
   --color-control-border: #8a8a85;

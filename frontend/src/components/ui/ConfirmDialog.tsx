@@ -1,29 +1,29 @@
 import React from "react"
 
+import Button from "./Button"
+import Dialog from "./Dialog"
+
 export default function ConfirmDialog({
   cancelLabel = "CANCELAR",
   confirmLabel,
   message,
+  loading = false,
   onCancel,
   onConfirm,
   title,
   variant = "danger",
 }) {
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="modal-card" role="dialog" aria-modal="true">
-        <p className="section-kicker fire">ATENÇÃO</p>
-        <h2>{title}</h2>
-        <p className="muted">{message}</p>
-        <div className="actions-row">
-          <button className="button secondary" type="button" onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button className={`button ${variant}`} type="button" onClick={onConfirm}>
-            {confirmLabel}
-          </button>
-        </div>
-      </section>
-    </div>
+    <Dialog closeOnBackdrop={false} onClose={onCancel} title={title}>
+      <p className="m-0 text-sm leading-6 text-text-secondary">{message}</p>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button disabled={loading} variant="secondary" onClick={onCancel}>
+          {cancelLabel}
+        </Button>
+        <Button loading={loading} variant={variant === "danger" ? "danger" : "primary"} onClick={onConfirm}>
+          {confirmLabel}
+        </Button>
+      </div>
+    </Dialog>
   )
 }

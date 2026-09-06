@@ -108,13 +108,12 @@ export default function OrdersPanel({
           {renderMissionGroup("Cumpridas", groups.completed, "completed")}
         </div>
       ) : (
-        <div className="empty-state action-empty">
-          <h3>Dia sem ordens</h3>
-          <p>Nenhuma ordem foi definida para o dia selecionado.</p>
-          <button className="button fire compact" type="button" onClick={onCreateOrder}>
-            NOVA ORDEM
-          </button>
-        </div>
+        <EmptyState
+          actionLabel="NOVA ORDEM"
+          message="Nenhuma ordem foi definida para o dia selecionado."
+          onAction={onCreateOrder}
+          title="Dia sem ordens"
+        />
       )}
     </section>
   )

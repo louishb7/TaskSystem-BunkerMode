@@ -1,5 +1,7 @@
 import React from "react"
 
+import Button from "../../../components/ui/Button"
+import Dialog from "../../../components/ui/Dialog"
 import { formatCurrentDay } from "../../calendar/calendarUtils"
 
 export default function ActivateSoldierDialog({
@@ -18,35 +20,34 @@ export default function ActivateSoldierDialog({
   })
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="modal-card" role="dialog" aria-modal="true">
-        <p className="section-kicker fire">ORDENS DE HOJE</p>
-        <h2>{formatCurrentDay(timezone)}</h2>
+    <Dialog closeOnBackdrop={false} onClose={onCancel} title={formatCurrentDay(timezone)}>
+      <div className="grid gap-4">
+        <p className="m-0 text-xs font-semibold tracking-wide text-text-secondary">ORDENS DE HOJE</p>
         {todayMissions.length > 0 ? (
-          <ul className="protocol-brief">
+          <ul className="m-0 grid list-none gap-2 rounded-control border border-border bg-app p-3 text-sm text-text-primary">
             {pendingMissions.map((mission) => (
               <li key={mission.id}>{mission?.titulo || "Missão sem título"}</li>
             ))}
             {completedMissions.map((mission) => (
-              <li className="protocol-mission-completed" key={mission.id}>
+              <li className="text-text-secondary line-through" key={mission.id}>
                 {mission?.titulo || "Missão sem título"}
               </li>
             ))}
           </ul>
         ) : (
-          <div className="protocol-brief">
-            <span>Nenhuma missão definida para hoje</span>
+          <div className="rounded-control border border-border bg-app p-3 text-sm text-text-secondary">
+            Nenhuma missão definida para hoje
           </div>
         )}
-        <div className="actions-row">
-          <button className="button secondary" type="button" onClick={onCancel}>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button disabled={loading} variant="secondary" onClick={onCancel}>
             CANCELAR
-          </button>
-          <button className="button fire" type="button" onClick={onConfirm} disabled={loading}>
+          </Button>
+          <Button loading={loading} onClick={onConfirm}>
             {loading ? "ATIVANDO" : "ENTRAR NO SOLDADO"}
-          </button>
+          </Button>
         </div>
-      </section>
-    </div>
+      </div>
+    </Dialog>
   )
 }
