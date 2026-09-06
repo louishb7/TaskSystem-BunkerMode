@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react"
 
 import { isCompleted } from "../../../utils/missionStatus"
+import { operationalDateFor } from "../../calendar/calendarUtils"
 
 function can(mission, key) {
   return Boolean(mission?.permissions?.[key]) && mission?.id !== undefined && mission?.id !== null
@@ -32,12 +33,11 @@ function parseMissionDate(value) {
   return null
 }
 
-function todayStart() {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+function todayStart(timezone) {
+  return operationalDateFor(timezone)
 }
 
-function formatDeadline(value) {
+function formatDeadline(value, timezone) {
   const parsed = parseMissionDate(value)
   if (!parsed) {
     return "SEM DATA"
@@ -46,7 +46,7 @@ function formatDeadline(value) {
   const day = String(parsed.getDate()).padStart(2, "0")
   const month = String(parsed.getMonth() + 1).padStart(2, "0")
 
-  if (parsed.getTime() === todayStart().getTime()) {
+  if (parsed.getTime() === todayStart(timezone).getTime()) {
     return "HOJE"
   }
 
@@ -80,6 +80,7 @@ export default function MissionCard({
   onTogglePin = undefined,
   pinning = false,
   reopening = false,
+  timezone = undefined,
   variant = "general",
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -93,7 +94,7 @@ export default function MissionCard({
   const canComplete = can(mission, "can_complete")
   const canFail = can(mission, "can_fail")
   const completed = isCompleted(mission)
-  const deadlineLabel = formatDeadline(mission?.prazo)
+  const deadlineLabel = formatDeadline(mission?.prazo, timezone)
   const failed = String(mission?.status_code || "") === "FALHA"
   const currentStatusText = statusText(mission)
   const hasBadge = isPinned || currentStatusText

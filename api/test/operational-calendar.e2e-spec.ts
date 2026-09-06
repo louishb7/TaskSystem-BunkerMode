@@ -16,6 +16,18 @@ describe("OperationalCalendarService", () => {
     expect(calendar.currentDateFor(earlyMorning, "America/Recife")).toBe("2026-04-25")
   })
 
+  it("changes the operational day at each user's local midnight in negative and positive timezones", () => {
+    const beforeNegativeMidnight = new Date("2026-04-25T02:59:00.000Z")
+    const afterNegativeMidnight = new Date("2026-04-25T03:01:00.000Z")
+    const beforePositiveMidnight = new Date("2026-04-25T09:59:00.000Z")
+    const afterPositiveMidnight = new Date("2026-04-25T10:01:00.000Z")
+
+    expect(calendar.currentDateFor(beforeNegativeMidnight, "America/Recife")).toBe("2026-04-24")
+    expect(calendar.currentDateFor(afterNegativeMidnight, "America/Recife")).toBe("2026-04-25")
+    expect(calendar.currentDateFor(beforePositiveMidnight, "Pacific/Kiritimati")).toBe("2026-04-25")
+    expect(calendar.currentDateFor(afterPositiveMidnight, "Pacific/Kiritimati")).toBe("2026-04-26")
+  })
+
   it("calculates Monday-to-Sunday week bounds from the local date", () => {
     expect(calendar.weekBounds("2026-04-26")).toEqual({
       start_date: "2026-04-20",

@@ -4,6 +4,21 @@ export function startOfDay(value) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate())
 }
 
+export function operationalDateFor(timezone, moment = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(moment)
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+    return new Date(Number(byType.year), Number(byType.month) - 1, Number(byType.day))
+  } catch {
+    return startOfDay(moment)
+  }
+}
+
 export function addDays(value, amount) {
   const next = new Date(value)
   next.setDate(next.getDate() + amount)
@@ -61,10 +76,11 @@ export function formatSelectedDate(date) {
   }
 }
 
-export function formatCurrentDay() {
+export function formatCurrentDay(timezone = undefined) {
   try {
     return new Date()
       .toLocaleDateString("pt-BR", {
+        timeZone: timezone,
         weekday: "long",
         day: "2-digit",
         month: "2-digit",

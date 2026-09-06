@@ -35,6 +35,7 @@ export default function OrdersPanel({
   pinLoadingId,
   reopenLoadingId,
   selectedMissions,
+  timezone,
 }) {
   const groups = groupMissions(selectedMissions)
   const activeCount =
@@ -69,6 +70,7 @@ export default function OrdersPanel({
               onTogglePin={() => onTogglePin(mission)}
               pinning={pinLoadingId === mission.id}
               reopening={reopenLoadingId === mission.id}
+              timezone={timezone}
               variant="general"
             />
           ))}

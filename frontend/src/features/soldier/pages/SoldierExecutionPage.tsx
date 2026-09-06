@@ -13,6 +13,7 @@ export default function SoldierExecutionPage({
   dailyMissions,
   missions,
   onReturnToCommand,
+  timezone,
 }) {
   const [returnLoading, setReturnLoading] = useState(false)
   const hasCompletedMissions = dailyMissions.some(isCompleted)
@@ -34,7 +35,7 @@ export default function SoldierExecutionPage({
             <div className="soldier-briefing-copy">
               <h1>Ordens de hoje</h1>
               <div className="soldier-briefing-meta">
-                <span>{formatCurrentDay()}</span>
+                <span>{formatCurrentDay(timezone)}</span>
               </div>
               <MissionProgress
                 label="PROGRESSO"
@@ -63,6 +64,7 @@ export default function SoldierExecutionPage({
                 mission={mission}
                 onComplete={() => board.completeMission(mission)}
                 onFail={() => board.failMission(mission.id)}
+                timezone={timezone}
                 variant="soldier"
               />
             ))}

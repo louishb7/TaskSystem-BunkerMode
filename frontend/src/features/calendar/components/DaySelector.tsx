@@ -38,7 +38,7 @@ export default function DaySelector({
         const tone = isDayOff ? "off" : hasExecutionLabel ? executionTone(percent) : "neutral"
         return (
           <div
-            key={date.toISOString()}
+            key={apiDate}
             className={`day-node ${selected ? "selected" : ""} ${today ? "today" : ""} ${complete ? "complete" : ""} execution-${tone}`}
           >
             <button className="day-select-button" type="button" onClick={() => onSelectDate(date)}>

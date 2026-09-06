@@ -7,6 +7,7 @@ export default function ActivateSoldierDialog({
   onCancel,
   onConfirm,
   todayMissions = [],
+  timezone,
 }) {
   const completedMissions = todayMissions.filter(
     (mission) => String(mission?.status_code || "").toUpperCase() === "CONCLUIDA"
@@ -20,7 +21,7 @@ export default function ActivateSoldierDialog({
     <div className="modal-backdrop" role="presentation">
       <section className="modal-card" role="dialog" aria-modal="true">
         <p className="section-kicker fire">ORDENS DE HOJE</p>
-        <h2>{formatCurrentDay()}</h2>
+        <h2>{formatCurrentDay(timezone)}</h2>
         {todayMissions.length > 0 ? (
           <ul className="protocol-brief">
             {pendingMissions.map((mission) => (

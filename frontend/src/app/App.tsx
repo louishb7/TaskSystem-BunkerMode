@@ -193,6 +193,7 @@ function SoldierRoute() {
       dailyMissions={board.dailyMissions}
       missions={board.missions}
       onReturnToCommand={returnToCommand}
+      timezone={auth.user?.timezone}
     />
   )
 }

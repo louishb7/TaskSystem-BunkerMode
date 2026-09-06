@@ -13,6 +13,7 @@ import {
   formatWeekLabel,
   getWeekDays,
   normalizeMissionDate,
+  operationalDateFor,
   startOfDay,
 } from "../../calendar/calendarUtils"
 import ActivateSoldierDialog from "../components/ActivateSoldierDialog"
@@ -29,7 +30,7 @@ export default function GeneralCommandPage({
   token,
   user,
 }) {
-  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
+  const [selectedDate, setSelectedDate] = useState(() => operationalDateFor(user?.timezone))
   const [formOpen, setFormOpen] = useState(false)
   const [editingMission, setEditingMission] = useState(null)
   const [showSoldierConfirm, setShowSoldierConfirm] = useState(false)
@@ -38,7 +39,7 @@ export default function GeneralCommandPage({
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate])
   const weekLabel = formatWeekLabel(weekDays)
-  const todayDate = useMemo(() => startOfDay(new Date()), [])
+  const todayDate = useMemo(() => operationalDateFor(user?.timezone), [user?.timezone])
   const selectedDateApi = formatDateForApi(selectedDate)
   const selectedDateLabel = formatSelectedDate(selectedDate)
   const missionStatsByDate = useMemo(
@@ -176,6 +177,7 @@ export default function GeneralCommandPage({
             pinLoadingId={board.pinLoadingId}
             reopenLoadingId={board.reopenLoadingId}
             selectedMissions={selectedMissions}
+            timezone={user?.timezone}
           />
         </section>
       </section>
@@ -214,6 +216,7 @@ export default function GeneralCommandPage({
           onCancel={() => setShowSoldierConfirm(false)}
           onConfirm={confirmActivateSoldier}
           todayMissions={todayMissions}
+          timezone={user?.timezone}
         />
       )}
 
