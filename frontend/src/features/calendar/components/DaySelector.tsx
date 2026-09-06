@@ -26,7 +26,7 @@ export default function DaySelector({
           >
             <span className="text-xs text-text-secondary">{WEEK_LABELS[date.getDay()]}</span>
             <span className="mt-1 text-lg font-semibold">{String(date.getDate()).padStart(2, "0")}</span>
-            {today && <span className="mt-1 text-[10px] font-semibold uppercase">Hoje</span>}
+            {today && <span className="mt-1 text-xs font-semibold uppercase">Hoje</span>}
           </button>
         )
       })}

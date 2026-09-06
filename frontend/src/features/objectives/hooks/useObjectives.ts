@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { getErrorMessage } from "../../../api/httpClient"
 import { emptyStatus } from "../../../constants/uiState"
 import { api } from "../../../services/bunkermodeApi"
-import { STATUS_MISSAO } from "../../../utils/missionStatus"
 
 function sortObjetivosByOrder(objetivos = []) {
   return [...objetivos].sort((left, right) => {
@@ -57,15 +56,15 @@ export function useObjectives({ onUnauthorized, token }) {
     loadObjectives()
   }, [loadObjectives])
 
-  const missionCounts = useMemo(
+  const missionsByObjetivo = useMemo(
     () =>
-      missions.reduce((counts, mission) => {
-        if (!mission.objetivo_id || mission.status_code !== STATUS_MISSAO.PENDENTE) {
-          return counts
+      missions.reduce((byObjetivo, mission) => {
+        if (!mission.objetivo_id) {
+          return byObjetivo
         }
         const key = String(mission.objetivo_id)
-        counts[key] = (counts[key] || 0) + 1
-        return counts
+        byObjetivo[key] = [...(byObjetivo[key] || []), mission]
+        return byObjetivo
       }, {}),
     [missions]
   )
@@ -96,7 +95,7 @@ export function useObjectives({ onUnauthorized, token }) {
 
   return {
     loading,
-    missionCounts,
+    missionsByObjetivo,
     mutating,
     objetivos,
     refresh: loadObjectives,

@@ -1,5 +1,9 @@
 import React from "react"
 
+import Badge from "../../../components/ui/Badge"
+import Button from "../../../components/ui/Button"
+import { normalizeMissionDate } from "../../calendar/calendarUtils"
+
 const statusLabels = {
   ativo: "Ativo",
   pausado: "Pausado",
@@ -7,17 +11,37 @@ const statusLabels = {
   concluido: "Concluído",
 }
 
-function formatTargetDate(value) {
-  if (!value || typeof value !== "string") {
-    return "Até conseguir"
+const statusVariants = {
+  ativo: "neutral",
+  pausado: "warning",
+  abandonado: "danger",
+  concluido: "success",
+}
+
+const missionStatus = {
+  PENDENTE: { label: "Em aberto", variant: "neutral" },
+  CONCLUIDA: { label: "Concluída", variant: "success" },
+  FALHA: { label: "Falha registrada", variant: "danger" },
+}
+
+function formatDateOnly(value, fallback) {
+  const normalized = normalizeMissionDate(value)
+  if (!/^\d{2}-\d{2}-\d{4}$/.test(normalized)) {
+    return fallback
   }
-  const [year, month, day] = value.split("-")
-  return year && month && day ? `Alvo: ${day}/${month}/${year}` : value
+
+  const [day, month, year] = normalized.split("-")
+  return `${day}/${month}/${year}`
+}
+
+function getMissionStatus(mission) {
+  const statusCode = String(mission?.status_code || "").toUpperCase()
+  return missionStatus[statusCode] || { label: mission?.status_label || "Sem status", variant: "neutral" }
 }
 
 export default function ObjetivoCard({
   loading,
-  missionCount,
+  missions,
   objetivo,
   onCreateMission,
   onDelete,
@@ -25,58 +49,77 @@ export default function ObjetivoCard({
   onMoveToTop,
   onUpdateStatus,
 }) {
+  const targetDate = formatDateOnly(objetivo.data_alvo, "Sem prazo")
+  const statusLabel = statusLabels[objetivo.status] || objetivo.status
+
   return (
-    <article className={`objetivo-card status-${objetivo.status}`}>
-      <div className="objetivo-card-head">
-        <div>
-          <h3>{objetivo.titulo}</h3>
-          <div className="objetivo-meta compact">
-            <span>{formatTargetDate(objetivo.data_alvo)}</span>
-            <span>{statusLabels[objetivo.status] || objetivo.status}</span>
-            <span>{missionCount} ordens em aberto</span>
-          </div>
+    <article className="grid gap-5 rounded-card border border-border bg-surface p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="m-0 break-words text-lg font-semibold text-text-primary">{objetivo.titulo}</h2>
+          {objetivo.descricao && <p className="mt-2 mb-0 break-words text-sm leading-6 text-text-secondary">{objetivo.descricao}</p>}
         </div>
-        {onMoveToTop && (
-          <button
-            aria-label="Mover objetivo para o início"
-            className="button secondary compact objective-move-top"
-            disabled={loading}
-            title="Mover para o início"
-            type="button"
-            onClick={onMoveToTop}
-          >
-            ↑
-          </button>
-        )}
+        <Badge variant={statusVariants[objetivo.status] || "neutral"}>{statusLabel}</Badge>
       </div>
 
-      {objetivo.descricao && <p>{objetivo.descricao}</p>}
+      <p className="m-0 text-sm text-text-secondary">
+        <span className="font-medium text-text-primary">Prazo: </span>
+        {targetDate}
+      </p>
 
-      <div className="objective-card-footer">
-        <button className="button fire compact" disabled={loading} type="button" onClick={onCreateMission}>
-          NOVA ORDEM
-        </button>
-        <button className="button secondary compact" disabled={loading} type="button" onClick={onEdit}>
-          EDITAR
-        </button>
-        <label className="sr-only" htmlFor={`objetivo-status-${objetivo.id}`}>
-          Status do objetivo
+      <section className="grid gap-3 border-t border-border pt-4" aria-labelledby={`objetivo-orders-${objetivo.id}`}>
+        <h3 id={`objetivo-orders-${objetivo.id}`} className="m-0 text-sm font-semibold text-text-primary">
+          Ordens vinculadas
+        </h3>
+        {missions.length > 0 ? (
+          <ul className="m-0 grid list-none divide-y divide-border border-y border-border p-0">
+            {missions.map((mission) => {
+              const status = getMissionStatus(mission)
+              return (
+                <li className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-3" key={mission.id}>
+                  <span className="min-w-0 break-words text-sm font-medium text-text-primary">{mission.titulo || "Ordem sem título"}</span>
+                  <span className="text-sm text-text-secondary">{formatDateOnly(mission.prazo, "Sem data")}</span>
+                  <Badge className="w-fit" variant={status.variant}>{status.label}</Badge>
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <p className="m-0 text-sm text-text-secondary">Nenhuma ordem vinculada.</p>
+        )}
+      </section>
+
+      <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+        <Button disabled={loading} onClick={onCreateMission}>
+          Nova ordem vinculada
+        </Button>
+        <Button disabled={loading} size="small" variant="ghost" onClick={onEdit}>
+          Editar
+        </Button>
+        <label className="grid gap-1 text-xs font-medium text-text-secondary" htmlFor={`objetivo-status-${objetivo.id}`}>
+          Status
+          <select
+            className="min-h-11 rounded-control border border-control-border bg-surface px-2 text-sm text-text-primary focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-app disabled:text-text-secondary disabled:opacity-70"
+            disabled={loading}
+            id={`objetivo-status-${objetivo.id}`}
+            value={objetivo.status}
+            onChange={(event) => onUpdateStatus(event.target.value)}
+          >
+            {Object.entries(statusLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </label>
-        <select
-          id={`objetivo-status-${objetivo.id}`}
-          disabled={loading}
-          value={objetivo.status}
-          onChange={(event) => onUpdateStatus(event.target.value)}
-        >
-          {Object.entries(statusLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <button className="button danger ghost compact" disabled={loading} type="button" onClick={onDelete}>
-          REMOVER
-        </button>
+        {onMoveToTop && (
+          <Button disabled={loading} size="small" variant="ghost" onClick={onMoveToTop}>
+            Mover para o início
+          </Button>
+        )}
+        <Button disabled={loading} size="small" variant="danger" onClick={onDelete}>
+          Remover
+        </Button>
       </div>
     </article>
   )

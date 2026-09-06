@@ -1,10 +1,11 @@
 import React from "react"
 
+import EmptyState from "../../../components/ui/EmptyState"
 import ObjetivoCard from "./ObjetivoCard"
 
 export default function ObjetivoList({
   loading,
-  missionCounts,
+  missionsByObjetivo,
   objetivos,
   onCreateMission,
   onDelete,
@@ -13,16 +14,21 @@ export default function ObjetivoList({
   onUpdateStatus,
 }) {
   if (objetivos.length === 0) {
-    return <p className="muted">Nenhum objetivo registrado.</p>
+    return (
+      <EmptyState
+        message="Crie um objetivo para organizar ordens relacionadas."
+        title="Nenhum objetivo ainda"
+      />
+    )
   }
 
   return (
-    <div className="objetivo-list">
+    <div className="grid gap-4">
       {objetivos.map((objetivo, index) => (
         <ObjetivoCard
           key={objetivo.id}
           loading={loading}
-          missionCount={missionCounts[String(objetivo.id)] || 0}
+          missions={missionsByObjetivo[String(objetivo.id)] || []}
           objetivo={objetivo}
           onCreateMission={() => onCreateMission(objetivo)}
           onDelete={() => onDelete(objetivo)}

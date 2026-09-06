@@ -75,7 +75,7 @@ export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel
               onChange={updateField}
               type="checkbox"
             />
-            Até conseguir
+            Sem prazo
           </label>
           {!form.sem_prazo && (
             <label className={labelClass}>
@@ -102,7 +102,7 @@ export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel
           Cancelar
         </Button>
         <Button loading={loading} type="submit">
-          {isEditing ? "Salvar objetivo" : "Registrar objetivo"}
+          {isEditing ? "Salvar objetivo" : "Criar objetivo"}
         </Button>
       </div>
     </form>

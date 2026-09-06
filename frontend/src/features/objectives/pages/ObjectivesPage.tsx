@@ -1,7 +1,9 @@
 import React, { useState } from "react"
 
 import ConfirmDialog from "../../../components/ui/ConfirmDialog"
+import Button from "../../../components/ui/Button"
 import Dialog from "../../../components/ui/Dialog"
+import PageHeader from "../../../components/ui/PageHeader"
 import StatusNotice from "../../../components/ui/StatusNotice"
 import { emptyStatus } from "../../../constants/uiState"
 import MissionForm from "../../missions/components/MissionForm"
@@ -51,102 +53,98 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
   }
 
   return (
-    <section className="objectives-page">
-        <header className="section-heading">
-          <div>
-            <p className="section-kicker fire">PLANEJAMENTO</p>
-            <h1>Objetivos</h1>
-            <p className="muted">
-              Direções independentes que podem receber ordens quando necessário.
-            </p>
-          </div>
-          <button
-            className="button fire compact"
+    <section className="grid gap-8">
+      <PageHeader
+        actions={
+          <Button
             disabled={busy}
-            type="button"
             onClick={() => {
               setEditingObjetivo(null)
               setFormOpen(true)
             }}
           >
-            NOVO OBJETIVO
-          </button>
-        </header>
+            Novo objetivo
+          </Button>
+        }
+        description="Organize ordens em torno do que você quer alcançar."
+        title="Objetivos"
+      />
 
-        <StatusNotice status={objectives.status} />
+      <StatusNotice status={objectives.status} />
 
-        {formOpen && (
-          <Dialog
-            closeOnBackdrop={false}
-            onClose={closeObjectiveForm}
-            title={editingObjetivo ? "Editar objetivo" : "Novo objetivo"}
-          >
-            <ObjetivoForm
-              editingObjetivo={editingObjetivo}
-              loading={busy}
-              onCancel={closeObjectiveForm}
-              onSubmit={submitObjetivo}
-            />
-          </Dialog>
-        )}
+      {formOpen && (
+        <Dialog
+          closeOnBackdrop={false}
+          onClose={closeObjectiveForm}
+          title={editingObjetivo ? "Editar objetivo" : "Novo objetivo"}
+        >
+          <ObjetivoForm
+            editingObjetivo={editingObjetivo}
+            loading={busy}
+            onCancel={closeObjectiveForm}
+            onSubmit={submitObjetivo}
+          />
+        </Dialog>
+      )}
 
-        <ObjetivoList
-          loading={busy}
-          missionCounts={objectives.missionCounts}
-          objetivos={objectives.objetivos}
-          onCreateMission={setMissionObjetivo}
-          onDelete={setDeleteTarget}
-          onEdit={(objetivo) => {
-            setEditingObjetivo(objetivo)
-            setFormOpen(true)
+      <ObjetivoList
+        loading={busy}
+        missionsByObjetivo={objectives.missionsByObjetivo}
+        objetivos={objectives.objetivos}
+        onCreateMission={setMissionObjetivo}
+        onDelete={setDeleteTarget}
+        onEdit={(objetivo) => {
+          setEditingObjetivo(objetivo)
+          setFormOpen(true)
+        }}
+        onMoveToTop={moveObjetivoToTop}
+        onUpdateStatus={objectives.updateObjetivoStatus}
+      />
+
+      {missionObjetivo && (
+        <Dialog
+          closeOnBackdrop={false}
+          onClose={() => {
+            setMissionObjetivo(null)
+            board.setFormStatus(emptyStatus)
           }}
-          onMoveToTop={moveObjetivoToTop}
-          onUpdateStatus={objectives.updateObjetivoStatus}
-        />
-
-        {missionObjetivo && (
-          <Dialog
-            closeOnBackdrop={false}
-            onClose={() => {
+          title="Nova ordem"
+        >
+          <MissionForm
+            currentUser={user}
+            initialObjetivoId={missionObjetivo.id}
+            initialObjetivoTitulo={missionObjetivo.titulo}
+            lockObjetivo
+            loading={board.formLoading}
+            onCancel={() => {
               setMissionObjetivo(null)
               board.setFormStatus(emptyStatus)
             }}
-            title="Nova ordem"
-          >
-            <MissionForm
-              currentUser={user}
-              initialObjetivoId={missionObjetivo.id}
-              initialObjetivoTitulo={missionObjetivo.titulo}
-              lockObjetivo
-              loading={board.formLoading}
-              onCancel={() => {
-                setMissionObjetivo(null)
-                board.setFormStatus(emptyStatus)
-              }}
-              onCreate={createMission}
-              onUnauthorized={onUnauthorized}
-              status={board.formStatus}
-              token={token}
-              timezone={user?.timezone}
-            />
-          </Dialog>
-        )}
-
-        {deleteTarget && (
-          <ConfirmDialog
-            confirmLabel="REMOVER"
-            message={`"${deleteTarget.titulo}" será removido. As ordens vinculadas perderão esse vínculo.`}
-            title="Remover objetivo"
-            variant="danger"
-            onCancel={() => setDeleteTarget(null)}
-            onConfirm={async () => {
-              const removed = await objectives.deleteObjetivo(deleteTarget.id)
-              if (removed) {
-                setDeleteTarget(null)
-              }
-            }}
+            onCreate={createMission}
+            onUnauthorized={onUnauthorized}
+            status={board.formStatus}
+            token={token}
+            timezone={user?.timezone}
           />
-        )}
+        </Dialog>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          cancelLabel="Cancelar"
+          confirmLabel="Remover"
+          message={`"${deleteTarget.titulo}" será removido. As ordens vinculadas perderão esse vínculo.`}
+          title="Remover objetivo"
+          variant="danger"
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            const removed = await objectives.deleteObjetivo(deleteTarget.id)
+            if (removed) {
+              setDeleteTarget(null)
+            }
+          }}
+        />
+      )}
     </section>
   )
 }
