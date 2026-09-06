@@ -1,0 +1,32 @@
+/*
+ * A cascata V2 é declarada aqui para que o legado permaneça isolado até cada
+ * feature ser migrada. Preflight não é importado neste estágio.
+ */
+@layer theme, legacy, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "./tokens.css" layer(legacy);
+@import "../styles.css" layer(legacy);
+
+@theme {
+  --color-app: #f5f5f3;
+  --color-sidebar: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-text-primary: #161616;
+  --color-text-secondary: #696969;
+  --color-border: #e2e2df;
+  --color-accent: #ff7a1a;
+  --color-accent-hover: #ed6c0b;
+  --color-danger: #d92d20;
+  --color-success: #15803d;
+  --color-accent-soft: #fff1e6;
+  --color-accent-text: #b54708;
+  --color-control-border: #8a8a85;
+
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-dialog: 16px;
+
+  --spacing: 4px;
+}
