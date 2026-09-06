@@ -21,37 +21,30 @@ model auditoria_eventos {
 }
 
 model missoes {
-  missao_id           Int                 @id @default(autoincrement())
-  titulo              String              @db.VarChar(200)
-  prioridade          Int                 @default(2)
-  prazo               DateTime?           @db.Date
-  instrucao           String?             @db.VarChar(280)
-  status              String              @default("PENDENTE") @db.VarChar(20)
-  is_pinned           Boolean             @default(false)
-  created_at          DateTime            @default(now()) @db.Timestamp(6)
-  updated_at          DateTime            @updatedAt @db.Timestamp(6)
-  completed_at        DateTime?           @db.Timestamp(6)
-  failed_at           DateTime?           @db.Timestamp(6)
-  recurrence_weekdays Int[]               @default([])
-  recurrence_end_date DateTime?           @db.Date
-  duration_type       String?             @db.VarChar(20)
-  recurrence_key      String?             @unique @db.VarChar(320)
+  missao_id            Int                 @id @default(autoincrement())
+  titulo               String              @db.VarChar(200)
+  prioridade           Int                 @default(2)
+  prazo                DateTime?           @db.Date
+  instrucao            String?             @db.VarChar(280)
+  status               String              @default("PENDENTE") @db.VarChar(20)
+  is_pinned            Boolean             @default(false)
+  created_at           DateTime            @default(now()) @db.Timestamp(6)
+  updated_at           DateTime            @updatedAt @db.Timestamp(6)
+  completed_at         DateTime?           @db.Timestamp(6)
+  failed_at            DateTime?           @db.Timestamp(6)
   recurrence_series_id Int?
-  criada_por_id       Int
-  responsavel_id      Int
-  objetivo_id         Int?
-  sonho_id            Int?
-  auditoria_eventos   auditoria_eventos[]
-  criada_por          usuarios            @relation("missoes_criada_por", fields: [criada_por_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade)
-  responsavel         usuarios            @relation("missoes_responsavel", fields: [responsavel_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade)
-  objetivos           objetivos?          @relation(fields: [objetivo_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  sonhos              sonhos?             @relation(fields: [sonho_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  serie_recorrencia   series_recorrencia? @relation(fields: [recurrence_series_id], references: [recurrence_series_id], onDelete: SetNull, onUpdate: Cascade)
+  criada_por_id        Int
+  responsavel_id       Int
+  objetivo_id          Int?
+  auditoria_eventos    auditoria_eventos[]
+  criada_por           usuarios            @relation("missoes_criada_por", fields: [criada_por_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade)
+  responsavel          usuarios            @relation("missoes_responsavel", fields: [responsavel_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade)
+  objetivos            objetivos?          @relation(fields: [objetivo_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  serie_recorrencia    series_recorrencia? @relation(fields: [recurrence_series_id], references: [recurrence_series_id], onDelete: SetNull, onUpdate: Cascade)
 
   @@unique([recurrence_series_id, prazo])
   @@index([responsavel_id, status, prazo])
   @@index([objetivo_id])
-  @@index([sonho_id])
 }
 
 model series_recorrencia {
@@ -61,6 +54,7 @@ model series_recorrencia {
   titulo               String     @db.VarChar(200)
   instrucao            String?    @db.VarChar(280)
   prioridade           Int        @default(2)
+  /// A baseline exige NOT NULL e CHECK de dias válidos e lista não vazia.
   recurrence_weekdays  Int[]
   start_date           DateTime   @db.Date
   termination_policy   String     @default("sem_termino") @db.VarChar(20)
@@ -77,79 +71,37 @@ model series_recorrencia {
 }
 
 model objetivos {
-  id           Int       @id @default(autoincrement())
-  usuario_id   Int
-  sonho_id     Int?
-  titulo       String    @db.VarChar(200)
-  descricao    String?
-  data_alvo    DateTime? @db.Date
-  progresso    Int       @default(0)
-  status       String    @default("ativo") @db.VarChar(20)
-  created_at   DateTime  @default(now()) @db.Timestamp(6)
-  updated_at   DateTime  @updatedAt @db.Timestamp(6)
-  concluded_at DateTime? @db.Timestamp(6)
-  order_index  Int       @default(0)
-  missoes      missoes[]
+  id                 Int                  @id @default(autoincrement())
+  usuario_id         Int
+  titulo             String               @db.VarChar(200)
+  descricao          String?
+  data_alvo          DateTime?            @db.Date
+  status             String               @default("ativo") @db.VarChar(20)
+  created_at         DateTime             @default(now()) @db.Timestamp(6)
+  updated_at         DateTime             @updatedAt @db.Timestamp(6)
+  concluded_at       DateTime?            @db.Timestamp(6)
+  order_index        Int                  @default(0)
+  missoes            missoes[]
   series_recorrencia series_recorrencia[]
-  sonhos       sonhos?   @relation(fields: [sonho_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  usuarios     usuarios  @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([usuario_id, status])
-  @@index([sonho_id])
-}
-
-model revisoes_semanais {
-  revisao_id             Int      @id @default(autoincrement())
-  usuario_id             Int
-  start_date             DateTime @db.Date
-  end_date               DateTime @db.Date
-  reviewed_at            DateTime @default(now()) @db.Timestamp(6)
-  resumo_operacional     String
-  completed_missions     Int      @default(0)
-  pending_missions       Int      @default(0)
-  failed_missions        Int      @default(0)
-  high_priority_missions Int      @default(0)
-  observacao             String?
-  usuarios               usuarios @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@unique([usuario_id, start_date, end_date])
-}
-
-model sonhos {
-  id                         Int         @id @default(autoincrement())
-  usuario_id                 Int
-  titulo                     String      @db.VarChar(200)
-  descricao                  String?
-  tipo                       String      @db.VarChar(20)
-  status                     String      @default("ativo") @db.VarChar(20)
-  justificativa_arquivamento String?
-  created_at                 DateTime    @default(now()) @db.Timestamp(6)
-  updated_at                 DateTime    @updatedAt @db.Timestamp(6)
-  archived_at                DateTime?   @db.Timestamp(6)
-  concluded_at               DateTime?   @db.Timestamp(6)
-  missoes                    missoes[]
-  objetivos                  objetivos[]
-  usuarios                   usuarios    @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade)
+  usuarios           usuarios             @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([usuario_id, status])
 }
 
 model usuarios {
-  usuario_id        Int                 @id @default(autoincrement())
-  usuario           String              @unique @db.VarChar(80)
-  email             String              @unique @db.VarChar(254)
-  senha_hash        String
-  ativo             Boolean             @default(true)
-  nome_general      String?
-  active_mode       String              @default("general") @db.VarChar(20)
-  timezone          String              @default("America/Recife") @db.VarChar(80)
-  created_at        DateTime            @default(now()) @db.Timestamp(6)
-  updated_at        DateTime            @updatedAt @db.Timestamp(6)
-  auditoria_eventos auditoria_eventos[]
-  missoes_criadas   missoes[]           @relation("missoes_criada_por")
-  missoes_recebidas missoes[]           @relation("missoes_responsavel")
+  usuario_id         Int                  @id @default(autoincrement())
+  usuario            String               @unique @db.VarChar(80)
+  email              String               @unique @db.VarChar(254)
+  senha_hash         String
+  ativo              Boolean              @default(true)
+  nome_general       String?
+  active_mode        String               @default("general") @db.VarChar(20)
+  timezone           String               @default("America/Recife") @db.VarChar(80)
+  created_at         DateTime             @default(now()) @db.Timestamp(6)
+  updated_at         DateTime             @updatedAt @db.Timestamp(6)
+  auditoria_eventos  auditoria_eventos[]
+  missoes_criadas    missoes[]            @relation("missoes_criada_por")
+  missoes_recebidas  missoes[]            @relation("missoes_responsavel")
   series_recorrencia series_recorrencia[] @relation("series_recorrencia_responsavel")
-  objetivos         objetivos[]
-  revisoes_semanais revisoes_semanais[]
-  sonhos            sonhos[]
+  objetivos          objetivos[]
 }

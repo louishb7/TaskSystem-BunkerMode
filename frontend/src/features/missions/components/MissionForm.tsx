@@ -129,28 +129,6 @@ function repeatTypeFor(weekdays, prazo) {
   return "personalizado"
 }
 
-function terminationPolicyFor(mission) {
-  if (mission?.recurrence?.termination_policy) {
-    return mission.recurrence.termination_policy
-  }
-  if (mission?.duration_type === "prazo" || mission?.duration_type === "ate_data") {
-    return "ate_data"
-  }
-  if (mission?.duration_type === "ate_objetivo") {
-    return "ate_objetivo"
-  }
-  return "sem_termino"
-}
-
-function recurrenceWeekdaysFor(mission) {
-  if (Array.isArray(mission?.recurrence?.weekdays)) {
-    return normalizeWeekdays(mission.recurrence.weekdays)
-  }
-  return Array.isArray(mission?.recurrence_weekdays)
-    ? normalizeWeekdays(mission.recurrence_weekdays)
-    : []
-}
-
 function formForNewMission(initialObjetivoId, initialPrazo) {
   return {
     ...emptyForm,
@@ -160,7 +138,7 @@ function formForNewMission(initialObjetivoId, initialPrazo) {
 }
 
 function formForExistingMission(mission, initialPrazo) {
-  const recurrenceWeekdays = recurrenceWeekdaysFor(mission)
+  const recurrenceWeekdays = normalizeWeekdays(mission.recurrence?.weekdays)
   const prazo = toApiDateValue(mission.prazo || initialPrazo || "")
 
   return {
@@ -171,10 +149,8 @@ function formForExistingMission(mission, initialPrazo) {
     prazo,
     repeat_type: repeatTypeFor(recurrenceWeekdays, prazo),
     recurrence_weekdays: recurrenceWeekdays,
-    termination_policy: terminationPolicyFor(mission),
-    recurrence_end_date: toApiDateValue(
-      mission.recurrence?.end_date || mission.recurrence_end_date || ""
-    ),
+    termination_policy: mission.recurrence?.termination_policy || "sem_termino",
+    recurrence_end_date: toApiDateValue(mission.recurrence?.end_date || ""),
   }
 }
 
@@ -339,16 +315,14 @@ export default function MissionForm({
       prazo: form.prazo ? form.prazo.trim() : null,
     }
 
-    // PATCH em uma ocorrência de Série V2 altera somente essa ocorrência.
+    // PATCH altera os dados da Ordem, nunca a configuração da recorrência.
     // A edição da Série ainda não está disponível neste formulário.
-    if (!isEditing || !isSeriesOccurrence) {
+    if (!isEditing) {
       Object.assign(payload, {
         recurrence_weekdays: isRecurring ? recurrenceWeekdays : [],
         duration_type: isRecurring ? form.termination_policy : "pontual",
         recurrence_end_date:
-          isRecurring && form.termination_policy === "ate_data"
-            ? form.recurrence_end_date
-            : null,
+          isRecurring && form.termination_policy === "ate_data" ? form.recurrence_end_date : null,
       })
     }
 
@@ -422,7 +396,7 @@ export default function MissionForm({
         <label>
           Repetir
           <select
-            disabled={isSeriesOccurrence}
+            disabled={isEditing}
             name="repeat_type"
             onChange={handleRepeatChange}
             value={form.repeat_type}
@@ -435,14 +409,18 @@ export default function MissionForm({
           </select>
         </label>
 
+        {isEditing && !isSeriesOccurrence && (
+          <p className="muted">A recorrência é definida ao criar uma nova ordem.</p>
+        )}
+
         {isSeriesOccurrence && (
           <p className="muted">
-            Esta é uma ocorrência recorrente. As alterações serão aplicadas somente a esta ordem;
-            a série não será modificada.
+            Esta é uma ocorrência recorrente. As alterações serão aplicadas somente a esta ordem; a
+            série não será modificada.
           </p>
         )}
 
-        {isRecurring && !isSeriesOccurrence && (
+        {isRecurring && !isEditing && (
           <details className="linked-mission-options" open>
             <summary>Detalhes da recorrência</summary>
             <fieldset className="weekday-fieldset">

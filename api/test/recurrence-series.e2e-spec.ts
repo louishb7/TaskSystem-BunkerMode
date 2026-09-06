@@ -48,7 +48,9 @@ describeWithDatabase("Recurrence series persistence", () => {
     currentUser = user;
     currentDate = "2026-08-31";
     const calendar = new OperationalCalendarService();
-    jest.spyOn(calendar, "currentDateFor").mockImplementation(() => currentDate);
+    jest
+      .spyOn(calendar, "currentDateFor")
+      .mockImplementation(() => currentDate);
     missionsService = new MissionsService(prisma, calendar);
     goalsService = new GoalsService(prisma);
   });
@@ -226,8 +228,6 @@ describeWithDatabase("Recurrence series persistence", () => {
       termination_policy: "sem_termino",
     });
     expect(occurrences.length).toBeGreaterThan(1);
-    expect(occurrences.every((mission) => mission.recurrence_key === null)).toBe(true);
-    expect(occurrences.every((mission) => mission.recurrence_weekdays.length === 0)).toBe(true);
   });
 
   it("creates an until-objective recurrence with an active owned objective", async () => {
@@ -256,7 +256,7 @@ describeWithDatabase("Recurrence series persistence", () => {
 
   it("rejects an until-date recurrence without an end date", async () => {
     await expect(
-      createRecurringMission({ duration_type: "prazo" }),
+      createRecurringMission({ duration_type: "ate_data" }),
     ).rejects.toMatchObject({ status: 400 });
   });
 
@@ -285,7 +285,9 @@ describeWithDatabase("Recurrence series persistence", () => {
     await expect(
       createRecurringMission({ objetivo_id: objective.id }),
     ).rejects.toMatchObject({ status: 400 });
-    await prisma.usuarios.delete({ where: { usuario_id: otherUser.usuario_id } });
+    await prisma.usuarios.delete({
+      where: { usuario_id: otherUser.usuario_id },
+    });
   });
 
   it("rejects a recurrence linked to an inactive objective", async () => {
@@ -338,22 +340,28 @@ describeWithDatabase("Recurrence series persistence", () => {
       where: { recurrence_series_id: seriesId },
       orderBy: { prazo: "asc" },
     });
-    expect(new Set(occurrences.map((mission) => mission.prazo?.toISOString())).size).toBe(
-      occurrences.length,
-    );
+    expect(
+      new Set(occurrences.map((mission) => mission.prazo?.toISOString())).size,
+    ).toBe(occurrences.length);
   });
 
   it("continues materializing after one occurrence is completed", async () => {
     const firstOccurrence = await createRecurringMission();
     const seriesId = firstOccurrence.recurrence_series_id!;
-    const initialCount = await prisma.missoes.count({ where: { recurrence_series_id: seriesId } });
+    const initialCount = await prisma.missoes.count({
+      where: { recurrence_series_id: seriesId },
+    });
 
     await missionsService.complete(firstOccurrence.missao_id, currentUser);
     currentDate = "2026-09-08";
     await missionsService.listAllForUser(currentUser);
 
-    const finalized = await prisma.missoes.findUniqueOrThrow({ where: { missao_id: firstOccurrence.missao_id } });
-    const finalCount = await prisma.missoes.count({ where: { recurrence_series_id: seriesId } });
+    const finalized = await prisma.missoes.findUniqueOrThrow({
+      where: { missao_id: firstOccurrence.missao_id },
+    });
+    const finalCount = await prisma.missoes.count({
+      where: { recurrence_series_id: seriesId },
+    });
     expect(finalized.status).toBe(MISSION_STATUS.completed);
     expect(finalCount).toBeGreaterThan(initialCount);
   });
@@ -361,14 +369,20 @@ describeWithDatabase("Recurrence series persistence", () => {
   it("continues materializing after one occurrence fails", async () => {
     const firstOccurrence = await createRecurringMission();
     const seriesId = firstOccurrence.recurrence_series_id!;
-    const initialCount = await prisma.missoes.count({ where: { recurrence_series_id: seriesId } });
+    const initialCount = await prisma.missoes.count({
+      where: { recurrence_series_id: seriesId },
+    });
 
     await missionsService.fail(firstOccurrence.missao_id, currentUser);
     currentDate = "2026-09-08";
     await missionsService.listAllForUser(currentUser);
 
-    const finalized = await prisma.missoes.findUniqueOrThrow({ where: { missao_id: firstOccurrence.missao_id } });
-    const finalCount = await prisma.missoes.count({ where: { recurrence_series_id: seriesId } });
+    const finalized = await prisma.missoes.findUniqueOrThrow({
+      where: { missao_id: firstOccurrence.missao_id },
+    });
+    const finalCount = await prisma.missoes.count({
+      where: { recurrence_series_id: seriesId },
+    });
     expect(finalized.status).toBe(MISSION_STATUS.failed);
     expect(finalCount).toBeGreaterThan(initialCount);
   });
@@ -382,7 +396,9 @@ describeWithDatabase("Recurrence series persistence", () => {
         duration_type: "ate_objetivo",
       });
       const seriesId = firstOccurrence.recurrence_series_id!;
-      const initialCount = await prisma.missoes.count({ where: { recurrence_series_id: seriesId } });
+      const initialCount = await prisma.missoes.count({
+        where: { recurrence_series_id: seriesId },
+      });
       await prisma.objetivos.update({
         where: { id: objective.id },
         data: {
@@ -407,7 +423,9 @@ describeWithDatabase("Recurrence series persistence", () => {
       duration_type: "ate_objetivo",
     });
     const seriesId = firstOccurrence.recurrence_series_id!;
-    const occurrenceCount = await prisma.missoes.count({ where: { recurrence_series_id: seriesId } });
+    const occurrenceCount = await prisma.missoes.count({
+      where: { recurrence_series_id: seriesId },
+    });
 
     await goalsService.delete(currentUser, objective.id);
 
@@ -419,32 +437,138 @@ describeWithDatabase("Recurrence series persistence", () => {
     await expect(
       prisma.missoes.count({ where: { recurrence_series_id: seriesId } }),
     ).resolves.toBe(occurrenceCount);
+    const occurrences = await prisma.missoes.findMany({
+      where: { recurrence_series_id: seriesId },
+    });
+    expect(occurrences.every((mission) => mission.objetivo_id === null)).toBe(
+      true,
+    );
   });
 
-  it("keeps a legacy recurrence outside recurrence series", async () => {
-    const objective = await createObjective("Objetivo legado");
-    const legacyKey = `${objective.id}||Legado||2026-08-31`;
-    await prisma.missoes.create({
-      data: {
-        titulo: "Legado",
-        prazo: new Date("2026-08-31T00:00:00.000Z"),
-        recurrence_weekdays: [0],
-        duration_type: "ate_objetivo",
-        recurrence_key: legacyKey,
-        criada_por_id: userId,
-        responsavel_id: userId,
-        objetivo_id: objective.id,
-      },
+  it("preserves orders, results and audit when their independent goal is deleted", async () => {
+    const goal = await goalsService.create(currentUser, {
+      titulo: "Objetivo independente",
     });
+    const completed = await missionsService.create(
+      { titulo: "Concluir", objetivo_id: goal.id },
+      currentUser,
+    );
+    const failed = await missionsService.create(
+      { titulo: "Falhar", objetivo_id: goal.id },
+      currentUser,
+    );
+    await missionsService.complete(completed.missao_id, currentUser);
+    await missionsService.fail(failed.missao_id, currentUser);
+    await expect(
+      prisma.objetivos.findUniqueOrThrow({ where: { id: goal.id } }),
+    ).resolves.toMatchObject({ status: "ativo", concluded_at: null });
+    await goalsService.delete(currentUser, goal.id);
+    const orders = await prisma.missoes.findMany({
+      where: { responsavel_id: userId },
+      orderBy: { missao_id: "asc" },
+    });
+    expect(orders).toHaveLength(2);
+    expect(orders.map((mission) => mission.status)).toEqual([
+      "CONCLUIDA",
+      "FALHA",
+    ]);
+    expect(orders.every((mission) => mission.objetivo_id === null)).toBe(true);
+    expect(orders[0].completed_at).not.toBeNull();
+    expect(orders[1].failed_at).not.toBeNull();
+    expect(
+      await prisma.auditoria_eventos.count({ where: { usuario_id: userId } }),
+    ).toBe(4);
+  });
 
+  it("materializes an until-date series only through its inclusive end date", async () => {
+    const first = await createRecurringMission({
+      duration_type: "ate_data",
+      recurrence_end_date: "2026-09-14",
+    });
     currentDate = "2026-09-08";
     await missionsService.listAllForUser(currentUser);
-
-    expect(await prisma.series_recorrencia.count({ where: { responsavel_id: userId } })).toBe(0);
-    const legacyOccurrences = await prisma.missoes.findMany({
-      where: { responsavel_id: userId },
+    currentDate = "2026-09-15";
+    await missionsService.listAllForUser(currentUser);
+    const orders = await prisma.missoes.findMany({
+      where: { recurrence_series_id: first.recurrence_series_id },
+      orderBy: { prazo: "asc" },
     });
-    expect(legacyOccurrences.every((mission) => mission.recurrence_series_id === null)).toBe(true);
-    expect(legacyOccurrences.some((mission) => mission.recurrence_key === legacyKey)).toBe(true);
+    expect(
+      orders.map((mission) => mission.prazo?.toISOString().slice(0, 10)),
+    ).toEqual(["2026-08-31", "2026-09-07", "2026-09-14"]);
+  });
+
+  it("keeps an endless series running after its goal is deleted", async () => {
+    const goal = await createObjective();
+    const first = await createRecurringMission({ objetivo_id: goal.id });
+    await goalsService.delete(currentUser, goal.id);
+    currentDate = "2026-09-08";
+    await missionsService.listAllForUser(currentUser);
+    await expect(
+      prisma.series_recorrencia.findUniqueOrThrow({
+        where: { recurrence_series_id: first.recurrence_series_id! },
+      }),
+    ).resolves.toMatchObject({ ativo: true, objetivo_id: null });
+    const orders = await prisma.missoes.findMany({
+      where: { recurrence_series_id: first.recurrence_series_id },
+    });
+    expect(orders.length).toBeGreaterThan(2);
+    expect(orders.every((mission) => mission.objetivo_id === null)).toBe(true);
+  });
+
+  it("rejects an empty or null weekday list at the database boundary", async () => {
+    await expect(
+      createSeries({ recurrence_weekdays: [] }),
+    ).rejects.toBeDefined();
+    const series = await createSeries();
+    await expect(
+      prisma.$executeRaw`UPDATE series_recorrencia SET recurrence_weekdays = NULL WHERE recurrence_series_id = ${series.recurrence_series_id}`,
+    ).rejects.toBeDefined();
+  });
+
+  it.each([
+    { status: "invalido" },
+    { status: "CONCLUIDA", completed_at: null },
+    { status: "FALHA", failed_at: null },
+    { status: "PENDENTE", completed_at: new Date() },
+    { status: "CONCLUIDA", completed_at: new Date(), failed_at: new Date() },
+    { prioridade: 4 },
+  ])("preserves database mission state checks for %j", async (data) => {
+    const order = await createMission(null, "Ordem válida");
+    await expect(
+      prisma.missoes.update({ where: { missao_id: order.missao_id }, data }),
+    ).rejects.toBeDefined();
+  });
+
+  it.each([
+    { status: "invalido" },
+    { status: "concluido", concluded_at: null },
+    { status: "ativo", concluded_at: new Date() },
+  ])("preserves database goal state checks for %j", async (data) => {
+    const goal = await createObjective();
+    await expect(
+      prisma.objetivos.update({ where: { id: goal.id }, data }),
+    ).rejects.toBeDefined();
+  });
+
+  it("preserves series policy, priority and occurrence-date checks", async () => {
+    await expect(
+      createSeries({ termination_policy: "invalida" }),
+    ).rejects.toBeDefined();
+    await expect(createSeries({ prioridade: 0 })).rejects.toBeDefined();
+    await expect(
+      createSeries({ end_date: new Date("2026-09-30T00:00:00.000Z") }),
+    ).rejects.toBeDefined();
+    const series = await createSeries();
+    await expect(
+      prisma.missoes.create({
+        data: {
+          titulo: "Ocorrência sem data",
+          criada_por_id: userId,
+          responsavel_id: userId,
+          recurrence_series_id: series.recurrence_series_id,
+        },
+      }),
+    ).rejects.toBeDefined();
   });
 });

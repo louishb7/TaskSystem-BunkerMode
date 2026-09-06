@@ -1,28 +1,41 @@
-import { MISSION_STATUS, MISSION_STATUS_LABEL, MissionPermissions, MissionRecord, MissionResponse, MissionUser } from "./mission.types"
+import {
+  MISSION_STATUS,
+  MISSION_STATUS_LABEL,
+  MissionPermissions,
+  MissionRecord,
+  MissionResponse,
+  MissionUser,
+} from "./mission.types";
 
 function dateOnly(value: Date | null): string | null {
   if (!value) {
-    return null
+    return null;
   }
-  const [year, month, day] = value.toISOString().slice(0, 10).split("-")
-  return `${day}-${month}-${year}`
+  const [year, month, day] = value.toISOString().slice(0, 10).split("-");
+  return `${day}-${month}-${year}`;
 }
 
 function dateTime(value: Date | null): string | null {
-  return value ? value.toISOString() : null
+  return value ? value.toISOString() : null;
 }
 
 function isPending(mission: MissionRecord): boolean {
-  return mission.status === MISSION_STATUS.pending
+  return mission.status === MISSION_STATUS.pending;
 }
 
 function isFinalized(mission: MissionRecord): boolean {
-  return mission.status === MISSION_STATUS.completed || mission.status === MISSION_STATUS.failed
+  return (
+    mission.status === MISSION_STATUS.completed ||
+    mission.status === MISSION_STATUS.failed
+  );
 }
 
-export function missionPermissions(mission: MissionRecord, user: MissionUser): MissionPermissions {
-  const owned = mission.responsavel_id === user.usuario_id
-  const pending = isPending(mission)
+export function missionPermissions(
+  mission: MissionRecord,
+  user: MissionUser,
+): MissionPermissions {
+  const owned = mission.responsavel_id === user.usuario_id;
+  const pending = isPending(mission);
 
   return {
     can_complete: owned && pending,
@@ -31,11 +44,14 @@ export function missionPermissions(mission: MissionRecord, user: MissionUser): M
     can_fail: owned && pending,
     can_pin: owned && pending,
     can_view_history: owned && isFinalized(mission),
-  }
+  };
 }
 
-export function toMissionResponse(mission: MissionRecord, user: MissionUser): MissionResponse {
-  const status = mission.status as keyof typeof MISSION_STATUS_LABEL
+export function toMissionResponse(
+  mission: MissionRecord,
+  user: MissionUser,
+): MissionResponse {
+  const status = mission.status as keyof typeof MISSION_STATUS_LABEL;
   const recurrence = mission.serie_recorrencia
     ? {
         series_id: mission.serie_recorrencia.recurrence_series_id,
@@ -43,7 +59,7 @@ export function toMissionResponse(mission: MissionRecord, user: MissionUser): Mi
         termination_policy: mission.serie_recorrencia.termination_policy,
         end_date: dateOnly(mission.serie_recorrencia.end_date),
       }
-    : null
+    : null;
 
   return {
     id: mission.missao_id,
@@ -63,11 +79,7 @@ export function toMissionResponse(mission: MissionRecord, user: MissionUser): Mi
     criada_por_id: mission.criada_por_id,
     responsavel_id: mission.responsavel_id,
     objetivo_id: mission.objetivo_id,
-    sonho_id: mission.sonho_id,
-    recurrence_weekdays: mission.recurrence_weekdays,
-    recurrence_end_date: dateOnly(mission.recurrence_end_date),
-    duration_type: mission.duration_type,
     recurrence,
     permissions: missionPermissions(mission, user),
-  }
+  };
 }

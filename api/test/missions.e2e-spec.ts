@@ -1,9 +1,9 @@
-import { UserRecord } from "../src/auth/auth.types"
-import { OperationalCalendarService } from "../src/calendar/operational-calendar.service"
-import { toMissionResponse } from "../src/missions/mission-response"
-import { MissionsService } from "../src/missions/missions.service"
-import { MISSION_STATUS, MissionRecord } from "../src/missions/mission.types"
-import { PrismaService } from "../src/prisma/prisma.service"
+import { UserRecord } from "../src/auth/auth.types";
+import { OperationalCalendarService } from "../src/calendar/operational-calendar.service";
+import { toMissionResponse } from "../src/missions/mission-response";
+import { MissionsService } from "../src/missions/missions.service";
+import { MISSION_STATUS, MissionRecord } from "../src/missions/mission.types";
+import { PrismaService } from "../src/prisma/prisma.service";
 
 function user(overrides: Partial<UserRecord> = {}): UserRecord {
   return {
@@ -18,7 +18,7 @@ function user(overrides: Partial<UserRecord> = {}): UserRecord {
     created_at: new Date("2026-04-24T12:00:00.000Z"),
     updated_at: new Date("2026-04-24T12:00:00.000Z"),
     ...overrides,
-  }
+  };
 }
 
 function mission(overrides: Partial<MissionRecord> = {}): MissionRecord {
@@ -34,17 +34,12 @@ function mission(overrides: Partial<MissionRecord> = {}): MissionRecord {
     updated_at: new Date("2026-04-24T12:00:00.000Z"),
     completed_at: null,
     failed_at: null,
-    recurrence_weekdays: [],
-    recurrence_end_date: null,
-    duration_type: null,
-    recurrence_key: null,
     recurrence_series_id: null,
     criada_por_id: 7,
     responsavel_id: 7,
     objetivo_id: null,
-    sonho_id: null,
     ...overrides,
-  }
+  };
 }
 
 function prismaMock() {
@@ -73,17 +68,14 @@ function prismaMock() {
       findMany: jest.fn().mockResolvedValue([]),
       updateMany: jest.fn(),
     },
-    sonhos: {
-      findFirst: jest.fn(),
-    },
-  }
+  };
 }
 
 describe("Missions clean domain", () => {
-  const calendar = new OperationalCalendarService()
+  const calendar = new OperationalCalendarService();
 
   it("maps the mission contract consumed by the web", () => {
-    const response = toMissionResponse(mission(), user())
+    const response = toMissionResponse(mission(), user());
 
     expect(response).toMatchObject({
       id: 10,
@@ -94,8 +86,30 @@ describe("Missions clean domain", () => {
       status_label: "Pendente",
       user_id: 7,
       responsavel_id: 7,
-    })
-    expect(Object.keys(response)).toEqual(expect.arrayContaining(["status", "status_code", "permissions"]))
+    });
+    expect(Object.keys(response).sort()).toEqual(
+      [
+        "id",
+        "titulo",
+        "prioridade",
+        "prazo",
+        "instrucao",
+        "status",
+        "status_code",
+        "status_label",
+        "is_pinned",
+        "created_at",
+        "updated_at",
+        "completed_at",
+        "failed_at",
+        "user_id",
+        "criada_por_id",
+        "responsavel_id",
+        "objetivo_id",
+        "recurrence",
+        "permissions",
+      ].sort(),
+    );
     expect(response.permissions).toEqual({
       can_complete: true,
       can_edit: true,
@@ -103,15 +117,24 @@ describe("Missions clean domain", () => {
       can_fail: true,
       can_pin: true,
       can_view_history: false,
-    })
-  })
+    });
+  });
 
   it("keeps mission permissions independent from active mode and restricted by ownership", () => {
-    const generalPermissions = toMissionResponse(mission(), user({ active_mode: "general" })).permissions
-    const soldierPermissions = toMissionResponse(mission(), user({ active_mode: "soldier" })).permissions
-    const foreignPermissions = toMissionResponse(mission(), user({ usuario_id: 99, active_mode: "soldier" })).permissions
+    const generalPermissions = toMissionResponse(
+      mission(),
+      user({ active_mode: "general" }),
+    ).permissions;
+    const soldierPermissions = toMissionResponse(
+      mission(),
+      user({ active_mode: "soldier" }),
+    ).permissions;
+    const foreignPermissions = toMissionResponse(
+      mission(),
+      user({ usuario_id: 99, active_mode: "soldier" }),
+    ).permissions;
 
-    expect(soldierPermissions).toEqual(generalPermissions)
+    expect(soldierPermissions).toEqual(generalPermissions);
     expect(foreignPermissions).toEqual({
       can_complete: false,
       can_edit: false,
@@ -119,16 +142,13 @@ describe("Missions clean domain", () => {
       can_fail: false,
       can_pin: false,
       can_view_history: false,
-    })
-  })
+    });
+  });
 
   it("uses the recurrence series as the V2 recurrence response source", () => {
     const response = toMissionResponse(
       mission({
         recurrence_series_id: 21,
-        recurrence_weekdays: [6],
-        recurrence_end_date: new Date("2026-05-30T00:00:00.000Z"),
-        duration_type: "ate_objetivo",
         serie_recorrencia: {
           recurrence_series_id: 21,
           recurrence_weekdays: [0, 2, 4],
@@ -137,78 +157,79 @@ describe("Missions clean domain", () => {
         },
       }),
       user({ active_mode: "soldier" }),
-    )
+    );
 
     expect(response.recurrence).toEqual({
       series_id: 21,
       weekdays: [0, 2, 4],
       termination_policy: "ate_data",
       end_date: "15-05-2026",
-    })
-  })
+    });
+  });
 
   it("allows a soldier preference to edit and delete an owned pending mission", async () => {
-    const prisma = prismaMock()
-    prisma.missoes.findFirst.mockResolvedValue(mission())
-    prisma.missoes.update.mockResolvedValue(mission({ titulo: "Ordem ajustada" }))
+    const prisma = prismaMock();
+    prisma.missoes.findFirst.mockResolvedValue(mission());
+    prisma.missoes.update.mockResolvedValue(
+      mission({ titulo: "Ordem ajustada" }),
+    );
     prisma.$transaction.mockImplementation(async (callback) =>
       callback({
         auditoria_eventos: prisma.auditoria_eventos,
         missoes: prisma.missoes,
       }),
-    )
-    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
-    const soldier = user({ active_mode: "soldier" })
-
-    await expect(service.update(10, { titulo: "Ordem ajustada" }, soldier)).resolves.toMatchObject({
-      titulo: "Ordem ajustada",
-    })
-    await expect(service.delete(10, soldier)).resolves.toBeUndefined()
-
-    expect(prisma.missoes.update).toHaveBeenCalled()
-    expect(prisma.missoes.delete).toHaveBeenCalledWith({ where: { missao_id: 10 } })
-  })
-
-  it("keeps ownership protection independent from active mode", async () => {
-    const prisma = prismaMock()
-    prisma.missoes.findFirst.mockResolvedValue(null)
-    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
+    );
+    const service = new MissionsService(
+      prisma as unknown as PrismaService,
+      calendar,
+    );
+    const soldier = user({ active_mode: "soldier" });
 
     await expect(
-      service.update(10, { titulo: "Acesso indevido" }, user({ usuario_id: 99, active_mode: "soldier" })),
-    ).rejects.toMatchObject({ status: 404 })
-    expect(prisma.missoes.update).not.toHaveBeenCalled()
-  })
+      service.update(10, { titulo: "Ordem ajustada" }, soldier),
+    ).resolves.toMatchObject({
+      titulo: "Ordem ajustada",
+    });
+    await expect(service.delete(10, soldier)).resolves.toBeUndefined();
 
-  it("keeps legacy recurrence fields readable while the series migration coexists", () => {
-    const response = toMissionResponse(
-      mission({
-        recurrence_weekdays: [1, 3],
-        recurrence_end_date: new Date("2026-05-30T00:00:00.000Z"),
-        duration_type: "prazo",
-      }),
-      user(),
-    )
+    expect(prisma.missoes.update).toHaveBeenCalled();
+    expect(prisma.missoes.delete).toHaveBeenCalledWith({
+      where: { missao_id: 10 },
+    });
+  });
 
-    expect(response).toMatchObject({
-      recurrence: null,
-      recurrence_weekdays: [1, 3],
-      recurrence_end_date: "30-05-2026",
-      duration_type: "prazo",
-    })
-  })
+  it("keeps ownership protection independent from active mode", async () => {
+    const prisma = prismaMock();
+    prisma.missoes.findFirst.mockResolvedValue(null);
+    const service = new MissionsService(
+      prisma as unknown as PrismaService,
+      calendar,
+    );
+
+    await expect(
+      service.update(
+        10,
+        { titulo: "Acesso indevido" },
+        user({ usuario_id: 99, active_mode: "soldier" }),
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(prisma.missoes.update).not.toHaveBeenCalled();
+  });
 
   it("creates a manual mission with direct ownership and audit event", async () => {
-    const prisma = prismaMock()
-    const createdMission = mission()
-    const create = jest.fn().mockResolvedValue(createdMission)
+    const prisma = prismaMock();
+    const createdMission = mission();
+    const create = jest.fn().mockResolvedValue(createdMission);
     prisma.$transaction.mockImplementation(async (callback) =>
       callback({
         auditoria_eventos: prisma.auditoria_eventos,
         missoes: { create, findUnique: prisma.missoes.findUnique },
       }),
-    )
-    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
+    );
+    const service = new MissionsService(
+      prisma as unknown as PrismaService,
+      calendar,
+    );
 
     const result = await service.create(
       {
@@ -216,11 +237,12 @@ describe("Missions clean domain", () => {
         instrucao: " Abrir relatório ",
         prazo: "25-04-2026",
         responsavel_id: 7,
+        objetivo_id: null,
       },
       user({ active_mode: "soldier" }),
-    )
+    );
 
-    expect(result.missao_id).toBe(10)
+    expect(result.missao_id).toBe(10);
     expect(create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         titulo: "Revisar plano semanal",
@@ -228,8 +250,10 @@ describe("Missions clean domain", () => {
         status: MISSION_STATUS.pending,
         criada_por_id: 7,
         responsavel_id: 7,
+        objetivo_id: null,
+        recurrence_series_id: null,
       }),
-    })
+    });
     expect(prisma.auditoria_eventos.create).toHaveBeenCalledWith({
       data: {
         missao_id: 10,
@@ -237,11 +261,11 @@ describe("Missions clean domain", () => {
         acao: "missao_criada",
         detalhes: "Missão 'Revisar plano semanal' criada.",
       },
-    })
-  })
+    });
+  });
 
-  it("creates a recurrence series and materializes occurrences without legacy keys", async () => {
-    const prisma = prismaMock()
+  it("creates a recurrence series and materializes occurrences with series identity", async () => {
+    const prisma = prismaMock();
     const createdMissions = [
       mission({ missao_id: 10, prazo: new Date("2026-04-24T00:00:00.000Z") }),
       mission({ missao_id: 11, prazo: new Date("2026-04-27T00:00:00.000Z") }),
@@ -249,7 +273,7 @@ describe("Missions clean domain", () => {
       mission({ missao_id: 13, prazo: new Date("2026-05-01T00:00:00.000Z") }),
       mission({ missao_id: 14, prazo: new Date("2026-05-04T00:00:00.000Z") }),
       mission({ missao_id: 15, prazo: new Date("2026-05-06T00:00:00.000Z") }),
-    ]
+    ];
     const series = {
       recurrence_series_id: 21,
       responsavel_id: 7,
@@ -264,18 +288,25 @@ describe("Missions clean domain", () => {
       ativo: true,
       created_at: new Date("2026-04-24T12:00:00.000Z"),
       updated_at: new Date("2026-04-24T12:00:00.000Z"),
-    }
-    prisma.series_recorrencia.create.mockResolvedValue(series)
-    prisma.missoes.createManyAndReturn.mockResolvedValue(createdMissions)
-    prisma.objetivos.findFirst.mockResolvedValue({ id: 7, usuario_id: 7, status: "ativo", sonhos: null })
+    };
+    prisma.series_recorrencia.create.mockResolvedValue(series);
+    prisma.missoes.createManyAndReturn.mockResolvedValue(createdMissions);
+    prisma.objetivos.findFirst.mockResolvedValue({
+      id: 7,
+      usuario_id: 7,
+      status: "ativo",
+    });
     prisma.$transaction.mockImplementation(async (callback) =>
       callback({
         auditoria_eventos: prisma.auditoria_eventos,
         missoes: { createManyAndReturn: prisma.missoes.createManyAndReturn },
         series_recorrencia: prisma.series_recorrencia,
       }),
-    )
-    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
+    );
+    const service = new MissionsService(
+      prisma as unknown as PrismaService,
+      calendar,
+    );
 
     const result = await service.create(
       {
@@ -287,43 +318,45 @@ describe("Missions clean domain", () => {
         duration_type: "ate_objetivo",
       },
       user(),
-    )
+    );
 
-    expect(result.missao_id).toBe(10)
+    expect(result.missao_id).toBe(10);
     expect(prisma.series_recorrencia.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         objetivo_id: 7,
         recurrence_weekdays: [0, 2, 4],
         termination_policy: "ate_objetivo",
       }),
-    })
-    const occurrenceCall = prisma.missoes.createManyAndReturn.mock.calls[0][0]
-    expect(occurrenceCall.data.map((item: { prazo: Date }) => item.prazo.toISOString().slice(0, 10))).toEqual([
+    });
+    const occurrenceCall = prisma.missoes.createManyAndReturn.mock.calls[0][0];
+    expect(
+      occurrenceCall.data.map((item: { prazo: Date }) =>
+        item.prazo.toISOString().slice(0, 10),
+      ),
+    ).toEqual([
       "2026-04-24",
       "2026-04-27",
       "2026-04-29",
       "2026-05-01",
       "2026-05-04",
       "2026-05-06",
-    ])
-    expect(occurrenceCall.skipDuplicates).toBe(true)
+    ]);
+    expect(occurrenceCall.skipDuplicates).toBe(true);
     expect(occurrenceCall.data).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           recurrence_series_id: 21,
-          recurrence_key: null,
-          recurrence_weekdays: [],
-          sonho_id: null,
         }),
       ]),
-    )
-  })
+    );
+  });
 
   it("builds the Soldier board independently from active mode", async () => {
-    const prisma = prismaMock()
+    const prisma = prismaMock();
     prisma.missoes.findMany
-      .mockResolvedValueOnce([mission({ missao_id: 10, prazo: new Date("2026-08-12T00:00:00.000Z") })])
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        mission({ missao_id: 10, prazo: new Date("2026-08-12T00:00:00.000Z") }),
+      ])
       .mockResolvedValueOnce([
         mission({
           missao_id: 10,
@@ -332,26 +365,203 @@ describe("Missions clean domain", () => {
           failed_at: new Date("2026-08-13T12:00:00.000Z"),
         }),
         mission({ missao_id: 11, prazo: new Date("2026-08-13T00:00:00.000Z") }),
-      ])
-    prisma.$transaction.mockResolvedValue([])
-    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
-    jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"))
+      ]);
+    prisma.$transaction.mockResolvedValue([]);
+    const service = new MissionsService(
+      prisma as unknown as PrismaService,
+      calendar,
+    );
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"));
 
-    const board = await service.soldierBoard(user({ active_mode: "general" }))
+    const board = await service.soldierBoard(user({ active_mode: "general" }));
 
-    expect(board.action_missions.map((item) => item.missao_id)).toEqual([11])
-    expect(prisma.$transaction).toHaveBeenCalled()
-    jest.useRealTimers()
-  })
+    expect(board.action_missions.map((item) => item.missao_id)).toEqual([11]);
+    expect(prisma.$transaction).toHaveBeenCalled();
+    jest.useRealTimers();
+  });
 
   it("preserves completed and failed missions in history by allowing delete only while pending", async () => {
-    const prisma = prismaMock()
-    prisma.missoes.findFirst.mockResolvedValue(mission({ status: MISSION_STATUS.failed }))
-    const service = new MissionsService(prisma as unknown as PrismaService, calendar)
+    const prisma = prismaMock();
+    prisma.missoes.findFirst.mockResolvedValue(
+      mission({ status: MISSION_STATUS.failed }),
+    );
+    const service = new MissionsService(
+      prisma as unknown as PrismaService,
+      calendar,
+    );
 
     await expect(service.delete(10, user())).rejects.toMatchObject({
       status: 400,
-    })
-    expect(prisma.missoes.delete).not.toHaveBeenCalled()
-  })
-})
+    });
+    expect(prisma.missoes.delete).not.toHaveBeenCalled();
+  });
+
+  it("creates and edits links only to an active owned goal", async () => {
+    const prisma = prismaMock();
+    prisma.objetivos.findFirst.mockResolvedValue({
+      id: 3,
+      usuario_id: 7,
+      status: "ativo",
+    });
+    prisma.missoes.findFirst.mockResolvedValue(mission());
+    prisma.missoes.create.mockResolvedValue(mission({ objetivo_id: 3 }));
+    prisma.missoes.update.mockResolvedValue(mission({ objetivo_id: 3 }));
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback(prisma),
+    );
+    const service = new MissionsService(prisma as never, calendar);
+    await expect(
+      service.create({ titulo: "Ordem do objetivo", objetivo_id: 3 }, user()),
+    ).resolves.toMatchObject({ objetivo_id: 3 });
+    await service.update(10, { objetivo_id: 3 }, user());
+    expect(prisma.objetivos.findFirst).toHaveBeenCalledWith({
+      where: { id: 3, usuario_id: 7, status: "ativo" },
+    });
+    expect(prisma.missoes.update).toHaveBeenCalledWith({
+      where: { missao_id: 10 },
+      data: { objetivos: { connect: { id: 3 } } },
+      include: { serie_recorrencia: true },
+    });
+    prisma.objetivos.findFirst.mockResolvedValue(null);
+    await expect(
+      service.create({ titulo: "Vínculo inválido", objetivo_id: 99 }, user()),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      service.update(10, { objetivo_id: 99 }, user()),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(prisma.missoes.create).toHaveBeenCalledTimes(1);
+    expect(prisma.missoes.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("disconnects the goal without configuring recurrence on the occurrence", async () => {
+    const prisma = prismaMock();
+    prisma.missoes.findFirst.mockResolvedValue(
+      mission({ objetivo_id: 3, recurrence_series_id: 21 }),
+    );
+    prisma.missoes.update.mockResolvedValue(
+      mission({ recurrence_series_id: 21 }),
+    );
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback(prisma),
+    );
+    const service = new MissionsService(prisma as never, calendar);
+    await service.update(10, { objetivo_id: null }, user());
+    expect(prisma.objetivos.findFirst).not.toHaveBeenCalled();
+    expect(prisma.missoes.update).toHaveBeenCalledWith({
+      where: { missao_id: 10 },
+      data: { objetivos: { disconnect: true } },
+      include: { serie_recorrencia: true },
+    });
+  });
+
+  it.each(["recurrence_weekdays", "recurrence_end_date", "duration_type"])(
+    "rejects PATCH configuration %s instead of storing it on an occurrence",
+    async (field) => {
+      const prisma = prismaMock();
+      prisma.missoes.findFirst.mockResolvedValue(mission());
+      const service = new MissionsService(prisma as never, calendar);
+      await expect(
+        service.update(10, { titulo: "Ordem", [field]: null }, user()),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(prisma.missoes.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { duration_type: "ate_objetivo", recurrence_weekdays: [0] },
+    { duration_type: "ate_data", recurrence_weekdays: [0] },
+    { duration_type: "sem_termino", recurrence_weekdays: [] },
+    { duration_type: "sem_termino", recurrence_weekdays: [7] },
+    {
+      duration_type: "ate_data",
+      recurrence_weekdays: [0],
+      recurrence_end_date: "2026-08-30",
+    },
+  ])(
+    "rejects invalid series configuration before writing: %j",
+    async (configuration) => {
+      const prisma = prismaMock();
+      const service = new MissionsService(prisma as never, calendar);
+      await expect(
+        service.create(
+          { titulo: "Repetir", prazo: "2026-08-31", ...configuration },
+          user(),
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["sem_termino", "ate_data"])(
+    "creates %s recurrence without a goal using only series configuration",
+    async (policy) => {
+      const prisma = prismaMock();
+      prisma.$transaction.mockImplementation(async (callback) =>
+        callback(prisma),
+      );
+      prisma.series_recorrencia.create.mockImplementation(async ({ data }) => ({
+        recurrence_series_id: 21,
+        ...data,
+      }));
+      prisma.missoes.createManyAndReturn.mockImplementation(async ({ data }) =>
+        data.map((item: object, index: number) =>
+          mission({ ...item, missao_id: 10 + index }),
+        ),
+      );
+      const service = new MissionsService(prisma as never, calendar);
+      const result = await service.create(
+        {
+          titulo: "Repetir",
+          prazo: "2026-08-31",
+          recurrence_weekdays: [2, 0, 2],
+          duration_type: policy,
+          recurrence_end_date: policy === "ate_data" ? "2026-09-02" : null,
+        },
+        user(),
+      );
+      expect(result).toMatchObject({
+        objetivo_id: null,
+        recurrence_series_id: 21,
+      });
+      expect(prisma.objetivos.findFirst).not.toHaveBeenCalled();
+      const dates =
+        prisma.missoes.createManyAndReturn.mock.calls[0][0].data.map(
+          (item: { prazo: Date }) => item.prazo.toISOString().slice(0, 10),
+        );
+      expect(dates).toEqual(
+        policy === "ate_data"
+          ? ["2026-08-31", "2026-09-02"]
+          : ["2026-08-31", "2026-09-02", "2026-09-07", "2026-09-09"],
+      );
+      expect(prisma.auditoria_eventos.createMany).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(["complete", "fail"] as const)(
+    "records %s without modifying the goal or series",
+    async (action) => {
+      const prisma = prismaMock();
+      prisma.missoes.findFirst.mockResolvedValue(
+        mission({ objetivo_id: 3, recurrence_series_id: 21 }),
+      );
+      prisma.missoes.update.mockImplementation(async ({ data }) =>
+        mission(data),
+      );
+      prisma.$transaction.mockImplementation(async (callback) =>
+        callback(prisma),
+      );
+      const service = new MissionsService(prisma as never, calendar);
+      const result = await service[action](10, user());
+      expect(result.status).toBe(action === "complete" ? "CONCLUIDA" : "FALHA");
+      expect(result.completed_at).toEqual(
+        action === "complete" ? expect.any(Date) : null,
+      );
+      expect(result.failed_at).toEqual(
+        action === "fail" ? expect.any(Date) : null,
+      );
+      expect(prisma.objetivos.findFirst).not.toHaveBeenCalled();
+      expect(prisma.series_recorrencia.updateMany).not.toHaveBeenCalled();
+      expect(prisma.auditoria_eventos.create).toHaveBeenCalledTimes(1);
+    },
+  );
+});

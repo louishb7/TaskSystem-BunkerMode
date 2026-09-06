@@ -33,10 +33,6 @@ export type Mission = {
   responsavel_id?: number | null
   criada_por_id?: number | null
   objetivo_id?: number | null
-  sonho_id?: number | null
-  recurrence_weekdays?: number[] | null
-  recurrence_end_date?: string | null
-  duration_type?: string | null
   recurrence?: MissionRecurrence | null
   permissions: MissionPermissions
 }
@@ -79,7 +75,9 @@ export function assertMissionContract(mission: unknown): Mission {
       !Number.isInteger(recurrence.series_id) ||
       recurrence.series_id < 1 ||
       !Array.isArray(recurrence.weekdays) ||
-      recurrence.weekdays.some((weekday) => !Number.isInteger(weekday) || weekday < 0 || weekday > 6) ||
+      recurrence.weekdays.some(
+        (weekday) => !Number.isInteger(weekday) || weekday < 0 || weekday > 6
+      ) ||
       !validPolicy ||
       (recurrence.end_date !== null && typeof recurrence.end_date !== "string")
     ) {

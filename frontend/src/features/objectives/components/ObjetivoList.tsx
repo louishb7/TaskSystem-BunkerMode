@@ -27,11 +27,7 @@ export default function ObjetivoList({
           onCreateMission={() => onCreateMission(objetivo)}
           onDelete={() => onDelete(objetivo)}
           onEdit={() => onEdit(objetivo)}
-          onMoveToTop={
-            objetivos.slice(0, index).some((item) => item.sonho_id === objetivo.sonho_id)
-              ? () => onMoveToTop(objetivo.id)
-              : null
-          }
+          onMoveToTop={index > 0 ? () => onMoveToTop(objetivo.id) : null}
           onUpdateStatus={(status) => onUpdateStatus(objetivo.id, status)}
         />
       ))}

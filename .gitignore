@@ -47,9 +47,9 @@ frontend/.vite/
 
 # Documentos locais — não publicar
 *.md
-!/README.md
-!/AGENTS.md
-!/DECISOES.md
-!/CONCEITO.md
+README.md
+AGENTS.md
+DECISOES.md
+CONCEITO.md
 .codex
 .agents

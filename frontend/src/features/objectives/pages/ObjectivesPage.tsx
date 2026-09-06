@@ -40,16 +40,7 @@ export default function ObjectivesPage({ board, onBack, onUnauthorized, token, u
   }
 
   function moveObjetivoToTop(objetivoId) {
-    const selectedObjetivo = objectives.objetivos.find((objetivo) => objetivo.id === objetivoId)
-    if (!selectedObjetivo) {
-      return
-    }
-
-    // A API legada ainda ordena por vínculo de Sonho. Mantemos esse recorte
-    // apenas para Objetivos legados; os Objetivos V2 compartilham sonho_id nulo.
-    const reordered = objectives.objetivos.filter(
-      (objetivo) => objetivo.sonho_id === selectedObjetivo.sonho_id
-    )
+    const reordered = [...objectives.objetivos]
     const index = reordered.findIndex((objetivo) => objetivo.id === objetivoId)
     if (index <= 0) {
       return
@@ -72,7 +63,9 @@ export default function ObjectivesPage({ board, onBack, onUnauthorized, token, u
           <div>
             <p className="section-kicker fire">PLANEJAMENTO</p>
             <h1>Objetivos</h1>
-            <p className="muted">Direções independentes que podem receber ordens quando necessário.</p>
+            <p className="muted">
+              Direções independentes que podem receber ordens quando necessário.
+            </p>
           </div>
           <button
             className="button fire compact"
