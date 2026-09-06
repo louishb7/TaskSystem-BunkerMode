@@ -16,7 +16,7 @@ export default function ExecutionLayout({ children, onReturnToGeneral }) {
       <header className="border-b border-border bg-sidebar">
         <div className="mx-auto flex min-h-14 w-full max-w-[760px] items-center justify-between gap-4 px-4 sm:px-6">
           <span className="text-base font-semibold tracking-tight">BunkerMode</span>
-          <Button loading={returnLoading} size="small" variant="ghost" onClick={handleReturn}>
+          <Button loading={returnLoading} variant="ghost" onClick={handleReturn}>
             Voltar ao General
           </Button>
         </div>

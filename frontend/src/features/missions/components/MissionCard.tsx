@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react"
+import React from "react"
 
 import Badge from "../../../components/ui/Badge"
 import Button from "../../../components/ui/Button"
@@ -85,11 +85,8 @@ export default function MissionCard({
   timezone = undefined,
   variant = "general",
 }) {
-  const [detailsOpen, setDetailsOpen] = useState(false)
-  const [instructionOverflow, setInstructionOverflow] = useState(false)
-  const instructionRef = useRef(null)
   const soldier = variant === "soldier"
-  const title = mission?.titulo || "Sem título"
+  const title = mission?.titulo || "Ordem sem título"
   const instruction = mission?.instrucao || ""
   const isPinned = mission?.is_pinned === true
   const disabled = pinning || completing || failing || reopening
@@ -100,90 +97,37 @@ export default function MissionCard({
   const deadlineLabel = formatDeadline(mission?.prazo, timezone)
   const failed = String(mission?.status_code || "") === "FALHA"
   const currentStatusText = statusText(mission)
-  const hasBadge = isPinned || currentStatusText
-
-  useEffect(() => {
-    setDetailsOpen(false)
-  }, [mission?.id, mission?.is_pinned])
-
-  useLayoutEffect(() => {
-    if (!soldier || !instruction) {
-      setInstructionOverflow(false)
-      return undefined
-    }
-
-    function measureInstruction() {
-      const element = instructionRef.current
-      if (!element) {
-        setInstructionOverflow(false)
-        return
-      }
-      setInstructionOverflow(element.scrollHeight > element.clientHeight + 1)
-    }
-
-    measureInstruction()
-    window.addEventListener("resize", measureInstruction)
-    return () => window.removeEventListener("resize", measureInstruction)
-  }, [instruction, soldier])
 
   if (soldier) {
     return (
-      <article
-        className={`mission-card soldier-card ${isPinned ? "priority-high" : ""} ${failed ? "danger" : ""}`}
-      >
-        <div className="soldier-card-inner">
-          <div className="soldier-card-info">
-            {hasBadge && (
-              <div className="mission-badge-row">
-                {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
-                {currentStatusText && <span className="meta-tag">{currentStatusText}</span>}
-              </div>
-            )}
-            <div className="soldier-card-title-row">
-              <h3>{title}</h3>
-            </div>
-            {instruction && (
-              <p
-                ref={instructionRef}
-                className={`mission-instruction ${detailsOpen ? "expanded" : ""}`}
-              >
-                {instruction}
-              </p>
-            )}
-            {instructionOverflow && (
-              <button
-                className="soldier-details-toggle"
-                type="button"
-                onClick={() => setDetailsOpen((current) => !current)}
-              >
-                {detailsOpen ? "Ocultar detalhes" : "Ver detalhes"}
-              </button>
+      <article className="grid gap-4 rounded-card border border-border bg-surface p-4 sm:p-5">
+        <div className="min-w-0">
+          <h3 className="m-0 break-words text-base font-semibold text-text-primary">{title}</h3>
+          {instruction && <p className="mt-2 mb-0 break-words text-sm leading-6 text-text-secondary">{instruction}</p>}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {isPinned && <Badge variant="warning">Prioridade alta</Badge>}
+          {mission?.recurrence && <Badge>Recorrente</Badge>}
+          {completed && <Badge variant="success">Ordem concluída</Badge>}
+          {failed && <Badge variant="danger">Falha registrada</Badge>}
+          {!completed && !failed && currentStatusText && <Badge>{currentStatusText}</Badge>}
+        </div>
+
+        {(canComplete || canFail) && (
+          <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:flex-wrap">
+            {canComplete && (
+              <Button disabled={disabled} loading={completing} onClick={onComplete}>
+                Concluir
+              </Button>
             )}
             {canFail && (
-              <button
-                className="soldier-failure-trigger"
-                disabled={disabled}
-                type="button"
-                onClick={() => onFail?.(mission.id)}
-              >
-                {failing ? "Aguarde" : "Falhei."}
-              </button>
+              <Button disabled={disabled} loading={failing} variant="secondary" onClick={() => onFail?.(mission.id)}>
+                Registrar falha
+              </Button>
             )}
           </div>
-
-          {canComplete && (
-            <div className="soldier-card-action">
-              <button
-                className="soldier-abate-btn"
-                disabled={completing}
-                type="button"
-                onClick={onComplete}
-              >
-                {completing ? "…" : "ABATER"}
-              </button>
-            </div>
-          )}
-        </div>
+        )}
       </article>
     )
   }
@@ -245,28 +189,5 @@ export default function MissionCard({
         )}
       </div>
     </article>
-  )
-}
-
-export function MissionProgress({ emptyLabel = "DIA OFF", label = "PROGRESSO", missions }) {
-  const total = missions.length
-  const completed = missions.filter(isCompleted).length
-  const percent = total > 0 ? Math.round((completed / total) * 100) : 0
-  const complete = total > 0 && completed === total
-  const off = total === 0
-
-  return (
-    <div className={`mission-progress ${complete ? "complete" : ""} ${off ? "off" : ""}`}>
-      <div>
-        <span>{label}</span>
-        <strong>{off ? emptyLabel : `${percent}%`}</strong>
-      </div>
-      <div className="progress-track">
-        <span style={{ width: `${percent}%` }} />
-      </div>
-      <div className="progress-meta">
-        <span>{off ? emptyLabel : `${completed}/${total} EXECUTADAS`}</span>
-      </div>
-    </div>
   )
 }

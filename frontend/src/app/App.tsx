@@ -187,7 +187,6 @@ function SoldierRoute() {
         actionMissions={board.actionMissions}
         board={board}
         dailyMissions={board.dailyMissions}
-        missions={board.missions}
         timezone={auth.user?.timezone}
       />
     </ExecutionLayout>
