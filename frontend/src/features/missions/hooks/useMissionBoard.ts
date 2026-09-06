@@ -5,24 +5,8 @@ import { emptyStatus } from "../../../constants/uiState"
 import { api } from "../../../services/bunkermodeApi"
 import { getActionMissions } from "../missionSelectors"
 
-function mergeMissionLists(...missionLists) {
-  const missionsById = new Map()
-
-  missionLists.flat().forEach((mission) => {
-    if (!mission?.id) {
-      return
-    }
-
-    missionsById.set(mission.id, mission)
-  })
-
-  return Array.from(missionsById.values())
-}
-
 export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode }) {
   const [missions, setMissions] = useState([])
-  const [dailyProgressMissions, setDailyProgressMissions] = useState([])
-  const [registeredOutcomeMissions, setRegisteredOutcomeMissions] = useState([])
   const [missionLoading, setMissionLoading] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [pinLoadingId, setPinLoadingId] = useState(null)
@@ -34,15 +18,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
   const loadRequestRef = useRef(0)
 
   const actionMissions = useMemo(() => getActionMissions(missions), [missions])
-  const dailyMissions = useMemo(
-    () =>
-      mergeMissionLists(
-        missions,
-        dailyProgressMissions,
-        registeredOutcomeMissions
-      ),
-    [dailyProgressMissions, missions, registeredOutcomeMissions]
-  )
+  const dailyMissions = missions
 
   const loadGeneralBoard = useCallback(
     async (successMessage = "") => {
@@ -53,8 +29,6 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       const requestId = loadRequestRef.current + 1
       loadRequestRef.current = requestId
       setMissionLoading(true)
-      setDailyProgressMissions([])
-      setRegisteredOutcomeMissions([])
       const missionsResult = await api.listMissions(token)
       if (requestId !== loadRequestRef.current) {
         return false
@@ -89,9 +63,6 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       const requestId = loadRequestRef.current + 1
       loadRequestRef.current = requestId
       setMissionLoading(true)
-      setMissions([])
-      setDailyProgressMissions([])
-      setRegisteredOutcomeMissions([])
       const result = await api.getSoldierBoard(token)
       if (requestId !== loadRequestRef.current) {
         return false
@@ -110,8 +81,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
         return false
       }
 
-      setMissions(result.data.missions)
-      setDailyProgressMissions(result.data.daily_missions)
+      setMissions(result.data.daily_missions)
       setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus)
       return true
     },
@@ -121,8 +91,6 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
   useEffect(() => {
     if (!authenticated) {
       setMissions([])
-      setDailyProgressMissions([])
-      setRegisteredOutcomeMissions([])
       setStatus(emptyStatus)
       setFormStatus(emptyStatus)
       return
@@ -140,6 +108,20 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     return viewMode === "soldier"
       ? loadSoldierBoard(successMessage)
       : loadGeneralBoard(successMessage)
+  }
+
+  async function refreshAfterPersistedMutation(successMessage) {
+    const synchronized = await reloadCurrentBoard()
+    if (!synchronized) {
+      setStatus({
+        type: "error",
+        message: `${successMessage} A ordem foi salva, mas não foi possível atualizar a visão. Recarregue a página.`,
+      })
+      return { persisted: true, synchronized: false }
+    }
+
+    setStatus({ type: "success", message: successMessage })
+    return { persisted: true, synchronized: true }
   }
 
   async function createMission(payload) {
@@ -165,8 +147,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return false
     }
 
-    await loadGeneralBoard("Ordem registrada.")
-    return true
+    return refreshAfterPersistedMutation("Ordem registrada.")
   }
 
   async function updateMission(missionId, payload) {
@@ -192,8 +173,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return false
     }
 
-    await loadGeneralBoard("Ordem atualizada.")
-    return true
+    return refreshAfterPersistedMutation("Ordem atualizada.")
   }
 
   async function toggleMissionPin(mission) {
@@ -220,8 +200,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return false
     }
 
-    await reloadCurrentBoard()
-    return true
+    return refreshAfterPersistedMutation("Prioridade da ordem atualizada.")
   }
 
   async function deleteMission(mission) {
@@ -245,8 +224,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return false
     }
 
-    await loadGeneralBoard("Ordem removida.")
-    return true
+    return refreshAfterPersistedMutation("Ordem removida.")
   }
 
   async function completeMission(mission) {
@@ -268,9 +246,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return false
     }
 
-    await reloadCurrentBoard("Ordem executada.")
-    setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]))
-    return true
+    return refreshAfterPersistedMutation("Ordem executada.")
   }
 
   async function reopenMission(mission) {
@@ -297,8 +273,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return false
     }
 
-    await loadGeneralBoard("Ordem reaberta.")
-    return true
+    return refreshAfterPersistedMutation("Ordem reaberta.")
   }
 
   async function failMission(missionId) {
@@ -318,9 +293,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return { error: message }
     }
 
-    await reloadCurrentBoard("Falha registrada.")
-    setRegisteredOutcomeMissions((current) => mergeMissionLists(current, [result.data]))
-    return { ok: true }
+    return refreshAfterPersistedMutation("Falha registrada.")
   }
 
   return {

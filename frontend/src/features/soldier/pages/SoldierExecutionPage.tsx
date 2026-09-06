@@ -63,8 +63,6 @@ export default function SoldierExecutionPage({
                 mission={mission}
                 onComplete={() => board.completeMission(mission)}
                 onFail={() => board.failMission(mission.id)}
-                onTogglePin={() => board.toggleMissionPin(mission)}
-                pinning={board.pinLoadingId === mission.id}
                 variant="soldier"
               />
             ))}

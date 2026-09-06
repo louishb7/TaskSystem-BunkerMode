@@ -326,6 +326,43 @@ describeWithDatabase("Recurrence series persistence", () => {
     expect(duplicatedDates).toEqual([]);
   });
 
+  it("uses the General read to materialize recurrence and retain completed and failed outcomes", async () => {
+    const firstOccurrence = await createRecurringMission();
+    const failedOccurrence = await missionsService.create(
+      { titulo: "Registrar falha", prazo: "2026-08-31" },
+      currentUser,
+    );
+    await missionsService.complete(firstOccurrence.missao_id, currentUser);
+    await missionsService.fail(failedOccurrence.missao_id, currentUser);
+
+    currentDate = "2026-09-08";
+    const firstBoard = await missionsService.listForGeneralBoard(currentUser);
+    const occurrenceCount = await prisma.missoes.count({
+      where: { recurrence_series_id: firstOccurrence.recurrence_series_id },
+    });
+    const secondBoard = await missionsService.listForGeneralBoard(currentUser);
+    const afterSecondRead = await prisma.missoes.count({
+      where: { recurrence_series_id: firstOccurrence.recurrence_series_id },
+    });
+
+    expect(firstBoard).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          missao_id: firstOccurrence.missao_id,
+          status: MISSION_STATUS.completed,
+        }),
+        expect.objectContaining({
+          missao_id: failedOccurrence.missao_id,
+          status: MISSION_STATUS.failed,
+        }),
+      ]),
+    );
+    expect(secondBoard.map((mission) => mission.missao_id)).toEqual(
+      firstBoard.map((mission) => mission.missao_id),
+    );
+    expect(afterSecondRead).toBe(occurrenceCount);
+  });
+
   it("uses the database uniqueness guarantee under concurrent materialization", async () => {
     const firstOccurrence = await createRecurringMission();
     const seriesId = firstOccurrence.recurrence_series_id!;

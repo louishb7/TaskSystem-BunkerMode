@@ -145,6 +145,52 @@ describe("Missions clean domain", () => {
     });
   });
 
+  it("materializes the canonical General read without materializing history", async () => {
+    const prisma = prismaMock();
+    const completed = mission({
+      missao_id: 11,
+      status: MISSION_STATUS.completed,
+      completed_at: new Date("2026-08-13T12:00:00.000Z"),
+    });
+    const failed = mission({
+      missao_id: 12,
+      status: MISSION_STATUS.failed,
+      failed_at: new Date("2026-08-13T12:00:00.000Z"),
+    });
+    prisma.missoes.findMany.mockResolvedValue([mission(), completed, failed]);
+    const service = new MissionsService(
+      prisma as unknown as PrismaService,
+      calendar,
+    );
+
+    await expect(service.listForGeneralBoard(user())).resolves.toEqual([
+      mission(),
+      completed,
+      failed,
+    ]);
+    expect(prisma.series_recorrencia.findMany).toHaveBeenCalledWith({
+      where: { responsavel_id: 7, ativo: true },
+      include: { objetivos: true },
+    });
+    expect(prisma.missoes.findMany).toHaveBeenCalledWith({
+      where: { responsavel_id: 7 },
+      include: { serie_recorrencia: true },
+      orderBy: [
+        { is_pinned: "desc" },
+        { status: "asc" },
+        { prazo: "asc" },
+        { missao_id: "asc" },
+      ],
+    });
+
+    prisma.series_recorrencia.findMany.mockClear();
+    await expect(service.listHistorical(user())).resolves.toEqual([
+      completed,
+      failed,
+    ]);
+    expect(prisma.series_recorrencia.findMany).not.toHaveBeenCalled();
+  });
+
   it("uses the recurrence series as the V2 recurrence response source", () => {
     const response = toMissionResponse(
       mission({

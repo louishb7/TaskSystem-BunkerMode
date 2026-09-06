@@ -253,14 +253,7 @@ export class MissionsService {
   ) {}
 
   async listForGeneralBoard(user: UserRecord): Promise<MissionRecord[]> {
-    return this.prisma.missoes.findMany({
-      where: {
-        responsavel_id: user.usuario_id,
-        status: MISSION_STATUS.pending,
-      },
-      include: { serie_recorrencia: true },
-      orderBy: [{ is_pinned: "desc" }, { prazo: "asc" }, { missao_id: "asc" }],
-    });
+    return this.listAllForUser(user);
   }
 
   async listAllForUser(

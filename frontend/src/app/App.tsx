@@ -102,19 +102,19 @@ function GeneralRoute() {
     if (!result.ok) {
       board.setStatus({
         type: "error",
-        message: getErrorMessage(result, "Não foi possível entrar em foco operacional."),
+        message: `${getErrorMessage(result, "Não foi possível salvar a preferência de modo.")} O foco operacional será aberto mesmo assim.`,
       })
-      return false
+      navigate(APP_ROUTES.SOLDIER, { replace: true })
+      return true
     }
 
     auth.syncUserFromServer(result.data)
-    const confirmedUser = await auth.reloadCurrentUser("soldier")
+    const confirmedUser = await auth.reloadCurrentUser()
     if (!confirmedUser) {
       board.setStatus({
         type: "error",
-        message: "Foco operacional aberto, mas a sessão não confirmou o modo ativo.",
+        message: "Foco operacional aberto, mas não foi possível atualizar a preferência de modo.",
       })
-      return false
     }
 
     navigate(APP_ROUTES.SOLDIER, { replace: true })
@@ -167,19 +167,19 @@ function SoldierRoute() {
     if (!result.ok) {
       board.setStatus({
         type: "error",
-        message: getErrorMessage(result, "Não foi possível retornar ao comando."),
+        message: `${getErrorMessage(result, "Não foi possível salvar a preferência de modo.")} O retorno ao General será feito mesmo assim.`,
       })
-      return false
+      navigate(APP_ROUTES.GENERAL_HOME, { replace: true })
+      return true
     }
 
     auth.syncUserFromServer(result.data)
-    const confirmedUser = await auth.reloadCurrentUser("general")
+    const confirmedUser = await auth.reloadCurrentUser()
     if (!confirmedUser) {
       board.setStatus({
         type: "error",
-        message: "Retorno ao General não foi confirmado pela sessão.",
+        message: "Você retornou ao General, mas não foi possível atualizar a preferência de modo.",
       })
-      return false
     }
 
     navigate(APP_ROUTES.GENERAL_HOME, { replace: true })

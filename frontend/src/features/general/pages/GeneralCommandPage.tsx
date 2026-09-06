@@ -86,7 +86,7 @@ export default function GeneralCommandPage({
 
   async function createMission(payload) {
     const saved = await board.createMission(payload)
-    if (saved) {
+    if (saved?.persisted) {
       setFormOpen(false)
       setEditingMission(null)
     }
@@ -94,7 +94,7 @@ export default function GeneralCommandPage({
 
   async function updateMission(missionId, payload) {
     const saved = await board.updateMission(missionId, payload)
-    if (saved) {
+    if (saved?.persisted) {
       setFormOpen(false)
       setEditingMission(null)
     }
@@ -102,7 +102,7 @@ export default function GeneralCommandPage({
 
   async function deleteMission(mission) {
     const removed = await board.deleteMission(mission)
-    if (removed && editingMission?.id === mission.id) {
+    if (removed?.persisted && editingMission?.id === mission.id) {
       setEditingMission(null)
       setFormOpen(false)
     }

@@ -604,6 +604,21 @@ describe("HTTP application", () => {
       });
 
     await request(app.getHttpServer())
+      .get("/api/v2/missoes")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: created.body.id,
+              status: MISSION_STATUS.completed,
+            }),
+          ]),
+        );
+      });
+
+    await request(app.getHttpServer())
       .get(`/api/v2/missoes/${created.body.id}/historico`)
       .set("Authorization", `Bearer ${token}`)
       .expect(200)

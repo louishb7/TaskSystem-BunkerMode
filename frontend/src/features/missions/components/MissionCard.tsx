@@ -77,7 +77,7 @@ export default function MissionCard({
   onEdit = undefined,
   onFail,
   onReopen = undefined,
-  onTogglePin,
+  onTogglePin = undefined,
   pinning = false,
   reopening = false,
   variant = "general",
@@ -137,18 +137,6 @@ export default function MissionCard({
             )}
             <div className="soldier-card-title-row">
               <h3>{title}</h3>
-              {can(mission, "can_pin") && onTogglePin && (
-                <button
-                  className={`priority-icon-button ${isPinned ? "active" : ""}`}
-                  aria-label={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
-                  disabled={disabled}
-                  title={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
-                  type="button"
-                  onClick={() => onTogglePin(mission)}
-                >
-                  <span aria-hidden="true" />
-                </button>
-              )}
             </div>
             {instruction && (
               <p
