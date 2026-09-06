@@ -302,6 +302,42 @@ describeWithDatabase("Recurrence series persistence", () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
+  it.each(["pausado", "concluido", "abandonado"]) (
+    "keeps an existing mission editable when its objective becomes %s",
+    async (status) => {
+      const objective = await createObjective(`Objetivo ${status}`);
+      const mission = await missionsService.create(
+        { titulo: "Ordem vinculada", objetivo_id: objective.id },
+        currentUser,
+      );
+      await prisma.objetivos.update({
+        where: { id: objective.id },
+        data: {
+          status,
+          concluded_at: status === "concluido" ? new Date() : null,
+        },
+      });
+
+      await expect(
+        missionsService.update(
+          mission.missao_id,
+          { titulo: "Ordem editada" },
+          currentUser,
+        ),
+      ).resolves.toMatchObject({
+        titulo: "Ordem editada",
+        objetivo_id: objective.id,
+      });
+      await expect(
+        missionsService.update(
+          mission.missao_id,
+          { objetivo_id: objective.id, instrucao: "Mesmo vínculo" },
+          currentUser,
+        ),
+      ).resolves.toMatchObject({ objetivo_id: objective.id });
+    },
+  );
+
   it("materializes the same series repeatedly without duplicating dates", async () => {
     const firstOccurrence = await createRecurringMission();
     const seriesId = firstOccurrence.recurrence_series_id!;

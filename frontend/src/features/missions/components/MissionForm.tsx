@@ -311,12 +311,16 @@ export default function MissionForm({
     const payload: {
       titulo: string
       instrucao: string
-      objetivo_id: number | null
+      objetivo_id?: number | null
       prazo?: string | null
     } = {
       titulo: form.titulo.trim(),
       instrucao: form.instrucao.trim(),
-      objetivo_id: form.objetivo_id ? Number(form.objetivo_id) : null,
+    }
+
+    const objetivoId = form.objetivo_id ? Number(form.objetivo_id) : null
+    if (!isEditing || objetivoId !== (editingMission?.objetivo_id ?? null)) {
+      payload.objetivo_id = objetivoId
     }
 
     if (!isSeriesOccurrence) {

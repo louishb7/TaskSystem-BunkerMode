@@ -468,13 +468,16 @@ export class MissionsService {
       }
     }
 
-    const objetivoId = Object.prototype.hasOwnProperty.call(
+    const hasObjetivoId = Object.prototype.hasOwnProperty.call(
       payload,
       "objetivo_id",
-    )
+    );
+    const objetivoId = hasObjetivoId
       ? optionalId(payload.objetivo_id, "Objetivo vinculado não encontrado.")
       : current.objetivo_id;
-    await this.ensureActiveGoal(user, objetivoId);
+    if (objetivoId !== null && objetivoId !== current.objetivo_id) {
+      await this.ensureActiveGoal(user, objetivoId);
+    }
 
     const data: Prisma.missoesUpdateInput = {};
     if (Object.prototype.hasOwnProperty.call(payload, "titulo")) {
@@ -500,7 +503,7 @@ export class MissionsService {
         data.failed_at = null;
       }
     }
-    if (Object.prototype.hasOwnProperty.call(payload, "objetivo_id")) {
+    if (hasObjetivoId) {
       data.objetivos =
         objetivoId === null
           ? { disconnect: true }

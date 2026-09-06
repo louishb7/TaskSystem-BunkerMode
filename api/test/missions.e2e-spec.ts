@@ -517,6 +517,56 @@ describe("Missions clean domain", () => {
     expect(prisma.missoes.update).toHaveBeenCalledTimes(1);
   });
 
+  it("validates only a new goal association during mission updates", async () => {
+    const prisma = prismaMock();
+    prisma.missoes.findFirst.mockResolvedValue(mission({ objetivo_id: 3 }));
+    prisma.missoes.update.mockImplementation(async ({ data }) =>
+      mission({
+        ...data,
+        objetivo_id:
+          "objetivos" in data && data.objetivos && "connect" in data.objetivos
+            ? data.objetivos.connect.id
+            : data.objetivos && "disconnect" in data.objetivos
+              ? null
+              : 3,
+      }),
+    );
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+    const service = new MissionsService(prisma as never, calendar);
+
+    await expect(
+      service.update(10, { titulo: "Editar vínculo existente" }, user()),
+    ).resolves.toMatchObject({ objetivo_id: 3 });
+    await expect(
+      service.update(
+        10,
+        { titulo: "Reenviar vínculo existente", objetivo_id: 3 },
+        user(),
+      ),
+    ).resolves.toMatchObject({ objetivo_id: 3 });
+    expect(prisma.objetivos.findFirst).not.toHaveBeenCalled();
+
+    prisma.objetivos.findFirst.mockResolvedValue({
+      id: 4,
+      usuario_id: 7,
+      status: "ativo",
+    });
+    await expect(
+      service.update(10, { objetivo_id: 4 }, user()),
+    ).resolves.toMatchObject({ objetivo_id: 4 });
+    expect(prisma.objetivos.findFirst).toHaveBeenCalledWith({
+      where: { id: 4, usuario_id: 7, status: "ativo" },
+    });
+
+    prisma.objetivos.findFirst.mockResolvedValue(null);
+    await expect(service.update(10, { objetivo_id: 99 }, user())).rejects.toMatchObject({
+      status: 400,
+    });
+    await expect(
+      service.update(10, { objetivo_id: null }, user()),
+    ).resolves.toMatchObject({ objetivo_id: null });
+  });
+
   it("disconnects the goal without configuring recurrence on the occurrence", async () => {
     const prisma = prismaMock();
     prisma.missoes.findFirst.mockResolvedValue(
