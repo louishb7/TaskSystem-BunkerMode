@@ -1,5 +1,6 @@
 import React from "react"
 
+import Button from "../../../components/ui/Button"
 import EmptyState from "../../../components/ui/EmptyState"
 import { isCompleted } from "../../../utils/missionStatus"
 import MissionCard from "../../missions/components/MissionCard"
@@ -9,15 +10,11 @@ function isFailure(mission) {
 }
 
 function groupMissions(missions) {
+  const open = missions.filter((mission) => !isCompleted(mission) && !isFailure(mission))
   return {
-    highPriority: missions.filter((mission) => mission?.is_pinned === true),
-    pending: missions.filter(
-      (mission) => mission?.is_pinned !== true && !isCompleted(mission) && !isFailure(mission)
-    ),
-    failures: missions.filter(
-      (mission) => mission?.is_pinned !== true && !isCompleted(mission) && isFailure(mission)
-    ),
-    completed: missions.filter((mission) => mission?.is_pinned !== true && isCompleted(mission)),
+    open: [...open.filter((mission) => mission?.is_pinned === true), ...open.filter((mission) => mission?.is_pinned !== true)],
+    failures: missions.filter(isFailure),
+    completed: missions.filter(isCompleted),
   }
 }
 
@@ -34,28 +31,20 @@ export default function OrdersPanel({
   onTogglePin,
   pinLoadingId,
   reopenLoadingId,
+  selectedDate,
   selectedMissions,
   timezone,
 }) {
   const groups = groupMissions(selectedMissions)
-  const activeCount =
-    groups.highPriority.filter((mission) => !isCompleted(mission)).length +
-    groups.pending.length +
-    groups.failures.length
-  const completedCount = groups.completed.length
-
-  function renderMissionGroup(label, missions, tone = "") {
+  function renderMissionGroup(label, missions) {
     if (missions.length === 0) {
       return null
     }
 
     return (
-      <div className={`mission-group ${tone}`}>
-        <div className="mission-group-header">
-          <span>{label}</span>
-          <strong>{missions.length}</strong>
-        </div>
-        <div className="mission-list">
+      <section className="grid gap-3">
+        <h3 className="m-0 text-base font-semibold normal-case text-text-primary">{label}</h3>
+        <div className="grid gap-3">
           {missions.map((mission) => (
             <MissionCard
               key={mission.id}
@@ -75,44 +64,33 @@ export default function OrdersPanel({
             />
           ))}
         </div>
-      </div>
+      </section>
     )
   }
 
   return (
-    <section className="panel orders-panel">
-      <div className="section-heading compact">
+    <section className="grid gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="section-kicker">QUADRO DO DIA</p>
-          <h2>Mesa operacional</h2>
-          <p className="muted">
-            {activeCount > 0
-              ? `${activeCount} em aberto. ${completedCount} cumpridas.`
-              : completedCount > 0
-                ? "Todas as ordens do dia foram cumpridas."
-                : "Nenhuma ordem definida para o dia selecionado."}
-          </p>
+          <h2 className="m-0 text-xl font-semibold normal-case text-text-primary">
+            Ordens de {selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })}
+          </h2>
         </div>
-        <button className="button fire create-order" type="button" onClick={onCreateOrder}>
-          NOVA ORDEM
-        </button>
+        <Button onClick={onCreateOrder}>Nova ordem</Button>
       </div>
 
       {loading ? (
-        <EmptyState title="Sincronizando comando" message="Carregando ordens do dia selecionado." />
+        <EmptyState title="Sincronizando ordens" message="Carregando ordens do dia selecionado." />
       ) : selectedMissions.length > 0 ? (
-        <div className="mission-groups">
-          {renderMissionGroup("Prioridade elevada", groups.highPriority, "critical")}
-          {renderMissionGroup("Pendentes", groups.pending)}
-          {renderMissionGroup("Falhas registradas", groups.failures, "danger")}
-          {renderMissionGroup("Cumpridas", groups.completed, "completed")}
+        <div className="grid gap-8">
+          {renderMissionGroup("Ordens abertas", groups.open)}
+          {renderMissionGroup("Concluídas", groups.completed)}
+          {renderMissionGroup("Falhas registradas", groups.failures)}
         </div>
       ) : (
         <EmptyState
-          actionLabel="NOVA ORDEM"
           message="Nenhuma ordem foi definida para o dia selecionado."
-          onAction={onCreateOrder}
-          title="Dia sem ordens"
+          title="Sem ordens neste dia"
         />
       )}
     </section>

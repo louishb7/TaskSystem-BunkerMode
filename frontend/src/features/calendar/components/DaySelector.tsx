@@ -2,58 +2,32 @@ import React from "react"
 
 import { formatDateForApi } from "../../../utils/date"
 
-const WEEK_LABELS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"]
-
-function executionTone(percent) {
-  if (percent >= 80) {
-    return "high"
-  }
-  if (percent >= 40) {
-    return "medium"
-  }
-  return "low"
-}
+const WEEK_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
 export default function DaySelector({
-  missionStatsByDate,
   onSelectDate,
   selectedDate,
   todayDate,
   weekDays,
 }) {
   return (
-    <div className="week-board" aria-label="Calendário semanal">
+    <div className="grid grid-cols-7 gap-1 sm:gap-2" aria-label="Calendário semanal">
       {weekDays.map((date) => {
         const apiDate = formatDateForApi(date)
         const selected = date.getTime() === selectedDate.getTime()
         const today = date.getTime() === todayDate.getTime()
-        const past = date.getTime() < todayDate.getTime()
-        const future = date.getTime() > todayDate.getTime()
-        const stats = missionStatsByDate[apiDate] || { completed: 0, total: 0 }
-        const isDayOff = past && stats.total === 0
-        const complete = stats.total > 0 && stats.completed === stats.total
-        const percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
-        const hasExecutionLabel = !future && (today || past || stats.total > 0)
-        const executionLabel = isDayOff ? "DIA OFF" : hasExecutionLabel ? `${percent}%` : ""
-        const tone = isDayOff ? "off" : hasExecutionLabel ? executionTone(percent) : "neutral"
         return (
-          <div
+          <button
             key={apiDate}
-            className={`day-node ${selected ? "selected" : ""} ${today ? "today" : ""} ${complete ? "complete" : ""} execution-${tone}`}
+            aria-pressed={selected}
+            className={`grid min-h-[72px] content-center justify-items-center rounded-control border text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${selected ? "border-accent bg-accent text-text-primary" : "border-border bg-surface text-text-primary hover:border-control-border"}`}
+            type="button"
+            onClick={() => onSelectDate(date)}
           >
-            <button className="day-select-button" type="button" onClick={() => onSelectDate(date)}>
-              <span className="day-week">{WEEK_LABELS[date.getDay()]}</span>
-              {today && <span className="day-status day-today">HOJE</span>}
-              {executionLabel && (
-                <span
-                  className="day-status day-execution"
-                  aria-label={isDayOff ? "Dia sem ordens" : `${percent}% das ordens concluídas`}
-                >
-                  {executionLabel}
-                </span>
-              )}
-            </button>
-          </div>
+            <span className="text-xs text-text-secondary">{WEEK_LABELS[date.getDay()]}</span>
+            <span className="mt-1 text-lg font-semibold">{String(date.getDate()).padStart(2, "0")}</span>
+            {today && <span className="mt-1 text-[10px] font-semibold uppercase">Hoje</span>}
+          </button>
         )
       })}
     </div>

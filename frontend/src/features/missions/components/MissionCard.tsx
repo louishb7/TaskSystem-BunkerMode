@@ -1,5 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react"
 
+import Badge from "../../../components/ui/Badge"
+import Button from "../../../components/ui/Button"
 import { isCompleted } from "../../../utils/missionStatus"
 import { operationalDateFor } from "../../calendar/calendarUtils"
 
@@ -187,108 +189,60 @@ export default function MissionCard({
   }
 
   return (
-    <article
-      className={`mission-card ${isPinned ? "priority-high" : ""} ${completed ? "completed" : ""}`}
-    >
-      <div className="mission-compact-head">
-        <div className="mission-title-stack">
-          <h3>{title}</h3>
+    <article className="grid gap-4 rounded-card border border-border bg-surface p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="m-0 text-base font-semibold normal-case text-text-primary">{title}</h3>
+          {instruction && <p className="mt-2 mb-0 text-sm leading-6 text-text-secondary">{instruction}</p>}
         </div>
         {canTogglePin && (
-          <div className="mission-head-actions">
-            <button
-              className={`priority-icon-button ${isPinned ? "active" : ""}`}
-              aria-label={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
-              disabled={disabled}
-              title={isPinned ? "Rebaixar prioridade" : "Elevar prioridade"}
-              type="button"
-              onClick={() => onTogglePin(mission)}
-            >
-              <span aria-hidden="true" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="mission-badge-row mission-context-row">
-        {isPinned && <span className="meta-tag critical">PRIORIDADE ELEVADA</span>}
-        {deadlineLabel !== "HOJE" && <span className="meta-tag">{deadlineLabel}</span>}
-      </div>
-
-      {detailsOpen && (
-        <div className="mission-details-inline">
-          {instruction ? (
-            <p className="mission-instruction">{instruction}</p>
-          ) : (
-            <p className="mission-instruction">Sem instrução adicional.</p>
-          )}
-          <div className="mission-actions detail-actions">
-            {can(mission, "can_edit") && (
-              <button
-                className="button secondary compact"
-                disabled={disabled}
-                type="button"
-                onClick={onEdit}
-              >
-                EDITAR
-              </button>
-            )}
-
-            {can(mission, "can_delete") && (
-              <button
-                className="button secondary compact"
-                disabled={disabled}
-                type="button"
-                onClick={onDelete}
-              >
-                REMOVER
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="mission-actions primary-actions">
-        {!completed && currentStatusText && (
-          <span className="meta-tag mission-footer-status">{currentStatusText}</span>
-        )}
-        {canComplete && (
-          <button
-            className="button success compact"
+          <Button
+            aria-label={isPinned ? "Remover prioridade" : "Elevar prioridade"}
             disabled={disabled}
-            type="button"
-            onClick={onComplete}
+            size="small"
+            variant="ghost"
+            onClick={() => onTogglePin(mission)}
           >
-            {completing ? "AGUARDE" : "ABATER"}
-          </button>
+            {isPinned ? "Prioridade alta" : "Priorizar"}
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {isPinned && <Badge variant="warning">Prioridade alta</Badge>}
+        {deadlineLabel && <Badge variant={deadlineLabel === "HOJE" ? "warning" : "neutral"}>{deadlineLabel === "HOJE" ? "Hoje" : deadlineLabel}</Badge>}
+        {mission?.recurrence && <Badge>Recorrente</Badge>}
+        {completed && <Badge variant="success">Concluída</Badge>}
+        {failed && <Badge variant="danger">Falha registrada</Badge>}
+        {!completed && !failed && currentStatusText && <Badge>{currentStatusText}</Badge>}
+      </div>
+
+      <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+        {canComplete && (
+          <Button loading={completing} size="small" onClick={onComplete}>
+            Concluir
+          </Button>
         )}
         {canFail && (
-          <button
-            className="button danger ghost compact"
-            disabled={disabled}
-            type="button"
-            onClick={() => onFail?.(mission.id)}
-          >
-            {failing ? "AGUARDE" : "REGISTRAR FALHA"}
-          </button>
+          <Button loading={failing} size="small" variant="secondary" onClick={() => onFail?.(mission.id)}>
+            Registrar falha
+          </Button>
+        )}
+        {can(mission, "can_edit") && (
+          <Button disabled={disabled} size="small" variant="ghost" onClick={onEdit}>
+            Editar
+          </Button>
+        )}
+        {can(mission, "can_delete") && (
+          <Button disabled={disabled} size="small" variant="danger" onClick={onDelete}>
+            Remover
+          </Button>
         )}
         {completed && can(mission, "can_edit") && onReopen && (
-          <button
-            className="button secondary compact"
-            disabled={disabled}
-            type="button"
-            onClick={onReopen}
-          >
-            {reopening ? "AGUARDE" : "REABRIR"}
-          </button>
+          <Button loading={reopening} size="small" variant="secondary" onClick={onReopen}>
+            Reabrir
+          </Button>
         )}
-        <button
-          className="button secondary compact"
-          type="button"
-          onClick={() => setDetailsOpen((current) => !current)}
-        >
-          {detailsOpen ? "OCULTAR" : "DETALHES"}
-        </button>
       </div>
     </article>
   )

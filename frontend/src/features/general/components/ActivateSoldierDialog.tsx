@@ -20,31 +20,32 @@ export default function ActivateSoldierDialog({
   })
 
   return (
-    <Dialog closeOnBackdrop={false} onClose={onCancel} title={formatCurrentDay(timezone)}>
+    <Dialog closeOnBackdrop={false} onClose={onCancel} title="Entrar no Soldado">
       <div className="grid gap-4">
-        <p className="m-0 text-xs font-semibold tracking-wide text-text-secondary">ORDENS DE HOJE</p>
+        <p className="m-0 text-sm text-text-secondary">{formatCurrentDay(timezone)}</p>
+        <p className="m-0 text-sm font-medium text-text-primary">Ordens de hoje</p>
         {todayMissions.length > 0 ? (
           <ul className="m-0 grid list-none gap-2 rounded-control border border-border bg-app p-3 text-sm text-text-primary">
             {pendingMissions.map((mission) => (
-              <li key={mission.id}>{mission?.titulo || "Missão sem título"}</li>
+              <li key={mission.id}>{mission?.titulo || "Ordem sem título"}</li>
             ))}
             {completedMissions.map((mission) => (
               <li className="text-text-secondary line-through" key={mission.id}>
-                {mission?.titulo || "Missão sem título"}
+                {mission?.titulo || "Ordem sem título"}
               </li>
             ))}
           </ul>
         ) : (
           <div className="rounded-control border border-border bg-app p-3 text-sm text-text-secondary">
-            Nenhuma missão definida para hoje
+            Nenhuma ordem definida para hoje
           </div>
         )}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button disabled={loading} variant="secondary" onClick={onCancel}>
-            CANCELAR
+            Cancelar
           </Button>
           <Button loading={loading} onClick={onConfirm}>
-            {loading ? "ATIVANDO" : "ENTRAR NO SOLDADO"}
+            {loading ? "Entrando" : "Entrar no Soldado"}
           </Button>
         </div>
       </div>

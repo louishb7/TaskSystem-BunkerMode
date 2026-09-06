@@ -84,7 +84,6 @@ function GeneralRoute() {
   const navigate = useNavigate()
   const auth = useAuth()
   const board = useMissionBoardContext()
-  const generalName = auth.user?.nome_general || auth.user?.usuario || "General"
   const logout = useLogout()
 
   async function activateSoldierMode() {
@@ -121,7 +120,6 @@ function GeneralRoute() {
     <AppShell onLogout={logout} user={auth.user}>
       <GeneralCommandPage
         board={board}
-        generalName={generalName}
         onActivateSoldier={activateSoldierMode}
         onUnauthorized={auth.handleUnauthorized}
         token={auth.token}

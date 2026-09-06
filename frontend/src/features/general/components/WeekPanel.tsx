@@ -1,9 +1,9 @@
 import React from "react"
 
+import Button from "../../../components/ui/Button"
 import DaySelector from "../../calendar/components/DaySelector"
 
 export default function WeekPanel({
-  missionStatsByDate,
   onNextWeek,
   onPreviousWeek,
   onSelectDate,
@@ -13,32 +13,17 @@ export default function WeekPanel({
   weekDays,
 }) {
   return (
-    <section className="panel tactical-panel elevated">
-      <div className="section-heading">
-        <div>
-          <h2>Calendário semanal</h2>
-          <p className="muted">Navegue entre os dias e defina as ordens do General.</p>
-        </div>
-      </div>
-      <div className="week-navigation" aria-label="Navegação de semanas">
-        <button
-          className="button secondary compact week-nav-button"
-          type="button"
-          onClick={onPreviousWeek}
-        >
-          ← SEMANA
-        </button>
-        <strong>{weekLabel}</strong>
-        <button
-          className="button secondary compact week-nav-button"
-          type="button"
-          onClick={onNextWeek}
-        >
-          SEMANA →
-        </button>
+    <section className="grid gap-4" aria-label="Calendário semanal">
+      <div className="flex items-center justify-between gap-3">
+        <Button aria-label="Semana anterior" variant="secondary" onClick={onPreviousWeek}>
+          ←
+        </Button>
+        <p className="m-0 text-center text-sm font-medium text-text-primary">{weekLabel}</p>
+        <Button aria-label="Próxima semana" variant="secondary" onClick={onNextWeek}>
+          →
+        </Button>
       </div>
       <DaySelector
-        missionStatsByDate={missionStatsByDate}
         onSelectDate={onSelectDate}
         selectedDate={selectedDate}
         todayDate={todayDate}
