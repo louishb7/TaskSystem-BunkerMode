@@ -36,11 +36,12 @@ export function missionPermissions(
 ): MissionPermissions {
   const owned = mission.responsavel_id === user.usuario_id;
   const pending = isPending(mission);
+  const recurring = mission.recurrence_series_id !== null;
 
   return {
     can_complete: owned && pending,
     can_edit: owned && pending,
-    can_delete: owned && pending,
+    can_delete: owned && pending && !recurring,
     can_fail: owned && pending,
     can_pin: owned && pending,
     can_view_history: owned && isFinalized(mission),

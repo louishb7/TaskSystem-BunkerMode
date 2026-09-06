@@ -455,6 +455,18 @@ export class MissionsService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    if (Object.prototype.hasOwnProperty.call(payload, "prazo")) {
+      const requestedDueDate = dateFromPayload(payload.prazo);
+      if (
+        current.recurrence_series_id !== null &&
+        requestedDueDate?.getTime() !== current.prazo?.getTime()
+      ) {
+        throw new HttpException(
+          "Esta ordem pertence a uma série recorrente. Reagendamento individual ainda não é suportado.",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
 
     const objetivoId = Object.prototype.hasOwnProperty.call(
       payload,
@@ -578,6 +590,12 @@ export class MissionsService {
 
   async delete(id: number, user: UserRecord): Promise<void> {
     const current = await this.getMissionForUser(id, user);
+    if (current.recurrence_series_id !== null) {
+      throw new HttpException(
+        "Esta ordem pertence a uma série recorrente. Exclusão individual ainda não é suportada.",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     if (current.status !== MISSION_STATUS.pending) {
       throw new HttpException(
         "Apenas missão pendente pode ser removida. Resultados ficam no histórico.",

@@ -326,6 +326,36 @@ describeWithDatabase("Recurrence series persistence", () => {
     expect(duplicatedDates).toEqual([]);
   });
 
+  it("preserves a recurring occurrence identity after rejected deletion and rescheduling", async () => {
+    const firstOccurrence = await createRecurringMission();
+    const seriesId = firstOccurrence.recurrence_series_id!;
+    const originalDate = firstOccurrence.prazo!;
+
+    await expect(
+      missionsService.delete(firstOccurrence.missao_id, currentUser),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      missionsService.update(
+        firstOccurrence.missao_id,
+        { prazo: "01-09-2026" },
+        currentUser,
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+
+    currentDate = "2026-09-08";
+    await missionsService.listForGeneralBoard(currentUser);
+    const originalOccurrences = await prisma.missoes.findMany({
+      where: { recurrence_series_id: seriesId, prazo: originalDate },
+    });
+
+    expect(originalOccurrences).toHaveLength(1);
+    await expect(
+      prisma.missoes.findUniqueOrThrow({
+        where: { missao_id: firstOccurrence.missao_id },
+      }),
+    ).resolves.toMatchObject({ prazo: originalDate, recurrence_series_id: seriesId });
+  });
+
   it("uses the General read to materialize recurrence and retain completed and failed outcomes", async () => {
     const firstOccurrence = await createRecurringMission();
     const failedOccurrence = await missionsService.create(

@@ -213,12 +213,13 @@ describe("Missions clean domain", () => {
     });
   });
 
-  it("allows a soldier preference to edit and delete an owned pending mission", async () => {
+  it("allows a soldier preference to edit, reschedule and delete an owned one-time mission", async () => {
     const prisma = prismaMock();
     prisma.missoes.findFirst.mockResolvedValue(mission());
-    prisma.missoes.update.mockResolvedValue(
-      mission({ titulo: "Ordem ajustada" }),
-    );
+    prisma.missoes.update.mockResolvedValue(mission({
+      titulo: "Ordem ajustada",
+      prazo: new Date("2026-04-26T00:00:00.000Z"),
+    }));
     prisma.$transaction.mockImplementation(async (callback) =>
       callback({
         auditoria_eventos: prisma.auditoria_eventos,
@@ -232,16 +233,53 @@ describe("Missions clean domain", () => {
     const soldier = user({ active_mode: "soldier" });
 
     await expect(
-      service.update(10, { titulo: "Ordem ajustada" }, soldier),
+      service.update(
+        10,
+        { titulo: "Ordem ajustada", prazo: "26-04-2026" },
+        soldier,
+      ),
     ).resolves.toMatchObject({
       titulo: "Ordem ajustada",
     });
     await expect(service.delete(10, soldier)).resolves.toBeUndefined();
 
     expect(prisma.missoes.update).toHaveBeenCalled();
+    expect(prisma.missoes.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          prazo: new Date("2026-04-26T00:00:00.000Z"),
+        }),
+      }),
+    );
     expect(prisma.missoes.delete).toHaveBeenCalledWith({
       where: { missao_id: 10 },
     });
+  });
+
+  it("protects recurring occurrences from deletion and rescheduling while allowing other edits", async () => {
+    const prisma = prismaMock();
+    const occurrence = mission({ recurrence_series_id: 21 });
+    prisma.missoes.findFirst.mockResolvedValue(occurrence);
+    prisma.missoes.update.mockResolvedValue(
+      mission({ recurrence_series_id: 21, titulo: "Instrução ajustada" }),
+    );
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+    const service = new MissionsService(
+      prisma as unknown as PrismaService,
+      calendar,
+    );
+
+    await expect(service.delete(10, user())).rejects.toMatchObject({ status: 400 });
+    await expect(
+      service.update(10, { prazo: "26-04-2026" }, user()),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      service.update(10, { titulo: "Instrução ajustada" }, user()),
+    ).resolves.toMatchObject({ titulo: "Instrução ajustada" });
+
+    expect(prisma.missoes.delete).not.toHaveBeenCalled();
+    expect(prisma.missoes.update).toHaveBeenCalledTimes(1);
+    expect(toMissionResponse(occurrence, user()).permissions.can_delete).toBe(false);
   });
 
   it("keeps ownership protection independent from active mode", async () => {

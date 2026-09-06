@@ -191,7 +191,7 @@ export default function MissionForm({
   const isSeriesOccurrence = Boolean(editingMission?.recurrence?.series_id)
   const isRecurring = form.repeat_type !== "nao"
   const lockedInitialPrazo = Boolean(initialPrazo && !isEditing)
-  const prazoContext = formatPrazoContext(initialPrazo)
+  const prazoContext = formatPrazoContext(isEditing ? form.prazo : initialPrazo)
 
   useEffect(() => {
     if (!editingMission) {
@@ -308,11 +308,19 @@ export default function MissionForm({
       return
     }
 
-    const payload = {
+    const payload: {
+      titulo: string
+      instrucao: string
+      objetivo_id: number | null
+      prazo?: string | null
+    } = {
       titulo: form.titulo.trim(),
       instrucao: form.instrucao.trim(),
       objetivo_id: form.objetivo_id ? Number(form.objetivo_id) : null,
-      prazo: form.prazo ? form.prazo.trim() : null,
+    }
+
+    if (!isSeriesOccurrence) {
+      payload.prazo = form.prazo ? form.prazo.trim() : null
     }
 
     // PATCH altera os dados da Ordem, nunca a configuração da recorrência.
@@ -361,7 +369,14 @@ export default function MissionForm({
           </div>
         )}
 
-        {!lockedInitialPrazo && (
+        {isSeriesOccurrence && (
+          <div className="deadline-context">
+            <span>DATA DA OCORRÊNCIA</span>
+            <strong>{prazoContext}</strong>
+          </div>
+        )}
+
+        {!lockedInitialPrazo && !isSeriesOccurrence && (
           <label>
             Data de execução
             <input
