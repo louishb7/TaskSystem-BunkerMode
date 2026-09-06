@@ -2,14 +2,13 @@ import React, { useState } from "react"
 
 import ConfirmDialog from "../../../components/ui/ConfirmDialog"
 import StatusNotice from "../../../components/ui/StatusNotice"
-import TacticalShell from "../../../components/tactical/TacticalShell"
 import { emptyStatus } from "../../../constants/uiState"
 import MissionForm from "../../missions/components/MissionForm"
 import ObjetivoForm from "../components/ObjetivoForm"
 import ObjetivoList from "../components/ObjetivoList"
 import { useObjectives } from "../hooks/useObjectives"
 
-export default function ObjectivesPage({ board, onBack, onUnauthorized, token, user }) {
+export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
   const objectives = useObjectives({ onUnauthorized, token })
   const [editingObjetivo, setEditingObjetivo] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -51,14 +50,7 @@ export default function ObjectivesPage({ board, onBack, onUnauthorized, token, u
   }
 
   return (
-    <TacticalShell mode="general">
-      <section className="objectives-page">
-        <div className="actions-row">
-          <button className="button secondary compact" type="button" onClick={onBack}>
-            VOLTAR AO GENERAL
-          </button>
-        </div>
-
+    <section className="objectives-page">
         <header className="section-heading">
           <div>
             <p className="section-kicker fire">PLANEJAMENTO</p>
@@ -149,7 +141,6 @@ export default function ObjectivesPage({ board, onBack, onUnauthorized, token, u
             }}
           />
         )}
-      </section>
-    </TacticalShell>
+    </section>
   )
 }

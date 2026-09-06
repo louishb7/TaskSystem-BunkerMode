@@ -165,49 +165,6 @@ h3 {
   color: var(--fire);
 }
 
-.brand-symbol {
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  border: 1px solid rgba(255, 138, 42, 0.18);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(255, 138, 42, 0.16), transparent 62%),
-    rgba(0, 0, 0, 0.18);
-  box-shadow: 0 0 28px rgba(255, 138, 42, 0.08);
-  overflow: visible;
-  padding: 3px;
-}
-
-.brand-symbol img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: contain;
-  opacity: 0.9;
-}
-
-.brand-symbol.muted {
-  opacity: 0.72;
-}
-
-.brand-symbol.sm {
-  width: 34px;
-  height: 34px;
-}
-
-.brand-symbol.lg {
-  width: 82px;
-  height: 82px;
-}
-
-.brand-symbol.xl {
-  width: 132px;
-  height: 132px;
-}
-
 .button,
 .mode-switch {
   display: inline-flex;
@@ -396,177 +353,9 @@ h3 {
   color: var(--amber);
 }
 
-.boot-state,
-.boot-fallback {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  min-height: 100vh;
-  gap: 14px;
-  padding: 24px;
-}
-
-.boot-state p,
-.boot-fallback p {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 900;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.boot-fallback {
-  width: min(900px, 100%);
-  margin: 0 auto;
-  place-items: stretch;
-}
-
-.boot-fallback pre {
-  max-height: 42vh;
-  overflow: auto;
-  border: 1px solid var(--border);
-  background: var(--surface-deep);
-  color: var(--text-muted);
-  padding: 14px;
-  white-space: pre-wrap;
-}
-
-.auth-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
-  align-items: center;
-  width: min(1120px, 100%);
-  min-height: 100vh;
-  margin: 0 auto;
-  padding: 40px 28px;
-  gap: 44px;
-}
-
-.auth-page::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(rgba(10, 10, 10, 0.8), rgba(10, 10, 10, 0.8)),
-    url("./assets/bunkermode/backgrounds/bg-global-bunker-16x9.png");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
-}
-
-.auth-identity {
-  display: grid;
-  justify-items: center;
-  text-align: center;
-}
-
-.auth-identity .brand-symbol {
-  border-color: rgba(237, 237, 237, 0.16);
-  background: rgba(0, 0, 0, 0.18);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-}
-
-.auth-identity .brand-symbol img {
-  opacity: 1;
-}
-
-.auth-identity h1 {
-  margin: 10px 0 8px;
-  font-size: clamp(2.2rem, 5vw, 4.8rem);
-}
-
-.auth-lion {
-  margin-bottom: 4px;
-  color: var(--red);
-  font-size: 0.82rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.auth-support {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.auth-card {
-  box-shadow: var(--shadow);
-}
-
-.auth-form-heading {
-  margin-bottom: 2px;
-}
-
-.segmented-control {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 18px;
-}
-
 .deadline-control {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 0;
-}
-
-.segmented-control button {
-  min-height: 40px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 0.74rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.segmented-control button.active {
-  border-color: var(--fire);
-  background: var(--fire);
-  color: var(--black);
-}
-
-.tactical-shell {
-  position: relative;
-  min-height: 100vh;
-  padding: 26px;
-}
-
-.tactical-shell.general::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(
-      90deg,
-      transparent 0 17%,
-      rgba(255, 138, 42, 0.035) 17% 17.08%,
-      transparent 17.08% 78%,
-      rgba(237, 237, 237, 0.026) 78% 78.08%,
-      transparent 78.08%
-    ),
-    radial-gradient(ellipse at center 20%, rgba(255, 138, 42, 0.06), transparent 42%);
-  pointer-events: none;
-}
-
-.tactical-shell.soldier::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(255, 138, 42, 0.16), transparent 32%),
-    radial-gradient(circle at 80% 14%, rgba(255, 138, 42, 0.05), transparent 28%),
-    linear-gradient(rgba(14, 14, 14, 0.84), rgba(14, 14, 14, 0.92)),
-    url("./assets/bunkermode/backgrounds/bg-global-bunker-16x9.png");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: auto, auto, auto, cover;
 }
 
 .soldier-header > * {
@@ -607,12 +396,6 @@ h3 {
   box-shadow:
     0 18px 46px rgba(0, 0, 0, 0.36),
     inset 3px 0 0 rgba(255, 138, 42, 0.18);
-}
-
-.command-rail .brand-symbol.sm {
-  width: 40px;
-  height: 40px;
-  opacity: 0.86;
 }
 
 .command-identity {
@@ -2913,7 +2696,6 @@ h3 {
     flex-direction: column;
   }
 
-  .auth-page,
   .general-layout {
     grid-template-columns: 1fr;
   }
@@ -2945,22 +2727,7 @@ h3 {
 }
 
 @media (max-width: 640px) {
-  .tactical-shell,
-  .auth-page {
-    padding: 14px;
-  }
-
-  .auth-page {
-    gap: 22px;
-  }
-
-  .brand-symbol.xl {
-    width: 106px;
-    height: 106px;
-  }
-
-  .deadline-control,
-  .segmented-control {
+  .deadline-control {
     grid-template-columns: 1fr;
   }
 
@@ -3146,7 +2913,6 @@ h3 {
 }
 
 .panel,
-.auth-card,
 .sonho-card,
 .objetivo-card,
 .objetivo-form-panel,
@@ -3173,23 +2939,6 @@ h3 {
 
 .panel::before {
   background: linear-gradient(90deg, transparent, rgba(237, 237, 237, 0.12), transparent);
-}
-
-.tactical-shell {
-  padding: 20px;
-}
-
-.tactical-shell.general::after {
-  background:
-    linear-gradient(
-      90deg,
-      transparent 0 17%,
-      rgba(255, 138, 42, 0.018) 17% 17.06%,
-      transparent 17.06% 78%,
-      rgba(237, 237, 237, 0.015) 78% 78.06%,
-      transparent 78.06%
-    ),
-    radial-gradient(ellipse at center 0%, rgba(255, 138, 42, 0.045), transparent 44%);
 }
 
 .general-layout {
@@ -3500,20 +3249,6 @@ h3 {
   box-shadow: none;
 }
 
-.auth-page {
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 430px);
-  gap: 48px;
-}
-
-.auth-card {
-  background:
-    linear-gradient(180deg, rgba(237, 237, 237, 0.038), transparent 120px), rgba(16, 17, 18, 0.94);
-}
-
-.auth-identity h1 {
-  letter-spacing: 0.04em;
-}
-
 .review-screen,
 .mountain-page {
   width: min(1180px, 100%);
@@ -3597,16 +3332,6 @@ h3 {
   gap: 16px;
 }
 
-.tactical-shell.soldier::before {
-  background:
-    radial-gradient(circle at 50% -4%, rgba(255, 138, 42, 0.1), transparent 34%),
-    linear-gradient(rgba(8, 9, 9, 0.88), rgba(8, 9, 9, 0.94)),
-    url("./assets/bunkermode/backgrounds/bg-global-bunker-16x9.png");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: auto, auto, cover;
-}
-
 .soldier-header {
   border-color: var(--border);
   border-radius: var(--radius-lg);
@@ -3652,10 +3377,6 @@ h3 {
 }
 
 @media (max-width: 900px) {
-  .tactical-shell {
-    padding: 16px;
-  }
-
   .general-layout {
     grid-template-columns: 1fr;
   }
@@ -3683,11 +3404,6 @@ h3 {
 }
 
 @media (max-width: 640px) {
-  .tactical-shell,
-  .auth-page {
-    padding: 12px;
-  }
-
   .panel,
   .app-header,
   .mountain-header,
@@ -3753,11 +3469,6 @@ h3 {
     writing-mode: horizontal-tb;
   }
 
-  .auth-page {
-    grid-template-columns: 1fr;
-    align-content: center;
-    gap: 26px;
-  }
 }
 
 /* Segunda rodada de polimento: coesão fina, leitura diária e responsividade. */
@@ -4076,23 +3787,6 @@ h3 {
   border-radius: var(--radius-lg);
 }
 
-.auth-page {
-  min-height: 100dvh;
-}
-
-.auth-card {
-  padding: 18px;
-}
-
-.auth-identity .brand-symbol.xl {
-  width: 116px;
-  height: 116px;
-}
-
-.auth-identity h1 {
-  font-size: clamp(2.2rem, 5vw, 4.3rem);
-}
-
 @media (max-width: 1180px) {
   .general-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -4100,18 +3794,6 @@ h3 {
 }
 
 @media (max-width: 900px) {
-  .auth-page {
-    grid-template-columns: minmax(0, 1fr);
-    width: min(520px, 100%);
-    align-content: center;
-    justify-items: stretch;
-    gap: 24px;
-  }
-
-  .auth-card {
-    width: 100%;
-  }
-
   .week-navigation {
     grid-template-columns: 1fr;
   }
@@ -4235,27 +3917,13 @@ h3 {
     padding-left: 14px;
   }
 
-  .auth-identity .brand-symbol.xl {
-    width: 94px;
-    height: 94px;
-  }
-
-  .auth-identity h1 {
-    font-size: clamp(2rem, 10vw, 2.7rem);
-  }
 }
 
 @media (max-width: 430px) {
-  .tactical-shell,
-  .auth-page {
-    padding: 10px;
-  }
-
   .panel,
   .app-header,
   .mountain-header,
-  .mountain-section,
-  .auth-card {
+  .mountain-section {
     padding: 12px;
   }
 
@@ -4277,9 +3945,6 @@ h3 {
     gap: 4px;
   }
 
-  .auth-page {
-    gap: 22px;
-  }
 }
 
 /* A Montanha: mapa de ascensão operacional. */

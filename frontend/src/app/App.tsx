@@ -3,6 +3,8 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom"
 
 import { getErrorMessage } from "../api/httpClient"
 import BootScreen from "../components/tactical/BootScreen"
+import AppShell from "../components/layout/AppShell"
+import ExecutionLayout from "../components/layout/ExecutionLayout"
 import { emptyStatus } from "../constants/uiState"
 import { useAuth } from "../context/AuthContext"
 import { useMissionBoardContext } from "../context/MissionBoardContext"
@@ -83,13 +85,7 @@ function GeneralRoute() {
   const auth = useAuth()
   const board = useMissionBoardContext()
   const generalName = auth.user?.nome_general || auth.user?.usuario || "General"
-
-  function clearSession() {
-    auth.clearSession()
-    board.setStatus(emptyStatus)
-    board.setFormStatus(emptyStatus)
-    navigate(APP_ROUTES.AUTH, { replace: true })
-  }
+  const logout = useLogout()
 
   async function activateSoldierMode() {
     board.setStatus(emptyStatus)
@@ -122,32 +118,33 @@ function GeneralRoute() {
   }
 
   return (
-    <GeneralCommandPage
-      board={board}
-      generalName={generalName}
-      onActivateSoldier={activateSoldierMode}
-      onLogout={clearSession}
-      onOpenObjectives={() => navigate(APP_ROUTES.OBJECTIVES)}
-      onUnauthorized={auth.handleUnauthorized}
-      token={auth.token}
-      user={auth.user}
-    />
+    <AppShell onLogout={logout} user={auth.user}>
+      <GeneralCommandPage
+        board={board}
+        generalName={generalName}
+        onActivateSoldier={activateSoldierMode}
+        onUnauthorized={auth.handleUnauthorized}
+        token={auth.token}
+        user={auth.user}
+      />
+    </AppShell>
   )
 }
 
 function ObjectivesRoute() {
-  const navigate = useNavigate()
   const auth = useAuth()
   const board = useMissionBoardContext()
+  const logout = useLogout()
 
   return (
-    <ObjectivesPage
-      board={board}
-      onBack={() => navigate(APP_ROUTES.GENERAL_HOME)}
-      onUnauthorized={auth.handleUnauthorized}
-      token={auth.token}
-      user={auth.user}
-    />
+    <AppShell onLogout={logout} user={auth.user}>
+      <ObjectivesPage
+        board={board}
+        onUnauthorized={auth.handleUnauthorized}
+        token={auth.token}
+        user={auth.user}
+      />
+    </AppShell>
   )
 }
 
@@ -187,13 +184,27 @@ function SoldierRoute() {
   }
 
   return (
-    <SoldierExecutionPage
-      actionMissions={board.actionMissions}
-      board={board}
-      dailyMissions={board.dailyMissions}
-      missions={board.missions}
-      onReturnToCommand={returnToCommand}
-      timezone={auth.user?.timezone}
-    />
+    <ExecutionLayout onReturnToGeneral={returnToCommand}>
+      <SoldierExecutionPage
+        actionMissions={board.actionMissions}
+        board={board}
+        dailyMissions={board.dailyMissions}
+        missions={board.missions}
+        timezone={auth.user?.timezone}
+      />
+    </ExecutionLayout>
   )
+}
+
+function useLogout() {
+  const navigate = useNavigate()
+  const auth = useAuth()
+  const board = useMissionBoardContext()
+
+  return () => {
+    auth.clearSession()
+    board.setStatus(emptyStatus)
+    board.setFormStatus(emptyStatus)
+    navigate(APP_ROUTES.AUTH, { replace: true })
+  }
 }

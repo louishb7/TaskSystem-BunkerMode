@@ -33,3 +33,20 @@
 
   --spacing: 4px;
 }
+
+@layer components {
+  html,
+  body {
+    background: var(--color-app);
+  }
+
+  body {
+    min-width: 320px;
+    color: var(--color-text-primary);
+  }
+
+  body::before,
+  body::after {
+    content: none;
+  }
+}

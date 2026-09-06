@@ -1,8 +1,7 @@
-import React, { useState } from "react"
+import React from "react"
 
 import EmptyState from "../../../components/ui/EmptyState"
 import StatusNotice from "../../../components/ui/StatusNotice"
-import TacticalShell from "../../../components/tactical/TacticalShell"
 import { isCompleted } from "../../../utils/missionStatus"
 import { formatCurrentDay } from "../../calendar/calendarUtils"
 import MissionCard, { MissionProgress } from "../../missions/components/MissionCard"
@@ -12,22 +11,13 @@ export default function SoldierExecutionPage({
   board,
   dailyMissions,
   missions,
-  onReturnToCommand,
   timezone,
 }) {
-  const [returnLoading, setReturnLoading] = useState(false)
   const allDailyMissionsCompleted =
     dailyMissions.length > 0 && dailyMissions.every(isCompleted)
 
-  async function handleReturnToCommand() {
-    setReturnLoading(true)
-    await onReturnToCommand()
-    setReturnLoading(false)
-  }
-
   return (
-    <TacticalShell mode="soldier">
-      <section className="soldier-layout">
+    <section className="soldier-layout">
         <header className="soldier-header">
           <div className="soldier-topline">
             <span>FOCO OPERACIONAL</span>
@@ -93,18 +83,6 @@ export default function SoldierExecutionPage({
           </>
         )}
 
-        <footer className="soldier-footer">
-          <button
-            className="mode-switch return-command"
-            type="button"
-            onClick={handleReturnToCommand}
-            disabled={returnLoading}
-          >
-            <span>RETORNAR AO COMANDO</span>
-            <strong>{returnLoading ? "AGUARDE" : "GENERAL"}</strong>
-          </button>
-        </footer>
-      </section>
-    </TacticalShell>
+    </section>
   )
 }

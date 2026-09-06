@@ -1,15 +1,12 @@
 import React from "react"
 
-import BrandSymbol from "../ui/BrandSymbol"
-import TacticalShell from "./TacticalShell"
-
 export default function BootScreen() {
   return (
-    <TacticalShell mode="general">
-      <section className="boot-state">
-        <BrandSymbol muted size="lg" />
-        <p>SINCRONIZANDO COMANDO</p>
+    <main className="grid min-h-dvh place-items-center bg-app px-4 text-text-primary">
+      <section className="text-center">
+        <h1 className="m-0 text-2xl font-semibold tracking-tight normal-case">BunkerMode</h1>
+        <p className="mt-2 mb-0 text-sm text-text-secondary">Carregando...</p>
       </section>
-    </TacticalShell>
+    </main>
   )
 }

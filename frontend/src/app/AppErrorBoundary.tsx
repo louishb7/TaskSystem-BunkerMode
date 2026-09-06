@@ -1,6 +1,7 @@
 import React from "react"
 
 import { TOKEN_KEY, USER_KEY } from "../constants/session"
+import Button from "../components/ui/Button"
 
 type AppErrorBoundaryState = {
   error: Error | null
@@ -33,21 +34,16 @@ export default class AppErrorBoundary extends React.Component<React.PropsWithChi
   render() {
     if (this.state.error) {
       return (
-        <main className="boot-fallback">
-          <h1>BunkerMode</h1>
-          <p>O frontend carregou, mas encontrou um erro ao montar a interface.</p>
-          <pre>
-            {[
-              this.state.error?.message,
-              this.state.error?.stack,
-              this.state.errorInfo?.componentStack,
-            ]
-              .filter(Boolean)
-              .join("\n\n")}
-          </pre>
-          <button className="button secondary" type="button" onClick={this.clearLocalSession}>
-            LIMPAR SESSÃO LOCAL E RECARREGAR
-          </button>
+        <main className="grid min-h-dvh place-items-center bg-app px-4 text-text-primary">
+          <section className="w-full max-w-lg rounded-card border border-border bg-surface p-6 text-center shadow-sm">
+            <h1 className="m-0 text-xl font-semibold normal-case">Não foi possível carregar a interface</h1>
+            <p className="mt-2 mb-6 text-sm leading-6 text-text-secondary">
+              Limpe a sessão local e tente novamente.
+            </p>
+            <Button variant="secondary" onClick={this.clearLocalSession}>
+              Limpar sessão e recarregar
+            </Button>
+          </section>
         </main>
       )
     }

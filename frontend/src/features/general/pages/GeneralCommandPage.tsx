@@ -3,7 +3,6 @@ import React, { useMemo, useState } from "react"
 import ConfirmDialog from "../../../components/ui/ConfirmDialog"
 import Dialog from "../../../components/ui/Dialog"
 import StatusNotice from "../../../components/ui/StatusNotice"
-import TacticalShell from "../../../components/tactical/TacticalShell"
 import { emptyStatus } from "../../../constants/uiState"
 import { formatDateForApi } from "../../../utils/date"
 import { isCompleted } from "../../../utils/missionStatus"
@@ -25,8 +24,6 @@ export default function GeneralCommandPage({
   board,
   generalName,
   onActivateSoldier,
-  onLogout,
-  onOpenObjectives,
   onUnauthorized,
   token,
   user,
@@ -122,7 +119,7 @@ export default function GeneralCommandPage({
   }
 
   return (
-    <TacticalShell mode="general">
+    <>
       <section className="general-layout">
         <section className="general-board">
           <header className="app-header general-command-header">
@@ -134,9 +131,6 @@ export default function GeneralCommandPage({
               </p>
             </div>
             <div className="header-actions">
-              <button className="button secondary compact" type="button" onClick={onOpenObjectives}>
-                OBJETIVOS
-              </button>
               <button
                 className="button fire compact"
                 disabled={modeLoading}
@@ -144,9 +138,6 @@ export default function GeneralCommandPage({
                 onClick={() => setShowSoldierConfirm(true)}
               >
                 {modeLoading ? "ATIVANDO" : "MODO SOLDADO"}
-              </button>
-              <button className="button secondary compact" type="button" onClick={onLogout}>
-                SAIR
               </button>
             </div>
           </header>
@@ -237,6 +228,6 @@ export default function GeneralCommandPage({
           }}
         />
       )}
-    </TacticalShell>
+    </>
   )
 }
