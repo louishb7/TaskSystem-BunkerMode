@@ -12,18 +12,21 @@ function isFailure(mission) {
 function groupMissions(missions) {
   const open = missions.filter((mission) => !isCompleted(mission) && !isFailure(mission))
   return {
-    open: [...open.filter((mission) => mission?.is_pinned === true), ...open.filter((mission) => mission?.is_pinned !== true)],
+    open: [
+      ...open.filter((mission) => mission?.is_pinned === true),
+      ...open.filter((mission) => mission?.is_pinned !== true),
+    ],
     failures: missions.filter(isFailure),
     completed: missions.filter(isCompleted),
   }
 }
 
-export default function OrdersPanel({
+export default function TasksPanel({
   completeLoadingId,
   failLoadingId,
   loading,
   onCompleteMission,
-  onCreateOrder,
+  onCreateTask,
   onDeleteMission,
   onEditMission,
   onFailMission,
@@ -60,7 +63,7 @@ export default function OrdersPanel({
               pinning={pinLoadingId === mission.id}
               reopening={reopenLoadingId === mission.id}
               timezone={timezone}
-              variant="general"
+              variant="tasks"
             />
           ))}
         </div>
@@ -73,24 +76,32 @@ export default function OrdersPanel({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="m-0 text-xl font-semibold normal-case text-text-primary">
-            Ordens de {selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })}
+            Tarefas de{" "}
+            {selectedDate.toLocaleDateString("pt-BR", {
+              weekday: "long",
+              day: "2-digit",
+              month: "2-digit",
+            })}
           </h2>
         </div>
-        <Button onClick={onCreateOrder}>Nova ordem</Button>
+        <Button onClick={onCreateTask}>Nova tarefa</Button>
       </div>
 
       {loading ? (
-        <EmptyState title="Sincronizando ordens" message="Carregando ordens do dia selecionado." />
+        <EmptyState
+          title="Sincronizando tarefas"
+          message="Carregando tarefas do dia selecionado."
+        />
       ) : selectedMissions.length > 0 ? (
         <div className="grid gap-8">
-          {renderMissionGroup("Ordens abertas", groups.open)}
+          {renderMissionGroup("Tarefas abertas", groups.open)}
           {renderMissionGroup("Concluídas", groups.completed)}
           {renderMissionGroup("Falhas registradas", groups.failures)}
         </div>
       ) : (
         <EmptyState
-          message="Nenhuma ordem foi definida para o dia selecionado."
-          title="Sem ordens neste dia"
+          message="Nenhuma tarefa foi definida para o dia selecionado."
+          title="Sem tarefas neste dia"
         />
       )}
     </section>

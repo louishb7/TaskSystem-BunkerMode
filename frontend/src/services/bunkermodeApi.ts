@@ -45,7 +45,7 @@ async function requestMissionList(
   }
 }
 
-async function requestSoldierBoard(
+async function requestFocusBoard(
   path: string,
   options: RequestOptions = {}
 ): Promise<ApiResult<any>> {
@@ -88,8 +88,8 @@ export const api = {
   listDailyMissions(token) {
     return requestMissionList("/missoes/dia-operacional", { token })
   },
-  getSoldierBoard(token) {
-    return requestSoldierBoard("/missoes/quadro-soldado", { token })
+  getFocusBoard(token) {
+    return requestFocusBoard("/missoes/quadro-soldado", { token })
   },
   createMission(token, payload) {
     return requestMission("/missoes", { token, method: "POST", body: payload })

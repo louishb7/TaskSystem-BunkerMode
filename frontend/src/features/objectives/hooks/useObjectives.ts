@@ -44,7 +44,9 @@ export function useObjectives({ onUnauthorized, token }) {
         return false
       }
 
-      setObjetivos(sortObjetivosByOrder(Array.isArray(objetivosResult.data) ? objetivosResult.data : []))
+      setObjetivos(
+        sortObjetivosByOrder(Array.isArray(objetivosResult.data) ? objetivosResult.data : [])
+      )
       setMissions(Array.isArray(missionsResult.data) ? missionsResult.data : [])
       setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus)
       return true
@@ -116,7 +118,7 @@ export function useObjectives({ onUnauthorized, token }) {
     reorderObjetivos: (objetivoIds) =>
       mutate(
         () => api.reorderObjetivos(token, { objetivo_ids: objetivoIds }),
-        "Ordem dos objetivos atualizada.",
+        "Organização dos objetivos atualizada.",
         "Não foi possível reordenar os objetivos."
       ),
     updateObjetivo: (objetivoId, payload) =>

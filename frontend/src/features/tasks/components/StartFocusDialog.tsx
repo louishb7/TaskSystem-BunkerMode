@@ -4,7 +4,7 @@ import Button from "../../../components/ui/Button"
 import Dialog from "../../../components/ui/Dialog"
 import { formatCurrentDay } from "../../calendar/calendarUtils"
 
-export default function ActivateSoldierDialog({
+export default function StartFocusDialog({
   loading,
   onCancel,
   onConfirm,
@@ -20,24 +20,24 @@ export default function ActivateSoldierDialog({
   })
 
   return (
-    <Dialog closeOnBackdrop={false} onClose={onCancel} title="Entrar no Soldado">
+    <Dialog closeOnBackdrop={false} onClose={onCancel} title="Iniciar foco">
       <div className="grid gap-4">
         <p className="m-0 text-sm text-text-secondary">{formatCurrentDay(timezone)}</p>
-        <p className="m-0 text-sm font-medium text-text-primary">Ordens de hoje</p>
+        <p className="m-0 text-sm font-medium text-text-primary">Tarefas de hoje</p>
         {todayMissions.length > 0 ? (
           <ul className="m-0 grid list-none gap-2 rounded-control border border-border bg-app p-3 text-sm text-text-primary">
             {pendingMissions.map((mission) => (
-              <li key={mission.id}>{mission?.titulo || "Ordem sem título"}</li>
+              <li key={mission.id}>{mission?.titulo || "Tarefa sem título"}</li>
             ))}
             {completedMissions.map((mission) => (
               <li className="text-text-secondary line-through" key={mission.id}>
-                {mission?.titulo || "Ordem sem título"}
+                {mission?.titulo || "Tarefa sem título"}
               </li>
             ))}
           </ul>
         ) : (
           <div className="rounded-control border border-border bg-app p-3 text-sm text-text-secondary">
-            Nenhuma ordem definida para hoje
+            Nenhuma tarefa definida para hoje
           </div>
         )}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -45,7 +45,7 @@ export default function ActivateSoldierDialog({
             Cancelar
           </Button>
           <Button loading={loading} onClick={onConfirm}>
-            {loading ? "Entrando" : "Entrar no Soldado"}
+            {loading ? "Iniciando" : "Iniciar foco"}
           </Button>
         </div>
       </div>

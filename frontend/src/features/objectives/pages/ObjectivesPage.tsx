@@ -66,7 +66,7 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
             Novo objetivo
           </Button>
         }
-        description="Organize ordens em torno do que você quer alcançar."
+        description="Organize tarefas em torno do que você quer alcançar."
         title="Objetivos"
       />
 
@@ -108,7 +108,7 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
             setMissionObjetivo(null)
             board.setFormStatus(emptyStatus)
           }}
-          title="Nova ordem"
+          title="Nova tarefa"
         >
           <MissionForm
             currentUser={user}
@@ -133,7 +133,7 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
         <ConfirmDialog
           cancelLabel="Cancelar"
           confirmLabel="Remover"
-          message={`"${deleteTarget.titulo}" será removido. As ordens vinculadas perderão esse vínculo.`}
+          message={`"${deleteTarget.titulo}" será removido. As tarefas vinculadas perderão esse vínculo.`}
           title="Remover objetivo"
           variant="danger"
           onCancel={() => setDeleteTarget(null)}

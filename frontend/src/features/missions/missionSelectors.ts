@@ -1,17 +1,17 @@
 import { STATUS_MISSAO, isCompleted } from "../../utils/missionStatus"
 
-export function canCompleteInSoldier(mission) {
+export function canCompleteInFocus(mission) {
   return (
     mission?.status_code === STATUS_MISSAO.PENDENTE && mission?.permissions?.can_complete === true
   )
 }
 
-export function canJustifyInSoldier(mission) {
+export function canFailInFocus(mission) {
   return mission?.permissions?.can_fail === true
 }
 
 export function getActionMissions(missions) {
-  return missions.filter((mission) => canCompleteInSoldier(mission) || canJustifyInSoldier(mission))
+  return missions.filter((mission) => canCompleteInFocus(mission) || canFailInFocus(mission))
 }
 
 export function countCompletedMissions(missions) {

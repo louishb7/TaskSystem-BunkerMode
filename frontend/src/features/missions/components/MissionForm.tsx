@@ -184,7 +184,9 @@ export default function MissionForm({
   token = null,
   timezone = undefined,
 }) {
-  const [form, setForm] = useState(() => formForNewMission(initialObjetivoId, initialPrazo, timezone))
+  const [form, setForm] = useState(() =>
+    formForNewMission(initialObjetivoId, initialPrazo, timezone)
+  )
   const [objetivos, setObjetivos] = useState([])
   const [objetivoStatus, setObjetivoStatus] = useState("")
   const [recurrenceError, setRecurrenceError] = useState("")
@@ -329,7 +331,7 @@ export default function MissionForm({
       payload.prazo = form.prazo ? form.prazo.trim() : null
     }
 
-    // PATCH altera os dados da Ordem, nunca a configuração da recorrência.
+    // PATCH altera os dados da tarefa, nunca a configuração da recorrência.
     // A edição da Série ainda não está disponível neste formulário.
     if (!isEditing) {
       Object.assign(payload, {
@@ -350,98 +352,113 @@ export default function MissionForm({
 
   return (
     <form className="grid gap-5" onSubmit={submit}>
+      <label className={labelClass}>
+        Título
+        <input
+          className={fieldClass}
+          name="titulo"
+          onChange={updateField}
+          placeholder="Ex.: Revisar plano semanal"
+          value={form.titulo}
+        />
+      </label>
+
+      <label className={labelClass}>
+        Instrução opcional
+        <textarea
+          className={`${fieldClass} min-h-28 resize-y`}
+          maxLength={MISSION_INSTRUCTION_MAX_LENGTH}
+          name="instrucao"
+          onChange={updateField}
+          placeholder="Detalhe apenas se a tarefa precisar de contexto"
+          rows={5}
+          value={form.instrucao}
+        />
+        <span className="text-right text-xs text-text-secondary">
+          {form.instrucao.length}/{MISSION_INSTRUCTION_MAX_LENGTH}
+        </span>
+      </label>
+
+      {lockObjetivo ? (
+        <div className="rounded-control border border-border bg-app p-3">
+          <p className="m-0 text-sm font-medium text-text-primary">Objetivo vinculado</p>
+          <p className="mt-1 mb-0 text-sm text-text-secondary">
+            {initialObjetivoTitulo || "Objetivo selecionado"}
+          </p>
+        </div>
+      ) : (
         <label className={labelClass}>
-          Título
+          Objetivo opcional
+          <select
+            className={fieldClass}
+            name="objetivo_id"
+            onChange={handleObjetivoChange}
+            value={form.objetivo_id}
+          >
+            <option value="">Sem objetivo vinculado</option>
+            {objetivos.map((objetivo) => (
+              <option key={objetivo.id} value={objetivo.id}>
+                {objetivo.titulo}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {objetivoStatus && <StatusNotice status={{ type: "error", message: objetivoStatus }} />}
+
+      {lockedInitialPrazo && (
+        <div className="rounded-control border border-border bg-app p-3">
+          <p className="m-0 text-sm font-medium text-text-primary">Data definida</p>
+          <p className="mt-1 mb-0 text-sm text-text-secondary">{prazoContext}</p>
+        </div>
+      )}
+
+      {isSeriesOccurrence && (
+        <div className="rounded-control border border-border bg-app p-3">
+          <p className="m-0 text-sm font-medium text-text-primary">Data da ocorrência</p>
+          <p className="mt-1 mb-0 text-sm text-text-secondary">{prazoContext}</p>
+          <p className="mt-2 mb-0 text-sm text-text-secondary">
+            Esta data pertence à série recorrente.
+          </p>
+        </div>
+      )}
+
+      {!lockedInitialPrazo && !isSeriesOccurrence && (
+        <label className={labelClass}>
+          Data de execução
           <input
             className={fieldClass}
-            name="titulo"
-            onChange={updateField}
-            placeholder="Ex.: Revisar plano semanal"
-            value={form.titulo}
+            name="prazo"
+            onChange={handlePrazoChange}
+            type="date"
+            value={toDateInputValue(form.prazo)}
           />
         </label>
+      )}
 
-        <label className={labelClass}>
-          Instrução opcional
-          <textarea
-            className={`${fieldClass} min-h-28 resize-y`}
-            maxLength={MISSION_INSTRUCTION_MAX_LENGTH}
-            name="instrucao"
-            onChange={updateField}
-            placeholder="Detalhe apenas se a ordem precisar de contexto"
-            rows={5}
-            value={form.instrucao}
-          />
-          <span className="text-right text-xs text-text-secondary">
-            {form.instrucao.length}/{MISSION_INSTRUCTION_MAX_LENGTH}
-          </span>
-        </label>
-
-        {lockObjetivo ? (
-          <div className="rounded-control border border-border bg-app p-3">
-            <p className="m-0 text-sm font-medium text-text-primary">Objetivo vinculado</p>
+      <section
+        className="grid gap-4 rounded-card border border-border p-4"
+        aria-labelledby="recorrencia-title"
+      >
+        <div>
+          <h3
+            id="recorrencia-title"
+            className="m-0 text-base font-semibold normal-case text-text-primary"
+          >
+            Recorrência
+          </h3>
+          {isEditing && !isSeriesOccurrence && (
             <p className="mt-1 mb-0 text-sm text-text-secondary">
-              {initialObjetivoTitulo || "Objetivo selecionado"}
+              A recorrência é definida ao criar uma nova tarefa.
             </p>
-          </div>
-        ) : (
-          <label className={labelClass}>
-            Objetivo opcional
-            <select className={fieldClass} name="objetivo_id" onChange={handleObjetivoChange} value={form.objetivo_id}>
-              <option value="">Sem objetivo vinculado</option>
-              {objetivos.map((objetivo) => (
-                <option key={objetivo.id} value={objetivo.id}>
-                  {objetivo.titulo}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {objetivoStatus && <StatusNotice status={{ type: "error", message: objetivoStatus }} />}
-
-        {lockedInitialPrazo && (
-          <div className="rounded-control border border-border bg-app p-3">
-            <p className="m-0 text-sm font-medium text-text-primary">Data definida</p>
-            <p className="mt-1 mb-0 text-sm text-text-secondary">{prazoContext}</p>
-          </div>
-        )}
-
-        {isSeriesOccurrence && (
-          <div className="rounded-control border border-border bg-app p-3">
-            <p className="m-0 text-sm font-medium text-text-primary">Data da ocorrência</p>
-            <p className="mt-1 mb-0 text-sm text-text-secondary">{prazoContext}</p>
-            <p className="mt-2 mb-0 text-sm text-text-secondary">
-              Esta data pertence à série recorrente.
+          )}
+          {isSeriesOccurrence && (
+            <p className="mt-1 mb-0 text-sm text-text-secondary">
+              As alterações serão aplicadas somente a esta tarefa; a série não será modificada.
             </p>
-          </div>
-        )}
-
-        {!lockedInitialPrazo && !isSeriesOccurrence && (
-          <label className={labelClass}>
-            Data de execução
-            <input
-              className={fieldClass}
-              name="prazo"
-              onChange={handlePrazoChange}
-              type="date"
-              value={toDateInputValue(form.prazo)}
-            />
-          </label>
-        )}
-
-        <section className="grid gap-4 rounded-card border border-border p-4" aria-labelledby="recorrencia-title">
-          <div>
-            <h3 id="recorrencia-title" className="m-0 text-base font-semibold normal-case text-text-primary">Recorrência</h3>
-            {isEditing && !isSeriesOccurrence && (
-              <p className="mt-1 mb-0 text-sm text-text-secondary">A recorrência é definida ao criar uma nova ordem.</p>
-            )}
-            {isSeriesOccurrence && (
-              <p className="mt-1 mb-0 text-sm text-text-secondary">
-                As alterações serão aplicadas somente a esta ordem; a série não será modificada.
-              </p>
-            )}
-          </div>
-          <label className={labelClass}>
+          )}
+        </div>
+        <label className={labelClass}>
           Repetir
           <select
             className={fieldClass}
@@ -460,73 +477,77 @@ export default function MissionForm({
 
         {isRecurring && !isEditing && (
           <details className="grid gap-4" open>
-            <summary className="cursor-pointer text-sm font-medium text-text-primary">Detalhes da recorrência</summary>
+            <summary className="cursor-pointer text-sm font-medium text-text-primary">
+              Detalhes da recorrência
+            </summary>
             <div className="grid gap-4">
-            <fieldset className="m-0 border-0 p-0">
-              <legend className="mb-2 text-sm font-medium text-text-primary">Dias da semana</legend>
-              <div className="flex flex-wrap gap-2">
-                {weekdayOptions.map(([value, label]) => (
-                  <label
-                    key={value}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-control border px-3 text-sm font-medium normal-case ${form.recurrence_weekdays.includes(value) ? "border-accent bg-accent-soft text-text-primary" : "border-control-border bg-surface text-text-secondary"}`}
-                  >
-                    <input
-                      checked={form.recurrence_weekdays.includes(value)}
-                      className="size-5 min-h-0 w-5 accent-accent"
-                      onChange={() => toggleWeekday(value)}
-                      type="checkbox"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+              <fieldset className="m-0 border-0 p-0">
+                <legend className="mb-2 text-sm font-medium text-text-primary">
+                  Dias da semana
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {weekdayOptions.map(([value, label]) => (
+                    <label
+                      key={value}
+                      className={`inline-flex min-h-11 items-center gap-2 rounded-control border px-3 text-sm font-medium normal-case ${form.recurrence_weekdays.includes(value) ? "border-accent bg-accent-soft text-text-primary" : "border-control-border bg-surface text-text-secondary"}`}
+                    >
+                      <input
+                        checked={form.recurrence_weekdays.includes(value)}
+                        className="size-5 min-h-0 w-5 accent-accent"
+                        onChange={() => toggleWeekday(value)}
+                        type="checkbox"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
 
-            <label className={labelClass}>
-              Término
-              <select
-                className={fieldClass}
-                name="termination_policy"
-                onChange={updateField}
-                value={form.termination_policy}
-              >
-                <option value="sem_termino">Sem término</option>
-                <option value="ate_data">Até uma data</option>
-                <option disabled={!form.objetivo_id} value="ate_objetivo">
-                  Até o objetivo
-                </option>
-              </select>
-            </label>
-
-            {form.termination_policy === "ate_data" && (
               <label className={labelClass}>
-                Data final
-                <input
+                Término
+                <select
                   className={fieldClass}
-                  name="recurrence_end_date"
-                  onChange={handleRecurrenceEndDateChange}
-                  required
-                  type="date"
-                  value={toDateInputValue(form.recurrence_end_date)}
-                />
+                  name="termination_policy"
+                  onChange={updateField}
+                  value={form.termination_policy}
+                >
+                  <option value="sem_termino">Sem término</option>
+                  <option value="ate_data">Até uma data</option>
+                  <option disabled={!form.objetivo_id} value="ate_objetivo">
+                    Até o objetivo
+                  </option>
+                </select>
               </label>
-            )}
+
+              {form.termination_policy === "ate_data" && (
+                <label className={labelClass}>
+                  Data final
+                  <input
+                    className={fieldClass}
+                    name="recurrence_end_date"
+                    onChange={handleRecurrenceEndDateChange}
+                    required
+                    type="date"
+                    value={toDateInputValue(form.recurrence_end_date)}
+                  />
+                </label>
+              )}
             </div>
           </details>
         )}
-        </section>
-        {recurrenceError && <StatusNotice status={{ type: "error", message: recurrenceError }} />}
+      </section>
+      {recurrenceError && <StatusNotice status={{ type: "error", message: recurrenceError }} />}
 
-        <StatusNotice status={status} />
+      <StatusNotice status={status} />
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button disabled={loading} variant="secondary" onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button loading={loading} type="submit">
-            {isEditing ? "Salvar edição" : "Registrar ordem"}
-          </Button>
-        </div>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button disabled={loading} variant="secondary" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button loading={loading} type="submit">
+          {isEditing ? "Salvar edição" : "Registrar tarefa"}
+        </Button>
+      </div>
     </form>
   )
 }

@@ -16,7 +16,7 @@ export default function ObjetivoList({
   if (objetivos.length === 0) {
     return (
       <EmptyState
-        message="Crie um objetivo para organizar ordens relacionadas."
+        message="Crie um objetivo para organizar tarefas relacionadas."
         title="Nenhum objetivo ainda"
       />
     )

@@ -5,7 +5,7 @@ import Button from "../ui/Button"
 import { APP_ROUTES } from "../../routes/routeConstants"
 
 const navigationItems = [
-  { label: "Início", to: APP_ROUTES.GENERAL_HOME },
+  { label: "Tarefas", to: APP_ROUTES.TASKS },
   { label: "Objetivos", to: APP_ROUTES.OBJECTIVES },
 ]
 
@@ -18,7 +18,7 @@ function NavigationLinks({ onNavigate = undefined }) {
           className={({ isActive }) =>
             `flex min-h-11 items-center rounded-control border-l-4 px-3 text-sm font-medium transition-colors ${isActive ? "border-accent bg-accent-soft text-text-primary" : "border-transparent text-text-secondary hover:bg-app hover:text-text-primary"}`
           }
-          end={item.to === APP_ROUTES.GENERAL_HOME}
+          end={item.to === APP_ROUTES.TASKS}
           onClick={onNavigate}
           to={item.to}
         >

@@ -5,7 +5,7 @@ import { emptyStatus } from "../../../constants/uiState"
 import { api } from "../../../services/bunkermodeApi"
 import { getActionMissions } from "../missionSelectors"
 
-export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode }) {
+export function useMissionBoard({ authenticated, boardMode, onUnauthorized, token }) {
   const [missions, setMissions] = useState([])
   const [missionLoading, setMissionLoading] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
@@ -20,7 +20,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
   const actionMissions = useMemo(() => getActionMissions(missions), [missions])
   const dailyMissions = missions
 
-  const loadGeneralBoard = useCallback(
+  const loadTasksBoard = useCallback(
     async (successMessage = "") => {
       if (!token) {
         return
@@ -42,7 +42,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       if (!missionsResult.ok) {
         setStatus({
           type: "error",
-          message: getErrorMessage(missionsResult, "Não foi possível carregar ordens."),
+          message: getErrorMessage(missionsResult, "Não foi possível carregar tarefas."),
         })
         return false
       }
@@ -54,7 +54,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     [onUnauthorized, token]
   )
 
-  const loadSoldierBoard = useCallback(
+  const loadFocusBoard = useCallback(
     async (successMessage = "") => {
       if (!token) {
         return
@@ -63,7 +63,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       const requestId = loadRequestRef.current + 1
       loadRequestRef.current = requestId
       setMissionLoading(true)
-      const result = await api.getSoldierBoard(token)
+      const result = await api.getFocusBoard(token)
       if (requestId !== loadRequestRef.current) {
         return false
       }
@@ -76,7 +76,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       if (!result.ok) {
         setStatus({
           type: "error",
-          message: getErrorMessage(result, "Não foi possível carregar ordens."),
+          message: getErrorMessage(result, "Não foi possível carregar tarefas."),
         })
         return false
       }
@@ -96,18 +96,16 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return
     }
 
-    if (viewMode === "soldier") {
-      loadSoldierBoard()
+    if (boardMode === "focus") {
+      loadFocusBoard()
       return
     }
 
-    loadGeneralBoard()
-  }, [authenticated, loadGeneralBoard, loadSoldierBoard, token, viewMode])
+    loadTasksBoard()
+  }, [authenticated, boardMode, loadFocusBoard, loadTasksBoard, token])
 
   async function reloadCurrentBoard(successMessage = "") {
-    return viewMode === "soldier"
-      ? loadSoldierBoard(successMessage)
-      : loadGeneralBoard(successMessage)
+    return boardMode === "focus" ? loadFocusBoard(successMessage) : loadTasksBoard(successMessage)
   }
 
   async function refreshAfterPersistedMutation(successMessage) {
@@ -115,7 +113,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     if (!synchronized) {
       setStatus({
         type: "error",
-        message: `${successMessage} A ordem foi salva, mas não foi possível atualizar a visão. Recarregue a página.`,
+        message: `${successMessage} A tarefa foi salva, mas não foi possível atualizar a visão. Recarregue a página.`,
       })
       return { persisted: true, synchronized: false }
     }
@@ -126,7 +124,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
 
   async function createMission(payload) {
     if (!payload.titulo) {
-      setFormStatus({ type: "error", message: "Informe o título da ordem." })
+      setFormStatus({ type: "error", message: "Informe o título da tarefa." })
       return false
     }
 
@@ -142,17 +140,17 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     if (!result.ok) {
       setFormStatus({
         type: "error",
-        message: getErrorMessage(result, "Não foi possível registrar a ordem."),
+        message: getErrorMessage(result, "Não foi possível registrar a tarefa."),
       })
       return false
     }
 
-    return refreshAfterPersistedMutation("Ordem registrada.")
+    return refreshAfterPersistedMutation("Tarefa registrada.")
   }
 
   async function updateMission(missionId, payload) {
     if (!payload.titulo) {
-      setFormStatus({ type: "error", message: "Informe o título da ordem." })
+      setFormStatus({ type: "error", message: "Informe o título da tarefa." })
       return false
     }
 
@@ -168,17 +166,17 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     if (!result.ok) {
       setFormStatus({
         type: "error",
-        message: getErrorMessage(result, "Não foi possível salvar a ordem."),
+        message: getErrorMessage(result, "Não foi possível salvar a tarefa."),
       })
       return false
     }
 
-    return refreshAfterPersistedMutation("Ordem atualizada.")
+    return refreshAfterPersistedMutation("Tarefa atualizada.")
   }
 
   async function toggleMissionPin(mission) {
     if (!mission?.id) {
-      setStatus({ type: "error", message: "Ordem inválida para subir prioridade." })
+      setStatus({ type: "error", message: "Tarefa inválida para subir prioridade." })
       return false
     }
 
@@ -200,12 +198,12 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
       return false
     }
 
-    return refreshAfterPersistedMutation("Prioridade da ordem atualizada.")
+    return refreshAfterPersistedMutation("Prioridade da tarefa atualizada.")
   }
 
   async function deleteMission(mission) {
     if (!mission?.id) {
-      setStatus({ type: "error", message: "Ordem inválida para remoção." })
+      setStatus({ type: "error", message: "Tarefa inválida para remoção." })
       return false
     }
 
@@ -219,12 +217,12 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     if (!result.ok) {
       setStatus({
         type: "error",
-        message: getErrorMessage(result, "Não foi possível remover a ordem."),
+        message: getErrorMessage(result, "Não foi possível remover a tarefa."),
       })
       return false
     }
 
-    return refreshAfterPersistedMutation("Ordem removida.")
+    return refreshAfterPersistedMutation("Tarefa removida.")
   }
 
   async function completeMission(mission) {
@@ -240,18 +238,18 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     if (!result.ok) {
       setStatus({
         type: "error",
-        message: getErrorMessage(result, "Não foi possível concluir a ordem."),
+        message: getErrorMessage(result, "Não foi possível concluir a tarefa."),
       })
       await reloadCurrentBoard()
       return false
     }
 
-    return refreshAfterPersistedMutation("Ordem executada.")
+    return refreshAfterPersistedMutation("Tarefa concluída.")
   }
 
   async function reopenMission(mission) {
     if (!mission?.id) {
-      setStatus({ type: "error", message: "Ordem inválida para reabertura." })
+      setStatus({ type: "error", message: "Tarefa inválida para reabertura." })
       return false
     }
 
@@ -267,13 +265,13 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     if (!result.ok) {
       setStatus({
         type: "error",
-        message: getErrorMessage(result, "Não foi possível reabrir a ordem."),
+        message: getErrorMessage(result, "Não foi possível reabrir a tarefa."),
       })
-      await loadGeneralBoard()
+      await loadTasksBoard()
       return false
     }
 
-    return refreshAfterPersistedMutation("Ordem reaberta.")
+    return refreshAfterPersistedMutation("Tarefa reaberta.")
   }
 
   async function failMission(missionId) {
@@ -310,7 +308,7 @@ export function useMissionBoard({ authenticated, onUnauthorized, token, viewMode
     missionLoading,
     missions,
     pinLoadingId,
-    refreshGeneralBoard: loadGeneralBoard,
+    refreshTasksBoard: loadTasksBoard,
     reopenLoadingId,
     reopenMission,
     setFormStatus,

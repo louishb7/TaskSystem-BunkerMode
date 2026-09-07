@@ -1,6 +1,8 @@
 export const APP_ROUTES = Object.freeze({
   AUTH: "/auth",
-  GENERAL_HOME: "/",
-  SOLDIER: "/soldier",
   OBJECTIVES: "/objetivos",
+  ROOT: "/",
+  TASKS: "/tarefas",
+  TASKS_FOCUS: "/tarefas/foco",
+  LEGACY_FOCUS: "/soldier",
 })

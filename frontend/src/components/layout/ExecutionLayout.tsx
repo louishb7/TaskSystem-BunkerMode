@@ -2,12 +2,12 @@ import React, { useState } from "react"
 
 import Button from "../ui/Button"
 
-export default function ExecutionLayout({ children, onReturnToGeneral }) {
+export default function ExecutionLayout({ children, onReturnToTasks }) {
   const [returnLoading, setReturnLoading] = useState(false)
 
   async function handleReturn() {
     setReturnLoading(true)
-    await onReturnToGeneral()
+    await onReturnToTasks()
     setReturnLoading(false)
   }
 
@@ -17,7 +17,7 @@ export default function ExecutionLayout({ children, onReturnToGeneral }) {
         <div className="mx-auto flex min-h-14 w-full max-w-[760px] items-center justify-between gap-4 px-4 sm:px-6">
           <span className="text-base font-semibold tracking-tight">BunkerMode</span>
           <Button loading={returnLoading} variant="ghost" onClick={handleReturn}>
-            Voltar ao General
+            Voltar às tarefas
           </Button>
         </div>
       </header>

@@ -10,12 +10,12 @@ const MissionBoardContext = createContext(null)
 export function MissionBoardProvider({ children }) {
   const auth = useAuth()
   const location = useLocation()
-  const viewMode = location.pathname === APP_ROUTES.SOLDIER ? "soldier" : "general"
+  const boardMode = location.pathname === APP_ROUTES.TASKS_FOCUS ? "focus" : "tasks"
   const board = useMissionBoard({
     authenticated: auth.authenticated,
     onUnauthorized: auth.handleUnauthorized,
     token: auth.token,
-    viewMode,
+    boardMode,
   })
 
   return <MissionBoardContext.Provider value={board}>{children}</MissionBoardContext.Provider>

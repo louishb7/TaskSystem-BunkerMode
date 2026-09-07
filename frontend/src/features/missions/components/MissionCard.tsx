@@ -83,33 +83,37 @@ export default function MissionCard({
   pinning = false,
   reopening = false,
   timezone = undefined,
-  variant = "general",
+  variant = "tasks",
 }) {
-  const soldier = variant === "soldier"
-  const title = mission?.titulo || "Ordem sem título"
+  const focus = variant === "focus"
+  const title = mission?.titulo || "Tarefa sem título"
   const instruction = mission?.instrucao || ""
   const isPinned = mission?.is_pinned === true
   const disabled = pinning || completing || failing || reopening
   const canComplete = can(mission, "can_complete")
   const canFail = can(mission, "can_fail")
-  const canTogglePin = !soldier && can(mission, "can_pin") && typeof onTogglePin === "function"
+  const canTogglePin = !focus && can(mission, "can_pin") && typeof onTogglePin === "function"
   const completed = isCompleted(mission)
   const deadlineLabel = formatDeadline(mission?.prazo, timezone)
   const failed = String(mission?.status_code || "") === "FALHA"
   const currentStatusText = statusText(mission)
 
-  if (soldier) {
+  if (focus) {
     return (
       <article className="grid gap-4 rounded-card border border-border bg-surface p-4 sm:p-5">
         <div className="min-w-0">
           <h3 className="m-0 break-words text-base font-semibold text-text-primary">{title}</h3>
-          {instruction && <p className="mt-2 mb-0 break-words text-sm leading-6 text-text-secondary">{instruction}</p>}
+          {instruction && (
+            <p className="mt-2 mb-0 break-words text-sm leading-6 text-text-secondary">
+              {instruction}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
           {isPinned && <Badge variant="warning">Prioridade alta</Badge>}
           {mission?.recurrence && <Badge>Recorrente</Badge>}
-          {completed && <Badge variant="success">Ordem concluída</Badge>}
+          {completed && <Badge variant="success">Tarefa concluída</Badge>}
           {failed && <Badge variant="danger">Falha registrada</Badge>}
           {!completed && !failed && currentStatusText && <Badge>{currentStatusText}</Badge>}
         </div>
@@ -122,7 +126,12 @@ export default function MissionCard({
               </Button>
             )}
             {canFail && (
-              <Button disabled={disabled} loading={failing} variant="secondary" onClick={() => onFail?.(mission.id)}>
+              <Button
+                disabled={disabled}
+                loading={failing}
+                variant="secondary"
+                onClick={() => onFail?.(mission.id)}
+              >
                 Registrar falha
               </Button>
             )}
@@ -137,7 +146,9 @@ export default function MissionCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h3 className="m-0 text-base font-semibold normal-case text-text-primary">{title}</h3>
-          {instruction && <p className="mt-2 mb-0 text-sm leading-6 text-text-secondary">{instruction}</p>}
+          {instruction && (
+            <p className="mt-2 mb-0 text-sm leading-6 text-text-secondary">{instruction}</p>
+          )}
         </div>
         {canTogglePin && (
           <Button
@@ -154,7 +165,11 @@ export default function MissionCard({
 
       <div className="flex flex-wrap gap-2">
         {isPinned && <Badge variant="warning">Prioridade alta</Badge>}
-        {deadlineLabel && <Badge variant={deadlineLabel === "HOJE" ? "warning" : "neutral"}>{deadlineLabel === "HOJE" ? "Hoje" : deadlineLabel}</Badge>}
+        {deadlineLabel && (
+          <Badge variant={deadlineLabel === "HOJE" ? "warning" : "neutral"}>
+            {deadlineLabel === "HOJE" ? "Hoje" : deadlineLabel}
+          </Badge>
+        )}
         {mission?.recurrence && <Badge>Recorrente</Badge>}
         {completed && <Badge variant="success">Concluída</Badge>}
         {failed && <Badge variant="danger">Falha registrada</Badge>}
@@ -168,7 +183,12 @@ export default function MissionCard({
           </Button>
         )}
         {canFail && (
-          <Button loading={failing} size="small" variant="secondary" onClick={() => onFail?.(mission.id)}>
+          <Button
+            loading={failing}
+            size="small"
+            variant="secondary"
+            onClick={() => onFail?.(mission.id)}
+          >
             Registrar falha
           </Button>
         )}

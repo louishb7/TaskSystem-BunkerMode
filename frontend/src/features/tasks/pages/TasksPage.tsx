@@ -16,21 +16,15 @@ import {
   operationalDateFor,
   startOfDay,
 } from "../../calendar/calendarUtils"
-import ActivateSoldierDialog from "../components/ActivateSoldierDialog"
-import OrdersPanel from "../components/OrdersPanel"
+import StartFocusDialog from "../components/StartFocusDialog"
+import TasksPanel from "../components/TasksPanel"
 import WeekPanel from "../components/WeekPanel"
 
-export default function GeneralCommandPage({
-  board,
-  onActivateSoldier,
-  onUnauthorized,
-  token,
-  user,
-}) {
+export default function TasksPage({ board, onStartFocus, onUnauthorized, token, user }) {
   const [selectedDate, setSelectedDate] = useState(() => operationalDateFor(user?.timezone))
   const [formOpen, setFormOpen] = useState(false)
   const [editingMission, setEditingMission] = useState(null)
-  const [showSoldierConfirm, setShowSoldierConfirm] = useState(false)
+  const [showFocusConfirm, setShowFocusConfirm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [modeLoading, setModeLoading] = useState(false)
 
@@ -88,12 +82,12 @@ export default function GeneralCommandPage({
     }
   }
 
-  async function confirmActivateSoldier() {
+  async function confirmStartFocus() {
     setModeLoading(true)
-    const activated = await onActivateSoldier()
+    const started = await onStartFocus()
     setModeLoading(false)
-    if (activated) {
-      setShowSoldierConfirm(false)
+    if (started) {
+      setShowFocusConfirm(false)
       setFormOpen(false)
       setEditingMission(null)
     }
@@ -104,12 +98,12 @@ export default function GeneralCommandPage({
       <section className="grid gap-8">
         <PageHeader
           actions={
-            <Button loading={modeLoading} onClick={() => setShowSoldierConfirm(true)}>
-              Entrar no Soldado
+            <Button loading={modeLoading} onClick={() => setShowFocusConfirm(true)}>
+              Iniciar foco
             </Button>
           }
-          description="Planeje e organize suas ordens."
-          title="Início"
+          description="Planeje e organize suas tarefas."
+          title="Tarefas"
         />
 
         <WeekPanel
@@ -124,12 +118,12 @@ export default function GeneralCommandPage({
 
         <StatusNotice status={board.status} />
 
-        <OrdersPanel
+        <TasksPanel
           completeLoadingId={board.completeLoadingId}
           failLoadingId={board.failLoadingId}
           loading={board.missionLoading}
           onCompleteMission={board.completeMission}
-          onCreateOrder={openCreateForm}
+          onCreateTask={openCreateForm}
           onDeleteMission={setDeleteTarget}
           onEditMission={openEditForm}
           onFailMission={board.failMission}
@@ -152,7 +146,7 @@ export default function GeneralCommandPage({
             setEditingMission(null)
             board.setFormStatus(emptyStatus)
           }}
-          title={editingMission ? "Editar ordem" : "Nova ordem"}
+          title={editingMission ? "Editar tarefa" : "Nova tarefa"}
         >
           <MissionForm
             currentUser={user}
@@ -174,11 +168,11 @@ export default function GeneralCommandPage({
         </Dialog>
       )}
 
-      {showSoldierConfirm && (
-        <ActivateSoldierDialog
+      {showFocusConfirm && (
+        <StartFocusDialog
           loading={modeLoading}
-          onCancel={() => setShowSoldierConfirm(false)}
-          onConfirm={confirmActivateSoldier}
+          onCancel={() => setShowFocusConfirm(false)}
+          onConfirm={confirmStartFocus}
           todayMissions={todayMissions}
           timezone={user?.timezone}
         />
@@ -186,8 +180,8 @@ export default function GeneralCommandPage({
 
       {deleteTarget !== null && (
         <ConfirmDialog
-          title="Remover ordem"
-          message={`"${deleteTarget?.titulo}" será removida do quadro.`}
+          title="Remover tarefa"
+          message={`"${deleteTarget?.titulo}" será removida das tarefas.`}
           confirmLabel="Remover"
           variant="danger"
           onCancel={() => setDeleteTarget(null)}
