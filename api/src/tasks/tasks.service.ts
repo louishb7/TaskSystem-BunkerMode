@@ -7,12 +7,12 @@ import { OperationalCalendarService } from "../calendar/operational-calendar.ser
 import { PrismaService } from "../prisma/prisma.service";
 import {
   DEFAULT_PRIORITY,
-  MISSION_INSTRUCTION_MAX_LENGTH,
-  MISSION_STATUS,
-  MissionRecord,
-} from "./mission.types";
+  TASK_INSTRUCTION_MAX_LENGTH,
+  TASK_STATUS,
+  TaskRecord,
+} from "./task.types";
 
-type CreateMissionPayload = {
+type CreateTaskPayload = {
   titulo?: unknown;
   prioridade?: unknown;
   prazo?: unknown;
@@ -24,9 +24,9 @@ type CreateMissionPayload = {
   duration_type?: unknown;
 };
 
-type UpdateMissionPayload = Partial<
+type UpdateTaskPayload = Partial<
   Pick<
-    CreateMissionPayload,
+    CreateTaskPayload,
     "titulo" | "instrucao" | "prioridade" | "prazo" | "objetivo_id"
   >
 > & {
@@ -140,8 +140,8 @@ function statusFromPayload(value: unknown): string | undefined {
     throw new HttpException("Status inválido.", HttpStatus.BAD_REQUEST);
   }
   const normalized = value.trim().toUpperCase();
-  if (normalized === MISSION_STATUS.pending) {
-    return MISSION_STATUS.pending;
+  if (normalized === TASK_STATUS.pending) {
+    return TASK_STATUS.pending;
   }
   throw new HttpException(
     "Use concluir ou falhar para registrar resultado de execução.",
@@ -155,7 +155,7 @@ function recurrenceWeekdays(value: unknown): number[] {
   }
   if (!Array.isArray(value)) {
     throw new HttpException(
-      "Frequência semanal da missão deve ser uma lista.",
+      "Frequência semanal da tarefa deve ser uma lista.",
       HttpStatus.BAD_REQUEST,
     );
   }
@@ -246,20 +246,20 @@ function datesForRecurrence(
 }
 
 @Injectable()
-export class MissionsService {
+export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly calendar: OperationalCalendarService,
   ) {}
 
-  async listForGeneralBoard(user: UserRecord): Promise<MissionRecord[]> {
+  async listForTasksBoard(user: UserRecord): Promise<TaskRecord[]> {
     return this.listAllForUser(user);
   }
 
   async listAllForUser(
     user: UserRecord,
     options: { materializeRecurrences?: boolean } = {},
-  ): Promise<MissionRecord[]> {
+  ): Promise<TaskRecord[]> {
     if (options.materializeRecurrences !== false) {
       await this.materializeSeriesRecurrences(user);
     }
@@ -275,25 +275,25 @@ export class MissionsService {
     });
   }
 
-  async listHistorical(user: UserRecord): Promise<MissionRecord[]> {
-    const missions = await this.listAllForUser(user, {
+  async listHistorical(user: UserRecord): Promise<TaskRecord[]> {
+    const tasks = await this.listAllForUser(user, {
       materializeRecurrences: false,
     });
-    return missions.filter(
-      (mission) =>
-        mission.status === MISSION_STATUS.completed ||
-        mission.status === MISSION_STATUS.failed,
+    return tasks.filter(
+      (task) =>
+        task.status === TASK_STATUS.completed ||
+        task.status === TASK_STATUS.failed,
     );
   }
 
   async create(
-    payload: CreateMissionPayload,
+    payload: CreateTaskPayload,
     user: UserRecord,
-  ): Promise<MissionRecord> {
-    const title = text(payload.titulo, "Título da missão é obrigatório.");
+  ): Promise<TaskRecord> {
+    const title = text(payload.titulo, "Título da tarefa é obrigatório.");
     const instruction = optionalText(
       payload.instrucao,
-      MISSION_INSTRUCTION_MAX_LENGTH,
+      TASK_INSTRUCTION_MAX_LENGTH,
     );
     const weekdays = recurrenceWeekdays(payload.recurrence_weekdays);
     const recurrencePolicy = recurrenceTerminationPolicy(
@@ -334,7 +334,7 @@ export class MissionsService {
       const dates = this.recurrenceDates(dueDate, endDate, weekdays);
       if (dates.length === 0) {
         throw new HttpException(
-          "A frequência semanal não gera ordens dentro da janela permitida.",
+          "A frequência semanal não gera tarefas dentro da janela permitida.",
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -360,27 +360,27 @@ export class MissionsService {
           dates,
           user.usuario_id,
         );
-        const firstMission = this.firstMission(created);
-        if (!firstMission) {
+        const firstTask = this.firstTask(created);
+        if (!firstTask) {
           throw new HttpException(
-            "A frequência semanal não gera novas ordens dentro da janela permitida.",
+            "A frequência semanal não gera novas tarefas dentro da janela permitida.",
             HttpStatus.BAD_REQUEST,
           );
         }
-        return { ...firstMission, serie_recorrencia: series };
+        return { ...firstTask, serie_recorrencia: series };
       });
     }
 
     await this.ensureActiveGoal(user, objetivoId);
 
     const created = await this.prisma.$transaction(async (tx) => {
-      const mission = await tx.missoes.create({
+      const task = await tx.missoes.create({
         data: {
           titulo: title,
           prioridade: priority(payload.prioridade),
           prazo: dueDate,
           instrucao: instruction,
-          status: MISSION_STATUS.pending,
+          status: TASK_STATUS.pending,
           objetivo_id: objetivoId,
           recurrence_series_id: null,
           criada_por_id: user.usuario_id,
@@ -389,69 +389,69 @@ export class MissionsService {
       });
       await tx.auditoria_eventos.create({
         data: {
-          missao_id: mission.missao_id,
+          missao_id: task.missao_id,
           usuario_id: user.usuario_id,
-          acao: "missao_criada",
-          detalhes: `Missão '${mission.titulo}' criada.`,
+          acao: "tarefa_criada",
+          detalhes: `Tarefa '${task.titulo}' criada.`,
         },
       });
-      return mission;
+      return task;
     });
 
     return created;
   }
 
-  async listDailyOperational(user: UserRecord): Promise<MissionRecord[]> {
+  async listDailyOperational(user: UserRecord): Promise<TaskRecord[]> {
     const today = this.today(user);
-    const missions = await this.listAllForUser(user);
+    const tasks = await this.listAllForUser(user);
     return this.sortForBoard(
-      missions.filter((mission) =>
-        this.belongsToOperationalDate(mission, today),
+      tasks.filter((task) =>
+        this.belongsToOperationalDate(task, today),
       ),
     );
   }
 
-  async soldierBoard(user: UserRecord): Promise<{
-    action_missions: MissionRecord[];
-    daily_missions: MissionRecord[];
+  async focusBoard(user: UserRecord): Promise<{
+    action_tasks: TaskRecord[];
+    daily_tasks: TaskRecord[];
   }> {
-    await this.failOverdueMissions(user);
+    await this.failOverdueTasks(user);
     const today = this.today(user);
-    const missions = await this.listAllForUser(user);
-    const todayMissions = this.sortForBoard(
-      missions.filter((mission) =>
-        this.belongsToOperationalDate(mission, today),
+    const tasks = await this.listAllForUser(user);
+    const todayTasks = this.sortForBoard(
+      tasks.filter((task) =>
+        this.belongsToOperationalDate(task, today),
       ),
     );
-    const actionMissions = this.sortForBoard(
-      todayMissions.filter((mission) => this.visibleToSoldier(mission, today)),
+    const actionTasks = this.sortForBoard(
+      todayTasks.filter((task) => this.visibleInFocus(task, today)),
     );
 
     return {
-      daily_missions: todayMissions,
-      action_missions: actionMissions,
+      daily_tasks: todayTasks,
+      action_tasks: actionTasks,
     };
   }
 
   async update(
     id: number,
-    payload: UpdateMissionPayload,
+    payload: UpdateTaskPayload,
     user: UserRecord,
-  ): Promise<MissionRecord> {
-    const current = await this.getMissionForUser(id, user);
+  ): Promise<TaskRecord> {
+    const current = await this.getTaskForUser(id, user);
     if (
       ["recurrence_weekdays", "recurrence_end_date", "duration_type"].some(
         (key) => Object.prototype.hasOwnProperty.call(payload, key),
       )
     ) {
       throw new HttpException(
-        "A recorrência é definida na criação da ordem. A edição altera somente esta ordem.",
+        "A recorrência é definida na criação da tarefa. A edição altera somente esta tarefa.",
         HttpStatus.BAD_REQUEST,
       );
     }
-    if (current.status !== MISSION_STATUS.pending) {
+    if (current.status !== TASK_STATUS.pending) {
       throw new HttpException(
-        "Apenas missão pendente pode ser editada.",
+        "Apenas tarefa pendente pode ser editada.",
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -462,7 +462,7 @@ export class MissionsService {
         requestedDueDate?.getTime() !== current.prazo?.getTime()
       ) {
         throw new HttpException(
-          "Esta ordem pertence a uma série recorrente. Reagendamento individual ainda não é suportado.",
+          "Esta tarefa pertence a uma série recorrente. Reagendamento individual ainda não é suportado.",
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -481,12 +481,12 @@ export class MissionsService {
 
     const data: Prisma.missoesUpdateInput = {};
     if (Object.prototype.hasOwnProperty.call(payload, "titulo")) {
-      data.titulo = text(payload.titulo, "Título da missão é obrigatório.");
+      data.titulo = text(payload.titulo, "Título da tarefa é obrigatório.");
     }
     if (Object.prototype.hasOwnProperty.call(payload, "instrucao")) {
       data.instrucao = optionalText(
         payload.instrucao,
-        MISSION_INSTRUCTION_MAX_LENGTH,
+        TASK_INSTRUCTION_MAX_LENGTH,
       );
     }
     if (Object.prototype.hasOwnProperty.call(payload, "prioridade")) {
@@ -497,8 +497,8 @@ export class MissionsService {
     }
     if (Object.prototype.hasOwnProperty.call(payload, "status")) {
       const status = statusFromPayload(payload.status);
-      if (status === MISSION_STATUS.pending) {
-        data.status = MISSION_STATUS.pending;
+      if (status === TASK_STATUS.pending) {
+        data.status = TASK_STATUS.pending;
         data.completed_at = null;
         data.failed_at = null;
       }
@@ -511,7 +511,7 @@ export class MissionsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const mission = await tx.missoes.update({
+      const task = await tx.missoes.update({
         where: { missao_id: id },
         data,
         include: { serie_recorrencia: true },
@@ -520,62 +520,62 @@ export class MissionsService {
         data: {
           missao_id: id,
           usuario_id: user.usuario_id,
-          acao: "missao_atualizada",
-          detalhes: `Missão '${mission.titulo}' atualizada.`,
+          acao: "tarefa_atualizada",
+          detalhes: `Tarefa '${task.titulo}' atualizada.`,
         },
       });
-      return mission;
+      return task;
     });
   }
 
-  async complete(id: number, user: UserRecord): Promise<MissionRecord> {
-    const current = await this.getMissionForUser(id, user);
+  async complete(id: number, user: UserRecord): Promise<TaskRecord> {
+    const current = await this.getTaskForUser(id, user);
     if (
-      current.status !== MISSION_STATUS.pending ||
+      current.status !== TASK_STATUS.pending ||
       current.completed_at !== null
     ) {
       throw new HttpException(
-        "Missão não pode ser concluída neste estado.",
+        "Tarefa não pode ser concluída neste estado.",
         HttpStatus.BAD_REQUEST,
       );
     }
     const now = new Date();
     return this.updateExecutionState(id, user, {
       data: {
-        status: MISSION_STATUS.completed,
+        status: TASK_STATUS.completed,
         completed_at: now,
         failed_at: null,
       },
-      action: "missao_concluida",
-      details: `Missão '${current.titulo}' concluída.`,
+      action: "tarefa_concluida",
+      details: `Tarefa '${current.titulo}' concluída.`,
     });
   }
 
-  async fail(id: number, user: UserRecord): Promise<MissionRecord> {
-    const current = await this.getMissionForUser(id, user);
-    if (current.status !== MISSION_STATUS.pending) {
+  async fail(id: number, user: UserRecord): Promise<TaskRecord> {
+    const current = await this.getTaskForUser(id, user);
+    if (current.status !== TASK_STATUS.pending) {
       throw new HttpException(
-        "Apenas missão pendente pode ser registrada como falha.",
+        "Apenas tarefa pendente pode ser registrada como falha.",
         HttpStatus.BAD_REQUEST,
       );
     }
     const now = new Date();
     return this.updateExecutionState(id, user, {
       data: {
-        status: MISSION_STATUS.failed,
+        status: TASK_STATUS.failed,
         completed_at: null,
         failed_at: now,
       },
-      action: "missao_nao_realizada",
-      details: `Missão '${current.titulo}' registrada como falha.`,
+      action: "tarefa_nao_realizada",
+      details: `Tarefa '${current.titulo}' registrada como falha.`,
     });
   }
 
-  async togglePin(id: number, user: UserRecord): Promise<MissionRecord> {
-    const current = await this.getMissionForUser(id, user);
-    if (current.status !== MISSION_STATUS.pending) {
+  async togglePin(id: number, user: UserRecord): Promise<TaskRecord> {
+    const current = await this.getTaskForUser(id, user);
+    if (current.status !== TASK_STATUS.pending) {
       throw new HttpException(
-        "Prioridade disponível apenas para ordens pendentes.",
+        "Prioridade disponível apenas para tarefas pendentes.",
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -583,25 +583,25 @@ export class MissionsService {
     return this.updateExecutionState(id, user, {
       data: { is_pinned: pinned },
       action: pinned
-        ? "missao_prioridade_fixada"
-        : "missao_prioridade_removida",
+        ? "tarefa_prioridade_fixada"
+        : "tarefa_prioridade_removida",
       details: pinned
-        ? "General fixou a missão no topo do dia."
-        : "General removeu a missão do topo do dia.",
+        ? "O usuário fixou a tarefa no topo do dia."
+        : "O usuário removeu a tarefa do topo do dia.",
     });
   }
 
   async delete(id: number, user: UserRecord): Promise<void> {
-    const current = await this.getMissionForUser(id, user);
+    const current = await this.getTaskForUser(id, user);
     if (current.recurrence_series_id !== null) {
       throw new HttpException(
-        "Esta ordem pertence a uma série recorrente. Exclusão individual ainda não é suportada.",
+        "Esta tarefa pertence a uma série recorrente. Exclusão individual ainda não é suportada.",
         HttpStatus.BAD_REQUEST,
       );
     }
-    if (current.status !== MISSION_STATUS.pending) {
+    if (current.status !== TASK_STATUS.pending) {
       throw new HttpException(
-        "Apenas missão pendente pode ser removida. Resultados ficam no histórico.",
+        "Apenas tarefa pendente pode ser removida. Resultados ficam no histórico.",
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -612,38 +612,38 @@ export class MissionsService {
         data: {
           missao_id: null,
           usuario_id: user.usuario_id,
-          acao: "missao_removida",
-          detalhes: `Missão '${current.titulo}' removida.`,
+          acao: "tarefa_removida",
+          detalhes: `Tarefa '${current.titulo}' removida.`,
         },
       });
     });
   }
 
-  async missionHistory(id: number, user: UserRecord) {
-    await this.getMissionForUser(id, user);
+  async taskHistory(id: number, user: UserRecord) {
+    await this.getTaskForUser(id, user);
     return this.prisma.auditoria_eventos.findMany({
       where: { missao_id: id },
       orderBy: [{ criado_em: "asc" }, { evento_id: "asc" }],
     });
   }
 
-  private async getMissionForUser(
+  private async getTaskForUser(
     id: number,
     user: UserRecord,
-  ): Promise<MissionRecord> {
-    const mission = await this.prisma.missoes.findFirst({
+  ): Promise<TaskRecord> {
+    const task = await this.prisma.missoes.findFirst({
       where: {
         missao_id: id,
         responsavel_id: user.usuario_id,
       },
     });
-    if (!mission) {
+    if (!task) {
       throw new HttpException(
-        `Missão ${id} não encontrada`,
+        `Tarefa ${id} não encontrada`,
         HttpStatus.NOT_FOUND,
       );
     }
-    return mission;
+    return task;
   }
 
   private async materializeSeriesRecurrences(user: UserRecord): Promise<void> {
@@ -704,7 +704,7 @@ export class MissionsService {
     series: series_recorrencia,
     dates: Date[],
     auditUserId: number,
-  ): Promise<MissionRecord[]> {
+  ): Promise<TaskRecord[]> {
     if (dates.length === 0) {
       return [];
     }
@@ -715,7 +715,7 @@ export class MissionsService {
         prioridade: series.prioridade,
         prazo: date,
         instrucao: series.instrucao,
-        status: MISSION_STATUS.pending,
+        status: TASK_STATUS.pending,
         objetivo_id: series.objetivo_id,
         recurrence_series_id: series.recurrence_series_id,
         criada_por_id: series.responsavel_id,
@@ -726,20 +726,20 @@ export class MissionsService {
 
     if (created.length > 0) {
       await tx.auditoria_eventos.createMany({
-        data: created.map((mission) => ({
-          missao_id: mission.missao_id,
+        data: created.map((task) => ({
+          missao_id: task.missao_id,
           usuario_id: auditUserId,
-          acao: "missao_recorrente_criada",
-          detalhes: `Recorrência gerou a ordem '${mission.titulo}'.`,
+          acao: "tarefa_recorrente_criada",
+          detalhes: `Recorrência gerou a tarefa '${task.titulo}'.`,
         })),
       });
     }
     return created;
   }
 
-  private firstMission(missions: MissionRecord[]): MissionRecord | null {
+  private firstTask(tasks: TaskRecord[]): TaskRecord | null {
     return (
-      [...missions].sort((left, right) => {
+      [...tasks].sort((left, right) => {
         const leftDate = left.prazo?.getTime() ?? Number.MAX_SAFE_INTEGER;
         const rightDate = right.prazo?.getTime() ?? Number.MAX_SAFE_INTEGER;
         return leftDate - rightDate || left.missao_id - right.missao_id;
@@ -777,9 +777,9 @@ export class MissionsService {
       action: string;
       details: string;
     },
-  ): Promise<MissionRecord> {
+  ): Promise<TaskRecord> {
     return this.prisma.$transaction(async (tx) => {
-      const mission = await tx.missoes.update({
+      const task = await tx.missoes.update({
         where: { missao_id: id },
         data: options.data,
         include: { serie_recorrencia: true },
@@ -792,16 +792,16 @@ export class MissionsService {
           detalhes: options.details,
         },
       });
-      return mission;
+      return task;
     });
   }
 
-  private async failOverdueMissions(user: UserRecord): Promise<void> {
+  private async failOverdueTasks(user: UserRecord): Promise<void> {
     const today = this.today(user);
     const overdue = await this.prisma.missoes.findMany({
       where: {
         responsavel_id: user.usuario_id,
-        status: MISSION_STATUS.pending,
+        status: TASK_STATUS.pending,
         prazo: { lt: startOfIsoDate(today) },
       },
     });
@@ -810,21 +810,21 @@ export class MissionsService {
     }
     const now = new Date();
     await this.prisma.$transaction(
-      overdue.flatMap((mission) => [
+      overdue.flatMap((task) => [
         this.prisma.missoes.update({
-          where: { missao_id: mission.missao_id },
+          where: { missao_id: task.missao_id },
           data: {
-            status: MISSION_STATUS.failed,
+            status: TASK_STATUS.failed,
             completed_at: null,
             failed_at: now,
           },
         }),
         this.prisma.auditoria_eventos.create({
           data: {
-            missao_id: mission.missao_id,
+            missao_id: task.missao_id,
             usuario_id: user.usuario_id,
-            acao: "missao_falhou_por_prazo",
-            detalhes: `Missão '${mission.titulo}' registrada como falha por prazo vencido.`,
+            acao: "tarefa_falhou_por_prazo",
+            detalhes: `Tarefa '${task.titulo}' registrada como falha por prazo vencido.`,
           },
         }),
       ]),
@@ -836,32 +836,32 @@ export class MissionsService {
   }
 
   private belongsToOperationalDate(
-    mission: MissionRecord,
+    task: TaskRecord,
     isoDate: string,
   ): boolean {
-    if (isoDateFromDate(mission.prazo) === isoDate) {
+    if (isoDateFromDate(task.prazo) === isoDate) {
       return true;
     }
-    const eventDate = mission.completed_at ?? mission.failed_at;
+    const eventDate = task.completed_at ?? task.failed_at;
     return isoDateFromDate(eventDate) === isoDate;
   }
 
-  private visibleToSoldier(mission: MissionRecord, isoDate: string): boolean {
+  private visibleInFocus(task: TaskRecord, isoDate: string): boolean {
     return (
-      mission.status === MISSION_STATUS.pending &&
-      isoDateFromDate(mission.prazo) === isoDate
+      task.status === TASK_STATUS.pending &&
+      isoDateFromDate(task.prazo) === isoDate
     );
   }
 
-  private sortForBoard(missions: MissionRecord[]): MissionRecord[] {
-    return [...missions].sort((left, right) => {
+  private sortForBoard(tasks: TaskRecord[]): TaskRecord[] {
+    return [...tasks].sort((left, right) => {
       const pinned = Number(right.is_pinned) - Number(left.is_pinned);
       if (pinned !== 0) {
         return pinned;
       }
       const finalized =
-        Number(left.status !== MISSION_STATUS.pending) -
-        Number(right.status !== MISSION_STATUS.pending);
+        Number(left.status !== TASK_STATUS.pending) -
+        Number(right.status !== TASK_STATUS.pending);
       if (finalized !== 0) {
         return finalized;
       }

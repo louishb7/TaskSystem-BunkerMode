@@ -7,18 +7,18 @@ const REQUIRED_PERMISSION_KEYS = Object.freeze([
   "can_view_history",
 ] as const)
 
-export type MissionPermissionKey = (typeof REQUIRED_PERMISSION_KEYS)[number]
+export type TaskPermissionKey = (typeof REQUIRED_PERMISSION_KEYS)[number]
 
-export type MissionPermissions = Record<MissionPermissionKey, boolean>
+export type TaskPermissions = Record<TaskPermissionKey, boolean>
 
-export type MissionRecurrence = {
+export type TaskRecurrence = {
   series_id: number
   weekdays: number[]
   termination_policy: "sem_termino" | "ate_data" | "ate_objetivo"
   end_date: string | null
 }
 
-export type Mission = {
+export type Task = {
   id: number
   titulo?: string | null
   instrucao?: string | null
@@ -33,31 +33,31 @@ export type Mission = {
   responsavel_id?: number | null
   criada_por_id?: number | null
   objetivo_id?: number | null
-  recurrence?: MissionRecurrence | null
-  permissions: MissionPermissions
+  recurrence?: TaskRecurrence | null
+  permissions: TaskPermissions
 }
 
 function buildContractError(message: string): Error {
   return new Error(`Contrato inválido: ${message}`)
 }
 
-export function assertMissionContract(mission: unknown): Mission {
-  if (!mission || typeof mission !== "object") {
-    throw buildContractError("missão ausente ou inválida")
+export function assertTaskContract(task: unknown): Task {
+  if (!task || typeof task !== "object") {
+    throw buildContractError("tarefa ausente ou inválida")
   }
 
-  const candidate = mission as Partial<Mission>
+  const candidate = task as Partial<Task>
 
   if (!candidate.status_code) {
-    throw buildContractError("missão sem status_code")
+    throw buildContractError("tarefa sem status_code")
   }
 
   if (!candidate.status_label) {
-    throw buildContractError("missão sem status_label")
+    throw buildContractError("tarefa sem status_label")
   }
 
   if (!candidate.permissions || typeof candidate.permissions !== "object") {
-    throw buildContractError("missão sem permissions")
+    throw buildContractError("tarefa sem permissions")
   }
 
   for (const key of REQUIRED_PERMISSION_KEYS) {
@@ -85,13 +85,13 @@ export function assertMissionContract(mission: unknown): Mission {
     }
   }
 
-  return candidate as Mission
+  return candidate as Task
 }
 
-export function assertMissionListContract(missions: unknown): Mission[] {
-  if (!Array.isArray(missions)) {
-    throw buildContractError("lista de missões inválida")
+export function assertTaskListContract(tasks: unknown): Task[] {
+  if (!Array.isArray(tasks)) {
+    throw buildContractError("lista de tarefas inválida")
   }
 
-  return missions.map(assertMissionContract)
+  return tasks.map(assertTaskContract)
 }

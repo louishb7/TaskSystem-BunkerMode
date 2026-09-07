@@ -38,7 +38,7 @@ export function formatShortDate(date) {
   return `${day}/${month}`
 }
 
-export function normalizeMissionDate(value) {
+export function normalizeTaskDate(value) {
   if (!value || typeof value !== "string") {
     return ""
   }

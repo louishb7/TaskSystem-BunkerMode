@@ -1,21 +1,18 @@
 import { ApiResult, request, RequestOptions } from "../api/httpClient"
-import { assertMissionContract, assertMissionListContract, Mission } from "../types/missionContract"
+import { assertTaskContract, assertTaskListContract, Task } from "../types/taskContract"
 
 function contractErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Contrato inválido."
 }
 
-async function requestMission(
-  path: string,
-  options: RequestOptions = {}
-): Promise<ApiResult<Mission>> {
+async function requestTask(path: string, options: RequestOptions = {}): Promise<ApiResult<Task>> {
   const result = await request(path, options)
   if (!result.ok) {
     return result
   }
 
   try {
-    return { ...result, data: assertMissionContract(result.data) }
+    return { ...result, data: assertTaskContract(result.data) }
   } catch (error) {
     return {
       ok: false,
@@ -25,17 +22,17 @@ async function requestMission(
   }
 }
 
-async function requestMissionList(
+async function requestTaskList(
   path: string,
   options: RequestOptions = {}
-): Promise<ApiResult<Mission[]>> {
+): Promise<ApiResult<Task[]>> {
   const result = await request(path, options)
   if (!result.ok) {
     return result
   }
 
   try {
-    return { ...result, data: assertMissionListContract(result.data) }
+    return { ...result, data: assertTaskListContract(result.data) }
   } catch (error) {
     return {
       ok: false,
@@ -59,8 +56,8 @@ async function requestFocusBoard(
       ...result,
       data: {
         ...result.data,
-        missions: assertMissionListContract(result.data?.missions),
-        daily_missions: assertMissionListContract(result.data?.daily_missions),
+        tasks: assertTaskListContract(result.data?.tasks),
+        daily_tasks: assertTaskListContract(result.data?.daily_tasks),
       },
     }
   } catch (error) {
@@ -82,41 +79,41 @@ export const api = {
   getCurrentUser(token) {
     return request("/usuarios/me", { token })
   },
-  listMissions(token) {
-    return requestMissionList("/missoes", { token })
+  listTasks(token) {
+    return requestTaskList("/tarefas", { token })
   },
-  listDailyMissions(token) {
-    return requestMissionList("/missoes/dia-operacional", { token })
+  listDailyTasks(token) {
+    return requestTaskList("/tarefas/dia-operacional", { token })
   },
   getFocusBoard(token) {
-    return requestFocusBoard("/missoes/quadro-soldado", { token })
+    return requestFocusBoard("/tarefas/foco", { token })
   },
-  createMission(token, payload) {
-    return requestMission("/missoes", { token, method: "POST", body: payload })
+  createTask(token, payload) {
+    return requestTask("/tarefas", { token, method: "POST", body: payload })
   },
-  updateMission(token, missionId, payload) {
-    return requestMission(`/missoes/${missionId}`, { token, method: "PATCH", body: payload })
+  updateTask(token, taskId, payload) {
+    return requestTask(`/tarefas/${taskId}`, { token, method: "PATCH", body: payload })
   },
-  completeMission(token, missionId) {
-    return requestMission(`/missoes/${missionId}/concluir`, { token, method: "PATCH" })
+  completeTask(token, taskId) {
+    return requestTask(`/tarefas/${taskId}/concluir`, { token, method: "PATCH" })
   },
-  toggleMissionPin(token, missionId) {
-    return requestMission(`/missoes/${missionId}/toggle-pin`, {
+  toggleTaskPin(token, taskId) {
+    return requestTask(`/tarefas/${taskId}/toggle-pin`, {
       token,
       method: "PATCH",
     })
   },
-  failMission(token, missionId) {
-    return requestMission(`/missoes/${missionId}/falhar`, {
+  failTask(token, taskId) {
+    return requestTask(`/tarefas/${taskId}/falhar`, {
       token,
       method: "POST",
     })
   },
-  deleteMission(token, missionId) {
-    return request(`/missoes/${missionId}`, { token, method: "DELETE" })
+  deleteTask(token, taskId) {
+    return request(`/tarefas/${taskId}`, { token, method: "DELETE" })
   },
-  getMissionHistory(token, missionId) {
-    return request(`/missoes/${missionId}/historico`, { token })
+  getTaskHistory(token, taskId) {
+    return request(`/tarefas/${taskId}/historico`, { token })
   },
   listObjetivos(token) {
     return request("/objetivos", { token })

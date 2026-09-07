@@ -2,22 +2,22 @@ import React from "react"
 
 import Button from "../../../components/ui/Button"
 import EmptyState from "../../../components/ui/EmptyState"
-import { isCompleted } from "../../../utils/missionStatus"
-import MissionCard from "../../missions/components/MissionCard"
+import { isCompleted } from "../../../utils/taskStatus"
+import TaskCard from "./TaskCard"
 
-function isFailure(mission) {
-  return String(mission?.status_code || "").startsWith("FALHA")
+function isFailure(task) {
+  return String(task?.status_code || "").startsWith("FALHA")
 }
 
-function groupMissions(missions) {
-  const open = missions.filter((mission) => !isCompleted(mission) && !isFailure(mission))
+function groupTasks(tasks) {
+  const open = tasks.filter((task) => !isCompleted(task) && !isFailure(task))
   return {
     open: [
-      ...open.filter((mission) => mission?.is_pinned === true),
-      ...open.filter((mission) => mission?.is_pinned !== true),
+      ...open.filter((task) => task?.is_pinned === true),
+      ...open.filter((task) => task?.is_pinned !== true),
     ],
-    failures: missions.filter(isFailure),
-    completed: missions.filter(isCompleted),
+    failures: tasks.filter(isFailure),
+    completed: tasks.filter(isCompleted),
   }
 }
 
@@ -25,22 +25,22 @@ export default function TasksPanel({
   completeLoadingId,
   failLoadingId,
   loading,
-  onCompleteMission,
+  onCompleteTask,
   onCreateTask,
-  onDeleteMission,
-  onEditMission,
-  onFailMission,
-  onReopenMission,
+  onDeleteTask,
+  onEditTask,
+  onFailTask,
+  onReopenTask,
   onTogglePin,
   pinLoadingId,
   reopenLoadingId,
   selectedDate,
-  selectedMissions,
+  selectedTasks,
   timezone,
 }) {
-  const groups = groupMissions(selectedMissions)
-  function renderMissionGroup(label, missions) {
-    if (missions.length === 0) {
+  const groups = groupTasks(selectedTasks)
+  function renderTaskGroup(label, tasks) {
+    if (tasks.length === 0) {
       return null
     }
 
@@ -48,20 +48,20 @@ export default function TasksPanel({
       <section className="grid gap-3">
         <h3 className="m-0 text-base font-semibold normal-case text-text-primary">{label}</h3>
         <div className="grid gap-3">
-          {missions.map((mission) => (
-            <MissionCard
-              key={mission.id}
-              completing={completeLoadingId === mission.id}
-              failing={failLoadingId === mission.id}
-              mission={mission}
-              onComplete={() => onCompleteMission(mission)}
-              onDelete={() => onDeleteMission(mission)}
-              onEdit={() => onEditMission(mission)}
-              onFail={() => onFailMission(mission.id)}
-              onReopen={() => onReopenMission(mission)}
-              onTogglePin={() => onTogglePin(mission)}
-              pinning={pinLoadingId === mission.id}
-              reopening={reopenLoadingId === mission.id}
+          {tasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              completing={completeLoadingId === task.id}
+              failing={failLoadingId === task.id}
+              task={task}
+              onComplete={() => onCompleteTask(task)}
+              onDelete={() => onDeleteTask(task)}
+              onEdit={() => onEditTask(task)}
+              onFail={() => onFailTask(task.id)}
+              onReopen={() => onReopenTask(task)}
+              onTogglePin={() => onTogglePin(task)}
+              pinning={pinLoadingId === task.id}
+              reopening={reopenLoadingId === task.id}
               timezone={timezone}
               variant="tasks"
             />
@@ -92,11 +92,11 @@ export default function TasksPanel({
           title="Sincronizando tarefas"
           message="Carregando tarefas do dia selecionado."
         />
-      ) : selectedMissions.length > 0 ? (
+      ) : selectedTasks.length > 0 ? (
         <div className="grid gap-8">
-          {renderMissionGroup("Tarefas abertas", groups.open)}
-          {renderMissionGroup("Concluídas", groups.completed)}
-          {renderMissionGroup("Falhas registradas", groups.failures)}
+          {renderTaskGroup("Tarefas abertas", groups.open)}
+          {renderTaskGroup("Concluídas", groups.completed)}
+          {renderTaskGroup("Falhas registradas", groups.failures)}
         </div>
       ) : (
         <EmptyState

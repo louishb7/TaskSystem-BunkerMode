@@ -2,12 +2,12 @@ import React from "react"
 
 import EmptyState from "../../../components/ui/EmptyState"
 import StatusNotice from "../../../components/ui/StatusNotice"
-import { isCompleted } from "../../../utils/missionStatus"
+import { isCompleted } from "../../../utils/taskStatus"
 import { formatCurrentDay } from "../../calendar/calendarUtils"
-import MissionCard from "../../missions/components/MissionCard"
+import TaskCard from "../components/TaskCard"
 
-export default function FocusPage({ actionMissions, board, dailyMissions, timezone }) {
-  const allDailyMissionsCompleted = dailyMissions.length > 0 && dailyMissions.every(isCompleted)
+export default function FocusPage({ actionTasks, board, dailyTasks, timezone }) {
+  const allDailyTasksCompleted = dailyTasks.length > 0 && dailyTasks.every(isCompleted)
 
   return (
     <section className="grid gap-6">
@@ -30,23 +30,23 @@ export default function FocusPage({ actionMissions, board, dailyMissions, timezo
           Tarefas de hoje
         </h2>
 
-        {board.missionLoading && (
+        {board.taskLoading && (
           <EmptyState
             title="Sincronizando tarefas"
             message="Carregando as tarefas programadas para hoje."
           />
         )}
 
-        {!board.missionLoading && dailyMissions.length > 0 && (
+        {!board.taskLoading && dailyTasks.length > 0 && (
           <div className="grid gap-3">
-            {dailyMissions.map((mission) => (
-              <MissionCard
-                key={mission.id}
-                completing={board.completeLoadingId === mission.id}
-                failing={board.failLoadingId === mission.id}
-                mission={mission}
-                onComplete={() => board.completeMission(mission)}
-                onFail={() => board.failMission(mission.id)}
+            {dailyTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                completing={board.completeLoadingId === task.id}
+                failing={board.failLoadingId === task.id}
+                task={task}
+                onComplete={() => board.completeTask(task)}
+                onFail={() => board.failTask(task.id)}
                 timezone={timezone}
                 variant="focus"
               />
@@ -54,14 +54,14 @@ export default function FocusPage({ actionMissions, board, dailyMissions, timezo
           </div>
         )}
 
-        {!board.missionLoading && actionMissions.length === 0 && (
+        {!board.taskLoading && actionTasks.length === 0 && (
           <>
-            {dailyMissions.length === 0 ? (
+            {dailyTasks.length === 0 ? (
               <EmptyState
                 title="Nenhuma tarefa para hoje"
                 message="Não há nada programado para execução neste dia."
               />
-            ) : allDailyMissionsCompleted ? (
+            ) : allDailyTasksCompleted ? (
               <EmptyState
                 title="Todas as tarefas foram concluídas"
                 message="Você concluiu as tarefas de hoje."

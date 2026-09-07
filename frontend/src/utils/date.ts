@@ -50,7 +50,7 @@ export function parseApiDate(dateString) {
   return date
 }
 
-export function isMissionOverdue(dateString) {
+export function isTaskOverdue(dateString) {
   const date = parseApiDate(dateString)
   if (!date) {
     return false

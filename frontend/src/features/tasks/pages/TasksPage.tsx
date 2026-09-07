@@ -7,12 +7,12 @@ import PageHeader from "../../../components/ui/PageHeader"
 import StatusNotice from "../../../components/ui/StatusNotice"
 import { emptyStatus } from "../../../constants/uiState"
 import { formatDateForApi } from "../../../utils/date"
-import MissionForm from "../../missions/components/MissionForm"
+import TaskForm from "../components/TaskForm"
 import {
   addDays,
   formatWeekLabel,
   getWeekDays,
-  normalizeMissionDate,
+  normalizeTaskDate,
   operationalDateFor,
   startOfDay,
 } from "../../calendar/calendarUtils"
@@ -23,7 +23,7 @@ import WeekPanel from "../components/WeekPanel"
 export default function TasksPage({ board, onStartFocus, onUnauthorized, token, user }) {
   const [selectedDate, setSelectedDate] = useState(() => operationalDateFor(user?.timezone))
   const [formOpen, setFormOpen] = useState(false)
-  const [editingMission, setEditingMission] = useState(null)
+  const [editingTask, setEditingTask] = useState(null)
   const [showFocusConfirm, setShowFocusConfirm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [modeLoading, setModeLoading] = useState(false)
@@ -32,52 +32,49 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
   const weekLabel = formatWeekLabel(weekDays)
   const todayDate = useMemo(() => operationalDateFor(user?.timezone), [user?.timezone])
   const selectedDateApi = formatDateForApi(selectedDate)
-  const selectedMissions = useMemo(
-    () =>
-      board.dailyMissions.filter(
-        (mission) => normalizeMissionDate(mission?.prazo) === selectedDateApi
-      ),
-    [board.dailyMissions, selectedDateApi]
+  const selectedTasks = useMemo(
+    () => board.dailyTasks.filter((task) => normalizeTaskDate(task?.prazo) === selectedDateApi),
+    [board.dailyTasks, selectedDateApi]
   )
-  const todayMissions = useMemo(
+  const todayTasks = useMemo(
     () =>
-      board.dailyMissions.filter(
-        (mission) => normalizeMissionDate(mission?.prazo) === formatDateForApi(todayDate)
+      board.dailyTasks.filter(
+        (task) => normalizeTaskDate(task?.prazo) === formatDateForApi(todayDate)
       ),
-    [board.dailyMissions, todayDate]
+    [board.dailyTasks, todayDate]
   )
   function openCreateForm() {
-    setEditingMission(null)
+    setEditingTask(null)
     board.setFormStatus(emptyStatus)
     setFormOpen(true)
   }
 
-  function openEditForm(mission) {
-    setEditingMission(mission)
+  function openEditForm(task) {
+    setEditingTask(task)
     board.setFormStatus(emptyStatus)
     setFormOpen(true)
   }
 
-  async function createMission(payload) {
-    const saved = await board.createMission(payload)
+  async function createTask(payload) {
+    const saved = await board.createTask(payload)
     if (saved?.persisted) {
       setFormOpen(false)
-      setEditingMission(null)
+      setEditingTask(null)
     }
   }
 
-  async function updateMission(missionId, payload) {
-    const saved = await board.updateMission(missionId, payload)
+  async function updateTask(taskId, payload) {
+    const saved = await board.updateTask(taskId, payload)
     if (saved?.persisted) {
       setFormOpen(false)
-      setEditingMission(null)
+      setEditingTask(null)
     }
   }
 
-  async function deleteMission(mission) {
-    const removed = await board.deleteMission(mission)
-    if (removed?.persisted && editingMission?.id === mission.id) {
-      setEditingMission(null)
+  async function deleteTask(task) {
+    const removed = await board.deleteTask(task)
+    if (removed?.persisted && editingTask?.id === task.id) {
+      setEditingTask(null)
       setFormOpen(false)
     }
   }
@@ -89,7 +86,7 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
     if (started) {
       setShowFocusConfirm(false)
       setFormOpen(false)
-      setEditingMission(null)
+      setEditingTask(null)
     }
   }
 
@@ -121,18 +118,18 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
         <TasksPanel
           completeLoadingId={board.completeLoadingId}
           failLoadingId={board.failLoadingId}
-          loading={board.missionLoading}
-          onCompleteMission={board.completeMission}
+          loading={board.taskLoading}
+          onCompleteTask={board.completeTask}
           onCreateTask={openCreateForm}
-          onDeleteMission={setDeleteTarget}
-          onEditMission={openEditForm}
-          onFailMission={board.failMission}
-          onReopenMission={board.reopenMission}
-          onTogglePin={board.toggleMissionPin}
+          onDeleteTask={setDeleteTarget}
+          onEditTask={openEditForm}
+          onFailTask={board.failTask}
+          onReopenTask={board.reopenTask}
+          onTogglePin={board.toggleTaskPin}
           pinLoadingId={board.pinLoadingId}
           reopenLoadingId={board.reopenLoadingId}
           selectedDate={selectedDate}
-          selectedMissions={selectedMissions}
+          selectedTasks={selectedTasks}
           timezone={user?.timezone}
         />
       </section>
@@ -143,24 +140,24 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
           closeOnBackdrop={false}
           onClose={() => {
             setFormOpen(false)
-            setEditingMission(null)
+            setEditingTask(null)
             board.setFormStatus(emptyStatus)
           }}
-          title={editingMission ? "Editar tarefa" : "Nova tarefa"}
+          title={editingTask ? "Editar tarefa" : "Nova tarefa"}
         >
-          <MissionForm
+          <TaskForm
             currentUser={user}
-            editingMission={editingMission}
-            initialPrazo={editingMission ? undefined : selectedDateApi}
+            editingTask={editingTask}
+            initialPrazo={editingTask ? undefined : selectedDateApi}
             loading={board.formLoading}
             onUnauthorized={onUnauthorized}
             onCancel={() => {
               setFormOpen(false)
-              setEditingMission(null)
+              setEditingTask(null)
               board.setFormStatus(emptyStatus)
             }}
-            onCreate={createMission}
-            onUpdate={updateMission}
+            onCreate={createTask}
+            onUpdate={updateTask}
             status={board.formStatus}
             token={token}
             timezone={user?.timezone}
@@ -173,7 +170,7 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
           loading={modeLoading}
           onCancel={() => setShowFocusConfirm(false)}
           onConfirm={confirmStartFocus}
-          todayMissions={todayMissions}
+          todayTasks={todayTasks}
           timezone={user?.timezone}
         />
       )}
@@ -186,7 +183,7 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
           variant="danger"
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => {
-            deleteMission(deleteTarget)
+            deleteTask(deleteTarget)
             setDeleteTarget(null)
           }}
         />

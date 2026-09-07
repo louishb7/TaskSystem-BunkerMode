@@ -1,8 +1,8 @@
 import { UserRecord } from "../src/auth/auth.types";
 import { OperationalCalendarService } from "../src/calendar/operational-calendar.service";
-import { toMissionResponse } from "../src/missions/mission-response";
-import { MissionsService } from "../src/missions/missions.service";
-import { MISSION_STATUS, MissionRecord } from "../src/missions/mission.types";
+import { toTaskResponse } from "../src/tasks/task-response";
+import { TasksService } from "../src/tasks/tasks.service";
+import { TASK_STATUS, TaskRecord } from "../src/tasks/task.types";
 import { PrismaService } from "../src/prisma/prisma.service";
 
 function user(overrides: Partial<UserRecord> = {}): UserRecord {
@@ -21,14 +21,14 @@ function user(overrides: Partial<UserRecord> = {}): UserRecord {
   };
 }
 
-function mission(overrides: Partial<MissionRecord> = {}): MissionRecord {
+function task(overrides: Partial<TaskRecord> = {}): TaskRecord {
   return {
     missao_id: 10,
     titulo: "Revisar plano semanal",
     prioridade: 2,
     prazo: new Date("2026-04-25T00:00:00.000Z"),
     instrucao: "Abrir relatório e registrar decisões.",
-    status: MISSION_STATUS.pending,
+    status: TASK_STATUS.pending,
     is_pinned: false,
     created_at: new Date("2026-04-24T12:00:00.000Z"),
     updated_at: new Date("2026-04-24T12:00:00.000Z"),
@@ -71,11 +71,11 @@ function prismaMock() {
   };
 }
 
-describe("Missions clean domain", () => {
+describe("Tasks clean domain", () => {
   const calendar = new OperationalCalendarService();
 
-  it("maps the mission contract consumed by the web", () => {
-    const response = toMissionResponse(mission(), user());
+  it("maps the task contract consumed by the web", () => {
+    const response = toTaskResponse(task(), user());
 
     expect(response).toMatchObject({
       id: 10,
@@ -120,21 +120,21 @@ describe("Missions clean domain", () => {
     });
   });
 
-  it("keeps mission permissions independent from active mode and restricted by ownership", () => {
-    const generalPermissions = toMissionResponse(
-      mission(),
+  it("keeps task permissions independent from active mode and restricted by ownership", () => {
+    const taskModePermissions = toTaskResponse(
+      task(),
       user({ active_mode: "general" }),
     ).permissions;
-    const soldierPermissions = toMissionResponse(
-      mission(),
+    const focusModePermissions = toTaskResponse(
+      task(),
       user({ active_mode: "soldier" }),
     ).permissions;
-    const foreignPermissions = toMissionResponse(
-      mission(),
+    const foreignPermissions = toTaskResponse(
+      task(),
       user({ usuario_id: 99, active_mode: "soldier" }),
     ).permissions;
 
-    expect(soldierPermissions).toEqual(generalPermissions);
+    expect(focusModePermissions).toEqual(taskModePermissions);
     expect(foreignPermissions).toEqual({
       can_complete: false,
       can_edit: false,
@@ -147,24 +147,24 @@ describe("Missions clean domain", () => {
 
   it("materializes the canonical General read without materializing history", async () => {
     const prisma = prismaMock();
-    const completed = mission({
+    const completed = task({
       missao_id: 11,
-      status: MISSION_STATUS.completed,
+      status: TASK_STATUS.completed,
       completed_at: new Date("2026-08-13T12:00:00.000Z"),
     });
-    const failed = mission({
+    const failed = task({
       missao_id: 12,
-      status: MISSION_STATUS.failed,
+      status: TASK_STATUS.failed,
       failed_at: new Date("2026-08-13T12:00:00.000Z"),
     });
-    prisma.missoes.findMany.mockResolvedValue([mission(), completed, failed]);
-    const service = new MissionsService(
+    prisma.missoes.findMany.mockResolvedValue([task(), completed, failed]);
+    const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
     );
 
-    await expect(service.listForGeneralBoard(user())).resolves.toEqual([
-      mission(),
+    await expect(service.listForTasksBoard(user())).resolves.toEqual([
+      task(),
       completed,
       failed,
     ]);
@@ -192,8 +192,8 @@ describe("Missions clean domain", () => {
   });
 
   it("uses the recurrence series as the V2 recurrence response source", () => {
-    const response = toMissionResponse(
-      mission({
+    const response = toTaskResponse(
+      task({
         recurrence_series_id: 21,
         serie_recorrencia: {
           recurrence_series_id: 21,
@@ -213,10 +213,10 @@ describe("Missions clean domain", () => {
     });
   });
 
-  it("allows a soldier preference to edit, reschedule and delete an owned one-time mission", async () => {
+  it("allows a soldier preference to edit, reschedule and delete an owned one-time task", async () => {
     const prisma = prismaMock();
-    prisma.missoes.findFirst.mockResolvedValue(mission());
-    prisma.missoes.update.mockResolvedValue(mission({
+    prisma.missoes.findFirst.mockResolvedValue(task());
+    prisma.missoes.update.mockResolvedValue(task({
       titulo: "Ordem ajustada",
       prazo: new Date("2026-04-26T00:00:00.000Z"),
     }));
@@ -226,7 +226,7 @@ describe("Missions clean domain", () => {
         missoes: prisma.missoes,
       }),
     );
-    const service = new MissionsService(
+    const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
     );
@@ -258,13 +258,13 @@ describe("Missions clean domain", () => {
 
   it("protects recurring occurrences from deletion and rescheduling while allowing other edits", async () => {
     const prisma = prismaMock();
-    const occurrence = mission({ recurrence_series_id: 21 });
+    const occurrence = task({ recurrence_series_id: 21 });
     prisma.missoes.findFirst.mockResolvedValue(occurrence);
     prisma.missoes.update.mockResolvedValue(
-      mission({ recurrence_series_id: 21, titulo: "Instrução ajustada" }),
+      task({ recurrence_series_id: 21, titulo: "Instrução ajustada" }),
     );
     prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
-    const service = new MissionsService(
+    const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
     );
@@ -279,13 +279,13 @@ describe("Missions clean domain", () => {
 
     expect(prisma.missoes.delete).not.toHaveBeenCalled();
     expect(prisma.missoes.update).toHaveBeenCalledTimes(1);
-    expect(toMissionResponse(occurrence, user()).permissions.can_delete).toBe(false);
+    expect(toTaskResponse(occurrence, user()).permissions.can_delete).toBe(false);
   });
 
   it("keeps ownership protection independent from active mode", async () => {
     const prisma = prismaMock();
     prisma.missoes.findFirst.mockResolvedValue(null);
-    const service = new MissionsService(
+    const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
     );
@@ -300,17 +300,17 @@ describe("Missions clean domain", () => {
     expect(prisma.missoes.update).not.toHaveBeenCalled();
   });
 
-  it("creates a manual mission with direct ownership and audit event", async () => {
+  it("creates a manual task with direct ownership and audit event", async () => {
     const prisma = prismaMock();
-    const createdMission = mission();
-    const create = jest.fn().mockResolvedValue(createdMission);
+    const createdTask = task();
+    const create = jest.fn().mockResolvedValue(createdTask);
     prisma.$transaction.mockImplementation(async (callback) =>
       callback({
         auditoria_eventos: prisma.auditoria_eventos,
         missoes: { create, findUnique: prisma.missoes.findUnique },
       }),
     );
-    const service = new MissionsService(
+    const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
     );
@@ -331,7 +331,7 @@ describe("Missions clean domain", () => {
       data: expect.objectContaining({
         titulo: "Revisar plano semanal",
         instrucao: "Abrir relatório",
-        status: MISSION_STATUS.pending,
+        status: TASK_STATUS.pending,
         criada_por_id: 7,
         responsavel_id: 7,
         objetivo_id: null,
@@ -342,21 +342,21 @@ describe("Missions clean domain", () => {
       data: {
         missao_id: 10,
         usuario_id: 7,
-        acao: "missao_criada",
-        detalhes: "Missão 'Revisar plano semanal' criada.",
+        acao: "tarefa_criada",
+        detalhes: "Tarefa 'Revisar plano semanal' criada.",
       },
     });
   });
 
   it("creates a recurrence series and materializes occurrences with series identity", async () => {
     const prisma = prismaMock();
-    const createdMissions = [
-      mission({ missao_id: 10, prazo: new Date("2026-04-24T00:00:00.000Z") }),
-      mission({ missao_id: 11, prazo: new Date("2026-04-27T00:00:00.000Z") }),
-      mission({ missao_id: 12, prazo: new Date("2026-04-29T00:00:00.000Z") }),
-      mission({ missao_id: 13, prazo: new Date("2026-05-01T00:00:00.000Z") }),
-      mission({ missao_id: 14, prazo: new Date("2026-05-04T00:00:00.000Z") }),
-      mission({ missao_id: 15, prazo: new Date("2026-05-06T00:00:00.000Z") }),
+    const createdTasks = [
+      task({ missao_id: 10, prazo: new Date("2026-04-24T00:00:00.000Z") }),
+      task({ missao_id: 11, prazo: new Date("2026-04-27T00:00:00.000Z") }),
+      task({ missao_id: 12, prazo: new Date("2026-04-29T00:00:00.000Z") }),
+      task({ missao_id: 13, prazo: new Date("2026-05-01T00:00:00.000Z") }),
+      task({ missao_id: 14, prazo: new Date("2026-05-04T00:00:00.000Z") }),
+      task({ missao_id: 15, prazo: new Date("2026-05-06T00:00:00.000Z") }),
     ];
     const series = {
       recurrence_series_id: 21,
@@ -374,7 +374,7 @@ describe("Missions clean domain", () => {
       updated_at: new Date("2026-04-24T12:00:00.000Z"),
     };
     prisma.series_recorrencia.create.mockResolvedValue(series);
-    prisma.missoes.createManyAndReturn.mockResolvedValue(createdMissions);
+    prisma.missoes.createManyAndReturn.mockResolvedValue(createdTasks);
     prisma.objetivos.findFirst.mockResolvedValue({
       id: 7,
       usuario_id: 7,
@@ -387,7 +387,7 @@ describe("Missions clean domain", () => {
         series_recorrencia: prisma.series_recorrencia,
       }),
     );
-    const service = new MissionsService(
+    const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
     );
@@ -439,37 +439,37 @@ describe("Missions clean domain", () => {
     const prisma = prismaMock();
     prisma.missoes.findMany
       .mockResolvedValueOnce([
-        mission({ missao_id: 10, prazo: new Date("2026-08-12T00:00:00.000Z") }),
+        task({ missao_id: 10, prazo: new Date("2026-08-12T00:00:00.000Z") }),
       ])
       .mockResolvedValueOnce([
-        mission({
+        task({
           missao_id: 10,
           prazo: new Date("2026-08-12T00:00:00.000Z"),
-          status: MISSION_STATUS.failed,
+          status: TASK_STATUS.failed,
           failed_at: new Date("2026-08-13T12:00:00.000Z"),
         }),
-        mission({ missao_id: 11, prazo: new Date("2026-08-13T00:00:00.000Z") }),
+        task({ missao_id: 11, prazo: new Date("2026-08-13T00:00:00.000Z") }),
       ]);
     prisma.$transaction.mockResolvedValue([]);
-    const service = new MissionsService(
+    const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
     );
     jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"));
 
-    const board = await service.soldierBoard(user({ active_mode: "general" }));
+    const board = await service.focusBoard(user({ active_mode: "general" }));
 
-    expect(board.action_missions.map((item) => item.missao_id)).toEqual([11]);
+    expect(board.action_tasks.map((item) => item.missao_id)).toEqual([11]);
     expect(prisma.$transaction).toHaveBeenCalled();
     jest.useRealTimers();
   });
 
-  it("preserves completed and failed missions in history by allowing delete only while pending", async () => {
+  it("preserves completed and failed tasks in history by allowing delete only while pending", async () => {
     const prisma = prismaMock();
     prisma.missoes.findFirst.mockResolvedValue(
-      mission({ status: MISSION_STATUS.failed }),
+      task({ status: TASK_STATUS.failed }),
     );
-    const service = new MissionsService(
+    const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
     );
@@ -487,13 +487,13 @@ describe("Missions clean domain", () => {
       usuario_id: 7,
       status: "ativo",
     });
-    prisma.missoes.findFirst.mockResolvedValue(mission());
-    prisma.missoes.create.mockResolvedValue(mission({ objetivo_id: 3 }));
-    prisma.missoes.update.mockResolvedValue(mission({ objetivo_id: 3 }));
+    prisma.missoes.findFirst.mockResolvedValue(task());
+    prisma.missoes.create.mockResolvedValue(task({ objetivo_id: 3 }));
+    prisma.missoes.update.mockResolvedValue(task({ objetivo_id: 3 }));
     prisma.$transaction.mockImplementation(async (callback) =>
       callback(prisma),
     );
-    const service = new MissionsService(prisma as never, calendar);
+    const service = new TasksService(prisma as never, calendar);
     await expect(
       service.create({ titulo: "Ordem do objetivo", objetivo_id: 3 }, user()),
     ).resolves.toMatchObject({ objetivo_id: 3 });
@@ -517,11 +517,11 @@ describe("Missions clean domain", () => {
     expect(prisma.missoes.update).toHaveBeenCalledTimes(1);
   });
 
-  it("validates only a new goal association during mission updates", async () => {
+  it("validates only a new goal association during task updates", async () => {
     const prisma = prismaMock();
-    prisma.missoes.findFirst.mockResolvedValue(mission({ objetivo_id: 3 }));
+    prisma.missoes.findFirst.mockResolvedValue(task({ objetivo_id: 3 }));
     prisma.missoes.update.mockImplementation(async ({ data }) =>
-      mission({
+      task({
         ...data,
         objetivo_id:
           "objetivos" in data && data.objetivos && "connect" in data.objetivos
@@ -532,7 +532,7 @@ describe("Missions clean domain", () => {
       }),
     );
     prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
-    const service = new MissionsService(prisma as never, calendar);
+    const service = new TasksService(prisma as never, calendar);
 
     await expect(
       service.update(10, { titulo: "Editar vínculo existente" }, user()),
@@ -570,15 +570,15 @@ describe("Missions clean domain", () => {
   it("disconnects the goal without configuring recurrence on the occurrence", async () => {
     const prisma = prismaMock();
     prisma.missoes.findFirst.mockResolvedValue(
-      mission({ objetivo_id: 3, recurrence_series_id: 21 }),
+      task({ objetivo_id: 3, recurrence_series_id: 21 }),
     );
     prisma.missoes.update.mockResolvedValue(
-      mission({ recurrence_series_id: 21 }),
+      task({ recurrence_series_id: 21 }),
     );
     prisma.$transaction.mockImplementation(async (callback) =>
       callback(prisma),
     );
-    const service = new MissionsService(prisma as never, calendar);
+    const service = new TasksService(prisma as never, calendar);
     await service.update(10, { objetivo_id: null }, user());
     expect(prisma.objetivos.findFirst).not.toHaveBeenCalled();
     expect(prisma.missoes.update).toHaveBeenCalledWith({
@@ -592,8 +592,8 @@ describe("Missions clean domain", () => {
     "rejects PATCH configuration %s instead of storing it on an occurrence",
     async (field) => {
       const prisma = prismaMock();
-      prisma.missoes.findFirst.mockResolvedValue(mission());
-      const service = new MissionsService(prisma as never, calendar);
+      prisma.missoes.findFirst.mockResolvedValue(task());
+      const service = new TasksService(prisma as never, calendar);
       await expect(
         service.update(10, { titulo: "Ordem", [field]: null }, user()),
       ).rejects.toMatchObject({ status: 400 });
@@ -615,7 +615,7 @@ describe("Missions clean domain", () => {
     "rejects invalid series configuration before writing: %j",
     async (configuration) => {
       const prisma = prismaMock();
-      const service = new MissionsService(prisma as never, calendar);
+      const service = new TasksService(prisma as never, calendar);
       await expect(
         service.create(
           { titulo: "Repetir", prazo: "2026-08-31", ...configuration },
@@ -639,10 +639,10 @@ describe("Missions clean domain", () => {
       }));
       prisma.missoes.createManyAndReturn.mockImplementation(async ({ data }) =>
         data.map((item: object, index: number) =>
-          mission({ ...item, missao_id: 10 + index }),
+          task({ ...item, missao_id: 10 + index }),
         ),
       );
-      const service = new MissionsService(prisma as never, calendar);
+      const service = new TasksService(prisma as never, calendar);
       const result = await service.create(
         {
           titulo: "Repetir",
@@ -676,15 +676,15 @@ describe("Missions clean domain", () => {
     async (action) => {
       const prisma = prismaMock();
       prisma.missoes.findFirst.mockResolvedValue(
-        mission({ objetivo_id: 3, recurrence_series_id: 21 }),
+        task({ objetivo_id: 3, recurrence_series_id: 21 }),
       );
       prisma.missoes.update.mockImplementation(async ({ data }) =>
-        mission(data),
+        task(data),
       );
       prisma.$transaction.mockImplementation(async (callback) =>
         callback(prisma),
       );
-      const service = new MissionsService(prisma as never, calendar);
+      const service = new TasksService(prisma as never, calendar);
       const result = await service[action](10, user());
       expect(result.status).toBe(action === "complete" ? "CONCLUIDA" : "FALHA");
       expect(result.completed_at).toEqual(

@@ -3,8 +3,8 @@ import { Prisma } from "@prisma/client";
 import { UserRecord } from "../src/auth/auth.types";
 import { OperationalCalendarService } from "../src/calendar/operational-calendar.service";
 import { GoalsService } from "../src/goals/goals.service";
-import { MISSION_STATUS } from "../src/missions/mission.types";
-import { MissionsService } from "../src/missions/missions.service";
+import { TASK_STATUS } from "../src/tasks/task.types";
+import { TasksService } from "../src/tasks/tasks.service";
 import { PrismaService } from "../src/prisma/prisma.service";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
@@ -16,7 +16,7 @@ describeWithDatabase("Recurrence series persistence", () => {
   let userId: number;
   let currentDate: string;
   let currentUser: UserRecord;
-  let missionsService: MissionsService;
+  let tasksService: TasksService;
   let goalsService: GoalsService;
 
   beforeAll(() => {
@@ -51,7 +51,7 @@ describeWithDatabase("Recurrence series persistence", () => {
     jest
       .spyOn(calendar, "currentDateFor")
       .mockImplementation(() => currentDate);
-    missionsService = new MissionsService(prisma, calendar);
+    tasksService = new TasksService(prisma, calendar);
     goalsService = new GoalsService(prisma);
   });
 
@@ -75,7 +75,7 @@ describeWithDatabase("Recurrence series persistence", () => {
     });
   }
 
-  function createMission(recurrenceSeriesId: number | null, title: string) {
+  function createTask(recurrenceSeriesId: number | null, title: string) {
     return prisma.missoes.create({
       data: {
         titulo: title,
@@ -87,8 +87,8 @@ describeWithDatabase("Recurrence series persistence", () => {
     });
   }
 
-  function createRecurringMission(overrides: Record<string, unknown> = {}) {
-    return missionsService.create(
+  function createRecurringTask(overrides: Record<string, unknown> = {}) {
+    return tasksService.create(
       {
         titulo: "Treinar execução",
         prazo: "31-08-2026",
@@ -177,16 +177,16 @@ describeWithDatabase("Recurrence series persistence", () => {
 
   it("rejects two occurrences from the same series on the same date", async () => {
     const series = await createSeries();
-    await createMission(series.recurrence_series_id, "Primeira ocorrência");
+    await createTask(series.recurrence_series_id, "Primeira ocorrência");
 
     await expect(
-      createMission(series.recurrence_series_id, "Ocorrência duplicada"),
+      createTask(series.recurrence_series_id, "Ocorrência duplicada"),
     ).rejects.toBeDefined();
   });
 
-  it("allows two one-time missions on the same date", async () => {
-    await createMission(null, "Ordem pontual A");
-    await createMission(null, "Ordem pontual B");
+  it("allows two one-time tasks on the same date", async () => {
+    await createTask(null, "Ordem pontual A");
+    await createTask(null, "Ordem pontual B");
 
     await expect(
       prisma.missoes.count({
@@ -199,8 +199,8 @@ describeWithDatabase("Recurrence series persistence", () => {
     const firstSeries = await createSeries({ titulo: "Série A" });
     const secondSeries = await createSeries({ titulo: "Série B" });
 
-    await createMission(firstSeries.recurrence_series_id, "Ocorrência A");
-    await createMission(secondSeries.recurrence_series_id, "Ocorrência B");
+    await createTask(firstSeries.recurrence_series_id, "Ocorrência A");
+    await createTask(secondSeries.recurrence_series_id, "Ocorrência B");
 
     await expect(
       prisma.missoes.count({
@@ -210,7 +210,7 @@ describeWithDatabase("Recurrence series persistence", () => {
   });
 
   it("creates and materializes a normalized endless recurrence without an objective", async () => {
-    const firstOccurrence = await createRecurringMission({
+    const firstOccurrence = await createRecurringTask({
       recurrence_weekdays: [2, 0, 2],
     });
 
@@ -233,7 +233,7 @@ describeWithDatabase("Recurrence series persistence", () => {
   it("creates an until-objective recurrence with an active owned objective", async () => {
     const objective = await createObjective();
 
-    const firstOccurrence = await createRecurringMission({
+    const firstOccurrence = await createRecurringTask({
       objetivo_id: objective.id,
       duration_type: "ate_objetivo",
     });
@@ -250,19 +250,19 @@ describeWithDatabase("Recurrence series persistence", () => {
 
   it("rejects an until-objective recurrence without an objective", async () => {
     await expect(
-      createRecurringMission({ duration_type: "ate_objetivo" }),
+      createRecurringTask({ duration_type: "ate_objetivo" }),
     ).rejects.toMatchObject({ status: 400 });
   });
 
   it("rejects an until-date recurrence without an end date", async () => {
     await expect(
-      createRecurringMission({ duration_type: "ate_data" }),
+      createRecurringTask({ duration_type: "ate_data" }),
     ).rejects.toMatchObject({ status: 400 });
   });
 
   it("rejects a recurrence without weekdays", async () => {
     await expect(
-      createRecurringMission({ recurrence_weekdays: [] }),
+      createRecurringTask({ recurrence_weekdays: [] }),
     ).rejects.toMatchObject({ status: 400 });
   });
 
@@ -283,7 +283,7 @@ describeWithDatabase("Recurrence series persistence", () => {
     });
 
     await expect(
-      createRecurringMission({ objetivo_id: objective.id }),
+      createRecurringTask({ objetivo_id: objective.id }),
     ).rejects.toMatchObject({ status: 400 });
     await prisma.usuarios.delete({
       where: { usuario_id: otherUser.usuario_id },
@@ -298,15 +298,15 @@ describeWithDatabase("Recurrence series persistence", () => {
     });
 
     await expect(
-      createRecurringMission({ objetivo_id: objective.id }),
+      createRecurringTask({ objetivo_id: objective.id }),
     ).rejects.toMatchObject({ status: 400 });
   });
 
   it.each(["pausado", "concluido", "abandonado"]) (
-    "keeps an existing mission editable when its objective becomes %s",
+    "keeps an existing task editable when its objective becomes %s",
     async (status) => {
       const objective = await createObjective(`Objetivo ${status}`);
-      const mission = await missionsService.create(
+      const task = await tasksService.create(
         { titulo: "Ordem vinculada", objetivo_id: objective.id },
         currentUser,
       );
@@ -319,8 +319,8 @@ describeWithDatabase("Recurrence series persistence", () => {
       });
 
       await expect(
-        missionsService.update(
-          mission.missao_id,
+        tasksService.update(
+          task.missao_id,
           { titulo: "Ordem editada" },
           currentUser,
         ),
@@ -329,8 +329,8 @@ describeWithDatabase("Recurrence series persistence", () => {
         objetivo_id: objective.id,
       });
       await expect(
-        missionsService.update(
-          mission.missao_id,
+        tasksService.update(
+          task.missao_id,
           { objetivo_id: objective.id, instrucao: "Mesmo vínculo" },
           currentUser,
         ),
@@ -339,15 +339,15 @@ describeWithDatabase("Recurrence series persistence", () => {
   );
 
   it("materializes the same series repeatedly without duplicating dates", async () => {
-    const firstOccurrence = await createRecurringMission();
+    const firstOccurrence = await createRecurringTask();
     const seriesId = firstOccurrence.recurrence_series_id!;
     currentDate = "2026-09-08";
 
-    await missionsService.listAllForUser(currentUser);
+    await tasksService.listAllForUser(currentUser);
     const afterFirstMaterialization = await prisma.missoes.count({
       where: { recurrence_series_id: seriesId },
     });
-    await missionsService.listAllForUser(currentUser);
+    await tasksService.listAllForUser(currentUser);
     const afterSecondMaterialization = await prisma.missoes.count({
       where: { recurrence_series_id: seriesId },
     });
@@ -363,15 +363,15 @@ describeWithDatabase("Recurrence series persistence", () => {
   });
 
   it("preserves a recurring occurrence identity after rejected deletion and rescheduling", async () => {
-    const firstOccurrence = await createRecurringMission();
+    const firstOccurrence = await createRecurringTask();
     const seriesId = firstOccurrence.recurrence_series_id!;
     const originalDate = firstOccurrence.prazo!;
 
     await expect(
-      missionsService.delete(firstOccurrence.missao_id, currentUser),
+      tasksService.delete(firstOccurrence.missao_id, currentUser),
     ).rejects.toMatchObject({ status: 400 });
     await expect(
-      missionsService.update(
+      tasksService.update(
         firstOccurrence.missao_id,
         { prazo: "01-09-2026" },
         currentUser,
@@ -379,7 +379,7 @@ describeWithDatabase("Recurrence series persistence", () => {
     ).rejects.toMatchObject({ status: 400 });
 
     currentDate = "2026-09-08";
-    await missionsService.listForGeneralBoard(currentUser);
+    await tasksService.listForTasksBoard(currentUser);
     const originalOccurrences = await prisma.missoes.findMany({
       where: { recurrence_series_id: seriesId, prazo: originalDate },
     });
@@ -393,20 +393,20 @@ describeWithDatabase("Recurrence series persistence", () => {
   });
 
   it("uses the General read to materialize recurrence and retain completed and failed outcomes", async () => {
-    const firstOccurrence = await createRecurringMission();
-    const failedOccurrence = await missionsService.create(
+    const firstOccurrence = await createRecurringTask();
+    const failedOccurrence = await tasksService.create(
       { titulo: "Registrar falha", prazo: "2026-08-31" },
       currentUser,
     );
-    await missionsService.complete(firstOccurrence.missao_id, currentUser);
-    await missionsService.fail(failedOccurrence.missao_id, currentUser);
+    await tasksService.complete(firstOccurrence.missao_id, currentUser);
+    await tasksService.fail(failedOccurrence.missao_id, currentUser);
 
     currentDate = "2026-09-08";
-    const firstBoard = await missionsService.listForGeneralBoard(currentUser);
+    const firstBoard = await tasksService.listForTasksBoard(currentUser);
     const occurrenceCount = await prisma.missoes.count({
       where: { recurrence_series_id: firstOccurrence.recurrence_series_id },
     });
-    const secondBoard = await missionsService.listForGeneralBoard(currentUser);
+    const secondBoard = await tasksService.listForTasksBoard(currentUser);
     const afterSecondRead = await prisma.missoes.count({
       where: { recurrence_series_id: firstOccurrence.recurrence_series_id },
     });
@@ -415,28 +415,28 @@ describeWithDatabase("Recurrence series persistence", () => {
       expect.arrayContaining([
         expect.objectContaining({
           missao_id: firstOccurrence.missao_id,
-          status: MISSION_STATUS.completed,
+          status: TASK_STATUS.completed,
         }),
         expect.objectContaining({
           missao_id: failedOccurrence.missao_id,
-          status: MISSION_STATUS.failed,
+          status: TASK_STATUS.failed,
         }),
       ]),
     );
-    expect(secondBoard.map((mission) => mission.missao_id)).toEqual(
-      firstBoard.map((mission) => mission.missao_id),
+    expect(secondBoard.map((task) => task.missao_id)).toEqual(
+      firstBoard.map((task) => task.missao_id),
     );
     expect(afterSecondRead).toBe(occurrenceCount);
   });
 
   it("uses the database uniqueness guarantee under concurrent materialization", async () => {
-    const firstOccurrence = await createRecurringMission();
+    const firstOccurrence = await createRecurringTask();
     const seriesId = firstOccurrence.recurrence_series_id!;
     currentDate = "2026-09-08";
 
     await Promise.all([
-      missionsService.listAllForUser(currentUser),
-      missionsService.listAllForUser(currentUser),
+      tasksService.listAllForUser(currentUser),
+      tasksService.listAllForUser(currentUser),
     ]);
 
     const occurrences = await prisma.missoes.findMany({
@@ -444,20 +444,20 @@ describeWithDatabase("Recurrence series persistence", () => {
       orderBy: { prazo: "asc" },
     });
     expect(
-      new Set(occurrences.map((mission) => mission.prazo?.toISOString())).size,
+      new Set(occurrences.map((task) => task.prazo?.toISOString())).size,
     ).toBe(occurrences.length);
   });
 
   it("continues materializing after one occurrence is completed", async () => {
-    const firstOccurrence = await createRecurringMission();
+    const firstOccurrence = await createRecurringTask();
     const seriesId = firstOccurrence.recurrence_series_id!;
     const initialCount = await prisma.missoes.count({
       where: { recurrence_series_id: seriesId },
     });
 
-    await missionsService.complete(firstOccurrence.missao_id, currentUser);
+    await tasksService.complete(firstOccurrence.missao_id, currentUser);
     currentDate = "2026-09-08";
-    await missionsService.listAllForUser(currentUser);
+    await tasksService.listAllForUser(currentUser);
 
     const finalized = await prisma.missoes.findUniqueOrThrow({
       where: { missao_id: firstOccurrence.missao_id },
@@ -465,20 +465,20 @@ describeWithDatabase("Recurrence series persistence", () => {
     const finalCount = await prisma.missoes.count({
       where: { recurrence_series_id: seriesId },
     });
-    expect(finalized.status).toBe(MISSION_STATUS.completed);
+    expect(finalized.status).toBe(TASK_STATUS.completed);
     expect(finalCount).toBeGreaterThan(initialCount);
   });
 
   it("continues materializing after one occurrence fails", async () => {
-    const firstOccurrence = await createRecurringMission();
+    const firstOccurrence = await createRecurringTask();
     const seriesId = firstOccurrence.recurrence_series_id!;
     const initialCount = await prisma.missoes.count({
       where: { recurrence_series_id: seriesId },
     });
 
-    await missionsService.fail(firstOccurrence.missao_id, currentUser);
+    await tasksService.fail(firstOccurrence.missao_id, currentUser);
     currentDate = "2026-09-08";
-    await missionsService.listAllForUser(currentUser);
+    await tasksService.listAllForUser(currentUser);
 
     const finalized = await prisma.missoes.findUniqueOrThrow({
       where: { missao_id: firstOccurrence.missao_id },
@@ -486,7 +486,7 @@ describeWithDatabase("Recurrence series persistence", () => {
     const finalCount = await prisma.missoes.count({
       where: { recurrence_series_id: seriesId },
     });
-    expect(finalized.status).toBe(MISSION_STATUS.failed);
+    expect(finalized.status).toBe(TASK_STATUS.failed);
     expect(finalCount).toBeGreaterThan(initialCount);
   });
 
@@ -494,7 +494,7 @@ describeWithDatabase("Recurrence series persistence", () => {
     "does not materialize an until-objective series when the objective is %s",
     async (status) => {
       const objective = await createObjective(`Objetivo ${status}`);
-      const firstOccurrence = await createRecurringMission({
+      const firstOccurrence = await createRecurringTask({
         objetivo_id: objective.id,
         duration_type: "ate_objetivo",
       });
@@ -511,7 +511,7 @@ describeWithDatabase("Recurrence series persistence", () => {
       });
 
       currentDate = "2026-09-08";
-      await missionsService.listAllForUser(currentUser);
+      await tasksService.listAllForUser(currentUser);
 
       await expect(
         prisma.missoes.count({ where: { recurrence_series_id: seriesId } }),
@@ -521,7 +521,7 @@ describeWithDatabase("Recurrence series persistence", () => {
 
   it("deactivates an until-objective series when its objective is deleted", async () => {
     const objective = await createObjective("Objetivo descartável");
-    const firstOccurrence = await createRecurringMission({
+    const firstOccurrence = await createRecurringTask({
       objetivo_id: objective.id,
       duration_type: "ate_objetivo",
     });
@@ -543,7 +543,7 @@ describeWithDatabase("Recurrence series persistence", () => {
     const occurrences = await prisma.missoes.findMany({
       where: { recurrence_series_id: seriesId },
     });
-    expect(occurrences.every((mission) => mission.objetivo_id === null)).toBe(
+    expect(occurrences.every((task) => task.objetivo_id === null)).toBe(
       true,
     );
   });
@@ -552,16 +552,16 @@ describeWithDatabase("Recurrence series persistence", () => {
     const goal = await goalsService.create(currentUser, {
       titulo: "Objetivo independente",
     });
-    const completed = await missionsService.create(
+    const completed = await tasksService.create(
       { titulo: "Concluir", objetivo_id: goal.id },
       currentUser,
     );
-    const failed = await missionsService.create(
+    const failed = await tasksService.create(
       { titulo: "Falhar", objetivo_id: goal.id },
       currentUser,
     );
-    await missionsService.complete(completed.missao_id, currentUser);
-    await missionsService.fail(failed.missao_id, currentUser);
+    await tasksService.complete(completed.missao_id, currentUser);
+    await tasksService.fail(failed.missao_id, currentUser);
     await expect(
       prisma.objetivos.findUniqueOrThrow({ where: { id: goal.id } }),
     ).resolves.toMatchObject({ status: "ativo", concluded_at: null });
@@ -571,11 +571,11 @@ describeWithDatabase("Recurrence series persistence", () => {
       orderBy: { missao_id: "asc" },
     });
     expect(orders).toHaveLength(2);
-    expect(orders.map((mission) => mission.status)).toEqual([
+    expect(orders.map((task) => task.status)).toEqual([
       "CONCLUIDA",
       "FALHA",
     ]);
-    expect(orders.every((mission) => mission.objetivo_id === null)).toBe(true);
+    expect(orders.every((task) => task.objetivo_id === null)).toBe(true);
     expect(orders[0].completed_at).not.toBeNull();
     expect(orders[1].failed_at).not.toBeNull();
     expect(
@@ -584,29 +584,29 @@ describeWithDatabase("Recurrence series persistence", () => {
   });
 
   it("materializes an until-date series only through its inclusive end date", async () => {
-    const first = await createRecurringMission({
+    const first = await createRecurringTask({
       duration_type: "ate_data",
       recurrence_end_date: "2026-09-14",
     });
     currentDate = "2026-09-08";
-    await missionsService.listAllForUser(currentUser);
+    await tasksService.listAllForUser(currentUser);
     currentDate = "2026-09-15";
-    await missionsService.listAllForUser(currentUser);
+    await tasksService.listAllForUser(currentUser);
     const orders = await prisma.missoes.findMany({
       where: { recurrence_series_id: first.recurrence_series_id },
       orderBy: { prazo: "asc" },
     });
     expect(
-      orders.map((mission) => mission.prazo?.toISOString().slice(0, 10)),
+      orders.map((task) => task.prazo?.toISOString().slice(0, 10)),
     ).toEqual(["2026-08-31", "2026-09-07", "2026-09-14"]);
   });
 
   it("keeps an endless series running after its goal is deleted", async () => {
     const goal = await createObjective();
-    const first = await createRecurringMission({ objetivo_id: goal.id });
+    const first = await createRecurringTask({ objetivo_id: goal.id });
     await goalsService.delete(currentUser, goal.id);
     currentDate = "2026-09-08";
-    await missionsService.listAllForUser(currentUser);
+    await tasksService.listAllForUser(currentUser);
     await expect(
       prisma.series_recorrencia.findUniqueOrThrow({
         where: { recurrence_series_id: first.recurrence_series_id! },
@@ -616,7 +616,7 @@ describeWithDatabase("Recurrence series persistence", () => {
       where: { recurrence_series_id: first.recurrence_series_id },
     });
     expect(orders.length).toBeGreaterThan(2);
-    expect(orders.every((mission) => mission.objetivo_id === null)).toBe(true);
+    expect(orders.every((task) => task.objetivo_id === null)).toBe(true);
   });
 
   it("rejects an empty or null weekday list at the database boundary", async () => {
@@ -636,8 +636,8 @@ describeWithDatabase("Recurrence series persistence", () => {
     { status: "PENDENTE", completed_at: new Date() },
     { status: "CONCLUIDA", completed_at: new Date(), failed_at: new Date() },
     { prioridade: 4 },
-  ])("preserves database mission state checks for %j", async (data) => {
-    const order = await createMission(null, "Ordem válida");
+  ])("preserves database task state checks for %j", async (data) => {
+    const order = await createTask(null, "Ordem válida");
     await expect(
       prisma.missoes.update({ where: { missao_id: order.missao_id }, data }),
     ).rejects.toBeDefined();

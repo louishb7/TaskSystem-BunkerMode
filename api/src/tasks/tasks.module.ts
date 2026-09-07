@@ -3,13 +3,13 @@ import { Module } from "@nestjs/common"
 import { AuthModule } from "../auth/auth.module"
 import { CalendarModule } from "../calendar/calendar.module"
 import { PrismaModule } from "../prisma/prisma.module"
-import { MissionsController } from "./missions.controller"
-import { MissionsService } from "./missions.service"
+import { TasksController } from "./tasks.controller"
+import { TasksService } from "./tasks.service"
 
 @Module({
   imports: [AuthModule, CalendarModule, PrismaModule],
-  controllers: [MissionsController],
-  providers: [MissionsService],
-  exports: [MissionsService],
+  controllers: [TasksController],
+  providers: [TasksService],
+  exports: [TasksService],
 })
-export class MissionsModule {}
+export class TasksModule {}

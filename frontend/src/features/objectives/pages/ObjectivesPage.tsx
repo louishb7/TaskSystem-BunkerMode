@@ -6,7 +6,7 @@ import Dialog from "../../../components/ui/Dialog"
 import PageHeader from "../../../components/ui/PageHeader"
 import StatusNotice from "../../../components/ui/StatusNotice"
 import { emptyStatus } from "../../../constants/uiState"
-import MissionForm from "../../missions/components/MissionForm"
+import TaskForm from "../../tasks/components/TaskForm"
 import ObjetivoForm from "../components/ObjetivoForm"
 import ObjetivoList from "../components/ObjetivoList"
 import { useObjectives } from "../hooks/useObjectives"
@@ -15,7 +15,7 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
   const objectives = useObjectives({ onUnauthorized, token })
   const [editingObjetivo, setEditingObjetivo] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
-  const [missionObjetivo, setMissionObjetivo] = useState(null)
+  const [taskObjetivo, setTaskObjetivo] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const busy = objectives.loading || objectives.mutating
 
@@ -33,10 +33,10 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
     }
   }
 
-  async function createMission(payload) {
-    const saved = await board.createMission(payload)
+  async function createTask(payload) {
+    const saved = await board.createTask(payload)
     if (saved) {
-      setMissionObjetivo(null)
+      setTaskObjetivo(null)
       await objectives.refresh()
     }
   }
@@ -89,9 +89,9 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
 
       <ObjetivoList
         loading={busy}
-        missionsByObjetivo={objectives.missionsByObjetivo}
+        tasksByObjetivo={objectives.tasksByObjetivo}
         objetivos={objectives.objetivos}
-        onCreateMission={setMissionObjetivo}
+        onCreateTask={setTaskObjetivo}
         onDelete={setDeleteTarget}
         onEdit={(objetivo) => {
           setEditingObjetivo(objetivo)
@@ -101,26 +101,26 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
         onUpdateStatus={objectives.updateObjetivoStatus}
       />
 
-      {missionObjetivo && (
+      {taskObjetivo && (
         <Dialog
           closeOnBackdrop={false}
           onClose={() => {
-            setMissionObjetivo(null)
+            setTaskObjetivo(null)
             board.setFormStatus(emptyStatus)
           }}
           title="Nova tarefa"
         >
-          <MissionForm
+          <TaskForm
             currentUser={user}
-            initialObjetivoId={missionObjetivo.id}
-            initialObjetivoTitulo={missionObjetivo.titulo}
+            initialObjetivoId={taskObjetivo.id}
+            initialObjetivoTitulo={taskObjetivo.titulo}
             lockObjetivo
             loading={board.formLoading}
             onCancel={() => {
-              setMissionObjetivo(null)
+              setTaskObjetivo(null)
               board.setFormStatus(emptyStatus)
             }}
-            onCreate={createMission}
+            onCreate={createTask}
             onUnauthorized={onUnauthorized}
             status={board.formStatus}
             token={token}

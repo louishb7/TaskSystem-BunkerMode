@@ -3,7 +3,7 @@ import { Test } from "@nestjs/testing";
 import request = require("supertest");
 
 import { AppModule } from "../src/app.module";
-import { MISSION_STATUS } from "../src/missions/mission.types";
+import { TASK_STATUS } from "../src/tasks/task.types";
 import { PrismaService } from "../src/prisma/prisma.service";
 
 type UserRow = {
@@ -19,7 +19,7 @@ type UserRow = {
   updated_at: Date;
 };
 
-type MissionRow = {
+type TaskRow = {
   missao_id: number;
   titulo: string;
   prioridade: number;
@@ -68,12 +68,12 @@ type GoalRow = {
 
 class InMemoryPrisma {
   private userId = 1;
-  private missionId = 1;
+  private taskId = 1;
   private eventId = 1;
   private goalId = 1;
   private recurrenceSeriesId = 1;
   readonly users: UserRow[] = [];
-  readonly missions: MissionRow[] = [];
+  readonly tasks: TaskRow[] = [];
   readonly goals: GoalRow[] = [];
   readonly recurrenceSeries: RecurrenceSeriesRow[] = [];
   readonly events: Array<{
@@ -141,15 +141,15 @@ class InMemoryPrisma {
     create: async ({
       data,
     }: {
-      data: Partial<MissionRow> &
+      data: Partial<TaskRow> &
         Pick<
-          MissionRow,
+          TaskRow,
           "titulo" | "status" | "criada_por_id" | "responsavel_id"
         >;
     }) => {
       const now = new Date();
-      const mission: MissionRow = {
-        missao_id: this.missionId++,
+      const task: TaskRow = {
+        missao_id: this.taskId++,
         titulo: data.titulo,
         prioridade: data.prioridade ?? 2,
         prazo: data.prazo ?? null,
@@ -165,30 +165,30 @@ class InMemoryPrisma {
         responsavel_id: data.responsavel_id,
         objetivo_id: data.objetivo_id ?? null,
       };
-      this.missions.push(mission);
-      return mission;
+      this.tasks.push(task);
+      return task;
     },
     createManyAndReturn: async ({
       data,
       skipDuplicates,
     }: {
       data: Array<
-        Partial<MissionRow> &
+        Partial<TaskRow> &
           Pick<
-            MissionRow,
+            TaskRow,
             "titulo" | "status" | "criada_por_id" | "responsavel_id"
           >
       >;
       skipDuplicates?: boolean;
     }) => {
-      const created: MissionRow[] = [];
+      const created: TaskRow[] = [];
       for (const item of data) {
-        const duplicate = this.missions.some(
-          (mission) =>
+        const duplicate = this.tasks.some(
+          (task) =>
             item.recurrence_series_id !== null &&
             item.recurrence_series_id !== undefined &&
-            mission.recurrence_series_id === item.recurrence_series_id &&
-            mission.prazo?.getTime() === item.prazo?.getTime(),
+            task.recurrence_series_id === item.recurrence_series_id &&
+            task.prazo?.getTime() === item.prazo?.getTime(),
         );
         if (duplicate && skipDuplicates) {
           continue;
@@ -208,35 +208,35 @@ class InMemoryPrisma {
       };
       include?: { serie_recorrencia?: boolean };
     } = {}) => {
-      let missions = [...this.missions];
+      let tasks = [...this.tasks];
       if (where?.responsavel_id !== undefined) {
-        missions = missions.filter(
-          (mission) => mission.responsavel_id === where.responsavel_id,
+        tasks = tasks.filter(
+          (task) => task.responsavel_id === where.responsavel_id,
         );
       }
       if (where?.status !== undefined) {
-        missions = missions.filter(
-          (mission) => mission.status === where.status,
+        tasks = tasks.filter(
+          (task) => task.status === where.status,
         );
       }
       if (where?.prazo?.lt) {
-        missions = missions.filter(
-          (mission) =>
-            mission.prazo !== null && mission.prazo < where.prazo!.lt,
+        tasks = tasks.filter(
+          (task) =>
+            task.prazo !== null && task.prazo < where.prazo!.lt,
         );
       }
-      return missions.map((mission) =>
+      return tasks.map((task) =>
         include?.serie_recorrencia
           ? {
-              ...mission,
+              ...task,
               serie_recorrencia:
                 this.recurrenceSeries.find(
                   (series) =>
                     series.recurrence_series_id ===
-                    mission.recurrence_series_id,
+                    task.recurrence_series_id,
                 ) ?? null,
             }
-          : mission,
+          : task,
       );
     },
     findFirst: async ({
@@ -244,41 +244,41 @@ class InMemoryPrisma {
     }: {
       where: { missao_id?: number; responsavel_id?: number };
     }) =>
-      this.missions.find(
-        (mission) =>
+      this.tasks.find(
+        (task) =>
           (where.missao_id === undefined ||
-            mission.missao_id === where.missao_id) &&
+            task.missao_id === where.missao_id) &&
           (where.responsavel_id === undefined ||
-            mission.responsavel_id === where.responsavel_id),
+            task.responsavel_id === where.responsavel_id),
       ) ?? null,
     findUnique: async ({ where }: { where: { missao_id?: number } }) =>
-      this.missions.find(
-        (mission) =>
+      this.tasks.find(
+        (task) =>
           where.missao_id !== undefined &&
-          mission.missao_id === where.missao_id,
+          task.missao_id === where.missao_id,
       ) ?? null,
     update: async ({
       where,
       data,
     }: {
       where: { missao_id: number };
-      data: Partial<MissionRow>;
+      data: Partial<TaskRow>;
     }) => {
-      const mission = this.missions.find(
+      const task = this.tasks.find(
         (item) => item.missao_id === where.missao_id,
       );
-      if (!mission) {
-        throw new Error("Mission not found");
+      if (!task) {
+        throw new Error("Task not found");
       }
-      Object.assign(mission, data, { updated_at: new Date() });
-      return mission;
+      Object.assign(task, data, { updated_at: new Date() });
+      return task;
     },
     delete: async ({ where }: { where: { missao_id: number } }) => {
-      const index = this.missions.findIndex(
-        (mission) => mission.missao_id === where.missao_id,
+      const index = this.tasks.findIndex(
+        (task) => task.missao_id === where.missao_id,
       );
       if (index >= 0) {
-        this.missions.splice(index, 1);
+        this.tasks.splice(index, 1);
       }
     },
   };
@@ -399,10 +399,10 @@ class InMemoryPrisma {
       const index = this.goals.findIndex((goal) => goal.id === where.id);
       if (index < 0) throw new Error("Goal not found");
       this.goals.splice(index, 1);
-      this.missions
-        .filter((mission) => mission.objetivo_id === where.id)
-        .forEach((mission) => {
-          mission.objetivo_id = null;
+      this.tasks
+        .filter((task) => task.objetivo_id === where.id)
+        .forEach((task) => {
+          task.objetivo_id = null;
         });
       this.recurrenceSeries
         .filter((series) => series.objetivo_id === where.id)
@@ -553,7 +553,7 @@ describe("HTTP application", () => {
     });
   });
 
-  it("registers, logs in, reads the authenticated user and executes a mission flow", async () => {
+  it("registers, logs in, reads the authenticated user and executes a task flow", async () => {
     await request(app.getHttpServer())
       .post("/api/v2/auth/register")
       .send({
@@ -578,17 +578,17 @@ describe("HTTP application", () => {
       });
 
     const created = await request(app.getHttpServer())
-      .post("/api/v2/missoes")
+      .post("/api/v2/tarefas")
       .set("Authorization", `Bearer ${token}`)
       .send({ titulo: "Executar ordem", prazo: "2026-08-13" })
       .expect(201);
     expect(created.body).toMatchObject({
       titulo: "Executar ordem",
-      status: MISSION_STATUS.pending,
+      status: TASK_STATUS.pending,
     });
 
     await request(app.getHttpServer())
-      .get("/api/v2/missoes")
+      .get("/api/v2/tarefas")
       .set("Authorization", `Bearer ${token}`)
       .expect(200)
       .expect((response) => {
@@ -596,15 +596,15 @@ describe("HTTP application", () => {
       });
 
     await request(app.getHttpServer())
-      .patch(`/api/v2/missoes/${created.body.id}/concluir`)
+      .patch(`/api/v2/tarefas/${created.body.id}/concluir`)
       .set("Authorization", `Bearer ${token}`)
       .expect(200)
       .expect((response) => {
-        expect(response.body.status).toBe(MISSION_STATUS.completed);
+        expect(response.body.status).toBe(TASK_STATUS.completed);
       });
 
     await request(app.getHttpServer())
-      .get("/api/v2/missoes")
+      .get("/api/v2/tarefas")
       .set("Authorization", `Bearer ${token}`)
       .expect(200)
       .expect((response) => {
@@ -612,20 +612,20 @@ describe("HTTP application", () => {
           expect.arrayContaining([
             expect.objectContaining({
               id: created.body.id,
-              status: MISSION_STATUS.completed,
+              status: TASK_STATUS.completed,
             }),
           ]),
         );
       });
 
     await request(app.getHttpServer())
-      .get(`/api/v2/missoes/${created.body.id}/historico`)
+      .get(`/api/v2/tarefas/${created.body.id}/historico`)
       .set("Authorization", `Bearer ${token}`)
       .expect(200)
       .expect((response) => {
         expect(
           response.body.map((event: { acao: string }) => event.acao),
-        ).toEqual(["missao_criada", "missao_concluida"]);
+        ).toEqual(["tarefa_criada", "tarefa_concluida"]);
       });
   });
 
@@ -648,23 +648,23 @@ describe("HTTP application", () => {
       const token = login.body.access_token;
 
       const original = await request(app.getHttpServer())
-        .post("/api/v2/missoes")
+        .post("/api/v2/tarefas")
         .set("Authorization", `Bearer ${token}`)
         .send({ titulo: "Ordem original", prazo: "2026-09-01" })
         .expect(201);
 
       const generalList = await request(app.getHttpServer())
-        .get("/api/v2/missoes")
+        .get("/api/v2/tarefas")
         .set("Authorization", `Bearer ${token}`)
         .expect(200);
 
       await request(app.getHttpServer())
-        .get("/api/v2/missoes/quadro-soldado")
+        .get("/api/v2/tarefas/foco")
         .set("Authorization", `Bearer ${token}`)
         .expect(200)
         .expect((response) => {
           expect(
-            response.body.missions.map((mission: { id: number }) => mission.id),
+            response.body.tasks.map((task: { id: number }) => task.id),
           ).toContain(original.body.id);
         });
 
@@ -678,31 +678,31 @@ describe("HTTP application", () => {
         });
 
       const soldierList = await request(app.getHttpServer())
-        .get("/api/v2/missoes")
+        .get("/api/v2/tarefas")
         .set("Authorization", `Bearer ${token}`)
         .expect(200);
 
       expect(
-        soldierList.body.map((mission: { id: number }) => mission.id),
-      ).toEqual(generalList.body.map((mission: { id: number }) => mission.id));
+        soldierList.body.map((task: { id: number }) => task.id),
+      ).toEqual(generalList.body.map((task: { id: number }) => task.id));
       expect(
         soldierList.body.find(
-          (mission: { id: number }) => mission.id === original.body.id,
+          (task: { id: number }) => task.id === original.body.id,
         ).permissions,
       ).toEqual(
         generalList.body.find(
-          (mission: { id: number }) => mission.id === original.body.id,
+          (task: { id: number }) => task.id === original.body.id,
         ).permissions,
       );
 
-      const createdAsSoldier = await request(app.getHttpServer())
-        .post("/api/v2/missoes")
+      const createdInFocus = await request(app.getHttpServer())
+        .post("/api/v2/tarefas")
         .set("Authorization", `Bearer ${token}`)
         .send({ titulo: "Criada com preferência Soldado", prazo: "2026-09-01" })
         .expect(201);
 
       await request(app.getHttpServer())
-        .patch(`/api/v2/missoes/${createdAsSoldier.body.id}`)
+        .patch(`/api/v2/tarefas/${createdInFocus.body.id}`)
         .set("Authorization", `Bearer ${token}`)
         .send({ titulo: "Editada com preferência Soldado" })
         .expect(200)
@@ -739,13 +739,13 @@ describe("HTTP application", () => {
         .expect(200);
 
       await request(app.getHttpServer())
-        .patch(`/api/v2/missoes/${original.body.id}`)
+        .patch(`/api/v2/tarefas/${original.body.id}`)
         .set("Authorization", `Bearer ${foreignLogin.body.access_token}`)
         .send({ titulo: "Tentativa indevida" })
         .expect(404);
 
       await request(app.getHttpServer())
-        .delete(`/api/v2/missoes/${createdAsSoldier.body.id}`)
+        .delete(`/api/v2/tarefas/${createdInFocus.body.id}`)
         .set("Authorization", `Bearer ${token}`)
         .expect(204);
 
@@ -819,7 +819,7 @@ describe("HTTP application", () => {
       });
 
       const recurring = await request(app.getHttpServer())
-        .post("/api/v2/missoes")
+        .post("/api/v2/tarefas")
         .set("Authorization", authorization)
         .send({
           titulo: "Escrever",
@@ -859,25 +859,25 @@ describe("HTTP application", () => {
 
       const board = () =>
         request(app.getHttpServer())
-          .get("/api/v2/missoes/quadro-soldado")
+          .get("/api/v2/tarefas/foco")
           .set("Authorization", authorization)
           .expect(200);
       const firstBoard = await board();
       const secondBoard = await board();
       expect(secondBoard.body).toEqual(firstBoard.body);
       expect(
-        firstBoard.body.missions.map((mission: { id: number }) => mission.id),
+        firstBoard.body.tasks.map((task: { id: number }) => task.id),
       ).toContain(recurring.body.id);
-      expect(firstBoard.body.missions[0].recurrence).toMatchObject({
+      expect(firstBoard.body.tasks[0].recurrence).toMatchObject({
         series_id: recurring.body.recurrence.series_id,
       });
 
       await request(app.getHttpServer())
-        .patch(`/api/v2/missoes/${recurring.body.id}/concluir`)
+        .patch(`/api/v2/tarefas/${recurring.body.id}/concluir`)
         .set("Authorization", authorization)
         .expect(200);
       const failed = await request(app.getHttpServer())
-        .post("/api/v2/missoes")
+        .post("/api/v2/tarefas")
         .set("Authorization", authorization)
         .send({ titulo: "Ordem independente", prazo: "2026-08-13" })
         .expect(201);
@@ -886,16 +886,16 @@ describe("HTTP application", () => {
         recurrence: null,
       });
       await request(app.getHttpServer())
-        .post(`/api/v2/missoes/${failed.body.id}/falhar`)
+        .post(`/api/v2/tarefas/${failed.body.id}/falhar`)
         .set("Authorization", authorization)
         .expect(200);
       const history = await request(app.getHttpServer())
-        .get("/api/v2/missoes/historico")
+        .get("/api/v2/tarefas/historico")
         .set("Authorization", authorization)
         .expect(200);
       expect(
         history.body
-          .map((mission: { status: string }) => mission.status)
+          .map((task: { status: string }) => task.status)
           .sort(),
       ).toEqual(["CONCLUIDA", "FALHA"]);
       const goals = await request(app.getHttpServer())
@@ -911,24 +911,24 @@ describe("HTTP application", () => {
         .set("Authorization", authorization)
         .expect(204);
       const afterDelete = await request(app.getHttpServer())
-        .get("/api/v2/missoes/historico")
+        .get("/api/v2/tarefas/historico")
         .set("Authorization", authorization)
         .expect(200);
       expect(afterDelete.body).toHaveLength(2);
       expect(
         afterDelete.body.every(
-          (mission: { objetivo_id: number | null }) =>
-            mission.objetivo_id === null,
+          (task: { objetivo_id: number | null }) =>
+            task.objetivo_id === null,
         ),
       ).toBe(true);
       await request(app.getHttpServer())
-        .get(`/api/v2/missoes/${recurring.body.id}/historico`)
+        .get(`/api/v2/tarefas/${recurring.body.id}/historico`)
         .set("Authorization", authorization)
         .expect(200)
         .expect((response) => {
           expect(
             response.body.map((event: { acao: string }) => event.acao),
-          ).toEqual(["missao_recorrente_criada", "missao_concluida"]);
+          ).toEqual(["tarefa_recorrente_criada", "tarefa_concluida"]);
         });
     } finally {
       jest.useRealTimers();

@@ -8,14 +8,14 @@ export default function StartFocusDialog({
   loading,
   onCancel,
   onConfirm,
-  todayMissions = [],
+  todayTasks = [],
   timezone,
 }) {
-  const completedMissions = todayMissions.filter(
-    (mission) => String(mission?.status_code || "").toUpperCase() === "CONCLUIDA"
+  const completedTasks = todayTasks.filter(
+    (task) => String(task?.status_code || "").toUpperCase() === "CONCLUIDA"
   )
-  const pendingMissions = todayMissions.filter((mission) => {
-    const statusCode = String(mission?.status_code || "").toUpperCase()
+  const pendingTasks = todayTasks.filter((task) => {
+    const statusCode = String(task?.status_code || "").toUpperCase()
     return !statusCode.startsWith("FALHA") && statusCode !== "CONCLUIDA"
   })
 
@@ -24,14 +24,14 @@ export default function StartFocusDialog({
       <div className="grid gap-4">
         <p className="m-0 text-sm text-text-secondary">{formatCurrentDay(timezone)}</p>
         <p className="m-0 text-sm font-medium text-text-primary">Tarefas de hoje</p>
-        {todayMissions.length > 0 ? (
+        {todayTasks.length > 0 ? (
           <ul className="m-0 grid list-none gap-2 rounded-control border border-border bg-app p-3 text-sm text-text-primary">
-            {pendingMissions.map((mission) => (
-              <li key={mission.id}>{mission?.titulo || "Tarefa sem título"}</li>
+            {pendingTasks.map((task) => (
+              <li key={task.id}>{task?.titulo || "Tarefa sem título"}</li>
             ))}
-            {completedMissions.map((mission) => (
-              <li className="text-text-secondary line-through" key={mission.id}>
-                {mission?.titulo || "Tarefa sem título"}
+            {completedTasks.map((task) => (
+              <li className="text-text-secondary line-through" key={task.id}>
+                {task?.titulo || "Tarefa sem título"}
               </li>
             ))}
           </ul>

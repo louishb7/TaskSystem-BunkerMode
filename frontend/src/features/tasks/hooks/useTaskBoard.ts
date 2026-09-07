@@ -3,11 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { getErrorMessage } from "../../../api/httpClient"
 import { emptyStatus } from "../../../constants/uiState"
 import { api } from "../../../services/bunkermodeApi"
-import { getActionMissions } from "../missionSelectors"
+import { getActionTasks } from "../taskSelectors"
 
-export function useMissionBoard({ authenticated, boardMode, onUnauthorized, token }) {
-  const [missions, setMissions] = useState([])
-  const [missionLoading, setMissionLoading] = useState(false)
+export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }) {
+  const [tasks, setTasks] = useState([])
+  const [taskLoading, setTaskLoading] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [pinLoadingId, setPinLoadingId] = useState(null)
   const [completeLoadingId, setCompleteLoadingId] = useState(null)
@@ -17,8 +17,8 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
   const [formStatus, setFormStatus] = useState(emptyStatus)
   const loadRequestRef = useRef(0)
 
-  const actionMissions = useMemo(() => getActionMissions(missions), [missions])
-  const dailyMissions = missions
+  const actionTasks = useMemo(() => getActionTasks(tasks), [tasks])
+  const dailyTasks = tasks
 
   const loadTasksBoard = useCallback(
     async (successMessage = "") => {
@@ -28,26 +28,26 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
 
       const requestId = loadRequestRef.current + 1
       loadRequestRef.current = requestId
-      setMissionLoading(true)
-      const missionsResult = await api.listMissions(token)
+      setTaskLoading(true)
+      const tasksResult = await api.listTasks(token)
       if (requestId !== loadRequestRef.current) {
         return false
       }
-      setMissionLoading(false)
+      setTaskLoading(false)
 
-      if (onUnauthorized(missionsResult)) {
+      if (onUnauthorized(tasksResult)) {
         return false
       }
 
-      if (!missionsResult.ok) {
+      if (!tasksResult.ok) {
         setStatus({
           type: "error",
-          message: getErrorMessage(missionsResult, "Não foi possível carregar tarefas."),
+          message: getErrorMessage(tasksResult, "Não foi possível carregar tarefas."),
         })
         return false
       }
 
-      setMissions(missionsResult.data)
+      setTasks(tasksResult.data)
       setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus)
       return true
     },
@@ -62,12 +62,12 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
 
       const requestId = loadRequestRef.current + 1
       loadRequestRef.current = requestId
-      setMissionLoading(true)
+      setTaskLoading(true)
       const result = await api.getFocusBoard(token)
       if (requestId !== loadRequestRef.current) {
         return false
       }
-      setMissionLoading(false)
+      setTaskLoading(false)
 
       if (onUnauthorized(result)) {
         return false
@@ -81,7 +81,7 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
         return false
       }
 
-      setMissions(result.data.daily_missions)
+      setTasks(result.data.daily_tasks)
       setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus)
       return true
     },
@@ -90,7 +90,7 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
 
   useEffect(() => {
     if (!authenticated) {
-      setMissions([])
+      setTasks([])
       setStatus(emptyStatus)
       setFormStatus(emptyStatus)
       return
@@ -122,7 +122,7 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
     return { persisted: true, synchronized: true }
   }
 
-  async function createMission(payload) {
+  async function createTask(payload) {
     if (!payload.titulo) {
       setFormStatus({ type: "error", message: "Informe o título da tarefa." })
       return false
@@ -130,7 +130,7 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
 
     setFormLoading(true)
     setFormStatus(emptyStatus)
-    const result = await api.createMission(token, payload)
+    const result = await api.createTask(token, payload)
     setFormLoading(false)
 
     if (onUnauthorized(result)) {
@@ -148,7 +148,7 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
     return refreshAfterPersistedMutation("Tarefa registrada.")
   }
 
-  async function updateMission(missionId, payload) {
+  async function updateTask(taskId, payload) {
     if (!payload.titulo) {
       setFormStatus({ type: "error", message: "Informe o título da tarefa." })
       return false
@@ -156,7 +156,7 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
 
     setFormLoading(true)
     setFormStatus(emptyStatus)
-    const result = await api.updateMission(token, missionId, payload)
+    const result = await api.updateTask(token, taskId, payload)
     setFormLoading(false)
 
     if (onUnauthorized(result)) {
@@ -174,15 +174,15 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
     return refreshAfterPersistedMutation("Tarefa atualizada.")
   }
 
-  async function toggleMissionPin(mission) {
-    if (!mission?.id) {
+  async function toggleTaskPin(task) {
+    if (!task?.id) {
       setStatus({ type: "error", message: "Tarefa inválida para subir prioridade." })
       return false
     }
 
-    setPinLoadingId(mission.id)
+    setPinLoadingId(task.id)
     setStatus(emptyStatus)
-    const result = await api.toggleMissionPin(token, mission.id)
+    const result = await api.toggleTaskPin(token, task.id)
     setPinLoadingId(null)
 
     if (onUnauthorized(result)) {
@@ -201,14 +201,14 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
     return refreshAfterPersistedMutation("Prioridade da tarefa atualizada.")
   }
 
-  async function deleteMission(mission) {
-    if (!mission?.id) {
+  async function deleteTask(task) {
+    if (!task?.id) {
       setStatus({ type: "error", message: "Tarefa inválida para remoção." })
       return false
     }
 
     setStatus(emptyStatus)
-    const result = await api.deleteMission(token, mission.id)
+    const result = await api.deleteTask(token, task.id)
 
     if (onUnauthorized(result)) {
       return false
@@ -225,10 +225,10 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
     return refreshAfterPersistedMutation("Tarefa removida.")
   }
 
-  async function completeMission(mission) {
-    setCompleteLoadingId(mission.id)
+  async function completeTask(task) {
+    setCompleteLoadingId(task.id)
     setStatus(emptyStatus)
-    const result = await api.completeMission(token, mission.id)
+    const result = await api.completeTask(token, task.id)
     setCompleteLoadingId(null)
 
     if (onUnauthorized(result)) {
@@ -247,15 +247,15 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
     return refreshAfterPersistedMutation("Tarefa concluída.")
   }
 
-  async function reopenMission(mission) {
-    if (!mission?.id) {
+  async function reopenTask(task) {
+    if (!task?.id) {
       setStatus({ type: "error", message: "Tarefa inválida para reabertura." })
       return false
     }
 
-    setReopenLoadingId(mission.id)
+    setReopenLoadingId(task.id)
     setStatus(emptyStatus)
-    const result = await api.updateMission(token, mission.id, { status: "PENDENTE" })
+    const result = await api.updateTask(token, task.id, { status: "PENDENTE" })
     setReopenLoadingId(null)
 
     if (onUnauthorized(result)) {
@@ -274,10 +274,10 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
     return refreshAfterPersistedMutation("Tarefa reaberta.")
   }
 
-  async function failMission(missionId) {
-    setFailLoadingId(missionId)
+  async function failTask(taskId) {
+    setFailLoadingId(taskId)
     setStatus(emptyStatus)
-    const result = await api.failMission(token, missionId)
+    const result = await api.failTask(token, taskId)
     setFailLoadingId(null)
 
     if (onUnauthorized(result)) {
@@ -295,26 +295,26 @@ export function useMissionBoard({ authenticated, boardMode, onUnauthorized, toke
   }
 
   return {
-    actionMissions,
+    actionTasks,
     completeLoadingId,
-    completeMission,
-    createMission,
-    dailyMissions,
-    deleteMission,
+    completeTask,
+    createTask,
+    dailyTasks,
+    deleteTask,
     failLoadingId,
-    failMission,
+    failTask,
     formLoading,
     formStatus,
-    missionLoading,
-    missions,
+    taskLoading,
+    tasks,
     pinLoadingId,
     refreshTasksBoard: loadTasksBoard,
     reopenLoadingId,
-    reopenMission,
+    reopenTask,
     setFormStatus,
     setStatus,
     status,
-    toggleMissionPin,
-    updateMission,
+    toggleTaskPin,
+    updateTask,
   }
 }

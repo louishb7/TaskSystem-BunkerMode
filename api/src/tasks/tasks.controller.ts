@@ -1,0 +1,150 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
+
+import { AuthenticatedRequest } from "../auth/auth.types";
+import { AuthGuard } from "../auth/auth.guard";
+import { TasksService } from "./tasks.service";
+import { toTaskResponse } from "./task-response";
+
+function taskId(value: string): number {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id < 1) {
+    return 0;
+  }
+  return id;
+}
+
+@Controller("api/v2")
+@UseGuards(AuthGuard)
+export class TasksController {
+  constructor(private readonly tasksService: TasksService) {}
+
+  @Get("tarefas")
+  async listTasks(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const tasks = await this.tasksService.listForTasksBoard(user);
+    return tasks.map((task) => toTaskResponse(task, user));
+  }
+
+  @Post("tarefas")
+  async createTask(
+    @Req() request: AuthenticatedRequest,
+    @Body() payload: unknown,
+  ) {
+    const user = request.currentUser!;
+    const task = await this.tasksService.create(payload ?? {}, user);
+    return toTaskResponse(task, user);
+  }
+
+  @Get("tarefas/dia-operacional")
+  async listDailyTasks(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const tasks = await this.tasksService.listDailyOperational(user);
+    return tasks.map((task) => toTaskResponse(task, user));
+  }
+
+  @Get("tarefas/foco")
+  async focusBoard(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const board = await this.tasksService.focusBoard(user);
+    return {
+      tasks: board.action_tasks.map((task) =>
+        toTaskResponse(task, user),
+      ),
+      daily_tasks: board.daily_tasks.map((task) =>
+        toTaskResponse(task, user),
+      ),
+    };
+  }
+
+  @Get("tarefas/historico")
+  async listHistoricalTasks(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const tasks = await this.tasksService.listHistorical(user);
+    return tasks.map((task) => toTaskResponse(task, user));
+  }
+
+  @Patch("tarefas/:id")
+  async updateTask(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body() payload: unknown,
+  ) {
+    const user = request.currentUser!;
+    const task = await this.tasksService.update(
+      taskId(id),
+      payload ?? {},
+      user,
+    );
+    return toTaskResponse(task, user);
+  }
+
+  @Patch("tarefas/:id/concluir")
+  async completeTask(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+  ) {
+    const user = request.currentUser!;
+    const task = await this.tasksService.complete(taskId(id), user);
+    return toTaskResponse(task, user);
+  }
+
+  @Post("tarefas/:id/falhar")
+  @HttpCode(200)
+  async failTask(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+  ) {
+    const user = request.currentUser!;
+    const task = await this.tasksService.fail(taskId(id), user);
+    return toTaskResponse(task, user);
+  }
+
+  @Patch("tarefas/:id/toggle-pin")
+  async togglePin(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+  ) {
+    const user = request.currentUser!;
+    const task = await this.tasksService.togglePin(taskId(id), user);
+    return toTaskResponse(task, user);
+  }
+
+  @Delete("tarefas/:id")
+  @HttpCode(204)
+  async deleteTask(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+  ) {
+    await this.tasksService.delete(taskId(id), request.currentUser!);
+  }
+
+  @Get("tarefas/:id/historico")
+  async taskHistory(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+  ) {
+    const events = await this.tasksService.taskHistory(
+      taskId(id),
+      request.currentUser!,
+    );
+    return events.map((event) => ({
+      id: event.evento_id,
+      missao_id: event.missao_id,
+      usuario_id: event.usuario_id,
+      acao: event.acao,
+      detalhes: event.detalhes,
+      criado_em: event.criado_em.toISOString(),
+    }));
+  }
+}

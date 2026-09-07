@@ -6,7 +6,7 @@ import AppShell from "../components/layout/AppShell"
 import ExecutionLayout from "../components/layout/ExecutionLayout"
 import { emptyStatus } from "../constants/uiState"
 import { useAuth } from "../context/AuthContext"
-import { useMissionBoardContext } from "../context/MissionBoardContext"
+import { useTaskBoardContext } from "../context/TaskBoardContext"
 import AuthScreen from "../features/auth/components/AuthScreen"
 import ObjectivesPage from "../features/objectives/pages/ObjectivesPage"
 import FocusPage from "../features/tasks/pages/FocusPage"
@@ -90,7 +90,7 @@ function ProtectedRoute({ children }) {
 function TasksRoute() {
   const navigate = useNavigate()
   const auth = useAuth()
-  const board = useMissionBoardContext()
+  const board = useTaskBoardContext()
   const logout = useLogout()
 
   function startFocus() {
@@ -114,7 +114,7 @@ function TasksRoute() {
 
 function ObjectivesRoute() {
   const auth = useAuth()
-  const board = useMissionBoardContext()
+  const board = useTaskBoardContext()
   const logout = useLogout()
 
   return (
@@ -132,7 +132,7 @@ function ObjectivesRoute() {
 function FocusRoute() {
   const navigate = useNavigate()
   const auth = useAuth()
-  const board = useMissionBoardContext()
+  const board = useTaskBoardContext()
 
   function returnToTasks() {
     board.setStatus(emptyStatus)
@@ -143,9 +143,9 @@ function FocusRoute() {
   return (
     <ExecutionLayout onReturnToTasks={returnToTasks}>
       <FocusPage
-        actionMissions={board.actionMissions}
+        actionTasks={board.actionTasks}
         board={board}
-        dailyMissions={board.dailyMissions}
+        dailyTasks={board.dailyTasks}
         timezone={auth.user?.timezone}
       />
     </ExecutionLayout>
@@ -155,7 +155,7 @@ function FocusRoute() {
 function useLogout() {
   const navigate = useNavigate()
   const auth = useAuth()
-  const board = useMissionBoardContext()
+  const board = useTaskBoardContext()
 
   return () => {
     auth.clearSession()

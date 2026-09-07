@@ -2,14 +2,14 @@ import React from "react"
 
 import Badge from "../../../components/ui/Badge"
 import Button from "../../../components/ui/Button"
-import { isCompleted } from "../../../utils/missionStatus"
+import { isCompleted } from "../../../utils/taskStatus"
 import { operationalDateFor } from "../../calendar/calendarUtils"
 
-function can(mission, key) {
-  return Boolean(mission?.permissions?.[key]) && mission?.id !== undefined && mission?.id !== null
+function can(task, key) {
+  return Boolean(task?.permissions?.[key]) && task?.id !== undefined && task?.id !== null
 }
 
-function parseMissionDate(value) {
+function parseTaskDate(value) {
   if (!value || typeof value !== "string") {
     return null
   }
@@ -40,7 +40,7 @@ function todayStart(timezone) {
 }
 
 function formatDeadline(value, timezone) {
-  const parsed = parseMissionDate(value)
+  const parsed = parseTaskDate(value)
   if (!parsed) {
     return "SEM DATA"
   }
@@ -55,13 +55,13 @@ function formatDeadline(value, timezone) {
   return `${day}/${month}`
 }
 
-function statusText(mission) {
+function statusText(task) {
   const compact = {
     CONCLUIDA: "",
     FALHA: "FALHOU",
   }
-  const statusCode = String(mission?.status_code || "").toUpperCase()
-  const fallbackLabel = String(mission?.status_label || "").trim()
+  const statusCode = String(task?.status_code || "").toUpperCase()
+  const fallbackLabel = String(task?.status_label || "").trim()
 
   if (statusCode === "PENDENTE" || fallbackLabel.toUpperCase() === "PENDENTE") {
     return ""
@@ -70,10 +70,10 @@ function statusText(mission) {
   return compact[statusCode] || fallbackLabel || ""
 }
 
-export default function MissionCard({
+export default function TaskCard({
   completing = false,
   failing = false,
-  mission,
+  task,
   onComplete,
   onDelete = undefined,
   onEdit = undefined,
@@ -86,17 +86,17 @@ export default function MissionCard({
   variant = "tasks",
 }) {
   const focus = variant === "focus"
-  const title = mission?.titulo || "Tarefa sem título"
-  const instruction = mission?.instrucao || ""
-  const isPinned = mission?.is_pinned === true
+  const title = task?.titulo || "Tarefa sem título"
+  const instruction = task?.instrucao || ""
+  const isPinned = task?.is_pinned === true
   const disabled = pinning || completing || failing || reopening
-  const canComplete = can(mission, "can_complete")
-  const canFail = can(mission, "can_fail")
-  const canTogglePin = !focus && can(mission, "can_pin") && typeof onTogglePin === "function"
-  const completed = isCompleted(mission)
-  const deadlineLabel = formatDeadline(mission?.prazo, timezone)
-  const failed = String(mission?.status_code || "") === "FALHA"
-  const currentStatusText = statusText(mission)
+  const canComplete = can(task, "can_complete")
+  const canFail = can(task, "can_fail")
+  const canTogglePin = !focus && can(task, "can_pin") && typeof onTogglePin === "function"
+  const completed = isCompleted(task)
+  const deadlineLabel = formatDeadline(task?.prazo, timezone)
+  const failed = String(task?.status_code || "") === "FALHA"
+  const currentStatusText = statusText(task)
 
   if (focus) {
     return (
@@ -112,7 +112,7 @@ export default function MissionCard({
 
         <div className="flex flex-wrap gap-2">
           {isPinned && <Badge variant="warning">Prioridade alta</Badge>}
-          {mission?.recurrence && <Badge>Recorrente</Badge>}
+          {task?.recurrence && <Badge>Recorrente</Badge>}
           {completed && <Badge variant="success">Tarefa concluída</Badge>}
           {failed && <Badge variant="danger">Falha registrada</Badge>}
           {!completed && !failed && currentStatusText && <Badge>{currentStatusText}</Badge>}
@@ -130,7 +130,7 @@ export default function MissionCard({
                 disabled={disabled}
                 loading={failing}
                 variant="secondary"
-                onClick={() => onFail?.(mission.id)}
+                onClick={() => onFail?.(task.id)}
               >
                 Registrar falha
               </Button>
@@ -156,7 +156,7 @@ export default function MissionCard({
             disabled={disabled}
             size="small"
             variant="ghost"
-            onClick={() => onTogglePin(mission)}
+            onClick={() => onTogglePin(task)}
           >
             {isPinned ? "Prioridade alta" : "Priorizar"}
           </Button>
@@ -170,7 +170,7 @@ export default function MissionCard({
             {deadlineLabel === "HOJE" ? "Hoje" : deadlineLabel}
           </Badge>
         )}
-        {mission?.recurrence && <Badge>Recorrente</Badge>}
+        {task?.recurrence && <Badge>Recorrente</Badge>}
         {completed && <Badge variant="success">Concluída</Badge>}
         {failed && <Badge variant="danger">Falha registrada</Badge>}
         {!completed && !failed && currentStatusText && <Badge>{currentStatusText}</Badge>}
@@ -187,22 +187,22 @@ export default function MissionCard({
             loading={failing}
             size="small"
             variant="secondary"
-            onClick={() => onFail?.(mission.id)}
+            onClick={() => onFail?.(task.id)}
           >
             Registrar falha
           </Button>
         )}
-        {can(mission, "can_edit") && (
+        {can(task, "can_edit") && (
           <Button disabled={disabled} size="small" variant="ghost" onClick={onEdit}>
             Editar
           </Button>
         )}
-        {can(mission, "can_delete") && (
+        {can(task, "can_delete") && (
           <Button disabled={disabled} size="small" variant="danger" onClick={onDelete}>
             Remover
           </Button>
         )}
-        {completed && can(mission, "can_edit") && onReopen && (
+        {completed && can(task, "can_edit") && onReopen && (
           <Button loading={reopening} size="small" variant="secondary" onClick={onReopen}>
             Reabrir
           </Button>

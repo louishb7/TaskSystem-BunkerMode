@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router-dom"
 import App from "./app/App"
 import AppErrorBoundary from "./app/AppErrorBoundary"
 import { AuthProvider } from "./context/AuthContext"
-import { MissionBoardProvider } from "./context/MissionBoardContext"
+import { TaskBoardProvider } from "./context/TaskBoardContext"
 import "./theme/v2.css"
 
 createRoot(document.getElementById("root")).render(
@@ -12,9 +12,9 @@ createRoot(document.getElementById("root")).render(
     <AppErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <MissionBoardProvider>
+          <TaskBoardProvider>
             <App />
-          </MissionBoardProvider>
+          </TaskBoardProvider>
         </AuthProvider>
       </BrowserRouter>
     </AppErrorBoundary>

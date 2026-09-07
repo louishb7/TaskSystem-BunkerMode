@@ -1,30 +1,30 @@
 import React, { createContext, useContext } from "react"
 import { useLocation } from "react-router-dom"
 
-import { useMissionBoard } from "../features/missions/hooks/useMissionBoard"
+import { useTaskBoard } from "../features/tasks/hooks/useTaskBoard"
 import { APP_ROUTES } from "../routes/routeConstants"
 import { useAuth } from "./AuthContext"
 
-const MissionBoardContext = createContext(null)
+const TaskBoardContext = createContext(null)
 
-export function MissionBoardProvider({ children }) {
+export function TaskBoardProvider({ children }) {
   const auth = useAuth()
   const location = useLocation()
   const boardMode = location.pathname === APP_ROUTES.TASKS_FOCUS ? "focus" : "tasks"
-  const board = useMissionBoard({
+  const board = useTaskBoard({
     authenticated: auth.authenticated,
     onUnauthorized: auth.handleUnauthorized,
     token: auth.token,
     boardMode,
   })
 
-  return <MissionBoardContext.Provider value={board}>{children}</MissionBoardContext.Provider>
+  return <TaskBoardContext.Provider value={board}>{children}</TaskBoardContext.Provider>
 }
 
-export function useMissionBoardContext() {
-  const board = useContext(MissionBoardContext)
+export function useTaskBoardContext() {
+  const board = useContext(TaskBoardContext)
   if (!board) {
-    throw new Error("useMissionBoardContext deve ser usado dentro de MissionBoardProvider.")
+    throw new Error("useTaskBoardContext deve ser usado dentro de TaskBoardProvider.")
   }
   return board
 }

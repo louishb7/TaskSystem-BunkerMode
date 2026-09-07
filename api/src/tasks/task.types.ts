@@ -1,22 +1,22 @@
 import { UserRecord } from "../auth/auth.types";
 
-export const MISSION_STATUS = {
+export const TASK_STATUS = {
   pending: "PENDENTE",
   completed: "CONCLUIDA",
   failed: "FALHA",
 } as const;
 
-export const MISSION_STATUS_LABEL = {
-  [MISSION_STATUS.pending]: "Pendente",
-  [MISSION_STATUS.completed]: "Concluída",
-  [MISSION_STATUS.failed]: "Falha",
+export const TASK_STATUS_LABEL = {
+  [TASK_STATUS.pending]: "Pendente",
+  [TASK_STATUS.completed]: "Concluída",
+  [TASK_STATUS.failed]: "Falha",
 } as const;
 
-export const MISSION_INSTRUCTION_MAX_LENGTH = 280;
+export const TASK_INSTRUCTION_MAX_LENGTH = 280;
 export const DEFAULT_PRIORITY = 2;
 
-export type MissionStatus =
-  (typeof MISSION_STATUS)[keyof typeof MISSION_STATUS];
+export type TaskStatus =
+  (typeof TASK_STATUS)[keyof typeof TASK_STATUS];
 
 export type RecurrenceSeriesRecord = {
   recurrence_series_id: number;
@@ -25,7 +25,7 @@ export type RecurrenceSeriesRecord = {
   end_date: Date | null;
 };
 
-export type MissionRecord = {
+export type TaskRecord = {
   missao_id: number;
   titulo: string;
   prioridade: number;
@@ -44,9 +44,9 @@ export type MissionRecord = {
   objetivo_id: number | null;
 };
 
-export type MissionUser = Pick<UserRecord, "usuario_id">;
+export type TaskUser = Pick<UserRecord, "usuario_id">;
 
-export type MissionPermissions = {
+export type TaskPermissions = {
   can_complete: boolean;
   can_edit: boolean;
   can_delete: boolean;
@@ -55,14 +55,14 @@ export type MissionPermissions = {
   can_view_history: boolean;
 };
 
-export type MissionResponse = {
+export type TaskResponse = {
   id: number;
   titulo: string;
   prioridade: number;
   prazo: string | null;
   instrucao: string | null;
-  status: MissionStatus;
-  status_code: MissionStatus;
+  status: TaskStatus;
+  status_code: TaskStatus;
   status_label: string;
   is_pinned: boolean;
   created_at: string;
@@ -79,5 +79,5 @@ export type MissionResponse = {
     termination_policy: string;
     end_date: string | null;
   } | null;
-  permissions: MissionPermissions;
+  permissions: TaskPermissions;
 };

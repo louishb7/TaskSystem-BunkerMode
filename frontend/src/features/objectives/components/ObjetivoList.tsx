@@ -5,9 +5,9 @@ import ObjetivoCard from "./ObjetivoCard"
 
 export default function ObjetivoList({
   loading,
-  missionsByObjetivo,
+  tasksByObjetivo,
   objetivos,
-  onCreateMission,
+  onCreateTask,
   onDelete,
   onEdit,
   onMoveToTop,
@@ -28,9 +28,9 @@ export default function ObjetivoList({
         <ObjetivoCard
           key={objetivo.id}
           loading={loading}
-          missions={missionsByObjetivo[String(objetivo.id)] || []}
+          tasks={tasksByObjetivo[String(objetivo.id)] || []}
           objetivo={objetivo}
-          onCreateMission={() => onCreateMission(objetivo)}
+          onCreateTask={() => onCreateTask(objetivo)}
           onDelete={() => onDelete(objetivo)}
           onEdit={() => onEdit(objetivo)}
           onMoveToTop={index > 0 ? () => onMoveToTop(objetivo.id) : null}

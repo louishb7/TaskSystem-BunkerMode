@@ -2,7 +2,7 @@ import React from "react"
 
 import Badge from "../../../components/ui/Badge"
 import Button from "../../../components/ui/Button"
-import { normalizeMissionDate } from "../../calendar/calendarUtils"
+import { normalizeTaskDate } from "../../calendar/calendarUtils"
 
 const statusLabels = {
   ativo: "Ativo",
@@ -18,14 +18,14 @@ const statusVariants = {
   concluido: "success",
 }
 
-const missionStatus = {
+const taskStatus = {
   PENDENTE: { label: "Em aberto", variant: "neutral" },
   CONCLUIDA: { label: "Concluída", variant: "success" },
   FALHA: { label: "Falha registrada", variant: "danger" },
 }
 
 function formatDateOnly(value, fallback) {
-  const normalized = normalizeMissionDate(value)
+  const normalized = normalizeTaskDate(value)
   if (!/^\d{2}-\d{2}-\d{4}$/.test(normalized)) {
     return fallback
   }
@@ -34,11 +34,11 @@ function formatDateOnly(value, fallback) {
   return `${day}/${month}/${year}`
 }
 
-function getMissionStatus(mission) {
-  const statusCode = String(mission?.status_code || "").toUpperCase()
+function getTaskStatus(task) {
+  const statusCode = String(task?.status_code || "").toUpperCase()
   return (
-    missionStatus[statusCode] || {
-      label: mission?.status_label || "Sem status",
+    taskStatus[statusCode] || {
+      label: task?.status_label || "Sem status",
       variant: "neutral",
     }
   )
@@ -46,9 +46,9 @@ function getMissionStatus(mission) {
 
 export default function ObjetivoCard({
   loading,
-  missions,
+  tasks,
   objetivo,
-  onCreateMission,
+  onCreateTask,
   onDelete,
   onEdit,
   onMoveToTop,
@@ -88,20 +88,20 @@ export default function ObjetivoCard({
         >
           Tarefas vinculadas
         </h3>
-        {missions.length > 0 ? (
+        {tasks.length > 0 ? (
           <ul className="m-0 grid list-none divide-y divide-border border-y border-border p-0">
-            {missions.map((mission) => {
-              const status = getMissionStatus(mission)
+            {tasks.map((task) => {
+              const status = getTaskStatus(task)
               return (
                 <li
                   className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-3"
-                  key={mission.id}
+                  key={task.id}
                 >
                   <span className="min-w-0 break-words text-sm font-medium text-text-primary">
-                    {mission.titulo || "Tarefa sem título"}
+                    {task.titulo || "Tarefa sem título"}
                   </span>
                   <span className="text-sm text-text-secondary">
-                    {formatDateOnly(mission.prazo, "Sem data")}
+                    {formatDateOnly(task.prazo, "Sem data")}
                   </span>
                   <Badge className="w-fit" variant={status.variant}>
                     {status.label}
@@ -116,7 +116,7 @@ export default function ObjetivoCard({
       </section>
 
       <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-        <Button disabled={loading} onClick={onCreateMission}>
+        <Button disabled={loading} onClick={onCreateTask}>
           Nova tarefa vinculada
         </Button>
         <Button disabled={loading} size="small" variant="ghost" onClick={onEdit}>

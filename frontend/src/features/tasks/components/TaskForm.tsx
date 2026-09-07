@@ -21,7 +21,7 @@ const emptyForm = {
   recurrence_end_date: "",
 }
 
-const MISSION_INSTRUCTION_MAX_LENGTH = 280
+const TASK_INSTRUCTION_MAX_LENGTH = 280
 
 const weekdayOptions = [
   [0, "Seg"],
@@ -130,7 +130,7 @@ function repeatTypeFor(weekdays, prazo) {
   return "personalizado"
 }
 
-function formForNewMission(initialObjetivoId, initialPrazo, timezone) {
+function formForNewTask(initialObjetivoId, initialPrazo, timezone) {
   return {
     ...emptyForm,
     objetivo_id: initialObjetivoId ? String(initialObjetivoId) : "",
@@ -138,20 +138,20 @@ function formForNewMission(initialObjetivoId, initialPrazo, timezone) {
   }
 }
 
-function formForExistingMission(mission, initialPrazo) {
-  const recurrenceWeekdays = normalizeWeekdays(mission.recurrence?.weekdays)
-  const prazo = toApiDateValue(mission.prazo || initialPrazo || "")
+function formForExistingTask(task, initialPrazo) {
+  const recurrenceWeekdays = normalizeWeekdays(task.recurrence?.weekdays)
+  const prazo = toApiDateValue(task.prazo || initialPrazo || "")
 
   return {
     ...emptyForm,
-    titulo: mission.titulo || "",
-    instrucao: mission.instrucao || "",
-    objetivo_id: mission.objetivo_id ? String(mission.objetivo_id) : "",
+    titulo: task.titulo || "",
+    instrucao: task.instrucao || "",
+    objetivo_id: task.objetivo_id ? String(task.objetivo_id) : "",
     prazo,
     repeat_type: repeatTypeFor(recurrenceWeekdays, prazo),
     recurrence_weekdays: recurrenceWeekdays,
-    termination_policy: mission.recurrence?.termination_policy || "sem_termino",
-    recurrence_end_date: toApiDateValue(mission.recurrence?.end_date || ""),
+    termination_policy: task.recurrence?.termination_policy || "sem_termino",
+    recurrence_end_date: toApiDateValue(task.recurrence?.end_date || ""),
   }
 }
 
@@ -168,9 +168,9 @@ function weekdaysForRepeatType(repeatType, prazo) {
   return []
 }
 
-export default function MissionForm({
+export default function TaskForm({
   currentUser = null,
-  editingMission = null,
+  editingTask = null,
   initialObjetivoId = null,
   initialObjetivoTitulo = "",
   initialPrazo = "",
@@ -184,27 +184,25 @@ export default function MissionForm({
   token = null,
   timezone = undefined,
 }) {
-  const [form, setForm] = useState(() =>
-    formForNewMission(initialObjetivoId, initialPrazo, timezone)
-  )
+  const [form, setForm] = useState(() => formForNewTask(initialObjetivoId, initialPrazo, timezone))
   const [objetivos, setObjetivos] = useState([])
   const [objetivoStatus, setObjetivoStatus] = useState("")
   const [recurrenceError, setRecurrenceError] = useState("")
 
-  const isEditing = Boolean(editingMission)
-  const isSeriesOccurrence = Boolean(editingMission?.recurrence?.series_id)
+  const isEditing = Boolean(editingTask)
+  const isSeriesOccurrence = Boolean(editingTask?.recurrence?.series_id)
   const isRecurring = form.repeat_type !== "nao"
   const lockedInitialPrazo = Boolean(initialPrazo && !isEditing)
   const prazoContext = formatPrazoContext(isEditing ? form.prazo : initialPrazo)
 
   useEffect(() => {
-    if (!editingMission) {
-      setForm(formForNewMission(initialObjetivoId, initialPrazo, timezone))
+    if (!editingTask) {
+      setForm(formForNewTask(initialObjetivoId, initialPrazo, timezone))
       return
     }
 
-    setForm(formForExistingMission(editingMission, initialPrazo))
-  }, [editingMission, initialObjetivoId, initialPrazo, timezone])
+    setForm(formForExistingTask(editingTask, initialPrazo))
+  }, [editingTask, initialObjetivoId, initialPrazo, timezone])
 
   useEffect(() => {
     async function loadObjetivos() {
@@ -237,7 +235,7 @@ export default function MissionForm({
     const { name, value } = event.target
     setForm((current) => ({
       ...current,
-      [name]: name === "instrucao" ? value.slice(0, MISSION_INSTRUCTION_MAX_LENGTH) : value,
+      [name]: name === "instrucao" ? value.slice(0, TASK_INSTRUCTION_MAX_LENGTH) : value,
     }))
   }
 
@@ -323,7 +321,7 @@ export default function MissionForm({
     }
 
     const objetivoId = form.objetivo_id ? Number(form.objetivo_id) : null
-    if (!isEditing || objetivoId !== (editingMission?.objetivo_id ?? null)) {
+    if (!isEditing || objetivoId !== (editingTask?.objetivo_id ?? null)) {
       payload.objetivo_id = objetivoId
     }
 
@@ -343,7 +341,7 @@ export default function MissionForm({
     }
 
     if (isEditing) {
-      onUpdate?.(editingMission.id, payload)
+      onUpdate?.(editingTask.id, payload)
       return
     }
 
@@ -367,7 +365,7 @@ export default function MissionForm({
         Instrução opcional
         <textarea
           className={`${fieldClass} min-h-28 resize-y`}
-          maxLength={MISSION_INSTRUCTION_MAX_LENGTH}
+          maxLength={TASK_INSTRUCTION_MAX_LENGTH}
           name="instrucao"
           onChange={updateField}
           placeholder="Detalhe apenas se a tarefa precisar de contexto"
@@ -375,7 +373,7 @@ export default function MissionForm({
           value={form.instrucao}
         />
         <span className="text-right text-xs text-text-secondary">
-          {form.instrucao.length}/{MISSION_INSTRUCTION_MAX_LENGTH}
+          {form.instrucao.length}/{TASK_INSTRUCTION_MAX_LENGTH}
         </span>
       </label>
 
