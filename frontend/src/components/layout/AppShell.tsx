@@ -30,7 +30,7 @@ function NavigationLinks({ onNavigate = undefined }) {
 }
 
 function SessionActions({ onLogout, user }) {
-  const userName = user?.nome_general || user?.usuario || "Usuário"
+  const userName = user?.usuario || "Usuário"
 
   return (
     <div className="border-t border-border pt-4">
@@ -52,7 +52,7 @@ export default function AppShell({ children, onLogout, user }) {
       return undefined
     }
 
-    const firstLink = mobilePanelRef.current?.querySelector<HTMLElement>('a[href]')
+    const firstLink = mobilePanelRef.current?.querySelector<HTMLElement>("a[href]")
     firstLink?.focus()
 
     function closeOnEscape(event: KeyboardEvent) {

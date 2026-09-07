@@ -82,20 +82,6 @@ export const api = {
   getCurrentUser(token) {
     return request("/usuarios/me", { token })
   },
-  saveGeneralName(token, payload) {
-    return request("/usuarios/me/nome-general", {
-      token,
-      method: "PATCH",
-      body: payload,
-    })
-  },
-  setSessionMode(token, payload) {
-    return request("/session/mode", {
-      token,
-      method: "PATCH",
-      body: payload,
-    })
-  },
   listMissions(token) {
     return requestMissionList("/missoes", { token })
   },

@@ -55,7 +55,6 @@ export function useAuthSession() {
   const [authLoading, setAuthLoading] = useState(false)
 
   const authenticated = Boolean(token && user)
-  const activeMode = user?.active_mode || "general"
 
   const persistUser = useCallback((nextUser) => {
     persistentStore.setItem(USER_KEY, JSON.stringify(nextUser))
@@ -163,39 +162,7 @@ export function useAuthSession() {
     setAuthStatus({ type: "success", message: "Conta criada. Entre no bunker para continuar." })
   }
 
-  function syncUserFromServer(nextUser) {
-    persistUser(nextUser)
-  }
-
-  async function reloadCurrentUser(expectedMode = null) {
-    const result = await api.getCurrentUser(token)
-
-    if (handleUnauthorized(result)) {
-      return null
-    }
-
-    if (!result.ok) {
-      setAuthStatus({
-        type: "error",
-        message: getErrorMessage(result, "Não foi possível recarregar o usuário."),
-      })
-      return null
-    }
-
-    if (expectedMode && result.data?.active_mode !== expectedMode) {
-      setAuthStatus({
-        type: "error",
-        message: "Modo ativo não confirmado pelo servidor. Recarregue a sessão.",
-      })
-      return null
-    }
-
-    persistUser(result.data)
-    return result.data
-  }
-
   return {
-    activeMode,
     authenticated,
     authLoading,
     authStatus,
@@ -204,8 +171,6 @@ export function useAuthSession() {
     handleUnauthorized,
     login,
     register,
-    reloadCurrentUser,
-    syncUserFromServer,
     token,
     user,
   }

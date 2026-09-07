@@ -1,7 +1,6 @@
 import React from "react"
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom"
 
-import { getErrorMessage } from "../api/httpClient"
 import BootScreen from "../components/tactical/BootScreen"
 import AppShell from "../components/layout/AppShell"
 import ExecutionLayout from "../components/layout/ExecutionLayout"
@@ -13,11 +12,6 @@ import GeneralCommandPage from "../features/general/pages/GeneralCommandPage"
 import ObjectivesPage from "../features/objectives/pages/ObjectivesPage"
 import SoldierExecutionPage from "../features/soldier/pages/SoldierExecutionPage"
 import { APP_ROUTES } from "../routes/routeConstants"
-import { api } from "../services/bunkermodeApi"
-
-function preferredLanding(activeMode) {
-  return activeMode === "soldier" ? APP_ROUTES.SOLDIER : APP_ROUTES.GENERAL_HOME
-}
 
 export default function App() {
   const auth = useAuth()
@@ -35,10 +29,7 @@ export default function App() {
       <Route
         path="*"
         element={
-          <Navigate
-            to={auth.authenticated ? preferredLanding(auth.activeMode) : APP_ROUTES.AUTH}
-            replace
-          />
+          <Navigate to={auth.authenticated ? APP_ROUTES.GENERAL_HOME : APP_ROUTES.AUTH} replace />
         }
       />
     </Routes>
@@ -49,7 +40,7 @@ function AuthRoute() {
   const auth = useAuth()
 
   if (auth.authenticated) {
-    return <Navigate to={preferredLanding(auth.activeMode)} replace />
+    return <Navigate to={APP_ROUTES.GENERAL_HOME} replace />
   }
 
   return (
@@ -86,32 +77,8 @@ function GeneralRoute() {
   const board = useMissionBoardContext()
   const logout = useLogout()
 
-  async function activateSoldierMode() {
+  function activateSoldierMode() {
     board.setStatus(emptyStatus)
-    const result = await api.setSessionMode(auth.token, { mode: "soldier" })
-
-    if (auth.handleUnauthorized(result)) {
-      return false
-    }
-
-    if (!result.ok) {
-      board.setStatus({
-        type: "error",
-        message: `${getErrorMessage(result, "Não foi possível salvar a preferência de modo.")} O foco operacional será aberto mesmo assim.`,
-      })
-      navigate(APP_ROUTES.SOLDIER, { replace: true })
-      return true
-    }
-
-    auth.syncUserFromServer(result.data)
-    const confirmedUser = await auth.reloadCurrentUser()
-    if (!confirmedUser) {
-      board.setStatus({
-        type: "error",
-        message: "Foco operacional aberto, mas não foi possível atualizar a preferência de modo.",
-      })
-    }
-
     navigate(APP_ROUTES.SOLDIER, { replace: true })
     return true
   }
@@ -151,32 +118,8 @@ function SoldierRoute() {
   const auth = useAuth()
   const board = useMissionBoardContext()
 
-  async function returnToCommand() {
+  function returnToCommand() {
     board.setStatus(emptyStatus)
-    const result = await api.setSessionMode(auth.token, { mode: "general" })
-
-    if (auth.handleUnauthorized(result)) {
-      return false
-    }
-
-    if (!result.ok) {
-      board.setStatus({
-        type: "error",
-        message: `${getErrorMessage(result, "Não foi possível salvar a preferência de modo.")} O retorno ao General será feito mesmo assim.`,
-      })
-      navigate(APP_ROUTES.GENERAL_HOME, { replace: true })
-      return true
-    }
-
-    auth.syncUserFromServer(result.data)
-    const confirmedUser = await auth.reloadCurrentUser()
-    if (!confirmedUser) {
-      board.setStatus({
-        type: "error",
-        message: "Você retornou ao General, mas não foi possível atualizar a preferência de modo.",
-      })
-    }
-
     navigate(APP_ROUTES.GENERAL_HOME, { replace: true })
     return true
   }
