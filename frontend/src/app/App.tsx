@@ -1,12 +1,12 @@
 import React from "react"
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom"
+import { Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom"
 
 import BootScreen from "../components/tactical/BootScreen"
 import AppShell from "../components/layout/AppShell"
 import ExecutionLayout from "../components/layout/ExecutionLayout"
 import { emptyStatus } from "../constants/uiState"
 import { useAuth } from "../context/AuthContext"
-import { useTaskBoardContext } from "../context/TaskBoardContext"
+import { TaskBoardProvider, useTaskBoardContext } from "../context/TaskBoardContext"
 import AuthScreen from "../features/auth/components/AuthScreen"
 import ObjectivesPage from "../features/objectives/pages/ObjectivesPage"
 import FocusPage from "../features/tasks/pages/FocusPage"
@@ -29,21 +29,17 @@ export default function App() {
         element={<Navigate to={APP_ROUTES.TASKS_FOCUS} replace />}
       />
       <Route
-        path={APP_ROUTES.TASKS_FOCUS}
         element={
           <ProtectedRoute>
-            <FocusRoute />
+            <TaskBoardProvider>
+              <Outlet />
+            </TaskBoardProvider>
           </ProtectedRoute>
         }
-      />
-      <Route
-        path={APP_ROUTES.TASKS}
-        element={
-          <ProtectedRoute>
-            <TasksRoute />
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route path={APP_ROUTES.TASKS_FOCUS} element={<FocusRoute />} />
+        <Route path={APP_ROUTES.TASKS} element={<TasksRoute />} />
+      </Route>
       <Route
         path={APP_ROUTES.OBJECTIVES}
         element={
@@ -114,13 +110,11 @@ function TasksRoute() {
 
 function ObjectivesRoute() {
   const auth = useAuth()
-  const board = useTaskBoardContext()
   const logout = useLogout()
 
   return (
     <AppShell onLogout={logout} user={auth.user}>
       <ObjectivesPage
-        board={board}
         onUnauthorized={auth.handleUnauthorized}
         token={auth.token}
         user={auth.user}
@@ -155,12 +149,9 @@ function FocusRoute() {
 function useLogout() {
   const navigate = useNavigate()
   const auth = useAuth()
-  const board = useTaskBoardContext()
 
   return () => {
     auth.clearSession()
-    board.setStatus(emptyStatus)
-    board.setFormStatus(emptyStatus)
     navigate(APP_ROUTES.AUTH, { replace: true })
   }
 }

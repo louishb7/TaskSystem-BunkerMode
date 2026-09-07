@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import { getErrorMessage } from "../../../api/httpClient"
 import { emptyStatus } from "../../../constants/uiState"
@@ -13,7 +13,6 @@ function sortObjetivosByOrder(objetivos = []) {
 
 export function useObjectives({ onUnauthorized, token }) {
   const [objetivos, setObjetivos] = useState([])
-  const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(false)
   const [mutating, setMutating] = useState(false)
   const [status, setStatus] = useState(emptyStatus)
@@ -25,21 +24,17 @@ export function useObjectives({ onUnauthorized, token }) {
       }
 
       setLoading(true)
-      const [objetivosResult, tasksResult] = await Promise.all([
-        api.listObjetivos(token),
-        api.listTasks(token),
-      ])
+      const objetivosResult = await api.listObjetivos(token)
       setLoading(false)
 
-      if (onUnauthorized?.(objetivosResult) || onUnauthorized?.(tasksResult)) {
+      if (onUnauthorized?.(objetivosResult)) {
         return false
       }
 
-      if (!objetivosResult.ok || !tasksResult.ok) {
-        const failedResult = !objetivosResult.ok ? objetivosResult : tasksResult
+      if (!objetivosResult.ok) {
         setStatus({
           type: "error",
-          message: getErrorMessage(failedResult, "Não foi possível carregar objetivos."),
+          message: getErrorMessage(objetivosResult, "Não foi possível carregar objetivos."),
         })
         return false
       }
@@ -47,7 +42,6 @@ export function useObjectives({ onUnauthorized, token }) {
       setObjetivos(
         sortObjetivosByOrder(Array.isArray(objetivosResult.data) ? objetivosResult.data : [])
       )
-      setTasks(Array.isArray(tasksResult.data) ? tasksResult.data : [])
       setStatus(successMessage ? { type: "success", message: successMessage } : emptyStatus)
       return true
     },
@@ -57,19 +51,6 @@ export function useObjectives({ onUnauthorized, token }) {
   useEffect(() => {
     loadObjectives()
   }, [loadObjectives])
-
-  const tasksByObjetivo = useMemo(
-    () =>
-      tasks.reduce((byObjetivo, task) => {
-        if (!task.objetivo_id) {
-          return byObjetivo
-        }
-        const key = String(task.objetivo_id)
-        byObjetivo[key] = [...(byObjetivo[key] || []), task]
-        return byObjetivo
-      }, {}),
-    [tasks]
-  )
 
   async function mutate(action, successMessage, fallbackMessage) {
     if (mutating) {
@@ -97,7 +78,6 @@ export function useObjectives({ onUnauthorized, token }) {
 
   return {
     loading,
-    tasksByObjetivo,
     mutating,
     objetivos,
     refresh: loadObjectives,

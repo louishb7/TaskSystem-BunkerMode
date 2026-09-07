@@ -47,6 +47,9 @@ function getTaskStatus(task) {
 export default function ObjetivoCard({
   loading,
   tasks,
+  tasksLoading,
+  tasksError,
+  onRetryTasks,
   objetivo,
   onCreateTask,
   onDelete,
@@ -88,7 +91,19 @@ export default function ObjetivoCard({
         >
           Tarefas vinculadas
         </h3>
-        {tasks.length > 0 ? (
+        {tasksLoading ? (
+          <p className="m-0 text-sm text-text-secondary">Carregando tarefas vinculadas…</p>
+        ) : tasksError ? (
+          <div className="grid gap-2" role="status">
+            <p className="m-0 text-sm text-text-secondary">
+              Tarefas vinculadas indisponíveis. {tasksError} Você pode continuar administrando este
+              objetivo.
+            </p>
+            <Button variant="ghost" onClick={onRetryTasks}>
+              Tentar novamente
+            </Button>
+          </div>
+        ) : tasks.length > 0 ? (
           <ul className="m-0 grid list-none divide-y divide-border border-y border-border p-0">
             {tasks.map((task) => {
               const status = getTaskStatus(task)
@@ -113,12 +128,12 @@ export default function ObjetivoCard({
         ) : (
           <p className="m-0 text-sm text-text-secondary">Nenhuma tarefa vinculada.</p>
         )}
+        <Button variant="secondary" onClick={onCreateTask}>
+          Nova tarefa vinculada
+        </Button>
       </section>
 
       <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-        <Button disabled={loading} onClick={onCreateTask}>
-          Nova tarefa vinculada
-        </Button>
         <Button disabled={loading} size="small" variant="ghost" onClick={onEdit}>
           Editar
         </Button>

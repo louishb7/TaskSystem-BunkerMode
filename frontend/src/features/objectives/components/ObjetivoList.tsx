@@ -6,6 +6,9 @@ import ObjetivoCard from "./ObjetivoCard"
 export default function ObjetivoList({
   loading,
   tasksByObjetivo,
+  tasksLoading,
+  tasksError,
+  onRetryTasks,
   objetivos,
   onCreateTask,
   onDelete,
@@ -16,7 +19,7 @@ export default function ObjetivoList({
   if (objetivos.length === 0) {
     return (
       <EmptyState
-        message="Crie um objetivo para organizar tarefas relacionadas."
+        message="Crie um objetivo para definir o que você quer alcançar."
         title="Nenhum objetivo ainda"
       />
     )
@@ -29,6 +32,9 @@ export default function ObjetivoList({
           key={objetivo.id}
           loading={loading}
           tasks={tasksByObjetivo[String(objetivo.id)] || []}
+          tasksLoading={tasksLoading}
+          tasksError={tasksError}
+          onRetryTasks={onRetryTasks}
           objetivo={objetivo}
           onCreateTask={() => onCreateTask(objetivo)}
           onDelete={() => onDelete(objetivo)}

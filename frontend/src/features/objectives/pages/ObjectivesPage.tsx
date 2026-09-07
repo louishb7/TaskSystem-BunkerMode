@@ -10,9 +10,11 @@ import TaskForm from "../../tasks/components/TaskForm"
 import ObjetivoForm from "../components/ObjetivoForm"
 import ObjetivoList from "../components/ObjetivoList"
 import { useObjectives } from "../hooks/useObjectives"
+import { useObjectiveTasks } from "../hooks/useObjectiveTasks"
 
-export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
+export default function ObjectivesPage({ onUnauthorized, token, user }) {
   const objectives = useObjectives({ onUnauthorized, token })
+  const objectiveTasks = useObjectiveTasks({ token, onUnauthorized })
   const [editingObjetivo, setEditingObjetivo] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
   const [taskObjetivo, setTaskObjetivo] = useState(null)
@@ -34,10 +36,9 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
   }
 
   async function createTask(payload) {
-    const saved = await board.createTask(payload)
+    const saved = await objectiveTasks.createTask(payload)
     if (saved) {
       setTaskObjetivo(null)
-      await objectives.refresh()
     }
   }
 
@@ -66,7 +67,7 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
             Novo objetivo
           </Button>
         }
-        description="Organize tarefas em torno do que você quer alcançar."
+        description="Defina o que você quer alcançar e organize seus objetivos."
         title="Objetivos"
       />
 
@@ -89,7 +90,10 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
 
       <ObjetivoList
         loading={busy}
-        tasksByObjetivo={objectives.tasksByObjetivo}
+        tasksByObjetivo={objectiveTasks.tasksByObjetivo}
+        tasksLoading={objectiveTasks.loading}
+        tasksError={objectiveTasks.error}
+        onRetryTasks={objectiveTasks.refresh}
         objetivos={objectives.objetivos}
         onCreateTask={setTaskObjetivo}
         onDelete={setDeleteTarget}
@@ -106,7 +110,7 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
           closeOnBackdrop={false}
           onClose={() => {
             setTaskObjetivo(null)
-            board.setFormStatus(emptyStatus)
+            objectiveTasks.setFormStatus(emptyStatus)
           }}
           title="Nova tarefa"
         >
@@ -115,14 +119,14 @@ export default function ObjectivesPage({ board, onUnauthorized, token, user }) {
             initialObjetivoId={taskObjetivo.id}
             initialObjetivoTitulo={taskObjetivo.titulo}
             lockObjetivo
-            loading={board.formLoading}
+            loading={objectiveTasks.formLoading}
             onCancel={() => {
               setTaskObjetivo(null)
-              board.setFormStatus(emptyStatus)
+              objectiveTasks.setFormStatus(emptyStatus)
             }}
             onCreate={createTask}
             onUnauthorized={onUnauthorized}
-            status={board.formStatus}
+            status={objectiveTasks.formStatus}
             token={token}
             timezone={user?.timezone}
           />
