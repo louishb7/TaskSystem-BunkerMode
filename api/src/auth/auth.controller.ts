@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from "@nestjs/common"
+import { Body, Controller, Get, HttpCode, Patch, Post, Req, UseGuards } from "@nestjs/common"
 
 import { AuthenticatedRequest } from "./auth.types"
 import { AuthGuard } from "./auth.guard"
@@ -45,5 +45,12 @@ export class AuthController {
   @UseGuards(AuthGuard)
   currentUser(@Req() request: AuthenticatedRequest) {
     return toUserResponse(request.currentUser!)
+  }
+
+  @Patch("usuarios/me/modulos")
+  @UseGuards(AuthGuard)
+  async updateEnabledModules(@Req() request: AuthenticatedRequest, @Body() payload: unknown) {
+    const usuario = await this.authService.updateEnabledModules(request.currentUser!.usuario_id, payload)
+    return toUserResponse(usuario)
   }
 }

@@ -12,6 +12,7 @@ type UserRow = {
   email: string;
   senha_hash: string;
   ativo: boolean;
+  enabled_modules: string[];
   timezone: string;
   created_at: Date;
   updated_at: Date;
@@ -96,6 +97,7 @@ class InMemoryPrisma {
         email: data.email,
         senha_hash: data.senha_hash,
         ativo: true,
+        enabled_modules: ["tasks", "objectives"],
         timezone: "America/Recife",
         created_at: now,
         updated_at: now,
@@ -115,6 +117,20 @@ class InMemoryPrisma {
           (where.usuario !== undefined && user.usuario === where.usuario) ||
           (where.email !== undefined && user.email === where.email),
       ) ?? null,
+    update: async ({
+      where,
+      data,
+    }: {
+      where: { usuario_id: number };
+      data: Pick<UserRow, "enabled_modules">;
+    }) => {
+      const user = this.users.find((item) => item.usuario_id === where.usuario_id);
+      if (!user) {
+        throw new Error("User not found");
+      }
+      Object.assign(user, data, { updated_at: new Date() });
+      return user;
+    },
   };
 
   readonly missoes = {
@@ -535,7 +551,7 @@ describe("HTTP application", () => {
 
   it("registers, logs in, reads the authenticated user and executes a task flow", async () => {
     const publicUserKeys = [
-      "id", "usuario", "email", "timezone", "created_at", "updated_at", "ativo",
+      "id", "usuario", "email", "enabled_modules", "timezone", "created_at", "updated_at", "ativo",
     ].sort();
     await request(app.getHttpServer())
       .post("/api/v2/auth/register")
@@ -554,6 +570,7 @@ describe("HTTP application", () => {
       .send({ email: "general", senha: "senha1234" })
       .expect(200);
     const token = login.body.access_token;
+    expect(login.body.usuario.enabled_modules).toEqual(["tasks", "objectives"]);
     expect(Object.keys(login.body.usuario).sort()).toEqual(
       publicUserKeys.filter((key) => key !== "ativo"),
     );
@@ -564,7 +581,23 @@ describe("HTTP application", () => {
       .expect(200)
       .expect((response) => {
         expect(response.body.usuario).toBe("general");
+        expect(response.body.enabled_modules).toEqual(["tasks", "objectives"]);
         expect(Object.keys(response.body).sort()).toEqual(publicUserKeys);
+      });
+
+    await request(app.getHttpServer())
+      .patch("/api/v2/usuarios/me/modulos")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ enabled_modules: ["tasks"] })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          usuario: "general",
+          email: "general@bunker.local",
+          enabled_modules: ["tasks"],
+          timezone: "America/Recife",
+          ativo: true,
+        });
       });
 
     const created = await request(app.getHttpServer())

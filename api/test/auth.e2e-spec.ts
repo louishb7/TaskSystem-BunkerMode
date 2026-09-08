@@ -13,6 +13,7 @@ function user(overrides: Partial<UserRecord> = {}): UserRecord {
     email: "general@bunker.local",
     senha_hash: hashPassword("senha123"),
     ativo: true,
+    enabled_modules: ["tasks", "objectives"],
     timezone: "America/Recife",
     created_at: new Date("2026-04-24T12:00:00.000Z"),
     updated_at: new Date("2026-04-24T12:00:00.000Z"),
@@ -26,6 +27,7 @@ function prismaMock() {
       create: jest.fn(),
       findFirst: jest.fn(),
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
   }
 }
@@ -79,6 +81,7 @@ describe("Auth phase 3", () => {
       id: 1,
       usuario: "general",
       email: "general@bunker.local",
+      enabled_modules: ["tasks", "objectives"],
       timezone: "America/Recife",
       created_at: "2026-04-24T12:00:00.000Z",
       updated_at: "2026-04-24T12:00:00.000Z",
@@ -112,10 +115,46 @@ describe("Auth phase 3", () => {
       id: 1,
       usuario: "general",
       email: "general@bunker.local",
+      enabled_modules: ["tasks", "objectives"],
       timezone: "America/Recife",
       created_at: "2026-04-24T12:00:00.000Z",
       updated_at: "2026-04-24T12:00:00.000Z",
       ativo: true,
     })
+  })
+
+  it.each([
+    [["tasks"]],
+    [["objectives"]],
+    [[]],
+    [["tasks", "objectives"]],
+  ])("updates enabled modules to %j", async (enabledModules) => {
+    const prisma = prismaMock()
+    const updatedUser = user({ enabled_modules: enabledModules })
+    prisma.usuarios.update.mockResolvedValue(updatedUser)
+    const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
+
+    await expect(service.updateEnabledModules(1, { enabled_modules: enabledModules })).resolves.toBe(updatedUser)
+    expect(prisma.usuarios.update).toHaveBeenCalledWith({
+      where: { usuario_id: 1 },
+      data: { enabled_modules: enabledModules },
+    })
+  })
+
+  it.each([
+    [{}, "Módulos habilitados devem ser uma lista de chaves válidas."],
+    [{ enabled_modules: "tasks" }, "Módulos habilitados devem ser uma lista de chaves válidas."],
+    [{ enabled_modules: ["tasks", 1] }, "Módulos habilitados devem ser uma lista de chaves válidas."],
+    [{ enabled_modules: ["unknown"] }, "Módulo inválido."],
+    [{ enabled_modules: ["tasks", "tasks"] }, "Módulos habilitados não podem conter duplicatas."],
+  ])("rejects invalid module preferences", async (payload, message) => {
+    const prisma = prismaMock()
+    const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
+
+    await expect(service.updateEnabledModules(1, payload)).rejects.toMatchObject({
+      status: 400,
+      message,
+    })
+    expect(prisma.usuarios.update).not.toHaveBeenCalled()
   })
 })

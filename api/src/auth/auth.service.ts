@@ -17,6 +17,8 @@ type LoginPayload = {
   senha?: unknown
 }
 
+const VALID_MODULE_KEYS = new Set(["tasks", "objectives"])
+
 function requireText(value: unknown, message: string): string {
   if (typeof value !== "string") {
     throw new HttpException(message, HttpStatus.BAD_REQUEST)
@@ -52,6 +54,25 @@ function normalizePassword(value: unknown, status = HttpStatus.BAD_REQUEST): str
     throw new HttpException("Senha deve ter pelo menos 8 caracteres.", status)
   }
   return value
+}
+
+function normalizeEnabledModules(payload: unknown): string[] {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    throw new HttpException("Preferência de módulos inválida.", HttpStatus.BAD_REQUEST)
+  }
+
+  const enabledModules = (payload as { enabled_modules?: unknown }).enabled_modules
+  if (!Array.isArray(enabledModules) || !enabledModules.every((moduleKey) => typeof moduleKey === "string")) {
+    throw new HttpException("Módulos habilitados devem ser uma lista de chaves válidas.", HttpStatus.BAD_REQUEST)
+  }
+  if (enabledModules.some((moduleKey) => !VALID_MODULE_KEYS.has(moduleKey))) {
+    throw new HttpException("Módulo inválido.", HttpStatus.BAD_REQUEST)
+  }
+  if (new Set(enabledModules).size !== enabledModules.length) {
+    throw new HttpException("Módulos habilitados não podem conter duplicatas.", HttpStatus.BAD_REQUEST)
+  }
+
+  return enabledModules
 }
 
 @Injectable()
@@ -116,5 +137,13 @@ export class AuthService {
       throw new HttpException("Usuário inativo.", HttpStatus.UNAUTHORIZED)
     }
     return usuario
+  }
+
+  async updateEnabledModules(usuarioId: number, payload: unknown): Promise<UserRecord> {
+    const enabledModules = normalizeEnabledModules(payload)
+    return this.prisma.usuarios.update({
+      where: { usuario_id: usuarioId },
+      data: { enabled_modules: enabledModules },
+    })
   }
 }

@@ -109,6 +109,10 @@ describeWithDatabase("Recurrence series persistence", () => {
     });
   }
 
+  it("creates users with the default enabled modules", () => {
+    expect(currentUser.enabled_modules).toEqual(["tasks", "objectives"]);
+  });
+
   it("creates a recurrence series without an objective", async () => {
     const series = await createSeries();
 

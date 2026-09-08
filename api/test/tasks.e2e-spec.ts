@@ -12,6 +12,7 @@ function user(overrides: Partial<UserRecord> = {}): UserRecord {
     email: "general@bunker.local",
     senha_hash: "hash",
     ativo: true,
+    enabled_modules: ["tasks", "objectives"],
     timezone: "America/Recife",
     created_at: new Date("2026-04-24T12:00:00.000Z"),
     updated_at: new Date("2026-04-24T12:00:00.000Z"),
