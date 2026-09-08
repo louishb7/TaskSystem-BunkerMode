@@ -50,40 +50,57 @@ export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel
 
   return (
     <form className="grid gap-5" onSubmit={submit}>
-        <label className={labelClass}>
-          Título
-          <input
-            className={fieldClass}
-            name="titulo"
-            onChange={updateField}
-            placeholder="Ex.: Consolidar rotina de treino"
-            required
-            value={form.titulo}
-          />
-        </label>
+      <label className={labelClass}>
+        Título
+        <input
+          className={fieldClass}
+          name="titulo"
+          onChange={updateField}
+          placeholder="Ex.: Consolidar rotina de treino"
+          required
+          value={form.titulo}
+        />
+      </label>
 
-        <section className="grid gap-3 rounded-card border border-border p-4" aria-labelledby="prazo-title">
-          <div>
-            <h3 id="prazo-title" className="m-0 text-base font-semibold normal-case text-text-primary">Prazo</h3>
-            <p className="mt-1 mb-0 text-sm text-text-secondary">Opcional. Você pode definir uma data alvo.</p>
-          </div>
-          <label className="inline-flex min-h-11 items-center gap-3 text-sm font-medium normal-case text-text-primary">
+      <section
+        className="grid gap-3 rounded-card border border-border p-4"
+        aria-labelledby="prazo-title"
+      >
+        <div>
+          <h3
+            id="prazo-title"
+            className="m-0 text-base font-semibold normal-case text-text-primary"
+          >
+            Prazo
+          </h3>
+          <p className="mt-1 mb-0 text-sm text-text-secondary">
+            Opcional. Você pode definir uma data alvo.
+          </p>
+        </div>
+        <label className="inline-flex min-h-11 items-center gap-3 text-sm font-medium normal-case text-text-primary">
+          <input
+            checked={form.sem_prazo}
+            className="size-5 min-h-0 w-5 accent-accent"
+            name="sem_prazo"
+            onChange={updateField}
+            type="checkbox"
+          />
+          Sem prazo
+        </label>
+        {!form.sem_prazo && (
+          <label className={labelClass}>
+            Data alvo
             <input
-              checked={form.sem_prazo}
-              className="size-5 min-h-0 w-5 accent-accent"
-              name="sem_prazo"
+              className={fieldClass}
+              name="data_alvo"
               onChange={updateField}
-              type="checkbox"
+              required
+              type="date"
+              value={form.data_alvo}
             />
-            Sem prazo
           </label>
-          {!form.sem_prazo && (
-            <label className={labelClass}>
-              Data alvo
-              <input className={fieldClass} name="data_alvo" onChange={updateField} required type="date" value={form.data_alvo} />
-            </label>
-          )}
-        </section>
+        )}
+      </section>
 
       <label className={labelClass}>
         Descrição

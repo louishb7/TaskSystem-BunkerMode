@@ -38,9 +38,14 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
 
   return (
     <main className="grid min-h-dvh place-items-center bg-app px-4 py-8 text-text-primary">
-      <section className="w-full max-w-[420px] rounded-card border border-border bg-surface p-6 shadow-sm sm:p-8" aria-label="Autenticação">
+      <section
+        className="w-full max-w-[420px] rounded-card border border-border bg-surface p-6 shadow-sm sm:p-8"
+        aria-label="Autenticação"
+      >
         <h1 className="m-0 text-2xl font-semibold tracking-tight normal-case">BunkerMode</h1>
-        <p className="mt-2 mb-6 text-sm text-text-secondary">Organize o que importa e execute o próximo passo.</p>
+        <p className="mt-2 mb-6 text-sm text-text-secondary">
+          Organize o que importa e execute o próximo passo.
+        </p>
         <div className="grid grid-cols-2 rounded-control bg-app p-1" aria-label="Acesso">
           <button
             aria-pressed={isLogin}
@@ -62,7 +67,9 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
 
         <form className="mt-6 grid gap-4" onSubmit={submit}>
           <div>
-            <h2 className="m-0 text-lg font-semibold normal-case">{isLogin ? "Entrar" : "Criar conta"}</h2>
+            <h2 className="m-0 text-lg font-semibold normal-case">
+              {isLogin ? "Entrar" : "Criar conta"}
+            </h2>
             <p className="mt-1 mb-0 text-sm text-text-secondary">
               {isLogin ? "Use seus dados para continuar." : "Preencha os dados para começar."}
             </p>

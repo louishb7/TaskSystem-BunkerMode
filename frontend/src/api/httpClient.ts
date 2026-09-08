@@ -56,7 +56,10 @@ export function getErrorMessage(result: ApiResult | null | undefined, fallback: 
   return typeof message === "string" ? message : fallback
 }
 
-export async function request(path: string, { token, method = "GET", body }: RequestOptions = {}): Promise<ApiResult> {
+export async function request(
+  path: string,
+  { token, method = "GET", body }: RequestOptions = {}
+): Promise<ApiResult> {
   if (API_CONFIG_ERROR || !API_URL) {
     return {
       ok: false,

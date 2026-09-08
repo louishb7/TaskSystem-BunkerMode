@@ -8,7 +8,10 @@ type AppErrorBoundaryState = {
   errorInfo: React.ErrorInfo | null
 }
 
-export default class AppErrorBoundary extends React.Component<React.PropsWithChildren, AppErrorBoundaryState> {
+export default class AppErrorBoundary extends React.Component<
+  React.PropsWithChildren,
+  AppErrorBoundaryState
+> {
   constructor(props: React.PropsWithChildren) {
     super(props)
     this.state = { error: null, errorInfo: null }
@@ -36,7 +39,9 @@ export default class AppErrorBoundary extends React.Component<React.PropsWithChi
       return (
         <main className="grid min-h-dvh place-items-center bg-app px-4 text-text-primary">
           <section className="w-full max-w-lg rounded-card border border-border bg-surface p-6 text-center shadow-sm">
-            <h1 className="m-0 text-xl font-semibold normal-case">Não foi possível carregar a interface</h1>
+            <h1 className="m-0 text-xl font-semibold normal-case">
+              Não foi possível carregar a interface
+            </h1>
             <p className="mt-2 mb-6 text-sm leading-6 text-text-secondary">
               Limpe a sessão local e tente novamente.
             </p>

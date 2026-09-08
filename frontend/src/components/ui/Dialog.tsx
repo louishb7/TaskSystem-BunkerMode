@@ -91,7 +91,10 @@ export default function Dialog({
       window.clearTimeout(timeoutId)
       document.removeEventListener("keydown", handleKeyDown)
       document.body.style.overflow = previousOverflow
-      if (previousActiveElementRef.current instanceof HTMLElement && previousActiveElementRef.current.isConnected) {
+      if (
+        previousActiveElementRef.current instanceof HTMLElement &&
+        previousActiveElementRef.current.isConnected
+      ) {
         previousActiveElementRef.current.focus()
       }
     }
@@ -116,7 +119,11 @@ export default function Dialog({
         role="dialog"
         tabIndex={-1}
       >
-        {title && <h2 id={titleId} className="m-0 text-xl font-semibold leading-tight">{title}</h2>}
+        {title && (
+          <h2 id={titleId} className="m-0 text-xl font-semibold leading-tight">
+            {title}
+          </h2>
+        )}
         {children}
       </section>
     </div>,
