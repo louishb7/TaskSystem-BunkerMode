@@ -260,13 +260,7 @@ export class TasksService {
     await this.materializeSeriesRecurrences(user);
   }
 
-  async listAllForUser(
-    user: UserRecord,
-    options: { materializeRecurrences?: boolean } = {},
-  ): Promise<TaskRecord[]> {
-    if (options.materializeRecurrences !== false) {
-      await this.materializeSeriesRecurrences(user);
-    }
+  async listAllForUser(user: UserRecord): Promise<TaskRecord[]> {
     return this.prisma.missoes.findMany({
       where: { responsavel_id: user.usuario_id },
       include: { serie_recorrencia: true },
@@ -280,9 +274,7 @@ export class TasksService {
   }
 
   async listHistorical(user: UserRecord): Promise<TaskRecord[]> {
-    const tasks = await this.listAllForUser(user, {
-      materializeRecurrences: false,
-    });
+    const tasks = await this.listAllForUser(user);
     return tasks.filter(
       (task) =>
         task.status === TASK_STATUS.completed ||
@@ -420,9 +412,7 @@ export class TasksService {
     daily_tasks: TaskRecord[];
   }> {
     const today = this.today(user);
-    const tasks = await this.listAllForUser(user, {
-      materializeRecurrences: false,
-    });
+    const tasks = await this.listAllForUser(user);
     const todayTasks = this.sortForBoard(
       tasks.filter((task) =>
         this.belongsToOperationalDate(task, today),

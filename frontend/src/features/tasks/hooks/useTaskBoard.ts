@@ -29,6 +29,28 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
       const requestId = loadRequestRef.current + 1
       loadRequestRef.current = requestId
       setTaskLoading(true)
+      const materializationResult = await api.materializeTaskRecurrences(token)
+      if (requestId !== loadRequestRef.current) {
+        return false
+      }
+
+      if (onUnauthorized(materializationResult)) {
+        setTaskLoading(false)
+        return false
+      }
+
+      if (!materializationResult.ok) {
+        setTaskLoading(false)
+        setStatus({
+          type: "error",
+          message: getErrorMessage(
+            materializationResult,
+            "Não foi possível preparar as tarefas recorrentes."
+          ),
+        })
+        return false
+      }
+
       const tasksResult = await api.listTasks(token)
       if (requestId !== loadRequestRef.current) {
         return false
@@ -121,10 +143,13 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
 
     if (boardMode === "focus") {
       loadFocusBoard()
-      return
+    } else {
+      loadTasksBoard()
     }
 
-    loadTasksBoard()
+    return () => {
+      loadRequestRef.current += 1
+    }
   }, [authenticated, boardMode, loadFocusBoard, loadTasksBoard, token])
 
   async function reloadCurrentBoard(successMessage = "") {
@@ -132,7 +157,12 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
   }
 
   async function refreshAfterPersistedMutation(successMessage) {
-    const synchronized = await reloadCurrentBoard()
+    const synchronization = reloadCurrentBoard()
+    const requestId = loadRequestRef.current
+    const synchronized = await synchronization
+    if (requestId !== loadRequestRef.current) {
+      return { persisted: true, synchronized: false }
+    }
     if (!synchronized) {
       setStatus({
         type: "error",

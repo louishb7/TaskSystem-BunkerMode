@@ -538,6 +538,68 @@ describe("HTTP application", () => {
     await request(app.getHttpServer()).get("/api/v2/usuarios/me").expect(401);
   });
 
+  it("keeps task GETs read-only and materializes only through the authenticated command", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"));
+    try {
+      await request(app.getHttpServer()).post("/api/v2/auth/register")
+        .send({ usuario: "leitura", email: "leitura@bunker.local", senha: "senha1234" })
+        .expect(201);
+      const login = await request(app.getHttpServer()).post("/api/v2/auth/login")
+        .send({ email: "leitura", senha: "senha1234" }).expect(200);
+      const authorization = `Bearer ${login.body.access_token}`;
+      const prisma = app.get(PrismaService) as unknown as InMemoryPrisma;
+      const owner = prisma.users.find((user) => user.usuario === "leitura")!;
+      const overdue = await prisma.missoes.create({
+        data: {
+          titulo: "Tarefa atrasada", status: "PENDENTE",
+          prazo: new Date("2026-08-12T00:00:00.000Z"),
+          criada_por_id: owner.usuario_id, responsavel_id: owner.usuario_id,
+        },
+      });
+      await prisma.series_recorrencia.create({
+        data: {
+          titulo: "Recorrência sem ocorrências", responsavel_id: owner.usuario_id,
+          objetivo_id: null, instrucao: null, prioridade: 2,
+          recurrence_weekdays: [3], start_date: new Date("2026-08-13T00:00:00.000Z"),
+          termination_policy: "sem_termino", end_date: null, ativo: true,
+        },
+      });
+      const snapshot = () => JSON.stringify({
+        tasks: prisma.tasks, events: prisma.events, series: prisma.recurrenceSeries,
+      });
+      const before = snapshot();
+      for (let iteration = 0; iteration < 2; iteration += 1) {
+        for (const path of ["tarefas", "tarefas/dia-operacional", "tarefas/foco",
+          "tarefas/historico", `tarefas/${overdue.missao_id}/historico`]) {
+          await request(app.getHttpServer()).get(`/api/v2/${path}`)
+            .set("Authorization", authorization).expect(200);
+        }
+        expect(snapshot()).toBe(before);
+      }
+      await request(app.getHttpServer())
+        .post("/api/v2/tarefas/recorrencias/materializar").expect(401);
+      expect(snapshot()).toBe(before);
+      const materialize = () => request(app.getHttpServer())
+        .post("/api/v2/tarefas/recorrencias/materializar")
+        .set("Authorization", authorization).expect(204);
+      await materialize();
+      const ownedTasks = prisma.tasks.filter((task) => task.responsavel_id === owner.usuario_id);
+      expect(ownedTasks.map((task) => task.prazo?.toISOString().slice(0, 10)))
+        .toEqual(["2026-08-12", "2026-08-13", "2026-08-20"]);
+      expect(ownedTasks.every((task) => task.status === "PENDENTE" && task.failed_at === null)).toBe(true);
+      expect(prisma.events.filter((event) => event.usuario_id === owner.usuario_id)
+        .map((event) => event.acao)).toEqual(["tarefa_recorrente_criada", "tarefa_recorrente_criada"]);
+      const after = snapshot();
+      await materialize();
+      const focus = await request(app.getHttpServer()).get("/api/v2/tarefas/foco")
+        .set("Authorization", authorization).expect(200);
+      expect(focus.body.tasks).toHaveLength(1);
+      expect(snapshot()).toBe(after);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("returns the domain error contract for invalid payloads", async () => {
     const response = await request(app.getHttpServer())
       .post("/api/v2/auth/register")

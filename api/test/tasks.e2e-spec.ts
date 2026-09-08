@@ -135,7 +135,7 @@ describe("Tasks clean domain", () => {
     });
   });
 
-  it("materializes the canonical tasks read without materializing history", async () => {
+  it("reads tasks and history without materializing recurrences", async () => {
     const prisma = prismaMock();
     const completed = task({
       missao_id: 11,
@@ -158,10 +158,7 @@ describe("Tasks clean domain", () => {
       completed,
       failed,
     ]);
-    expect(prisma.series_recorrencia.findMany).toHaveBeenCalledWith({
-      where: { responsavel_id: 7, ativo: true },
-      include: { objetivos: true },
-    });
+    expect(prisma.series_recorrencia.findMany).not.toHaveBeenCalled();
     expect(prisma.missoes.findMany).toHaveBeenCalledWith({
       where: { responsavel_id: 7 },
       include: { serie_recorrencia: true },
@@ -179,6 +176,11 @@ describe("Tasks clean domain", () => {
       failed,
     ]);
     expect(prisma.series_recorrencia.findMany).not.toHaveBeenCalled();
+    await service.listDailyOperational(user());
+    expect(prisma.series_recorrencia.findMany).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.missoes.update).not.toHaveBeenCalled();
+    expect(prisma.auditoria_eventos.create).not.toHaveBeenCalled();
   });
 
   it("materializes recurrences through the explicit task command", async () => {
