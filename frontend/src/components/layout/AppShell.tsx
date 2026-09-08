@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState } from "react"
 import { NavLink } from "react-router-dom"
 
 import Button from "../ui/Button"
+import { MODULE_CATALOG } from "../../modules/moduleCatalog"
 import { APP_ROUTES } from "../../routes/routeConstants"
 
 const navigationItems = [
-  { label: "Tarefas", to: APP_ROUTES.TASKS },
-  { label: "Objetivos", to: APP_ROUTES.OBJECTIVES },
+  { key: "home", label: "Início", route: APP_ROUTES.ROOT },
+  ...MODULE_CATALOG,
 ]
 
 function NavigationLinks({ onNavigate = undefined }) {
@@ -14,13 +15,13 @@ function NavigationLinks({ onNavigate = undefined }) {
     <nav aria-label="Navegação principal" className="grid gap-1">
       {navigationItems.map((item) => (
         <NavLink
-          key={item.to}
+          key={item.key}
           className={({ isActive }) =>
             `flex min-h-11 items-center rounded-control border-l-4 px-3 text-sm font-medium transition-colors ${isActive ? "border-accent bg-accent-soft text-text-primary" : "border-transparent text-text-secondary hover:bg-app hover:text-text-primary"}`
           }
-          end={item.to === APP_ROUTES.TASKS}
+          end={item.route !== APP_ROUTES.OBJECTIVES}
           onClick={onNavigate}
-          to={item.to}
+          to={item.route}
         >
           {item.label}
         </NavLink>
