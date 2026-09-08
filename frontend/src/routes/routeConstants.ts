@@ -5,5 +5,4 @@ export const APP_ROUTES = Object.freeze({
   SETTINGS: "/configuracoes",
   TASKS: "/tarefas",
   TASKS_FOCUS: "/tarefas/foco",
-  LEGACY_FOCUS: "/soldier",
 })

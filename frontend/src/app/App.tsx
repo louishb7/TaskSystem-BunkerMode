@@ -27,10 +27,6 @@ export default function App() {
     <Routes>
       <Route path={APP_ROUTES.AUTH} element={<AuthRoute />} />
       <Route
-        path={APP_ROUTES.LEGACY_FOCUS}
-        element={<Navigate to={APP_ROUTES.TASKS_FOCUS} replace />}
-      />
-      <Route
         element={
           <ProtectedRoute>
             <Outlet />
