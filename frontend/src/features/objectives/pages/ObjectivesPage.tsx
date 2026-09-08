@@ -6,6 +6,7 @@ import Dialog from "../../../components/ui/Dialog"
 import PageHeader from "../../../components/ui/PageHeader"
 import StatusNotice from "../../../components/ui/StatusNotice"
 import { emptyStatus } from "../../../constants/uiState"
+import { getEnabledModules } from "../../../modules/moduleCatalog"
 import TaskForm from "../../tasks/components/TaskForm"
 import ObjetivoForm from "../components/ObjetivoForm"
 import ObjetivoList from "../components/ObjetivoList"
@@ -14,7 +15,8 @@ import { useObjectiveTasks } from "../hooks/useObjectiveTasks"
 
 export default function ObjectivesPage({ onUnauthorized, token, user }) {
   const objectives = useObjectives({ onUnauthorized, token })
-  const objectiveTasks = useObjectiveTasks({ token, onUnauthorized })
+  const tasksEnabled = getEnabledModules(user).some((module) => module.key === "tasks")
+  const objectiveTasks = useObjectiveTasks({ token, onUnauthorized, enabled: tasksEnabled })
   const [editingObjetivo, setEditingObjetivo] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
   const [taskObjetivo, setTaskObjetivo] = useState(null)
@@ -89,6 +91,7 @@ export default function ObjectivesPage({ onUnauthorized, token, user }) {
       )}
 
       <ObjetivoList
+        tasksEnabled={tasksEnabled}
         loading={busy}
         tasksByObjetivo={objectiveTasks.tasksByObjetivo}
         tasksLoading={objectiveTasks.loading}
@@ -105,7 +108,7 @@ export default function ObjectivesPage({ onUnauthorized, token, user }) {
         onUpdateStatus={objectives.updateObjetivoStatus}
       />
 
-      {taskObjetivo && (
+      {tasksEnabled && taskObjetivo && (
         <Dialog
           closeOnBackdrop={false}
           onClose={() => {

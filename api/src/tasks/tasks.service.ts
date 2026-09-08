@@ -7,6 +7,7 @@ import { OperationalCalendarService } from "../calendar/operational-calendar.ser
 import { PrismaService } from "../prisma/prisma.service";
 import {
   DEFAULT_PRIORITY,
+  canReopenTask,
   TASK_INSTRUCTION_MAX_LENGTH,
   TASK_STATUS,
   TaskRecord,
@@ -402,7 +403,7 @@ export class TasksService {
     const tasks = await this.listAllForUser(user);
     return this.sortForBoard(
       tasks.filter((task) =>
-        this.belongsToOperationalDate(task, today),
+        this.belongsToOperationalDate(task, today, user.timezone),
       ),
     );
   }
@@ -415,7 +416,7 @@ export class TasksService {
     const tasks = await this.listAllForUser(user);
     const todayTasks = this.sortForBoard(
       tasks.filter((task) =>
-        this.belongsToOperationalDate(task, today),
+        this.belongsToOperationalDate(task, today, user.timezone),
       ),
     );
     const actionTasks = this.sortForBoard(
@@ -563,6 +564,18 @@ export class TasksService {
       },
       action: "tarefa_nao_realizada",
       details: `Tarefa '${current.titulo}' registrada como falha.`,
+    });
+  }
+
+  async reopen(id: number, user: UserRecord): Promise<TaskRecord> {
+    const current = await this.getTaskForUser(id, user);
+    if (!canReopenTask(current, user)) {
+      throw new HttpException("Apenas tarefa finalizada pode ser reaberta.", HttpStatus.BAD_REQUEST);
+    }
+    return this.updateExecutionState(id, user, {
+      data: { status: TASK_STATUS.pending, completed_at: null, failed_at: null },
+      action: "tarefa_reaberta",
+      details: `Tarefa '${current.titulo}' reaberta.`,
     });
   }
 
@@ -798,12 +811,13 @@ export class TasksService {
   private belongsToOperationalDate(
     task: TaskRecord,
     isoDate: string,
+    timezone: string,
   ): boolean {
     if (isoDateFromDate(task.prazo) === isoDate) {
       return true;
     }
     const eventDate = task.completed_at ?? task.failed_at;
-    return isoDateFromDate(eventDate) === isoDate;
+    return eventDate !== null && this.calendar.currentDateFor(eventDate, timezone) === isoDate;
   }
 
   private visibleInFocus(task: TaskRecord, isoDate: string): boolean {

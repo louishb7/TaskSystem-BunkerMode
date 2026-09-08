@@ -113,6 +113,31 @@ describeWithDatabase("Recurrence series persistence", () => {
     expect(currentUser.enabled_modules).toEqual(["tasks", "objectives"]);
   });
 
+  it.each(["complete", "fail"] as const)("reopens a persisted %s result without changing series identity", async (action) => {
+    const occurrence = await createRecurringTask();
+    await tasksService[action](occurrence.missao_id, currentUser);
+    const reopened = await tasksService.reopen(occurrence.missao_id, currentUser);
+    expect(reopened).toMatchObject({ status: "PENDENTE", completed_at: null, failed_at: null,
+      recurrence_series_id: occurrence.recurrence_series_id, prazo: occurrence.prazo });
+    const history = await tasksService.taskHistory(occurrence.missao_id, currentUser);
+    expect(history.map((event) => event.acao)).toEqual(["tarefa_recorrente_criada", action === "complete" ? "tarefa_concluida" : "tarefa_nao_realizada", "tarefa_reaberta"]);
+    await tasksService.materializeRecurrences(currentUser);
+    expect(await prisma.missoes.count({ where: { recurrence_series_id: occurrence.recurrence_series_id, prazo: occurrence.prazo } })).toBe(1);
+  });
+
+  it("reads persisted UTC results on the user's local day without changing date-only deadlines", async () => {
+    const calendar = new OperationalCalendarService();
+    const dateFor = jest.spyOn(calendar, "currentDateFor");
+    const service = new TasksService(prisma, calendar);
+    const result = await prisma.missoes.create({ data: { titulo: "Resultado noturno", criada_por_id: userId, responsavel_id: userId,
+      prazo: new Date("2026-09-01T00:00:00Z"), status: "CONCLUIDA", completed_at: new Date("2026-09-09T01:00:00Z") } });
+    dateFor.mockReturnValueOnce("2026-09-08");
+    expect((await service.focusBoard(currentUser)).daily_tasks.map((item) => item.missao_id)).toContain(result.missao_id);
+    dateFor.mockReturnValueOnce("2026-09-08");
+    expect((await service.listDailyOperational(currentUser)).map((item) => item.missao_id)).toContain(result.missao_id);
+    expect(await prisma.missoes.findUnique({ where: { missao_id: result.missao_id } })).toEqual(result);
+  });
+
   it("creates a recurrence series without an objective", async () => {
     const series = await createSeries();
 

@@ -6,7 +6,7 @@ import { api } from "../../../services/bunkermodeApi"
 import type { Task } from "../../../types/taskContract"
 
 // Falhas desta integração não relacionadas à autenticação são locais.
-export function useObjectiveTasks({ token, onUnauthorized }) {
+export function useObjectiveTasks({ token, onUnauthorized, enabled = true }) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -15,10 +15,27 @@ export function useObjectiveTasks({ token, onUnauthorized }) {
   const requestId = useRef(0)
 
   const refresh = useCallback(async () => {
-    if (!token) return false
+    if (!token || !enabled) return false
     const currentRequest = ++requestId.current
     setLoading(true)
     setError("")
+    const materialization = await api.materializeTaskRecurrences(token)
+    if (currentRequest !== requestId.current) return false
+    if (onUnauthorized?.(materialization)) {
+      setLoading(false)
+      return false
+    }
+    if (!materialization.ok) {
+      setLoading(false)
+      setTasks([])
+      setError(
+        getErrorMessage(
+          materialization,
+          "Não foi possível preparar tarefas recorrentes vinculadas."
+        )
+      )
+      return false
+    }
     const result = await api.listTasks(token)
     if (currentRequest !== requestId.current) return false
     if (onUnauthorized?.(result)) {
@@ -33,14 +50,20 @@ export function useObjectiveTasks({ token, onUnauthorized }) {
     }
     setTasks(result.data)
     return true
-  }, [token, onUnauthorized])
+  }, [token, onUnauthorized, enabled])
 
   useEffect(() => {
+    if (!enabled) {
+      setTasks([])
+      setLoading(false)
+      setError("")
+      return
+    }
     refresh()
     return () => {
       requestId.current += 1
     }
-  }, [refresh])
+  }, [refresh, enabled])
 
   const tasksByObjetivo = useMemo(() => {
     const grouped: Record<string, Task[]> = {}
@@ -54,15 +77,17 @@ export function useObjectiveTasks({ token, onUnauthorized }) {
   }, [tasks])
 
   async function createTask(payload) {
-    if (formLoading) return false
+    if (!enabled || !token || formLoading) return false
     if (!payload.titulo) {
       setFormStatus({ type: "error", message: "Informe o título da tarefa." })
       return false
     }
     setFormLoading(true)
     setFormStatus(emptyStatus)
+    const currentRequest = requestId.current
     const result = await api.createTask(token, payload)
     setFormLoading(false)
+    if (currentRequest !== requestId.current) return result.ok
     if (onUnauthorized?.(result)) return false
     if (!result.ok) {
       setFormStatus({

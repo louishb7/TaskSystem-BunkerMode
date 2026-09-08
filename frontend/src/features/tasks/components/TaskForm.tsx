@@ -4,6 +4,7 @@ import { getErrorMessage } from "../../../api/httpClient"
 import Button from "../../../components/ui/Button"
 import StatusNotice from "../../../components/ui/StatusNotice"
 import { api } from "../../../services/bunkermodeApi"
+import { getEnabledModules } from "../../../modules/moduleCatalog"
 import { formatDateForApi } from "../../../utils/date"
 import { operationalDateFor } from "../../calendar/calendarUtils"
 
@@ -184,6 +185,9 @@ export default function TaskForm({
   token = null,
   timezone = undefined,
 }) {
+  const objectivesEnabled = getEnabledModules(currentUser).some(
+    (module) => module.key === "objectives"
+  )
   const [form, setForm] = useState(() => formForNewTask(initialObjetivoId, initialPrazo, timezone))
   const [objetivos, setObjetivos] = useState([])
   const [objetivoStatus, setObjetivoStatus] = useState("")
@@ -205,12 +209,14 @@ export default function TaskForm({
   }, [editingTask, initialObjetivoId, initialPrazo, timezone])
 
   useEffect(() => {
+    let active = true
     async function loadObjetivos() {
-      if (!token) {
+      if (!token || !objectivesEnabled) {
         return
       }
 
       const result = await api.listObjetivos(token)
+      if (!active) return
       if (onUnauthorized?.(result)) {
         return
       }
@@ -229,7 +235,10 @@ export default function TaskForm({
     }
 
     loadObjetivos()
-  }, [onUnauthorized, token])
+    return () => {
+      active = false
+    }
+  }, [onUnauthorized, token, objectivesEnabled])
 
   function updateField(event) {
     const { name, value } = event.target
@@ -321,7 +330,7 @@ export default function TaskForm({
     }
 
     const objetivoId = form.objetivo_id ? Number(form.objetivo_id) : null
-    if (!isEditing || objetivoId !== (editingTask?.objetivo_id ?? null)) {
+    if (objectivesEnabled && (!isEditing || objetivoId !== (editingTask?.objetivo_id ?? null))) {
       payload.objetivo_id = objetivoId
     }
 
@@ -377,32 +386,35 @@ export default function TaskForm({
         </span>
       </label>
 
-      {lockObjetivo ? (
-        <div className="rounded-control border border-border bg-app p-3">
-          <p className="m-0 text-sm font-medium text-text-primary">Objetivo vinculado</p>
-          <p className="mt-1 mb-0 text-sm text-text-secondary">
-            {initialObjetivoTitulo || "Objetivo selecionado"}
-          </p>
-        </div>
-      ) : (
-        <label className={labelClass}>
-          Objetivo opcional
-          <select
-            className={fieldClass}
-            name="objetivo_id"
-            onChange={handleObjetivoChange}
-            value={form.objetivo_id}
-          >
-            <option value="">Sem objetivo vinculado</option>
-            {objetivos.map((objetivo) => (
-              <option key={objetivo.id} value={objetivo.id}>
-                {objetivo.titulo}
-              </option>
-            ))}
-          </select>
-        </label>
+      {objectivesEnabled &&
+        (lockObjetivo ? (
+          <div className="rounded-control border border-border bg-app p-3">
+            <p className="m-0 text-sm font-medium text-text-primary">Objetivo vinculado</p>
+            <p className="mt-1 mb-0 text-sm text-text-secondary">
+              {initialObjetivoTitulo || "Objetivo selecionado"}
+            </p>
+          </div>
+        ) : (
+          <label className={labelClass}>
+            Objetivo opcional
+            <select
+              className={fieldClass}
+              name="objetivo_id"
+              onChange={handleObjetivoChange}
+              value={form.objetivo_id}
+            >
+              <option value="">Sem objetivo vinculado</option>
+              {objetivos.map((objetivo) => (
+                <option key={objetivo.id} value={objetivo.id}>
+                  {objetivo.titulo}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      {objectivesEnabled && objetivoStatus && (
+        <StatusNotice status={{ type: "error", message: objetivoStatus }} />
       )}
-      {objetivoStatus && <StatusNotice status={{ type: "error", message: objetivoStatus }} />}
 
       {lockedInitialPrazo && (
         <div className="rounded-control border border-border bg-app p-3">
@@ -511,9 +523,11 @@ export default function TaskForm({
                 >
                   <option value="sem_termino">Sem término</option>
                   <option value="ate_data">Até uma data</option>
-                  <option disabled={!form.objetivo_id} value="ate_objetivo">
-                    Até o objetivo
-                  </option>
+                  {objectivesEnabled && (
+                    <option disabled={!form.objetivo_id} value="ate_objetivo">
+                      Até o objetivo
+                    </option>
+                  )}
                 </select>
               </label>
 

@@ -4,6 +4,7 @@ import EmptyState from "../../../components/ui/EmptyState"
 import ObjetivoCard from "./ObjetivoCard"
 
 export default function ObjetivoList({
+  tasksEnabled,
   loading,
   tasksByObjetivo,
   tasksLoading,
@@ -29,6 +30,7 @@ export default function ObjetivoList({
     <div className="grid gap-4">
       {objetivos.map((objetivo, index) => (
         <ObjetivoCard
+          tasksEnabled={tasksEnabled}
           key={objetivo.id}
           loading={loading}
           tasks={tasksByObjetivo[String(objetivo.id)] || []}

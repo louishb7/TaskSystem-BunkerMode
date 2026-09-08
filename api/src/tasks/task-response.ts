@@ -2,6 +2,7 @@ import { auditoria_eventos } from "@prisma/client";
 
 import {
   TASK_STATUS,
+  canReopenTask,
   TASK_STATUS_LABEL,
   TaskPermissions,
   TaskRecord,
@@ -47,6 +48,7 @@ export function taskPermissions(
     can_fail: owned && pending,
     can_pin: owned && pending,
     can_view_history: owned && isFinalized(task),
+    can_reopen: canReopenTask(task, user),
   };
 }
 

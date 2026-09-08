@@ -45,6 +45,7 @@ function getTaskStatus(task) {
 }
 
 export default function ObjetivoCard({
+  tasksEnabled,
   loading,
   tasks,
   tasksLoading,
@@ -81,57 +82,59 @@ export default function ObjetivoCard({
         {targetDate}
       </p>
 
-      <section
-        className="grid gap-3 border-t border-border pt-4"
-        aria-labelledby={`objetivo-orders-${objetivo.id}`}
-      >
-        <h3
-          id={`objetivo-orders-${objetivo.id}`}
-          className="m-0 text-sm font-semibold text-text-primary"
+      {tasksEnabled && (
+        <section
+          className="grid gap-3 border-t border-border pt-4"
+          aria-labelledby={`objetivo-orders-${objetivo.id}`}
         >
-          Tarefas vinculadas
-        </h3>
-        {tasksLoading ? (
-          <p className="m-0 text-sm text-text-secondary">Carregando tarefas vinculadas…</p>
-        ) : tasksError ? (
-          <div className="grid gap-2" role="status">
-            <p className="m-0 text-sm text-text-secondary">
-              Tarefas vinculadas indisponíveis. {tasksError} Você pode continuar administrando este
-              objetivo.
-            </p>
-            <Button variant="ghost" onClick={onRetryTasks}>
-              Tentar novamente
-            </Button>
-          </div>
-        ) : tasks.length > 0 ? (
-          <ul className="m-0 grid list-none divide-y divide-border border-y border-border p-0">
-            {tasks.map((task) => {
-              const status = getTaskStatus(task)
-              return (
-                <li
-                  className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-3"
-                  key={task.id}
-                >
-                  <span className="min-w-0 break-words text-sm font-medium text-text-primary">
-                    {task.titulo || "Tarefa sem título"}
-                  </span>
-                  <span className="text-sm text-text-secondary">
-                    {formatDateOnly(task.prazo, "Sem data")}
-                  </span>
-                  <Badge className="w-fit" variant={status.variant}>
-                    {status.label}
-                  </Badge>
-                </li>
-              )
-            })}
-          </ul>
-        ) : (
-          <p className="m-0 text-sm text-text-secondary">Nenhuma tarefa vinculada.</p>
-        )}
-        <Button variant="secondary" onClick={onCreateTask}>
-          Nova tarefa vinculada
-        </Button>
-      </section>
+          <h3
+            id={`objetivo-orders-${objetivo.id}`}
+            className="m-0 text-sm font-semibold text-text-primary"
+          >
+            Tarefas vinculadas
+          </h3>
+          {tasksLoading ? (
+            <p className="m-0 text-sm text-text-secondary">Carregando tarefas vinculadas…</p>
+          ) : tasksError ? (
+            <div className="grid gap-2" role="status">
+              <p className="m-0 text-sm text-text-secondary">
+                Tarefas vinculadas indisponíveis. {tasksError} Você pode continuar administrando
+                este objetivo.
+              </p>
+              <Button variant="ghost" onClick={onRetryTasks}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : tasks.length > 0 ? (
+            <ul className="m-0 grid list-none divide-y divide-border border-y border-border p-0">
+              {tasks.map((task) => {
+                const status = getTaskStatus(task)
+                return (
+                  <li
+                    className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-3"
+                    key={task.id}
+                  >
+                    <span className="min-w-0 break-words text-sm font-medium text-text-primary">
+                      {task.titulo || "Tarefa sem título"}
+                    </span>
+                    <span className="text-sm text-text-secondary">
+                      {formatDateOnly(task.prazo, "Sem data")}
+                    </span>
+                    <Badge className="w-fit" variant={status.variant}>
+                      {status.label}
+                    </Badge>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="m-0 text-sm text-text-secondary">Nenhuma tarefa vinculada.</p>
+          )}
+          <Button variant="secondary" onClick={onCreateTask}>
+            Nova tarefa vinculada
+          </Button>
+        </section>
+      )}
 
       <div className="flex flex-wrap gap-2 border-t border-border pt-4">
         <Button disabled={loading} size="small" variant="ghost" onClick={onEdit}>

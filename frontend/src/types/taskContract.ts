@@ -5,6 +5,7 @@ const REQUIRED_PERMISSION_KEYS = Object.freeze([
   "can_fail",
   "can_pin",
   "can_view_history",
+  "can_reopen",
 ] as const)
 
 export type TaskPermissionKey = (typeof REQUIRED_PERMISSION_KEYS)[number]

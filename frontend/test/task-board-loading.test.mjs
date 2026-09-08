@@ -65,6 +65,33 @@ const boardResult = (mode, id) => ({
 })
 const methodFor = (mode) => mode === "focus" ? "getFocusBoard" : "listTasks"
 
+test("reabertura usa comando explícito e recarrega o board após persistir", async () => {
+  const calls = []
+  const harness = boardHarness({
+    reopenTask: async (_token, id) => { calls.push(`reopen:${id}`); return ok },
+    updateTask: () => { throw new Error("PATCH genérico inválido") },
+    materializeTaskRecurrences: async () => { calls.push("POST"); return ok },
+    listTasks: async () => { calls.push("GET"); return boardResult("tasks", 1) },
+  })
+  const result = await harness.render().reopenTask({ id: 1 })
+  assert.equal(result.persisted, true)
+  assert.equal(result.synchronized, true)
+  assert.deepEqual(calls, ["reopen:1", "POST", "GET"])
+})
+
+test("cliente HTTP de reabertura aponta para POST /tarefas/:id/reabrir", async () => {
+  const calls = []
+  const exports = {}
+  vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../src/services/bunkermodeApi.ts", import.meta.url), "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS },
+  }).outputText, { exports, require(path) {
+    if (path.endsWith("httpClient")) return { request: async (path, options) => { calls.push([path, options.method]); return { ok: true, data: {} } } }
+    return { assertTaskContract: (task) => task }
+  } })
+  await exports.api.reopenTask("token", 42)
+  assert.deepEqual(calls, [["/tarefas/42/reabrir", "POST"]])
+})
+
 for (const mode of ["tasks", "focus"]) {
   test(`${mode}: prepara recorrências antes de carregar e repetir a leitura`, async () => {
     const calls = []

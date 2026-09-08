@@ -46,6 +46,11 @@ export type TaskRecord = {
 
 export type TaskUser = Pick<UserRecord, "usuario_id">;
 
+export function canReopenTask(task: TaskRecord, user: TaskUser): boolean {
+  return task.responsavel_id === user.usuario_id &&
+    (task.status === TASK_STATUS.completed || task.status === TASK_STATUS.failed);
+}
+
 export type TaskPermissions = {
   can_complete: boolean;
   can_edit: boolean;
@@ -53,6 +58,7 @@ export type TaskPermissions = {
   can_fail: boolean;
   can_pin: boolean;
   can_view_history: boolean;
+  can_reopen: boolean;
 };
 
 export type TaskResponse = {

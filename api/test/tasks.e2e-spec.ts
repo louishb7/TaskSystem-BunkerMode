@@ -73,6 +73,80 @@ function prismaMock() {
 describe("Tasks clean domain", () => {
   const calendar = new OperationalCalendarService();
 
+  describe.each(["completed_at", "failed_at"] as const)("operational day of %s", (field) => {
+    it.each([
+      ["America/Recife", "2026-09-08T15:00:00Z", "2026-09-08T16:00:00Z", true],
+      ["America/Recife", "2026-09-09T01:00:00Z", "2026-09-09T02:00:00Z", true],
+      ["America/Recife", "2026-09-09T03:01:00Z", "2026-09-09T04:00:00Z", true],
+      ["America/Recife", "2026-09-09T02:59:00Z", "2026-09-09T03:01:00Z", false],
+      ["Pacific/Kiritimati", "2026-09-08T10:01:00Z", "2026-09-08T11:00:00Z", true],
+      ["Pacific/Kiritimati", "2026-09-08T09:59:00Z", "2026-09-08T10:01:00Z", false],
+      ["America/New_York", "2026-11-01T05:30:00Z", "2026-11-01T06:30:00Z", true],
+    ])("interprets %s event %s at %s", async (timezone, event, now, included) => {
+      jest.useFakeTimers().setSystemTime(new Date(now as string));
+      try {
+        const prisma = prismaMock();
+        const resultTask = task({ prazo: new Date("2026-01-01T00:00:00Z"),
+          status: field === "completed_at" ? TASK_STATUS.completed : TASK_STATUS.failed,
+          [field]: new Date(event as string) });
+        prisma.missoes.findMany.mockResolvedValue([resultTask]);
+        const service = new TasksService(prisma as never, calendar);
+        const owner = user({ timezone: timezone as string });
+        const focus = await service.focusBoard(owner);
+        expect(focus.daily_tasks).toEqual(included ? [resultTask] : []);
+        expect(focus.action_tasks).toEqual([]);
+        expect(await service.listDailyOperational(owner)).toEqual(focus.daily_tasks);
+        expect(await service.listHistorical(owner)).toEqual([resultTask]);
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(resultTask[field]?.toISOString()).toBe(new Date(event as string).toISOString());
+      } finally { jest.useRealTimers(); }
+    });
+  });
+
+  it("keeps date-only deadlines on their civil date in positive and negative timezones", async () => {
+    const prisma = prismaMock();
+    prisma.missoes.findMany.mockResolvedValue([task({ prazo: new Date("2026-09-08T00:00:00Z") })]);
+    jest.useFakeTimers().setSystemTime(new Date("2026-09-08T09:00:00Z"));
+    try {
+      const service = new TasksService(prisma as never, calendar);
+      for (const timezone of ["America/Recife", "Pacific/Kiritimati"]) {
+        expect((await service.focusBoard(user({ timezone }))).daily_tasks).toHaveLength(1);
+      }
+    } finally { jest.useRealTimers(); }
+  });
+
+  it.each([TASK_STATUS.completed, TASK_STATUS.failed])("reopens %s explicitly, preserving task data and audit history", async (status) => {
+    const prisma = prismaMock();
+    const original = task({ status, objetivo_id: 3, recurrence_series_id: 21,
+      completed_at: status === TASK_STATUS.completed ? new Date() : null,
+      failed_at: status === TASK_STATUS.failed ? new Date() : null });
+    prisma.missoes.findFirst.mockResolvedValue(original);
+    prisma.missoes.update.mockImplementation(async ({ data }) => ({ ...original, ...data }));
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+    const service = new TasksService(prisma as never, calendar);
+    expect(toTaskResponse(original, user()).permissions.can_reopen).toBe(true);
+    expect(toTaskResponse(original, user({ usuario_id: 99 })).permissions.can_reopen).toBe(false);
+    await expect(service.update(10, { status: "PENDENTE" }, user())).rejects.toMatchObject({ status: 400 });
+    const result = await service.reopen(10, user());
+    expect(result).toEqual({ ...original, status: TASK_STATUS.pending, completed_at: null, failed_at: null });
+    expect(toTaskResponse(result, user()).permissions.can_reopen).toBe(false);
+    expect(prisma.auditoria_eventos.create).toHaveBeenCalledWith({ data: expect.objectContaining({ acao: "tarefa_reaberta", missao_id: 10, usuario_id: 7 }) });
+    expect(prisma.auditoria_eventos.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.series_recorrencia.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects reopening pending, missing and foreign tasks without writing", async () => {
+    const prisma = prismaMock();
+    const service = new TasksService(prisma as never, calendar);
+    prisma.missoes.findFirst.mockResolvedValue(task());
+    await expect(service.reopen(10, user())).rejects.toMatchObject({ status: 400 });
+    prisma.missoes.findFirst.mockResolvedValue(null);
+    await expect(service.reopen(999, user())).rejects.toMatchObject({ status: 404 });
+    await expect(service.reopen(10, user({ usuario_id: 99 }))).rejects.toMatchObject({ status: 404 });
+    expect(prisma.missoes.findFirst).toHaveBeenLastCalledWith({ where: { missao_id: 10, responsavel_id: 99 } });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it("maps the task contract consumed by the web", () => {
     const response = toTaskResponse(task(), user());
 
@@ -116,6 +190,7 @@ describe("Tasks clean domain", () => {
       can_fail: true,
       can_pin: true,
       can_view_history: false,
+      can_reopen: false,
     });
   });
 
@@ -132,6 +207,7 @@ describe("Tasks clean domain", () => {
       can_fail: false,
       can_pin: false,
       can_view_history: false,
+      can_reopen: false,
     });
   });
 

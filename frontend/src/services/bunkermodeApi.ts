@@ -103,6 +103,9 @@ export const api = {
   completeTask(token, taskId) {
     return requestTask(`/tarefas/${taskId}/concluir`, { token, method: "PATCH" })
   },
+  reopenTask(token, taskId) {
+    return requestTask(`/tarefas/${taskId}/reabrir`, { token, method: "POST" })
+  },
   toggleTaskPin(token, taskId) {
     return requestTask(`/tarefas/${taskId}/toggle-pin`, {
       token,

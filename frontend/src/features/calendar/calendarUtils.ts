@@ -55,6 +55,16 @@ export function normalizeTaskDate(value) {
   return value
 }
 
+export function taskBelongsToDate(task, selectedDate, timezone) {
+  const date = formatDateForApi(selectedDate)
+  if (normalizeTaskDate(task?.prazo) === date) return true
+  const event = task?.completed_at ?? task?.failed_at
+  if (!event) return false
+  const moment = new Date(event)
+  if (Number.isNaN(moment.getTime())) return false
+  return formatDateForApi(operationalDateFor(timezone, moment)) === date
+}
+
 export function formatWeekLabel(weekDays) {
   if (!weekDays.length) {
     return ""

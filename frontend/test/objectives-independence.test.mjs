@@ -6,8 +6,11 @@ import ts from "typescript"
 
 // Exercita as operações dos hooks com APIs controladas, sem servidor ou banco.
 function loadHook(file, name, api, onUnauthorized = () => false) {
+  api = { materializeTaskRecurrences: async () => ({ ok: true, status: 204 }), ...api }
   const values = []
   let index = 0
+  let effect
+  let cleanup
   const react = {
     useState(initial) {
       const slot = index++
@@ -21,7 +24,7 @@ function loadHook(file, name, api, onUnauthorized = () => false) {
     },
     useCallback: (callback) => callback,
     useMemo: (callback) => callback(),
-    useEffect() {},
+    useEffect(callback) { effect = callback },
   }
   const source = readFileSync(new URL(file, import.meta.url), "utf8")
   const compiled = ts.transpileModule(source, {
@@ -40,11 +43,49 @@ function loadHook(file, name, api, onUnauthorized = () => false) {
       throw new Error(path)
     },
   })
-  return () => {
+  const render = (props = {}) => {
     index = 0
-    return exports[name]({ token: "test-token", onUnauthorized })
+    return exports[name]({ token: "test-token", onUnauthorized, ...props })
   }
+  render.activate = (props = {}) => {
+    cleanup?.()
+    render(props)
+    cleanup = effect()
+  }
+  return render
 }
+
+test("desativar integração invalida preparação e criação ainda pendentes", async () => {
+  let prepare
+  let create
+  let reads = 0
+  let preparations = 0
+  const render = loadHook("../src/features/objectives/hooks/useObjectiveTasks.ts", "useObjectiveTasks", {
+    materializeTaskRecurrences: () => { preparations++; return new Promise((resolve) => { prepare = resolve }) },
+    listTasks: async () => { reads++; return { ok: true, data: [] } },
+    createTask: () => new Promise((resolve) => { create = resolve }),
+  })
+  render.activate({ enabled: true })
+  const creation = render().createTask({ titulo: "Tarefa vinculada" })
+  render.activate({ enabled: false })
+  prepare({ ok: true })
+  create({ ok: true })
+  await creation
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(preparations, 1)
+  assert.equal(reads, 0)
+  assert.equal(render({ enabled: false }).loading, false)
+})
+
+test("integração desativada não consulta nem cria tarefas", async () => {
+  const render = loadHook("../src/features/objectives/hooks/useObjectiveTasks.ts", "useObjectiveTasks", {
+    listTasks: () => { throw new Error("Não deveria listar") },
+    materializeTaskRecurrences: () => { throw new Error("Não deveria materializar") },
+    createTask: () => { throw new Error("Não deveria criar") },
+  })
+  assert.equal(await render({ enabled: false }).refresh(), false)
+  assert.equal(await render({ enabled: false }).createTask({ titulo: "Tarefa" }), false)
+})
 
 test("Objetivos lista e executa todo CRUD sem consultar Tarefas", async () => {
   const calls = []
@@ -119,7 +160,7 @@ test("respostas 401 da integração acionam a sessão global sem erro local", as
       createTask: async () => ({ ok: false, status: 401, data: { message: "Sessão expirada" } }),
     },
     (result) => {
-      unauthorizedResults.push(result)
+      if (result.status === 401) unauthorizedResults.push(result)
       return result.status === 401
     },
   )
@@ -149,10 +190,49 @@ test("resposta stale não aciona o tratamento global de sessão", async () => {
   )
 
   const staleRequest = render().refresh()
+  await new Promise((resolve) => setImmediate(resolve))
   const currentRequest = render().refresh()
+  await new Promise((resolve) => setImmediate(resolve))
   pendingRequests[1]({ ok: true, data: [] })
   assert.equal(await currentRequest, true)
   pendingRequests[0]({ ok: false, status: 401, data: { message: "Sessão expirada" } })
   assert.equal(await staleRequest, false)
   assert.equal(unauthorizedCalls, 0)
+})
+
+test("integração materializa antes de listar e interrompe a leitura em 503/401", async () => {
+  for (const status of [204, 503, 401]) {
+    const calls = []
+    let unauthorized = 0
+    const render = loadHook("../src/features/objectives/hooks/useObjectiveTasks.ts", "useObjectiveTasks", {
+      materializeTaskRecurrences: async () => { calls.push("POST"); return { ok: status === 204, status, data: { message: "Preparação indisponível" } } },
+      listTasks: async () => { calls.push("GET"); return { ok: true, data: [] } },
+    }, (result) => { if (result.status === 401) unauthorized++; return result.status === 401 })
+    assert.equal(await render().refresh(), status === 204)
+    assert.deepEqual(calls, status === 204 ? ["POST", "GET"] : ["POST"])
+    assert.equal(unauthorized, status === 401 ? 1 : 0)
+    assert.equal(render().error, status === 503 ? "Preparação indisponível" : "")
+  }
+})
+
+test("materialização stale não dispara GET nem aplica erro ou 401", async () => {
+  for (const status of [204, 503, 401]) {
+    const pending = []
+    let reads = 0
+    let unauthorized = 0
+    const render = loadHook("../src/features/objectives/hooks/useObjectiveTasks.ts", "useObjectiveTasks", {
+      materializeTaskRecurrences: () => new Promise((resolve) => pending.push(resolve)),
+      listTasks: async () => { reads++; return { ok: true, data: [{ id: 2, objetivo_id: 1 }] } },
+    }, (result) => { if (result.status === 401) unauthorized++; return result.status === 401 })
+    const old = render().refresh()
+    const latest = render().refresh()
+    pending[1]({ ok: true, status: 204 })
+    await latest
+    pending[0]({ ok: status === 204, status })
+    assert.equal(await old, false)
+    assert.equal(reads, 1)
+    assert.equal(unauthorized, 0)
+    assert.equal(render().tasksByObjetivo[1][0].id, 2)
+    assert.equal(render().error, "")
+  }
 })

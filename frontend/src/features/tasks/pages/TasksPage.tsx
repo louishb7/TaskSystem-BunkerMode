@@ -12,7 +12,7 @@ import {
   addDays,
   formatWeekLabel,
   getWeekDays,
-  normalizeTaskDate,
+  taskBelongsToDate,
   operationalDateFor,
   startOfDay,
 } from "../../calendar/calendarUtils"
@@ -33,15 +33,12 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
   const todayDate = useMemo(() => operationalDateFor(user?.timezone), [user?.timezone])
   const selectedDateApi = formatDateForApi(selectedDate)
   const selectedTasks = useMemo(
-    () => board.dailyTasks.filter((task) => normalizeTaskDate(task?.prazo) === selectedDateApi),
-    [board.dailyTasks, selectedDateApi]
+    () => board.dailyTasks.filter((task) => taskBelongsToDate(task, selectedDate, user?.timezone)),
+    [board.dailyTasks, selectedDate, user?.timezone]
   )
   const todayTasks = useMemo(
-    () =>
-      board.dailyTasks.filter(
-        (task) => normalizeTaskDate(task?.prazo) === formatDateForApi(todayDate)
-      ),
-    [board.dailyTasks, todayDate]
+    () => board.dailyTasks.filter((task) => taskBelongsToDate(task, todayDate, user?.timezone)),
+    [board.dailyTasks, todayDate, user?.timezone]
   )
   function openCreateForm() {
     setEditingTask(null)

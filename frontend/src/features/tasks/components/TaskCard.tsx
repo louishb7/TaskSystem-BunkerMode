@@ -202,7 +202,7 @@ export default function TaskCard({
             Remover
           </Button>
         )}
-        {completed && can(task, "can_edit") && onReopen && (
+        {can(task, "can_reopen") && onReopen && (
           <Button loading={reopening} size="small" variant="secondary" onClick={onReopen}>
             Reabrir
           </Button>

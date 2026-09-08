@@ -126,6 +126,13 @@ export class TasksController {
     return toTaskResponse(task, user);
   }
 
+  @Post("tarefas/:id/reabrir")
+  @HttpCode(200)
+  async reopenTask(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
+    const user = request.currentUser!;
+    return toTaskResponse(await this.tasksService.reopen(taskId(id), user), user);
+  }
+
   @Delete("tarefas/:id")
   @HttpCode(204)
   async deleteTask(

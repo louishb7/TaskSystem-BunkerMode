@@ -3,6 +3,7 @@ import { Test } from "@nestjs/testing";
 import request = require("supertest");
 
 import { AppModule } from "../src/app.module";
+import { hashPassword } from "../src/auth/password";
 import { TASK_STATUS } from "../src/tasks/task.types";
 import { PrismaService } from "../src/prisma/prisma.service";
 
@@ -536,6 +537,27 @@ describe("HTTP application", () => {
 
   it("rejects protected endpoints without token", async () => {
     await request(app.getHttpServer()).get("/api/v2/usuarios/me").expect(401);
+  });
+
+  it("reopens completed and failed tasks through an authenticated audited command", async () => {
+    const server = app.getHttpServer();
+    await app.get(PrismaService).usuarios.create({ data: { usuario: "reabertura", email: "reabertura@bunker.local", senha_hash: hashPassword("senha1234") } });
+    const login = await request(server).post("/api/v2/auth/login").send({ email: "reabertura", senha: "senha1234" }).expect(200);
+    const authorization = `Bearer ${login.body.access_token}`;
+    await request(server).post("/api/v2/tarefas/1/reabrir").expect(401);
+    await request(server).post("/api/v2/tarefas/999999/reabrir").set("Authorization", authorization).expect(404);
+    for (const action of ["concluir", "falhar"]) {
+      const created = await request(server).post("/api/v2/tarefas").set("Authorization", authorization).send({ titulo: `Reabrir ${action}` }).expect(201);
+      const path = `/api/v2/tarefas/${created.body.id}`;
+      await request(server).post(`${path}/reabrir`).set("Authorization", authorization).expect(400);
+      const result = await (action === "concluir" ? request(server).patch(`${path}/concluir`) : request(server).post(`${path}/falhar`)).set("Authorization", authorization).expect(200);
+      expect(result.body.permissions.can_reopen).toBe(true);
+      await request(server).patch(path).set("Authorization", authorization).send({ status: "PENDENTE" }).expect(400);
+      const reopened = await request(server).post(`${path}/reabrir`).set("Authorization", authorization).expect(200);
+      expect(reopened.body).toMatchObject({ status: "PENDENTE", completed_at: null, failed_at: null, permissions: { can_reopen: false, can_complete: true } });
+      const history = await request(server).get(`${path}/historico`).set("Authorization", authorization).expect(200);
+      expect(history.body.map((event: { acao: string }) => event.acao)).toEqual(["tarefa_criada", action === "concluir" ? "tarefa_concluida" : "tarefa_nao_realizada", "tarefa_reaberta"]);
+    }
   });
 
   it("keeps task GETs read-only and materializes only through the authenticated command", async () => {

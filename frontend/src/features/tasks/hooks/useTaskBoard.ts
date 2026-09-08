@@ -308,7 +308,7 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
 
     setReopenLoadingId(task.id)
     setStatus(emptyStatus)
-    const result = await api.updateTask(token, task.id, { status: "PENDENTE" })
+    const result = await api.reopenTask(token, task.id)
     setReopenLoadingId(null)
 
     if (onUnauthorized(result)) {
@@ -320,7 +320,7 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
         type: "error",
         message: getErrorMessage(result, "Não foi possível reabrir a tarefa."),
       })
-      await loadTasksBoard()
+      await reloadCurrentBoard()
       return false
     }
 
