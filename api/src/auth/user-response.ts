@@ -12,8 +12,6 @@ export function toUserResponse(user: UserRecord, includeAtivo = true): UserRespo
     id: user.usuario_id,
     usuario: user.usuario,
     email: user.email,
-    nome_general: user.nome_general,
-    active_mode: user.active_mode,
     timezone: user.timezone,
     created_at: dateTime(user.created_at)!,
     updated_at: dateTime(user.updated_at)!,

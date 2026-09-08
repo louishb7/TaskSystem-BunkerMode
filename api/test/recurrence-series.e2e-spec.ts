@@ -392,7 +392,7 @@ describeWithDatabase("Recurrence series persistence", () => {
     ).resolves.toMatchObject({ prazo: originalDate, recurrence_series_id: seriesId });
   });
 
-  it("uses the General read to materialize recurrence and retain completed and failed outcomes", async () => {
+  it("uses the tasks read to materialize recurrence and retain completed and failed outcomes", async () => {
     const firstOccurrence = await createRecurringTask();
     const failedOccurrence = await tasksService.create(
       { titulo: "Registrar falha", prazo: "2026-08-31" },

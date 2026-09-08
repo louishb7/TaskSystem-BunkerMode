@@ -17,10 +17,6 @@ type LoginPayload = {
   senha?: unknown
 }
 
-type ModePayload = {
-  mode?: unknown
-}
-
 function requireText(value: unknown, message: string): string {
   if (typeof value !== "string") {
     throw new HttpException(message, HttpStatus.BAD_REQUEST)
@@ -56,14 +52,6 @@ function normalizePassword(value: unknown, status = HttpStatus.BAD_REQUEST): str
     throw new HttpException("Senha deve ter pelo menos 8 caracteres.", status)
   }
   return value
-}
-
-function normalizeMode(value: unknown): "general" | "soldier" {
-  const mode = requireText(value, "Modo ativo inválido.").toLowerCase()
-  if (mode !== "general" && mode !== "soldier") {
-    throw new HttpException("Modo ativo inválido.", HttpStatus.BAD_REQUEST)
-  }
-  return mode
 }
 
 @Injectable()
@@ -126,32 +114,6 @@ export class AuthService {
     }
     if (!usuario.ativo) {
       throw new HttpException("Usuário inativo.", HttpStatus.UNAUTHORIZED)
-    }
-    return usuario
-  }
-
-  async setGeneralName(usuarioId: number, nomeGeneral: unknown): Promise<UserRecord> {
-    await this.getUserById(usuarioId)
-    const nome = requireText(nomeGeneral, "Nome do General é obrigatório.")
-    return this.prisma.usuarios.update({
-      where: { usuario_id: usuarioId },
-      data: { nome_general: nome },
-    })
-  }
-
-  async setMode(usuarioId: number, payload: ModePayload): Promise<UserRecord> {
-    const mode = normalizeMode(payload.mode)
-    await this.getUserById(usuarioId)
-    return this.prisma.usuarios.update({
-      where: { usuario_id: usuarioId },
-      data: { active_mode: mode },
-    })
-  }
-
-  private async getUserById(usuarioId: number): Promise<UserRecord> {
-    const usuario = await this.prisma.usuarios.findUnique({ where: { usuario_id: usuarioId } })
-    if (!usuario) {
-      throw new HttpException("Usuário autenticado não encontrado.", HttpStatus.BAD_REQUEST)
     }
     return usuario
   }

@@ -12,8 +12,6 @@ function user(overrides: Partial<UserRecord> = {}): UserRecord {
     email: "general@bunker.local",
     senha_hash: "hash",
     ativo: true,
-    nome_general: null,
-    active_mode: "general",
     timezone: "America/Recife",
     created_at: new Date("2026-04-24T12:00:00.000Z"),
     updated_at: new Date("2026-04-24T12:00:00.000Z"),
@@ -120,21 +118,12 @@ describe("Tasks clean domain", () => {
     });
   });
 
-  it("keeps task permissions independent from active mode and restricted by ownership", () => {
-    const taskModePermissions = toTaskResponse(
-      task(),
-      user({ active_mode: "general" }),
-    ).permissions;
-    const focusModePermissions = toTaskResponse(
-      task(),
-      user({ active_mode: "soldier" }),
-    ).permissions;
+  it("restricts task permissions by ownership", () => {
     const foreignPermissions = toTaskResponse(
       task(),
-      user({ usuario_id: 99, active_mode: "soldier" }),
+      user({ usuario_id: 99 }),
     ).permissions;
 
-    expect(focusModePermissions).toEqual(taskModePermissions);
     expect(foreignPermissions).toEqual({
       can_complete: false,
       can_edit: false,
@@ -145,7 +134,7 @@ describe("Tasks clean domain", () => {
     });
   });
 
-  it("materializes the canonical General read without materializing history", async () => {
+  it("materializes the canonical tasks read without materializing history", async () => {
     const prisma = prismaMock();
     const completed = task({
       missao_id: 11,
@@ -202,7 +191,7 @@ describe("Tasks clean domain", () => {
           end_date: new Date("2026-05-15T00:00:00.000Z"),
         },
       }),
-      user({ active_mode: "soldier" }),
+      user(),
     );
 
     expect(response.recurrence).toEqual({
@@ -213,7 +202,7 @@ describe("Tasks clean domain", () => {
     });
   });
 
-  it("allows a soldier preference to edit, reschedule and delete an owned one-time task", async () => {
+  it("allows the owner to edit, reschedule and delete a one-time task", async () => {
     const prisma = prismaMock();
     prisma.missoes.findFirst.mockResolvedValue(task());
     prisma.missoes.update.mockResolvedValue(task({
@@ -230,18 +219,18 @@ describe("Tasks clean domain", () => {
       prisma as unknown as PrismaService,
       calendar,
     );
-    const soldier = user({ active_mode: "soldier" });
+    const owner = user();
 
     await expect(
       service.update(
         10,
         { titulo: "Ordem ajustada", prazo: "26-04-2026" },
-        soldier,
+        owner,
       ),
     ).resolves.toMatchObject({
       titulo: "Ordem ajustada",
     });
-    await expect(service.delete(10, soldier)).resolves.toBeUndefined();
+    await expect(service.delete(10, owner)).resolves.toBeUndefined();
 
     expect(prisma.missoes.update).toHaveBeenCalled();
     expect(prisma.missoes.update).toHaveBeenCalledWith(
@@ -282,7 +271,7 @@ describe("Tasks clean domain", () => {
     expect(toTaskResponse(occurrence, user()).permissions.can_delete).toBe(false);
   });
 
-  it("keeps ownership protection independent from active mode", async () => {
+  it("rejects updates to another user's task", async () => {
     const prisma = prismaMock();
     prisma.missoes.findFirst.mockResolvedValue(null);
     const service = new TasksService(
@@ -294,7 +283,7 @@ describe("Tasks clean domain", () => {
       service.update(
         10,
         { titulo: "Acesso indevido" },
-        user({ usuario_id: 99, active_mode: "soldier" }),
+        user({ usuario_id: 99 }),
       ),
     ).rejects.toMatchObject({ status: 404 });
     expect(prisma.missoes.update).not.toHaveBeenCalled();
@@ -323,7 +312,7 @@ describe("Tasks clean domain", () => {
         responsavel_id: 7,
         objetivo_id: null,
       },
-      user({ active_mode: "soldier" }),
+      user(),
     );
 
     expect(result.missao_id).toBe(10);
@@ -435,7 +424,7 @@ describe("Tasks clean domain", () => {
     );
   });
 
-  it("builds the Soldier board independently from active mode", async () => {
+  it("builds the focus board with today's tasks and records overdue failures", async () => {
     const prisma = prismaMock();
     prisma.missoes.findMany
       .mockResolvedValueOnce([
@@ -457,7 +446,7 @@ describe("Tasks clean domain", () => {
     );
     jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"));
 
-    const board = await service.focusBoard(user({ active_mode: "general" }));
+    const board = await service.focusBoard(user());
 
     expect(board.action_tasks.map((item) => item.missao_id)).toEqual([11]);
     expect(prisma.$transaction).toHaveBeenCalled();

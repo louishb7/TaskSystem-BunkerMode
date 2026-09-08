@@ -13,8 +13,6 @@ function user(overrides: Partial<UserRecord> = {}): UserRecord {
     email: "general@bunker.local",
     senha_hash: hashPassword("senha123"),
     ativo: true,
-    nome_general: null,
-    active_mode: "general",
     timezone: "America/Recife",
     created_at: new Date("2026-04-24T12:00:00.000Z"),
     updated_at: new Date("2026-04-24T12:00:00.000Z"),
@@ -28,7 +26,6 @@ function prismaMock() {
       create: jest.fn(),
       findFirst: jest.fn(),
       findUnique: jest.fn(),
-      update: jest.fn(),
     },
   }
 }
@@ -78,7 +75,14 @@ describe("Auth phase 3", () => {
 
     expect(result.token_type).toBe("bearer")
     expect(result.access_token.split(".")).toHaveLength(3)
-    expect(toUserResponse(result.usuario, false)).not.toHaveProperty("ativo")
+    expect(toUserResponse(result.usuario, false)).toEqual({
+      id: 1,
+      usuario: "general",
+      email: "general@bunker.local",
+      timezone: "America/Recife",
+      created_at: "2026-04-24T12:00:00.000Z",
+      updated_at: "2026-04-24T12:00:00.000Z",
+    })
     expect(prisma.usuarios.findUnique).toHaveBeenCalledWith({
       where: { usuario: "general" },
     })
@@ -103,35 +107,15 @@ describe("Auth phase 3", () => {
     })
   })
 
-  it("updates active mode and General name with current contract fields", async () => {
-    const prisma = prismaMock()
-    prisma.usuarios.findUnique.mockResolvedValue(user())
-    prisma.usuarios.update.mockResolvedValue(user({ active_mode: "soldier", nome_general: "Ares" }))
-    const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
-
-    await service.setMode(1, { mode: " soldier " })
-    await service.setGeneralName(1, " Ares ")
-
-    expect(prisma.usuarios.update).toHaveBeenNthCalledWith(1, {
-      where: { usuario_id: 1 },
-      data: { active_mode: "soldier" },
-    })
-    expect(prisma.usuarios.update).toHaveBeenNthCalledWith(2, {
-      where: { usuario_id: 1 },
-      data: { nome_general: "Ares" },
-    })
-  })
-
-  it("updates the General name when soldier is the persisted interface preference", async () => {
-    const prisma = prismaMock()
-    prisma.usuarios.findUnique.mockResolvedValue(user({ active_mode: "soldier" }))
-    prisma.usuarios.update.mockResolvedValue(user({ active_mode: "soldier", nome_general: "Ares" }))
-    const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
-
-    await expect(service.setGeneralName(1, "Ares")).resolves.toMatchObject({ nome_general: "Ares" })
-    expect(prisma.usuarios.update).toHaveBeenCalledWith({
-      where: { usuario_id: 1 },
-      data: { nome_general: "Ares" },
+  it("serializes the complete public user contract", () => {
+    expect(toUserResponse(user())).toEqual({
+      id: 1,
+      usuario: "general",
+      email: "general@bunker.local",
+      timezone: "America/Recife",
+      created_at: "2026-04-24T12:00:00.000Z",
+      updated_at: "2026-04-24T12:00:00.000Z",
+      ativo: true,
     })
   })
 })

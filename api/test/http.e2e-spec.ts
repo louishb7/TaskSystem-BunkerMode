@@ -12,8 +12,6 @@ type UserRow = {
   email: string;
   senha_hash: string;
   ativo: boolean;
-  nome_general: string | null;
-  active_mode: string;
   timezone: string;
   created_at: Date;
   updated_at: Date;
@@ -98,8 +96,6 @@ class InMemoryPrisma {
         email: data.email,
         senha_hash: data.senha_hash,
         ativo: true,
-        nome_general: null,
-        active_mode: "general",
         timezone: "America/Recife",
         created_at: now,
         updated_at: now,
@@ -119,22 +115,6 @@ class InMemoryPrisma {
           (where.usuario !== undefined && user.usuario === where.usuario) ||
           (where.email !== undefined && user.email === where.email),
       ) ?? null,
-    update: async ({
-      where,
-      data,
-    }: {
-      where: { usuario_id: number };
-      data: Partial<UserRow>;
-    }) => {
-      const user = this.users.find(
-        (item) => item.usuario_id === where.usuario_id,
-      );
-      if (!user) {
-        throw new Error("User not found");
-      }
-      Object.assign(user, data, { updated_at: new Date() });
-      return user;
-    },
   };
 
   readonly missoes = {
@@ -554,6 +534,9 @@ describe("HTTP application", () => {
   });
 
   it("registers, logs in, reads the authenticated user and executes a task flow", async () => {
+    const publicUserKeys = [
+      "id", "usuario", "email", "timezone", "created_at", "updated_at", "ativo",
+    ].sort();
     await request(app.getHttpServer())
       .post("/api/v2/auth/register")
       .send({
@@ -561,13 +544,19 @@ describe("HTTP application", () => {
         email: "general@bunker.local",
         senha: "senha1234",
       })
-      .expect(201);
+      .expect(201)
+      .expect((response) => {
+        expect(Object.keys(response.body).sort()).toEqual(publicUserKeys);
+      });
 
     const login = await request(app.getHttpServer())
       .post("/api/v2/auth/login")
       .send({ email: "general", senha: "senha1234" })
       .expect(200);
     const token = login.body.access_token;
+    expect(Object.keys(login.body.usuario).sort()).toEqual(
+      publicUserKeys.filter((key) => key !== "ativo"),
+    );
 
     await request(app.getHttpServer())
       .get("/api/v2/usuarios/me")
@@ -575,6 +564,7 @@ describe("HTTP application", () => {
       .expect(200)
       .expect((response) => {
         expect(response.body.usuario).toBe("general");
+        expect(Object.keys(response.body).sort()).toEqual(publicUserKeys);
       });
 
     const created = await request(app.getHttpServer())
@@ -629,7 +619,7 @@ describe("HTTP application", () => {
       });
   });
 
-  it("treats active mode as an interface preference across protected resources", async () => {
+  it("preserves authenticated access and ownership across protected resources", async () => {
     jest.useFakeTimers().setSystemTime(new Date("2026-09-01T12:00:00.000Z"));
     try {
       await request(app.getHttpServer())
@@ -653,7 +643,7 @@ describe("HTTP application", () => {
         .send({ titulo: "Ordem original", prazo: "2026-09-01" })
         .expect(201);
 
-      const generalList = await request(app.getHttpServer())
+      const taskList = await request(app.getHttpServer())
         .get("/api/v2/tarefas")
         .set("Authorization", `Bearer ${token}`)
         .expect(200);
@@ -668,61 +658,36 @@ describe("HTTP application", () => {
           ).toContain(original.body.id);
         });
 
-      await request(app.getHttpServer())
-        .patch("/api/v2/session/mode")
-        .set("Authorization", `Bearer ${token}`)
-        .send({ mode: "soldier" })
-        .expect(200)
-        .expect((response) => {
-          expect(response.body.active_mode).toBe("soldier");
-        });
+      expect(taskList.body.map((task: { id: number }) => task.id)).toContain(original.body.id);
 
-      const soldierList = await request(app.getHttpServer())
-        .get("/api/v2/tarefas")
-        .set("Authorization", `Bearer ${token}`)
-        .expect(200);
-
-      expect(
-        soldierList.body.map((task: { id: number }) => task.id),
-      ).toEqual(generalList.body.map((task: { id: number }) => task.id));
-      expect(
-        soldierList.body.find(
-          (task: { id: number }) => task.id === original.body.id,
-        ).permissions,
-      ).toEqual(
-        generalList.body.find(
-          (task: { id: number }) => task.id === original.body.id,
-        ).permissions,
-      );
-
-      const createdInFocus = await request(app.getHttpServer())
+      const created = await request(app.getHttpServer())
         .post("/api/v2/tarefas")
         .set("Authorization", `Bearer ${token}`)
-        .send({ titulo: "Criada com preferência Soldado", prazo: "2026-09-01" })
+        .send({ titulo: "Tarefa criada pelo usuário", prazo: "2026-09-01" })
         .expect(201);
 
       await request(app.getHttpServer())
-        .patch(`/api/v2/tarefas/${createdInFocus.body.id}`)
+        .patch(`/api/v2/tarefas/${created.body.id}`)
         .set("Authorization", `Bearer ${token}`)
-        .send({ titulo: "Editada com preferência Soldado" })
+        .send({ titulo: "Tarefa editada pelo usuário" })
         .expect(200)
         .expect((response) => {
-          expect(response.body.titulo).toBe("Editada com preferência Soldado");
+          expect(response.body.titulo).toBe("Tarefa editada pelo usuário");
         });
 
       const objective = await request(app.getHttpServer())
         .post("/api/v2/objetivos")
         .set("Authorization", `Bearer ${token}`)
-        .send({ titulo: "Objetivo criado no Soldado" })
+        .send({ titulo: "Objetivo criado pelo usuário" })
         .expect(201);
 
       await request(app.getHttpServer())
         .patch(`/api/v2/objetivos/${objective.body.id}`)
         .set("Authorization", `Bearer ${token}`)
-        .send({ titulo: "Objetivo editado no Soldado" })
+        .send({ titulo: "Objetivo editado pelo usuário" })
         .expect(200)
         .expect((response) => {
-          expect(response.body.titulo).toBe("Objetivo editado no Soldado");
+          expect(response.body.titulo).toBe("Objetivo editado pelo usuário");
         });
 
       await request(app.getHttpServer())
@@ -745,21 +710,9 @@ describe("HTTP application", () => {
         .expect(404);
 
       await request(app.getHttpServer())
-        .delete(`/api/v2/tarefas/${createdInFocus.body.id}`)
+        .delete(`/api/v2/tarefas/${created.body.id}`)
         .set("Authorization", `Bearer ${token}`)
         .expect(204);
-
-      await request(app.getHttpServer())
-        .patch("/api/v2/usuarios/me/nome-general")
-        .set("Authorization", `Bearer ${token}`)
-        .send({ nome_general: "Atena" })
-        .expect(200);
-
-      await request(app.getHttpServer())
-        .patch("/api/v2/session/mode")
-        .set("Authorization", `Bearer ${token}`)
-        .send({ mode: "general" })
-        .expect(200);
 
       await request(app.getHttpServer())
         .get("/api/v2/usuarios/me")
@@ -767,8 +720,8 @@ describe("HTTP application", () => {
         .expect(200)
         .expect((response) => {
           expect(response.body).toMatchObject({
-            active_mode: "general",
-            nome_general: "Atena",
+            usuario: "preferencia",
+            timezone: "America/Recife",
           });
         });
     } finally {

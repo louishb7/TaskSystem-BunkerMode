@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Patch, Post, Req, UseGuards } from "@nestjs/common"
+import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from "@nestjs/common"
 
 import { AuthenticatedRequest } from "./auth.types"
 import { AuthGuard } from "./auth.guard"
@@ -45,19 +45,5 @@ export class AuthController {
   @UseGuards(AuthGuard)
   currentUser(@Req() request: AuthenticatedRequest) {
     return toUserResponse(request.currentUser!)
-  }
-
-  @Patch("usuarios/me/nome-general")
-  @UseGuards(AuthGuard)
-  async setGeneralName(@Req() request: AuthenticatedRequest, @Body() payload: { nome_general?: unknown }) {
-    const usuario = await this.authService.setGeneralName(request.currentUser!.usuario_id, payload?.nome_general)
-    return toUserResponse(usuario)
-  }
-
-  @Patch("session/mode")
-  @UseGuards(AuthGuard)
-  async setSessionMode(@Req() request: AuthenticatedRequest, @Body() payload: unknown) {
-    const usuario = await this.authService.setMode(request.currentUser!.usuario_id, payload ?? {})
-    return toUserResponse(usuario)
   }
 }

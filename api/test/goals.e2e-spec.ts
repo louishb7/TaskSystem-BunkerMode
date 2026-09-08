@@ -1,7 +1,7 @@
 import { UserRecord } from "../src/auth/auth.types";
 import { GoalsService } from "../src/goals/goals.service";
 
-const user = { usuario_id: 7, active_mode: "soldier" } as UserRecord;
+const user = { usuario_id: 7 } as UserRecord;
 const now = new Date("2026-09-01T12:00:00.000Z");
 
 function goal(overrides = {}) {
