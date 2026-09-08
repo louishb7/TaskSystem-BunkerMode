@@ -91,6 +91,9 @@ export const api = {
   getFocusBoard(token) {
     return requestFocusBoard("/tarefas/foco", { token })
   },
+  materializeTaskRecurrences(token) {
+    return request("/tarefas/recorrencias/materializar", { token, method: "POST" })
+  },
   createTask(token, payload) {
     return requestTask("/tarefas", { token, method: "POST", body: payload })
   },

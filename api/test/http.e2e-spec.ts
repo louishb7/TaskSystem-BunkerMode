@@ -819,6 +819,10 @@ describe("HTTP application", () => {
         weekdays: [3],
         termination_policy: "ate_objetivo",
       });
+      await request(app.getHttpServer())
+        .post("/api/v2/tarefas/recorrencias/materializar")
+        .set("Authorization", authorization)
+        .expect(204);
       expect(Object.keys(recurring.body).sort()).toEqual(
         [
           "id",
@@ -871,10 +875,25 @@ describe("HTTP application", () => {
         objetivo_id: null,
         recurrence: null,
       });
-      await request(app.getHttpServer())
+      const failedResponse = await request(app.getHttpServer())
         .post(`/api/v2/tarefas/${failed.body.id}/falhar`)
         .set("Authorization", authorization)
-        .expect(200);
+        .expect(200)
+        .expect((response) => {
+          expect(response.body).toMatchObject({ status: "FALHA" });
+          expect(response.body.failed_at).not.toBeNull();
+        });
+      expect(failedResponse.body.completed_at).toBeNull();
+      await request(app.getHttpServer())
+        .get(`/api/v2/tarefas/${failed.body.id}/historico`)
+        .set("Authorization", authorization)
+        .expect(200)
+        .expect((response) => {
+          expect(response.body.map((event: { acao: string }) => event.acao)).toEqual([
+            "tarefa_criada",
+            "tarefa_nao_realizada",
+          ]);
+        });
       const history = await request(app.getHttpServer())
         .get("/api/v2/tarefas/historico")
         .set("Authorization", authorization)

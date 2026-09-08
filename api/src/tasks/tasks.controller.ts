@@ -46,6 +46,12 @@ export class TasksController {
     return toTaskResponse(task, user);
   }
 
+  @Post("tarefas/recorrencias/materializar")
+  @HttpCode(204)
+  async materializeRecurrences(@Req() request: AuthenticatedRequest) {
+    await this.tasksService.materializeRecurrences(request.currentUser!);
+  }
+
   @Get("tarefas/dia-operacional")
   async listDailyTasks(@Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;

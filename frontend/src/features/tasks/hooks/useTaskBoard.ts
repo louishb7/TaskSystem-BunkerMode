@@ -63,6 +63,29 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
       const requestId = loadRequestRef.current + 1
       loadRequestRef.current = requestId
       setTaskLoading(true)
+
+      const materializationResult = await api.materializeTaskRecurrences(token)
+      if (requestId !== loadRequestRef.current) {
+        return false
+      }
+
+      if (onUnauthorized(materializationResult)) {
+        setTaskLoading(false)
+        return false
+      }
+
+      if (!materializationResult.ok) {
+        setTaskLoading(false)
+        setStatus({
+          type: "error",
+          message: getErrorMessage(
+            materializationResult,
+            "Não foi possível preparar as tarefas recorrentes para o Modo Foco."
+          ),
+        })
+        return false
+      }
+
       const result = await api.getFocusBoard(token)
       if (requestId !== loadRequestRef.current) {
         return false

@@ -181,6 +181,55 @@ describe("Tasks clean domain", () => {
     expect(prisma.series_recorrencia.findMany).not.toHaveBeenCalled();
   });
 
+  it("materializes recurrences through the explicit task command", async () => {
+    const prisma = prismaMock();
+    prisma.series_recorrencia.findMany.mockResolvedValue([
+      {
+        recurrence_series_id: 21,
+        responsavel_id: 7,
+        objetivo_id: null,
+        titulo: "Treinar execução",
+        instrucao: null,
+        prioridade: 2,
+        recurrence_weekdays: [3],
+        start_date: new Date("2026-08-13T00:00:00.000Z"),
+        termination_policy: "sem_termino",
+        end_date: null,
+        ativo: true,
+        objetivos: null,
+      },
+    ]);
+    prisma.missoes.createManyAndReturn.mockResolvedValue([
+      task({
+        recurrence_series_id: 21,
+        prazo: new Date("2026-08-13T00:00:00.000Z"),
+      }),
+    ]);
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+    const service = new TasksService(prisma as never, calendar);
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"));
+
+    await expect(service.materializeRecurrences(user())).resolves.toBeUndefined();
+
+    const occurrenceCall = prisma.missoes.createManyAndReturn.mock.calls[0][0];
+    expect(occurrenceCall.skipDuplicates).toBe(true);
+    expect(
+      occurrenceCall.data.map((item: { prazo: Date }) =>
+        item.prazo.toISOString().slice(0, 10),
+      ),
+    ).toEqual(["2026-08-13", "2026-08-20"]);
+    expect(occurrenceCall.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          recurrence_series_id: 21,
+          status: TASK_STATUS.pending,
+        }),
+      ]),
+    );
+    expect(prisma.auditoria_eventos.createMany).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
+
   it("uses the recurrence series as the V2 recurrence response source", () => {
     const response = toTaskResponse(
       task({
@@ -425,32 +474,37 @@ describe("Tasks clean domain", () => {
     );
   });
 
-  it("builds the focus board with today's tasks and records overdue failures", async () => {
+  it("builds the focus board as a read and keeps overdue tasks pending", async () => {
     const prisma = prismaMock();
-    prisma.missoes.findMany
-      .mockResolvedValueOnce([
-        task({ missao_id: 10, prazo: new Date("2026-08-12T00:00:00.000Z") }),
-      ])
-      .mockResolvedValueOnce([
-        task({
-          missao_id: 10,
-          prazo: new Date("2026-08-12T00:00:00.000Z"),
-          status: TASK_STATUS.failed,
-          failed_at: new Date("2026-08-13T12:00:00.000Z"),
-        }),
-        task({ missao_id: 11, prazo: new Date("2026-08-13T00:00:00.000Z") }),
-      ]);
-    prisma.$transaction.mockResolvedValue([]);
+    const overdue = task({
+      missao_id: 10,
+      prazo: new Date("2026-08-12T00:00:00.000Z"),
+    });
+    const todayTask = task({
+      missao_id: 11,
+      prazo: new Date("2026-08-13T00:00:00.000Z"),
+    });
+    prisma.missoes.findMany.mockResolvedValue([overdue, todayTask]);
     const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
     );
     jest.useFakeTimers().setSystemTime(new Date("2026-08-13T12:00:00.000Z"));
 
-    const board = await service.focusBoard(user());
+    const firstBoard = await service.focusBoard(user());
+    const secondBoard = await service.focusBoard(user());
 
-    expect(board.action_tasks.map((item) => item.missao_id)).toEqual([11]);
-    expect(prisma.$transaction).toHaveBeenCalled();
+    expect(firstBoard.action_tasks.map((item) => item.missao_id)).toEqual([11]);
+    expect(firstBoard.daily_tasks.map((item) => item.missao_id)).toEqual([11]);
+    expect(secondBoard).toEqual(firstBoard);
+    expect(overdue).toMatchObject({
+      status: TASK_STATUS.pending,
+      failed_at: null,
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.missoes.update).not.toHaveBeenCalled();
+    expect(prisma.auditoria_eventos.create).not.toHaveBeenCalled();
+    expect(prisma.series_recorrencia.findMany).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
 
@@ -686,6 +740,11 @@ describe("Tasks clean domain", () => {
       expect(prisma.objetivos.findFirst).not.toHaveBeenCalled();
       expect(prisma.series_recorrencia.updateMany).not.toHaveBeenCalled();
       expect(prisma.auditoria_eventos.create).toHaveBeenCalledTimes(1);
+      if (action === "fail") {
+        expect(prisma.auditoria_eventos.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({ acao: "tarefa_nao_realizada" }),
+        });
+      }
     },
   );
 });

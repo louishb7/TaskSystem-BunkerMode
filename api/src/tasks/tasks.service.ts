@@ -256,6 +256,10 @@ export class TasksService {
     return this.listAllForUser(user);
   }
 
+  async materializeRecurrences(user: UserRecord): Promise<void> {
+    await this.materializeSeriesRecurrences(user);
+  }
+
   async listAllForUser(
     user: UserRecord,
     options: { materializeRecurrences?: boolean } = {},
@@ -415,9 +419,10 @@ export class TasksService {
     action_tasks: TaskRecord[];
     daily_tasks: TaskRecord[];
   }> {
-    await this.failOverdueTasks(user);
     const today = this.today(user);
-    const tasks = await this.listAllForUser(user);
+    const tasks = await this.listAllForUser(user, {
+      materializeRecurrences: false,
+    });
     const todayTasks = this.sortForBoard(
       tasks.filter((task) =>
         this.belongsToOperationalDate(task, today),
@@ -794,41 +799,6 @@ export class TasksService {
       });
       return task;
     });
-  }
-
-  private async failOverdueTasks(user: UserRecord): Promise<void> {
-    const today = this.today(user);
-    const overdue = await this.prisma.missoes.findMany({
-      where: {
-        responsavel_id: user.usuario_id,
-        status: TASK_STATUS.pending,
-        prazo: { lt: startOfIsoDate(today) },
-      },
-    });
-    if (overdue.length === 0) {
-      return;
-    }
-    const now = new Date();
-    await this.prisma.$transaction(
-      overdue.flatMap((task) => [
-        this.prisma.missoes.update({
-          where: { missao_id: task.missao_id },
-          data: {
-            status: TASK_STATUS.failed,
-            completed_at: null,
-            failed_at: now,
-          },
-        }),
-        this.prisma.auditoria_eventos.create({
-          data: {
-            missao_id: task.missao_id,
-            usuario_id: user.usuario_id,
-            acao: "tarefa_falhou_por_prazo",
-            detalhes: `Tarefa '${task.titulo}' registrada como falha por prazo vencido.`,
-          },
-        }),
-      ]),
-    );
   }
 
   private today(user: UserRecord): string {
