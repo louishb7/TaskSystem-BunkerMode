@@ -10,8 +10,10 @@ import { TaskBoardProvider, useTaskBoardContext } from "../context/TaskBoardCont
 import AuthScreen from "../features/auth/components/AuthScreen"
 import HomePage from "../features/home/pages/HomePage"
 import ObjectivesPage from "../features/objectives/pages/ObjectivesPage"
+import SettingsPage from "../features/settings/pages/SettingsPage"
 import FocusPage from "../features/tasks/pages/FocusPage"
 import TasksPage from "../features/tasks/pages/TasksPage"
+import { getEnabledModules } from "../modules/moduleCatalog"
 import { APP_ROUTES } from "../routes/routeConstants"
 
 export default function App() {
@@ -36,12 +38,22 @@ export default function App() {
         }
       >
         <Route path={APP_ROUTES.ROOT} element={<HomeRoute />} />
-        <Route path={APP_ROUTES.OBJECTIVES} element={<ObjectivesRoute />} />
+        <Route path={APP_ROUTES.SETTINGS} element={<SettingsRoute />} />
+        <Route
+          path={APP_ROUTES.OBJECTIVES}
+          element={
+            <EnabledModuleRoute moduleKey="objectives">
+              <ObjectivesRoute />
+            </EnabledModuleRoute>
+          }
+        />
         <Route
           element={
-            <TaskBoardProvider>
-              <Outlet />
-            </TaskBoardProvider>
+            <EnabledModuleRoute moduleKey="tasks">
+              <TaskBoardProvider>
+                <Outlet />
+              </TaskBoardProvider>
+            </EnabledModuleRoute>
           }
         >
           <Route path={APP_ROUTES.TASKS_FOCUS} element={<FocusRoute />} />
@@ -79,7 +91,23 @@ function HomeRoute() {
 
   return (
     <AppShell onLogout={logout} user={auth.user}>
-      <HomePage />
+      <HomePage user={auth.user} />
+    </AppShell>
+  )
+}
+
+function SettingsRoute() {
+  const auth = useAuth()
+  const logout = useLogout()
+
+  return (
+    <AppShell onLogout={logout} user={auth.user}>
+      <SettingsPage
+        onUnauthorized={auth.handleUnauthorized}
+        onUpdateUser={auth.updateCurrentUser}
+        token={auth.token}
+        user={auth.user}
+      />
     </AppShell>
   )
 }
@@ -89,6 +117,17 @@ function ProtectedRoute({ children }) {
 
   if (!auth.authenticated) {
     return <Navigate to={APP_ROUTES.AUTH} replace />
+  }
+
+  return children
+}
+
+function EnabledModuleRoute({ children, moduleKey }) {
+  const auth = useAuth()
+  const enabled = getEnabledModules(auth.user).some((module) => module.key === moduleKey)
+
+  if (!enabled) {
+    return <Navigate to={APP_ROUTES.ROOT} replace />
   }
 
   return children

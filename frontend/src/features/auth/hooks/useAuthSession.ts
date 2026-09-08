@@ -61,6 +61,13 @@ export function useAuthSession() {
     setUser(nextUser)
   }, [])
 
+  const updateCurrentUser = useCallback(
+    (nextUser) => {
+      persistUser(nextUser)
+    },
+    [persistUser]
+  )
+
   const clearSession = useCallback(() => {
     removeStoredSession()
     setToken(null)
@@ -172,6 +179,7 @@ export function useAuthSession() {
     login,
     register,
     token,
+    updateCurrentUser,
     user,
   }
 }

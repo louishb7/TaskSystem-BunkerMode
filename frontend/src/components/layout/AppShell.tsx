@@ -2,15 +2,16 @@ import React, { useEffect, useRef, useState } from "react"
 import { NavLink } from "react-router-dom"
 
 import Button from "../ui/Button"
-import { MODULE_CATALOG } from "../../modules/moduleCatalog"
+import { getEnabledModules } from "../../modules/moduleCatalog"
 import { APP_ROUTES } from "../../routes/routeConstants"
 
-const navigationItems = [
-  { key: "home", label: "Início", route: APP_ROUTES.ROOT },
-  ...MODULE_CATALOG,
-]
+function NavigationLinks({ onNavigate = undefined, user }) {
+  const navigationItems = [
+    { key: "home", label: "Início", route: APP_ROUTES.ROOT },
+    ...getEnabledModules(user),
+    { key: "settings", label: "Configurações", route: APP_ROUTES.SETTINGS },
+  ]
 
-function NavigationLinks({ onNavigate = undefined }) {
   return (
     <nav aria-label="Navegação principal" className="grid gap-1">
       {navigationItems.map((item) => (
@@ -19,7 +20,7 @@ function NavigationLinks({ onNavigate = undefined }) {
           className={({ isActive }) =>
             `flex min-h-11 items-center rounded-control border-l-4 px-3 text-sm font-medium transition-colors ${isActive ? "border-accent bg-accent-soft text-text-primary" : "border-transparent text-text-secondary hover:bg-app hover:text-text-primary"}`
           }
-          end={item.route !== APP_ROUTES.OBJECTIVES}
+          end={item.route === APP_ROUTES.ROOT}
           onClick={onNavigate}
           to={item.route}
         >
@@ -77,7 +78,7 @@ export default function AppShell({ children, onLogout, user }) {
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-sidebar p-5 lg:flex">
         <span className="text-lg font-semibold tracking-tight">BunkerMode</span>
         <div className="mt-8">
-          <NavigationLinks />
+          <NavigationLinks user={user} />
         </div>
         <div className="mt-auto">
           <SessionActions onLogout={onLogout} user={user} />
@@ -110,7 +111,7 @@ export default function AppShell({ children, onLogout, user }) {
           >
             <span className="text-lg font-semibold tracking-tight">BunkerMode</span>
             <div className="mt-8">
-              <NavigationLinks onNavigate={closeMenu} />
+              <NavigationLinks onNavigate={closeMenu} user={user} />
             </div>
             <SessionActions onLogout={onLogout} user={user} />
           </aside>

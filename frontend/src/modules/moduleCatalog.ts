@@ -14,3 +14,12 @@ export const MODULE_CATALOG = Object.freeze([
     route: APP_ROUTES.OBJECTIVES,
   },
 ])
+
+export function getEnabledModules(user) {
+  if (!Array.isArray(user?.enabled_modules)) {
+    return MODULE_CATALOG
+  }
+
+  const enabledKeys = new Set(user.enabled_modules)
+  return MODULE_CATALOG.filter((module) => enabledKeys.has(module.key))
+}

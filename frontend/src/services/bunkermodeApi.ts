@@ -79,6 +79,9 @@ export const api = {
   getCurrentUser(token) {
     return request("/usuarios/me", { token })
   },
+  updateEnabledModules(token, payload) {
+    return request("/usuarios/me/modulos", { token, method: "PATCH", body: payload })
+  },
   listTasks(token) {
     return requestTaskList("/tarefas", { token })
   },
