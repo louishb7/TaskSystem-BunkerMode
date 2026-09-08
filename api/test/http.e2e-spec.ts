@@ -711,6 +711,21 @@ describe("HTTP application", () => {
         expect(
           response.body.map((event: { acao: string }) => event.acao),
         ).toEqual(["tarefa_criada", "tarefa_concluida"]);
+        for (const event of response.body as Array<{
+          tarefa_id: number;
+          missao_id?: number;
+        }>) {
+          expect(Object.keys(event).sort()).toEqual([
+            "acao",
+            "criado_em",
+            "detalhes",
+            "id",
+            "tarefa_id",
+            "usuario_id",
+          ]);
+          expect(event.tarefa_id).toBe(created.body.id);
+          expect(event).not.toHaveProperty("missao_id");
+        }
       });
   });
 

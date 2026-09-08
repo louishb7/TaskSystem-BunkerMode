@@ -1,3 +1,5 @@
+import { auditoria_eventos } from "@prisma/client";
+
 import {
   TASK_STATUS,
   TASK_STATUS_LABEL,
@@ -82,5 +84,16 @@ export function toTaskResponse(
     objetivo_id: task.objetivo_id,
     recurrence,
     permissions: taskPermissions(task, user),
+  };
+}
+
+export function toTaskHistoryEventResponse(event: auditoria_eventos) {
+  return {
+    id: event.evento_id,
+    tarefa_id: event.missao_id,
+    usuario_id: event.usuario_id,
+    acao: event.acao,
+    detalhes: event.detalhes,
+    criado_em: event.criado_em.toISOString(),
   };
 }

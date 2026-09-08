@@ -14,7 +14,7 @@ import {
 import { AuthenticatedRequest } from "../auth/auth.types";
 import { AuthGuard } from "../auth/auth.guard";
 import { TasksService } from "./tasks.service";
-import { toTaskResponse } from "./task-response";
+import { toTaskHistoryEventResponse, toTaskResponse } from "./task-response";
 
 function taskId(value: string): number {
   const id = Number(value);
@@ -144,13 +144,6 @@ export class TasksController {
       taskId(id),
       request.currentUser!,
     );
-    return events.map((event) => ({
-      id: event.evento_id,
-      missao_id: event.missao_id,
-      usuario_id: event.usuario_id,
-      acao: event.acao,
-      detalhes: event.detalhes,
-      criado_em: event.criado_em.toISOString(),
-    }));
+    return events.map(toTaskHistoryEventResponse);
   }
 }
