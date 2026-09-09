@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { getErrorMessage } from "../../../api/httpClient"
 import { TOKEN_KEY, USER_KEY } from "../../../constants/session"
@@ -50,11 +50,16 @@ function readStoredUser() {
 export function useAuthSession() {
   const [token, setToken] = useState(() => persistentStore.getItem(TOKEN_KEY))
   const [user, setUser] = useState(readStoredUser)
-  const [booting, setBooting] = useState(false)
+  const [sessionValidated, setSessionValidated] = useState(
+    () => !persistentStore.getItem(TOKEN_KEY)
+  )
+  const [booting, setBooting] = useState(() => Boolean(persistentStore.getItem(TOKEN_KEY)))
   const [authStatus, setAuthStatus] = useState(emptyStatus)
   const [authLoading, setAuthLoading] = useState(false)
+  const sessionRequestId = useRef(0)
+  const skipRestoreToken = useRef(null)
 
-  const authenticated = Boolean(token && user)
+  const authenticated = Boolean(token && user && sessionValidated)
 
   const persistUser = useCallback((nextUser) => {
     persistentStore.setItem(USER_KEY, JSON.stringify(nextUser))
@@ -69,10 +74,13 @@ export function useAuthSession() {
   )
 
   const clearSession = useCallback(() => {
+    sessionRequestId.current += 1
     removeStoredSession()
     setToken(null)
     setUser(null)
+    setSessionValidated(true)
     setAuthStatus(emptyStatus)
+    setAuthLoading(false)
     setBooting(false)
   }, [])
 
@@ -88,40 +96,62 @@ export function useAuthSession() {
     [clearSession]
   )
 
-  const restoreSession = useCallback(async () => {
-    setBooting(true)
-    const result = await api.getCurrentUser(token)
-    setBooting(false)
+  const restoreSession = useCallback(
+    async (storedToken, requestId) => {
+      const result = await api.getCurrentUser(storedToken)
+      if (requestId !== sessionRequestId.current) {
+        return false
+      }
 
-    if (handleUnauthorized(result)) {
-      return
-    }
+      setBooting(false)
 
-    if (!result.ok) {
-      clearSession()
-      setAuthStatus({
-        type: "error",
-        message: getErrorMessage(result, "Sessão não confirmada. Entre novamente."),
-      })
-      return
-    }
+      if (handleUnauthorized(result)) {
+        return false
+      }
 
-    persistUser(result.data)
-  }, [clearSession, handleUnauthorized, persistUser, token])
+      if (!result.ok) {
+        setSessionValidated(false)
+        setAuthStatus({
+          type: "error",
+          message: getErrorMessage(result, "Não foi possível validar a sessão. Tente novamente."),
+        })
+        return false
+      }
+
+      persistUser(result.data)
+      setSessionValidated(true)
+      setAuthStatus(emptyStatus)
+      return true
+    },
+    [handleUnauthorized, persistUser]
+  )
 
   useEffect(() => {
     if (!token) {
       setBooting(false)
+      setSessionValidated(true)
       return
     }
 
-    if (user) {
+    if (skipRestoreToken.current === token) {
+      skipRestoreToken.current = null
       setBooting(false)
+      setSessionValidated(true)
       return
     }
 
-    restoreSession()
-  }, [restoreSession, token, user])
+    const requestId = sessionRequestId.current + 1
+    sessionRequestId.current = requestId
+    setBooting(true)
+    setSessionValidated(false)
+    void restoreSession(token, requestId)
+
+    return () => {
+      if (sessionRequestId.current === requestId) {
+        sessionRequestId.current += 1
+      }
+    }
+  }, [restoreSession, token])
 
   async function login(payload) {
     if (!payload.email || !payload.senha) {
@@ -129,9 +159,14 @@ export function useAuthSession() {
       return
     }
 
+    const requestId = sessionRequestId.current + 1
+    sessionRequestId.current = requestId
     setAuthLoading(true)
     setAuthStatus(emptyStatus)
     const result = await api.login(payload)
+    if (requestId !== sessionRequestId.current) {
+      return
+    }
     setAuthLoading(false)
 
     if (!result.ok) {
@@ -143,8 +178,11 @@ export function useAuthSession() {
     }
 
     persistentStore.setItem(TOKEN_KEY, result.data.access_token)
+    skipRestoreToken.current = result.data.access_token
     setToken(result.data.access_token)
     persistUser(result.data.usuario)
+    setSessionValidated(true)
+    setBooting(false)
   }
 
   async function register(payload) {

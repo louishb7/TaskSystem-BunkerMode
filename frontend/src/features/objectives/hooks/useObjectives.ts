@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { getErrorMessage } from "../../../api/httpClient"
 import { emptyStatus } from "../../../constants/uiState"
@@ -16,6 +16,9 @@ export function useObjectives({ onUnauthorized, token }) {
   const [loading, setLoading] = useState(false)
   const [mutating, setMutating] = useState(false)
   const [status, setStatus] = useState(emptyStatus)
+  const loadRequestId = useRef(0)
+  const mutationRequestId = useRef(0)
+  const lifecycleId = useRef(0)
 
   const loadObjectives = useCallback(
     async (successMessage = "") => {
@@ -23,8 +26,13 @@ export function useObjectives({ onUnauthorized, token }) {
         return false
       }
 
+      const requestId = loadRequestId.current + 1
+      loadRequestId.current = requestId
       setLoading(true)
       const objetivosResult = await api.listObjetivos(token)
+      if (requestId !== loadRequestId.current) {
+        return false
+      }
       setLoading(false)
 
       if (onUnauthorized?.(objetivosResult)) {
@@ -49,7 +57,13 @@ export function useObjectives({ onUnauthorized, token }) {
   )
 
   useEffect(() => {
-    loadObjectives()
+    setMutating(false)
+    void loadObjectives()
+    return () => {
+      loadRequestId.current += 1
+      lifecycleId.current += 1
+      mutationRequestId.current += 1
+    }
   }, [loadObjectives])
 
   async function mutate(action, successMessage, fallbackMessage) {
@@ -57,9 +71,15 @@ export function useObjectives({ onUnauthorized, token }) {
       return false
     }
 
+    const requestId = mutationRequestId.current + 1
+    const currentLifecycle = lifecycleId.current
+    mutationRequestId.current = requestId
     setMutating(true)
     setStatus(emptyStatus)
     const result = await action()
+    if (requestId !== mutationRequestId.current || currentLifecycle !== lifecycleId.current) {
+      return false
+    }
     setMutating(false)
 
     if (onUnauthorized?.(result)) {

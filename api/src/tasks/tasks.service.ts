@@ -10,7 +10,9 @@ import {
   canReopenTask,
   TASK_INSTRUCTION_MAX_LENGTH,
   TASK_STATUS,
+  TaskPriority,
   TaskRecord,
+  TaskRecurrencePolicy,
 } from "./task.types";
 
 type CreateTaskPayload = {
@@ -35,8 +37,6 @@ type UpdateTaskPayload = Partial<
 };
 
 const RECURRENCE_WINDOW_DAYS = 14;
-
-type RecurrenceTerminationPolicy = "sem_termino" | "ate_data" | "ate_objetivo";
 
 function text(value: unknown, message: string): string {
   if (typeof value !== "string") {
@@ -79,7 +79,7 @@ function optionalId(value: unknown, message: string): number | null {
   return value;
 }
 
-function priority(value: unknown): number {
+function priority(value: unknown): TaskPriority {
   if (value === null || value === undefined) {
     return DEFAULT_PRIORITY;
   }
@@ -91,7 +91,7 @@ function priority(value: unknown): number {
   ) {
     throw new HttpException("Prioridade inválida.", HttpStatus.BAD_REQUEST);
   }
-  return value;
+  return value as TaskPriority;
 }
 
 function dateFromPayload(value: unknown): Date | null {
@@ -178,12 +178,12 @@ function recurrenceWeekdays(value: unknown): number[] {
 function recurrenceTerminationPolicy(
   value: unknown,
   weekdays: number[],
-): RecurrenceTerminationPolicy | null {
+): TaskRecurrencePolicy | null {
   if (value === "pontual") {
     return null;
   }
 
-  let policy: RecurrenceTerminationPolicy | null = null;
+  let policy: TaskRecurrencePolicy | null = null;
   if (value === null || value === undefined || value === "") {
     policy = weekdays.length > 0 ? "sem_termino" : null;
   } else if (typeof value === "string") {

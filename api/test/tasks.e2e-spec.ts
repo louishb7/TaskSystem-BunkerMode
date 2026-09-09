@@ -153,6 +153,7 @@ describe("Tasks clean domain", () => {
     expect(response).toMatchObject({
       id: 10,
       titulo: "Revisar plano semanal",
+      prioridade: 2,
       prazo: "25-04-2026",
       status: "PENDENTE",
       status_code: "PENDENTE",

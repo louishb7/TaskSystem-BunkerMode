@@ -25,7 +25,7 @@ export type RequestOptions = {
   body?: unknown
 }
 
-async function parseResponse(response: Response): Promise<ApiResult> {
+async function parseResponse<T>(response: Response): Promise<ApiResult<T>> {
   if (response.status === 204) {
     return { ok: true, status: 204, data: null }
   }
@@ -56,10 +56,10 @@ export function getErrorMessage(result: ApiResult | null | undefined, fallback: 
   return typeof message === "string" ? message : fallback
 }
 
-export async function request(
+export async function request<T = any>(
   path: string,
   { token, method = "GET", body }: RequestOptions = {}
-): Promise<ApiResult> {
+): Promise<ApiResult<T>> {
   if (API_CONFIG_ERROR || !API_URL) {
     return {
       ok: false,
@@ -91,7 +91,7 @@ export async function request(
       signal: controller.signal,
       body: body === undefined ? undefined : JSON.stringify(body),
     })
-    return parseResponse(response)
+    return parseResponse<T>(response)
   } catch (error: any) {
     if (error?.name === "AbortError") {
       return {

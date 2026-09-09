@@ -5,6 +5,8 @@ import {
   canReopenTask,
   TASK_STATUS_LABEL,
   TaskPermissions,
+  TaskPriority,
+  TaskRecurrencePolicy,
   TaskRecord,
   TaskResponse,
   TaskUser,
@@ -61,7 +63,7 @@ export function toTaskResponse(
     ? {
         series_id: task.serie_recorrencia.recurrence_series_id,
         weekdays: task.serie_recorrencia.recurrence_weekdays,
-        termination_policy: task.serie_recorrencia.termination_policy,
+        termination_policy: task.serie_recorrencia.termination_policy as TaskRecurrencePolicy,
         end_date: dateOnly(task.serie_recorrencia.end_date),
       }
     : null;
@@ -69,7 +71,7 @@ export function toTaskResponse(
   return {
     id: task.missao_id,
     titulo: task.titulo,
-    prioridade: task.prioridade,
+    prioridade: task.prioridade as TaskPriority,
     prazo: dateOnly(task.prazo),
     instrucao: task.instrucao,
     status: task.status as TaskResponse["status"],

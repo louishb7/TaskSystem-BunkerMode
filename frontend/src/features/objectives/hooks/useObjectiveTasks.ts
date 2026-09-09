@@ -53,6 +53,7 @@ export function useObjectiveTasks({ token, onUnauthorized, enabled = true }) {
   }, [token, onUnauthorized, enabled])
 
   useEffect(() => {
+    setFormLoading(false)
     if (!enabled) {
       setTasks([])
       setLoading(false)
@@ -86,8 +87,8 @@ export function useObjectiveTasks({ token, onUnauthorized, enabled = true }) {
     setFormStatus(emptyStatus)
     const currentRequest = requestId.current
     const result = await api.createTask(token, payload)
+    if (currentRequest !== requestId.current) return false
     setFormLoading(false)
-    if (currentRequest !== requestId.current) return result.ok
     if (onUnauthorized?.(result)) return false
     if (!result.ok) {
       setFormStatus({

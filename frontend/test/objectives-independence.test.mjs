@@ -70,7 +70,7 @@ test("desativar integração invalida preparação e criação ainda pendentes",
   render.activate({ enabled: false })
   prepare({ ok: true })
   create({ ok: true })
-  await creation
+  assert.equal(await creation, false)
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(preparations, 1)
   assert.equal(reads, 0)
@@ -234,5 +234,37 @@ test("materialização stale não dispara GET nem aplica erro ou 401", async () 
     assert.equal(unauthorized, 0)
     assert.equal(render().tasksByObjetivo[1][0].id, 2)
     assert.equal(render().error, "")
+  }
+})
+
+test("Objetivos aceita somente a leitura mais nova e ignora 401 e erro comuns antigos", async () => {
+  for (const staleResult of [
+    { ok: false, status: 401, data: { message: "Sessão antiga" } },
+    { ok: false, status: 503, data: { message: "Erro antigo" } },
+    { ok: true, status: 200, data: [{ id: 1, titulo: "Antigo" }] },
+  ]) {
+    const pending = []
+    let unauthorized = 0
+    const render = loadHook(
+      "../src/features/objectives/hooks/useObjectives.ts",
+      "useObjectives",
+      { listObjetivos: () => new Promise((resolve) => pending.push(resolve)) },
+      (result) => {
+        if (result.status !== 401) return false
+        unauthorized += 1
+        return true
+      }
+    )
+
+    const oldRequest = render().refresh()
+    const currentRequest = render().refresh()
+    pending[1]({ ok: true, status: 200, data: [{ id: 2, titulo: "Atual" }] })
+    assert.equal(await currentRequest, true)
+    pending[0](staleResult)
+    assert.equal(await oldRequest, false)
+    assert.equal(render().objetivos[0].titulo, "Atual")
+    assert.equal(render().status.message, "")
+    assert.equal(render().loading, false)
+    assert.equal(unauthorized, 0)
   }
 })

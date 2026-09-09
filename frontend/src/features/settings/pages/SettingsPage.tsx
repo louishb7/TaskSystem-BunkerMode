@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 
 import { getErrorMessage } from "../../../api/httpClient"
 import StatusNotice from "../../../components/ui/StatusNotice"
@@ -9,16 +9,29 @@ import { api } from "../../../services/bunkermodeApi"
 export default function SettingsPage({ onUnauthorized, onUpdateUser, token, user }) {
   const [updatingKey, setUpdatingKey] = useState(null)
   const [status, setStatus] = useState(emptyStatus)
+  const requestId = useRef(0)
   const enabledKeys = new Set(getEnabledModules(user).map((module) => module.key))
+
+  useEffect(() => {
+    setUpdatingKey(null)
+    return () => {
+      requestId.current += 1
+    }
+  }, [token])
 
   async function updateModule(moduleKey, enabled) {
     const enabledModules = MODULE_CATALOG.filter((module) =>
       module.key === moduleKey ? enabled : enabledKeys.has(module.key)
     ).map((module) => module.key)
 
+    const currentRequest = requestId.current + 1
+    requestId.current = currentRequest
     setUpdatingKey(moduleKey)
     setStatus(emptyStatus)
     const result = await api.updateEnabledModules(token, { enabled_modules: enabledModules })
+    if (currentRequest !== requestId.current) {
+      return
+    }
     setUpdatingKey(null)
 
     if (onUnauthorized(result)) {

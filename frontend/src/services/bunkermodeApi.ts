@@ -1,5 +1,12 @@
 import { ApiResult, request, RequestOptions } from "../api/httpClient"
-import { assertTaskContract, assertTaskListContract, Task } from "../types/taskContract"
+import {
+  assertTaskContract,
+  assertTaskListContract,
+  FocusBoard,
+  Task,
+  TaskHistoryEvent,
+} from "../types/taskContract"
+import { AuthSession, User } from "../types/userContract"
 
 function contractErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Contrato inválido."
@@ -45,7 +52,7 @@ async function requestTaskList(
 async function requestFocusBoard(
   path: string,
   options: RequestOptions = {}
-): Promise<ApiResult<any>> {
+): Promise<ApiResult<FocusBoard>> {
   const result = await request(path, options)
   if (!result.ok) {
     return result
@@ -71,16 +78,16 @@ async function requestFocusBoard(
 
 export const api = {
   register(payload) {
-    return request("/auth/register", { method: "POST", body: payload })
+    return request<User>("/auth/register", { method: "POST", body: payload })
   },
   login(payload) {
-    return request("/auth/login", { method: "POST", body: payload })
+    return request<AuthSession>("/auth/login", { method: "POST", body: payload })
   },
   getCurrentUser(token) {
-    return request("/usuarios/me", { token })
+    return request<User>("/usuarios/me", { token })
   },
   updateEnabledModules(token, payload) {
-    return request("/usuarios/me/modulos", { token, method: "PATCH", body: payload })
+    return request<User>("/usuarios/me/modulos", { token, method: "PATCH", body: payload })
   },
   listTasks(token) {
     return requestTaskList("/tarefas", { token })
@@ -122,7 +129,7 @@ export const api = {
     return request(`/tarefas/${taskId}`, { token, method: "DELETE" })
   },
   getTaskHistory(token, taskId) {
-    return request(`/tarefas/${taskId}/historico`, { token })
+    return request<TaskHistoryEvent[]>(`/tarefas/${taskId}/historico`, { token })
   },
   listObjetivos(token) {
     return request("/objetivos", { token })

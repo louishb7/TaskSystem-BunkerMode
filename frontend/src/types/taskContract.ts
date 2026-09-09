@@ -12,30 +12,53 @@ export type TaskPermissionKey = (typeof REQUIRED_PERMISSION_KEYS)[number]
 
 export type TaskPermissions = Record<TaskPermissionKey, boolean>
 
+export type TaskPriority = 1 | 2 | 3
+
+export type TaskStatus = "PENDENTE" | "CONCLUIDA" | "FALHA"
+
+export type TaskRecurrencePolicy = "sem_termino" | "ate_data" | "ate_objetivo"
+
 export type TaskRecurrence = {
   series_id: number
   weekdays: number[]
-  termination_policy: "sem_termino" | "ate_data" | "ate_objetivo"
+  termination_policy: TaskRecurrencePolicy
   end_date: string | null
 }
 
 export type Task = {
   id: number
-  titulo?: string | null
-  instrucao?: string | null
-  prioridade?: string | null
-  prazo?: string | null
-  status: string
-  status_code: string
+  titulo: string
+  instrucao: string | null
+  prioridade: TaskPriority
+  prazo: string | null
+  status: TaskStatus
+  status_code: TaskStatus
   status_label: string
-  is_pinned?: boolean
-  completed_at?: string | null
-  failed_at?: string | null
-  responsavel_id?: number | null
-  criada_por_id?: number | null
-  objetivo_id?: number | null
-  recurrence?: TaskRecurrence | null
+  is_pinned: boolean
+  created_at: string
+  updated_at: string
+  completed_at: string | null
+  failed_at: string | null
+  user_id: number
+  responsavel_id: number
+  criada_por_id: number
+  objetivo_id: number | null
+  recurrence: TaskRecurrence | null
   permissions: TaskPermissions
+}
+
+export type FocusBoard = {
+  tasks: Task[]
+  daily_tasks: Task[]
+}
+
+export type TaskHistoryEvent = {
+  id: number
+  tarefa_id: number
+  usuario_id: number
+  acao: string
+  detalhes: unknown
+  criado_em: string
 }
 
 function buildContractError(message: string): Error {
@@ -49,8 +72,12 @@ export function assertTaskContract(task: unknown): Task {
 
   const candidate = task as Partial<Task>
 
-  if (!candidate.status_code) {
-    throw buildContractError("tarefa sem status_code")
+  if (![1, 2, 3].includes(candidate.prioridade as number)) {
+    throw buildContractError("tarefa com prioridade inválida")
+  }
+
+  if (!["PENDENTE", "CONCLUIDA", "FALHA"].includes(candidate.status_code as string)) {
+    throw buildContractError("tarefa com status_code inválido")
   }
 
   if (!candidate.status_label) {

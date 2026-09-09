@@ -210,3 +210,29 @@ for (const mode of ["tasks", "focus"]) {
     assert.equal(harness.render(mode).tasks[0].id, 2)
   })
 }
+
+test("mutação antiga após desmontagem não altera estado nem dispara unauthorized", async () => {
+  let resolveMutation
+  let unauthorized = 0
+  const harness = boardHarness(
+    {
+      completeTask: () =>
+        new Promise((resolve) => {
+          resolveMutation = resolve
+        }),
+      materializeTaskRecurrences: async () => ok,
+      listTasks: async () => boardResult("tasks", 1),
+    },
+    (result) => {
+      if (result.status === 401) unauthorized += 1
+      return result.status === 401
+    }
+  )
+  harness.load("tasks")
+  await flush()
+  const mutation = harness.render("tasks").completeTask({ id: 1 })
+  harness.unmount()
+  resolveMutation({ ok: false, status: 401, data: { message: "Sessão antiga" } })
+  assert.equal(await mutation, false)
+  assert.equal(unauthorized, 0)
+})

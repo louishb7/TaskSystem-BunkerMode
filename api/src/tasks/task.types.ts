@@ -18,6 +18,13 @@ export const DEFAULT_PRIORITY = 2;
 export type TaskStatus =
   (typeof TASK_STATUS)[keyof typeof TASK_STATUS];
 
+export type TaskPriority = 1 | 2 | 3;
+
+export type TaskRecurrencePolicy =
+  | "sem_termino"
+  | "ate_data"
+  | "ate_objetivo";
+
 export type RecurrenceSeriesRecord = {
   recurrence_series_id: number;
   recurrence_weekdays: number[];
@@ -64,7 +71,7 @@ export type TaskPermissions = {
 export type TaskResponse = {
   id: number;
   titulo: string;
-  prioridade: number;
+  prioridade: TaskPriority;
   prazo: string | null;
   instrucao: string | null;
   status: TaskStatus;
@@ -82,7 +89,7 @@ export type TaskResponse = {
   recurrence: {
     series_id: number;
     weekdays: number[];
-    termination_policy: string;
+    termination_policy: TaskRecurrencePolicy;
     end_date: string | null;
   } | null;
   permissions: TaskPermissions;

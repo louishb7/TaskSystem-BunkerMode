@@ -16,6 +16,7 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
   const [status, setStatus] = useState(emptyStatus)
   const [formStatus, setFormStatus] = useState(emptyStatus)
   const loadRequestRef = useRef(0)
+  const lifecycleRef = useRef(0)
 
   const actionTasks = useMemo(() => getActionTasks(tasks), [tasks])
   const dailyTasks = tasks
@@ -134,6 +135,12 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
   )
 
   useEffect(() => {
+    setFormLoading(false)
+    setPinLoadingId(null)
+    setCompleteLoadingId(null)
+    setReopenLoadingId(null)
+    setFailLoadingId(null)
+
     if (!authenticated) {
       setTasks([])
       setStatus(emptyStatus)
@@ -149,6 +156,7 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
 
     return () => {
       loadRequestRef.current += 1
+      lifecycleRef.current += 1
     }
   }, [authenticated, boardMode, loadFocusBoard, loadTasksBoard, token])
 
@@ -181,9 +189,13 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
       return false
     }
 
+    const currentLifecycle = lifecycleRef.current
     setFormLoading(true)
     setFormStatus(emptyStatus)
     const result = await api.createTask(token, payload)
+    if (currentLifecycle !== lifecycleRef.current) {
+      return false
+    }
     setFormLoading(false)
 
     if (onUnauthorized(result)) {
@@ -207,9 +219,13 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
       return false
     }
 
+    const currentLifecycle = lifecycleRef.current
     setFormLoading(true)
     setFormStatus(emptyStatus)
     const result = await api.updateTask(token, taskId, payload)
+    if (currentLifecycle !== lifecycleRef.current) {
+      return false
+    }
     setFormLoading(false)
 
     if (onUnauthorized(result)) {
@@ -233,9 +249,13 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
       return false
     }
 
+    const currentLifecycle = lifecycleRef.current
     setPinLoadingId(task.id)
     setStatus(emptyStatus)
     const result = await api.toggleTaskPin(token, task.id)
+    if (currentLifecycle !== lifecycleRef.current) {
+      return false
+    }
     setPinLoadingId(null)
 
     if (onUnauthorized(result)) {
@@ -260,8 +280,12 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
       return false
     }
 
+    const currentLifecycle = lifecycleRef.current
     setStatus(emptyStatus)
     const result = await api.deleteTask(token, task.id)
+    if (currentLifecycle !== lifecycleRef.current) {
+      return false
+    }
 
     if (onUnauthorized(result)) {
       return false
@@ -279,9 +303,13 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
   }
 
   async function completeTask(task) {
+    const currentLifecycle = lifecycleRef.current
     setCompleteLoadingId(task.id)
     setStatus(emptyStatus)
     const result = await api.completeTask(token, task.id)
+    if (currentLifecycle !== lifecycleRef.current) {
+      return false
+    }
     setCompleteLoadingId(null)
 
     if (onUnauthorized(result)) {
@@ -306,9 +334,13 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
       return false
     }
 
+    const currentLifecycle = lifecycleRef.current
     setReopenLoadingId(task.id)
     setStatus(emptyStatus)
     const result = await api.reopenTask(token, task.id)
+    if (currentLifecycle !== lifecycleRef.current) {
+      return false
+    }
     setReopenLoadingId(null)
 
     if (onUnauthorized(result)) {
@@ -328,9 +360,13 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
   }
 
   async function failTask(taskId) {
+    const currentLifecycle = lifecycleRef.current
     setFailLoadingId(taskId)
     setStatus(emptyStatus)
     const result = await api.failTask(token, taskId)
+    if (currentLifecycle !== lifecycleRef.current) {
+      return false
+    }
     setFailLoadingId(null)
 
     if (onUnauthorized(result)) {
