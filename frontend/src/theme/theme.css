@@ -8,34 +8,34 @@
 
 /* Cada par expressa o mesmo papel em light/dark, sem inversão automática. */
 @theme static {
-  --color-canvas: light-dark(#eeefec, #1b1e20);
-  --color-peripheral: light-dark(#e4e7e3, #222729);
-  --color-surface: light-dark(#fafbf8, #2a3032);
-  --color-surface-subtle: light-dark(#f0f2ee, #242a2c);
-  --color-surface-overlay: light-dark(#ffffff, #333b3e);
-  --color-text-primary: light-dark(#232b2d, #e3e8e6);
-  --color-text-secondary: light-dark(#505e61, #b7c2c2);
-  --color-text-muted: light-dark(#5d686a, #9ca9aa);
-  --color-border: light-dark(#cbd1cb, #465153);
-  --color-border-strong: light-dark(#75827f, #81918f);
+  --color-canvas: light-dark(#f2f1ef, #1c1b1a);
+  --color-peripheral: light-dark(#e9e7e4, #23211f);
+  --color-surface: light-dark(#fbfaf8, #2b2927);
+  --color-surface-subtle: light-dark(#f3f1ee, #252321);
+  --color-surface-overlay: light-dark(#fffefd, #34312e);
+  --color-text-primary: light-dark(#292725, #e5e0dc);
+  --color-text-secondary: light-dark(#5e5955, #c1b9b3);
+  --color-text-muted: light-dark(#6d6660, #aaa099);
+  --color-border: light-dark(#d0cbc5, #4d4843);
+  --color-border-strong: light-dark(#7d746c, #887e75);
 
-  --color-accent: light-dark(#39665e, #96b9af);
-  --color-accent-hover: light-dark(#2d514b, #b0ccc4);
-  --color-action: light-dark(#293d42, #c5d5d6);
-  --color-action-hover: light-dark(#1d2e33, #dbe6e6);
-  --color-on-action: light-dark(#f7faf9, #202c30);
-  --color-selection: light-dark(#dce7e5, #374a4d);
-  --color-selection-text: light-dark(#29474a, #d2e4e3);
-  --color-selection-border: light-dark(#5e7b7c, #89a9aa);
-  --color-focus-ring: light-dark(#286b89, #8ebfd3);
+  --color-accent: light-dark(#aa481b, #efa876);
+  --color-accent-hover: light-dark(#913d15, #f6bd94);
+  --color-action: light-dark(#a84417, #db7640);
+  --color-action-hover: light-dark(#8d3511, #eb935f);
+  --color-on-action: light-dark(#fffaf8, #211b17);
+  --color-selection: light-dark(#f3e3d9, #49342a);
+  --color-selection-text: light-dark(#6e3219, #f0c4a7);
+  --color-selection-border: light-dark(#c46c45, #c77b55);
+  --color-focus-ring: light-dark(#97501e, #e4a06c);
   --color-success: light-dark(#286443, #9bc8a7);
   --color-success-soft: light-dark(#e6efe5, #293d32);
   --color-warning: light-dark(#795310, #ddbc7c);
-  --color-warning-soft: light-dark(#f4ecda, #433a27);
+  --color-warning-soft: light-dark(#f5eddc, #443923);
   --color-danger: light-dark(#9b3c39, #e5aaa4);
   --color-danger-hover: light-dark(#7d2d2a, #f0c1bc);
   --color-danger-soft: light-dark(#f5e8e5, #493432);
-  --color-backdrop: light-dark(#17212466, #10171999);
+  --color-backdrop: light-dark(#201a1666, #100d0b99);
 
   /* Nomes semânticos já consumidos pelas telas: mantêm a migração incremental. */
   --color-app: var(--color-canvas);
@@ -47,7 +47,7 @@
   --radius-control: 4px;
   --radius-card: 2px;
   --radius-dialog: 6px;
-  --shadow-overlay: 0 16px 48px light-dark(#17212426, #10171966);
+  --shadow-overlay: 0 16px 48px light-dark(#201a1626, #100d0b66);
   --spacing: 4px;
 }
 

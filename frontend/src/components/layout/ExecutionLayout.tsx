@@ -12,16 +12,16 @@ export default function ExecutionLayout({ children, onReturnToTasks }) {
   }
 
   return (
-    <div className="min-h-dvh bg-app text-text-primary">
-      <header className="border-b border-border bg-sidebar">
-        <div className="mx-auto flex min-h-14 w-full max-w-[760px] items-center justify-between gap-4 px-4 sm:px-6">
-          <span className="text-base font-semibold tracking-tight">BunkerMode</span>
+    <div className="min-h-dvh bg-surface text-text-primary">
+      <header className="border-b border-border bg-peripheral">
+        <div className="mx-auto flex min-h-16 w-full max-w-[760px] items-center justify-between gap-4 px-4 sm:px-6">
+          <span className="text-base font-semibold tracking-tight text-accent">BunkerMode</span>
           <Button loading={returnLoading} variant="ghost" onClick={handleReturn}>
             Voltar às tarefas
           </Button>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      <main className="mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 sm:py-9">{children}</main>
     </div>
   )
 }

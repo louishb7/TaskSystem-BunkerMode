@@ -5,28 +5,44 @@ import Button from "../ui/Button"
 import { getEnabledModules } from "../../modules/moduleCatalog"
 import { APP_ROUTES } from "../../routes/routeConstants"
 
+const focusableSelector = [
+  "a[href]",
+  "button:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",")
+
 function NavigationLinks({ onNavigate = undefined, user }) {
-  const navigationItems = [
+  const primaryItems = [
     { key: "home", label: "Início", route: APP_ROUTES.ROOT },
     ...getEnabledModules(user),
-    { key: "settings", label: "Configurações", route: APP_ROUTES.SETTINGS },
   ]
 
+  function renderLink(item) {
+    return (
+      <NavLink
+        key={item.key}
+        className={({ isActive }) =>
+          `-ml-px flex min-h-11 items-center border-l-2 px-4 text-sm no-underline transition-colors motion-reduce:transition-none ${isActive ? "border-selection-border bg-selection font-semibold text-selection-text" : "border-transparent font-medium text-text-secondary hover:bg-surface-subtle hover:text-text-primary"}`
+        }
+        end={item.route === APP_ROUTES.ROOT}
+        onClick={onNavigate}
+        to={item.route}
+      >
+        {item.label}
+      </NavLink>
+    )
+  }
+
   return (
-    <nav aria-label="Navegação principal" className="grid gap-1">
-      {navigationItems.map((item) => (
-        <NavLink
-          key={item.key}
-          className={({ isActive }) =>
-            `flex min-h-11 items-center rounded-control border-l-4 px-3 text-sm font-medium transition-colors ${isActive ? "border-selection-border bg-selection text-selection-text" : "border-transparent text-text-secondary hover:bg-app hover:text-text-primary"}`
-          }
-          end={item.route === APP_ROUTES.ROOT}
-          onClick={onNavigate}
-          to={item.route}
-        >
-          {item.label}
-        </NavLink>
-      ))}
+    <nav aria-label="Navegação principal">
+      <div className="grid border-l border-border">{primaryItems.map(renderLink)}</div>
+      <div className="mt-5 grid border-l border-t border-border pt-5">
+        {renderLink({
+          key: "settings",
+          label: "Configurações",
+          route: APP_ROUTES.SETTINGS,
+        })}
+      </div>
     </nav>
   )
 }
@@ -35,9 +51,9 @@ function SessionActions({ onLogout, user }) {
   const userName = user?.usuario || "Usuário"
 
   return (
-    <div className="border-t border-border pt-4">
-      <p className="m-0 truncate text-sm font-medium text-text-primary">{userName}</p>
-      <Button className="mt-3 w-full" variant="ghost" onClick={onLogout}>
+    <div className="border-t border-border pt-5">
+      <p className="m-0 truncate px-1 text-sm font-medium text-text-primary">{userName}</p>
+      <Button className="mt-2 w-full justify-start px-1" variant="ghost" onClick={onLogout}>
         Sair
       </Button>
     </div>
@@ -47,6 +63,7 @@ function SessionActions({ onLogout, user }) {
 export default function AppShell({ children, onLogout, user }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const mobilePanelRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
@@ -54,18 +71,47 @@ export default function AppShell({ children, onLogout, user }) {
       return undefined
     }
 
-    const firstLink = mobilePanelRef.current?.querySelector<HTMLElement>("a[href]")
-    firstLink?.focus()
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    closeButtonRef.current?.focus()
 
-    function closeOnEscape(event: KeyboardEvent) {
+    function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault()
         setMenuOpen(false)
         menuButtonRef.current?.focus()
+        return
+      }
+
+      if (event.key !== "Tab") {
+        return
+      }
+
+      const focusableElements = Array.from(
+        mobilePanelRef.current?.querySelectorAll<HTMLElement>(focusableSelector) || []
+      )
+      if (focusableElements.length === 0) {
+        event.preventDefault()
+        mobilePanelRef.current?.focus()
+        return
+      }
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
       }
     }
 
-    document.addEventListener("keydown", closeOnEscape)
-    return () => document.removeEventListener("keydown", closeOnEscape)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("keydown", handleKeyDown)
+    }
   }, [menuOpen])
 
   function closeMenu() {
@@ -74,19 +120,21 @@ export default function AppShell({ children, onLogout, user }) {
   }
 
   return (
-    <div className="min-h-dvh bg-app text-text-primary lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
-      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-sidebar p-5 lg:flex">
-        <span className="text-lg font-semibold tracking-tight text-accent">BunkerMode</span>
-        <div className="mt-8">
+    <div className="min-h-dvh bg-peripheral text-text-primary lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
+      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-peripheral lg:flex">
+        <div className="flex min-h-18 items-center border-b border-border px-6">
+          <span className="text-lg font-semibold tracking-tight text-accent">BunkerMode</span>
+        </div>
+        <div className="px-5 py-7">
           <NavigationLinks user={user} />
         </div>
-        <div className="mt-auto">
+        <div className="mt-auto px-5 pb-6">
           <SessionActions onLogout={onLogout} user={user} />
         </div>
       </aside>
 
-      <header className="flex h-14 items-center justify-between border-b border-border bg-sidebar px-4 lg:hidden">
-        <span className="text-base font-semibold tracking-tight">BunkerMode</span>
+      <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-border bg-peripheral px-4 lg:hidden">
+        <span className="text-base font-semibold tracking-tight text-accent">BunkerMode</span>
         <Button
           ref={menuButtonRef}
           aria-controls="mobile-navigation"
@@ -104,21 +152,37 @@ export default function AppShell({ children, onLogout, user }) {
         <div className="fixed inset-0 z-40 bg-backdrop lg:hidden" onMouseDown={closeMenu}>
           <aside
             ref={mobilePanelRef}
-            aria-label="Menu"
-            className="grid h-full w-[min(280px,calc(100vw-2rem))] grid-rows-[auto_1fr_auto] bg-sidebar p-5 shadow-overlay"
+            aria-label="Navegação"
+            aria-modal="true"
+            className="grid h-full w-[min(304px,calc(100vw-2rem))] grid-rows-[auto_1fr_auto] border-r border-border bg-peripheral shadow-overlay"
             id="mobile-navigation"
             onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+            tabIndex={-1}
           >
-            <span className="text-lg font-semibold tracking-tight text-accent">BunkerMode</span>
-            <div className="mt-8">
+            <div className="flex min-h-16 items-center justify-between gap-4 border-b border-border px-5">
+              <span className="text-base font-semibold tracking-tight text-accent">BunkerMode</span>
+              <Button
+                ref={closeButtonRef}
+                aria-label="Fechar menu"
+                size="small"
+                variant="ghost"
+                onClick={closeMenu}
+              >
+                Fechar
+              </Button>
+            </div>
+            <div className="overflow-y-auto px-5 py-7">
               <NavigationLinks onNavigate={closeMenu} user={user} />
             </div>
-            <SessionActions onLogout={onLogout} user={user} />
+            <div className="px-5 pb-6">
+              <SessionActions onLogout={onLogout} user={user} />
+            </div>
           </aside>
         </div>
       )}
 
-      <main className="min-w-0 bg-surface px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <main className="min-h-[calc(100dvh-4rem)] min-w-0 bg-surface px-4 py-6 sm:px-7 sm:py-9 lg:min-h-dvh lg:px-10 lg:py-10 xl:px-12">
         <div className="mx-auto w-full max-w-[1120px]">{children}</div>
       </main>
     </div>
