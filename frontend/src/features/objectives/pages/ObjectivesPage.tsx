@@ -23,6 +23,11 @@ export default function ObjectivesPage({ onUnauthorized, token, user }) {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const busy = objectives.loading || objectives.mutating
 
+  function openCreateObjective() {
+    setEditingObjetivo(null)
+    setFormOpen(true)
+  }
+
   function closeObjectiveForm() {
     setFormOpen(false)
     setEditingObjetivo(null)
@@ -56,16 +61,10 @@ export default function ObjectivesPage({ onUnauthorized, token, user }) {
   }
 
   return (
-    <section className="grid gap-8">
+    <section className="grid gap-6">
       <PageHeader
         actions={
-          <Button
-            disabled={busy}
-            onClick={() => {
-              setEditingObjetivo(null)
-              setFormOpen(true)
-            }}
-          >
+          <Button disabled={busy} onClick={openCreateObjective}>
             Novo objetivo
           </Button>
         }
@@ -98,6 +97,7 @@ export default function ObjectivesPage({ onUnauthorized, token, user }) {
         tasksError={objectiveTasks.error}
         onRetryTasks={objectiveTasks.refresh}
         objetivos={objectives.objetivos}
+        onCreate={openCreateObjective}
         onCreateTask={setTaskObjetivo}
         onDelete={setDeleteTarget}
         onEdit={(objetivo) => {

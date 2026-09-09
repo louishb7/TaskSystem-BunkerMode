@@ -62,10 +62,7 @@ export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel
         />
       </label>
 
-      <section
-        className="grid gap-3 rounded-card border border-border p-4"
-        aria-labelledby="prazo-title"
-      >
+      <section className="grid gap-3 border-y border-border py-4" aria-labelledby="prazo-title">
         <div>
           <h3
             id="prazo-title"

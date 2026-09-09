@@ -11,6 +11,7 @@ export default function ObjetivoList({
   tasksError,
   onRetryTasks,
   objetivos,
+  onCreate,
   onCreateTask,
   onDelete,
   onEdit,
@@ -20,14 +21,16 @@ export default function ObjetivoList({
   if (objetivos.length === 0) {
     return (
       <EmptyState
+        actionLabel="Criar objetivo"
         message="Crie um objetivo para definir o que você quer alcançar."
+        onAction={onCreate}
         title="Nenhum objetivo ainda"
       />
     )
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid border-t border-border">
       {objetivos.map((objetivo, index) => (
         <ObjetivoCard
           tasksEnabled={tasksEnabled}
