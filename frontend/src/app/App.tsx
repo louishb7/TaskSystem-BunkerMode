@@ -87,7 +87,7 @@ function HomeRoute() {
 
   return (
     <AppShell onLogout={logout} user={auth.user}>
-      <HomePage user={auth.user} />
+      <HomePage onUnauthorized={auth.handleUnauthorized} token={auth.token} user={auth.user} />
     </AppShell>
   )
 }

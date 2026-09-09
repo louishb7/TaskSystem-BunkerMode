@@ -52,7 +52,39 @@ users.none = { ...users.both, enabled_modules: [] }
 
 const flush = () => new Promise((resolve) => setImmediate(resolve))
 
-async function navigate(path, user = null) {
+function taskFixture(id, titulo, status = "PENDENTE") {
+  return {
+    id,
+    titulo,
+    instrucao: null,
+    prioridade: 1,
+    prazo: "09-09-2026",
+    status,
+    status_code: status,
+    status_label: status === "PENDENTE" ? "Pendente" : status,
+    is_pinned: false,
+    created_at: "2026-09-08T12:00:00.000Z",
+    updated_at: "2026-09-08T12:00:00.000Z",
+    completed_at: status === "CONCLUIDA" ? "2026-09-09T12:00:00.000Z" : null,
+    failed_at: status === "FALHA" ? "2026-09-09T12:00:00.000Z" : null,
+    user_id: 1,
+    responsavel_id: 1,
+    criada_por_id: 1,
+    objetivo_id: null,
+    recurrence: null,
+    permissions: {
+      can_complete: true,
+      can_delete: true,
+      can_edit: true,
+      can_fail: true,
+      can_pin: true,
+      can_reopen: true,
+      can_view_history: true,
+    },
+  }
+}
+
+async function navigate(path, user = null, preview = {}) {
   localStorage.clear()
   sessionStorage.clear()
   const calls = []
@@ -69,6 +101,12 @@ async function navigate(path, user = null) {
     }
     if (pathname.endsWith("/tarefas/recorrencias/materializar")) {
       return new Response(null, { status: 204 })
+    }
+    if (pathname.endsWith("/tarefas/dia-operacional")) {
+      return Response.json(preview.dailyTasks || [], { status: preview.dailyTasksStatus || 200 })
+    }
+    if (pathname.endsWith("/objetivos")) {
+      return Response.json(preview.objectives || [], { status: preview.objectivesStatus || 200 })
     }
     return Response.json([], { status: 200 })
   }
@@ -95,9 +133,9 @@ async function navigate(path, user = null) {
         )
       )
     )
-    await flush()
-    await flush()
-    await flush()
+    for (let index = 0; index < 6; index += 1) {
+      await flush()
+    }
   })
 
   const rendered = container.textContent ?? ""
@@ -151,6 +189,75 @@ test("com ambos desabilitados Home e Configurações permanecem acessíveis", as
   assert.equal((await navigate("/tarefas", users.none)).path, "/")
   assert.equal((await navigate("/tarefas/foco", users.none)).path, "/")
   assert.equal((await navigate("/objetivos", users.none)).path, "/")
+})
+
+test("Home revela recortes independentes dos módulos habilitados", async () => {
+  const result = await navigate("/", users.both, {
+    dailyTasks: [
+      taskFixture(1, "Preparar proposta"),
+      taskFixture(2, "Revisar contrato"),
+      taskFixture(3, "Organizar notas"),
+      taskFixture(4, "Não deve aparecer"),
+      taskFixture(5, "Tarefa concluída", "CONCLUIDA"),
+    ],
+    objectives: [
+      { id: 1, titulo: "Construir portfólio", descricao: "Projetos publicados", status: "ativo" },
+      { id: 2, titulo: "Estudar arquitetura", descricao: null, status: "pausado" },
+      { id: 3, titulo: "Não deve aparecer", descricao: null, status: "ativo" },
+      { id: 4, titulo: "Objetivo concluído", descricao: null, status: "concluido" },
+      { id: 5, titulo: "Objetivo abandonado", descricao: null, status: "abandonado" },
+    ],
+  })
+
+  for (const marker of [
+    "Preparar proposta",
+    "Revisar contrato",
+    "Organizar notas",
+    "Construir portfólio",
+    "Projetos publicados",
+    "Estudar arquitetura",
+    "Ver tarefas",
+    "Ver objetivos",
+  ]) {
+    assert.match(result.rendered, new RegExp(marker), JSON.stringify(result.calls))
+  }
+  for (const marker of ["Tarefa concluída", "Objetivo concluído", "Objetivo abandonado"]) {
+    assert.doesNotMatch(result.rendered, new RegExp(marker))
+  }
+  assert.equal(result.rendered.match(/Não deve aparecer/g)?.length ?? 0, 0)
+  assert.equal(result.calls.some((call) => call.endsWith("/tarefas/recorrencias/materializar")), true)
+  assert.equal(result.calls.some((call) => call.endsWith("/tarefas/dia-operacional")), true)
+  assert.equal(result.calls.some((call) => call.endsWith("/objetivos")), true)
+})
+
+test("Home consulta apenas os módulos habilitados e integra estados vazios", async () => {
+  const tasksOnly = await navigate("/", users.tasks, { dailyTasks: [] })
+  assert.match(tasksOnly.rendered, /Nenhuma tarefa aberta para hoje/)
+  assert.equal(tasksOnly.calls.some((call) => call.endsWith("/tarefas/dia-operacional")), true)
+  assert.equal(tasksOnly.calls.some((call) => call.endsWith("/objetivos")), false)
+
+  const objectivesOnly = await navigate("/", users.objectives, { objectives: [] })
+  assert.match(objectivesOnly.rendered, /Nenhum objetivo em andamento/)
+  assert.equal(objectivesOnly.calls.some((call) => call.endsWith("/tarefas/dia-operacional")), false)
+  assert.equal(objectivesOnly.calls.some((call) => call.endsWith("/tarefas/recorrencias/materializar")), false)
+  assert.equal(objectivesOnly.calls.some((call) => call.endsWith("/objetivos")), true)
+
+  const none = await navigate("/", users.none)
+  assert.match(none.rendered, /Nenhuma ferramenta habilitada/)
+  assert.match(none.rendered, /Abrir configurações/)
+  assert.equal(none.calls.some((call) => call.endsWith("/tarefas/dia-operacional")), false)
+  assert.equal(none.calls.some((call) => call.endsWith("/objetivos")), false)
+})
+
+test("erro local de Tarefas preserva o recorte de Objetivos na Home", async () => {
+  const result = await navigate("/", users.both, {
+    dailyTasks: { message: "Tarefas indisponíveis" },
+    dailyTasksStatus: 503,
+    objectives: [{ id: 1, titulo: "Objetivo disponível", descricao: null, status: "ativo" }],
+  })
+
+  assert.match(result.rendered, /Tarefas indisponíveis/)
+  assert.match(result.rendered, /Objetivo disponível/)
 })
 
 test("/auth autenticado redireciona para Home", async () => {
