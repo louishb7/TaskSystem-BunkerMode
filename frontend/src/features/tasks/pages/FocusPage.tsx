@@ -10,9 +10,12 @@ export default function FocusPage({ actionTasks, board, dailyTasks, timezone }) 
   const allDailyTasksCompleted = dailyTasks.length > 0 && dailyTasks.every(isCompleted)
 
   return (
-    <section className="grid gap-6">
+    <section className="grid gap-7">
       <header>
-        <h1 className="m-0 text-2xl font-semibold tracking-tight text-text-primary sm:text-3xl">
+        <p className="m-0 text-xs font-semibold tracking-[0.12em] text-text-muted uppercase">
+          Execução
+        </p>
+        <h1 className="mt-2 mb-0 text-2xl font-semibold tracking-tight text-text-primary sm:text-3xl">
           Modo Foco
         </h1>
         <p className="mt-2 mb-0 text-sm text-text-secondary">
@@ -22,10 +25,10 @@ export default function FocusPage({ actionTasks, board, dailyTasks, timezone }) 
 
       <StatusNotice status={board.status} />
 
-      <section className="grid gap-4" aria-labelledby="focus-tasks-title">
+      <section className="grid gap-3" aria-labelledby="focus-tasks-title">
         <h2
           id="focus-tasks-title"
-          className="m-0 text-lg font-semibold normal-case text-text-primary"
+          className="m-0 text-base font-semibold normal-case text-text-primary"
         >
           Tarefas de hoje
         </h2>
@@ -38,7 +41,7 @@ export default function FocusPage({ actionTasks, board, dailyTasks, timezone }) 
         )}
 
         {!board.taskLoading && dailyTasks.length > 0 && (
-          <div className="grid gap-3">
+          <div className="grid border-t border-border">
             {dailyTasks.map((task) => (
               <TaskCard
                 key={task.id}

@@ -106,36 +106,46 @@ export default function TaskCard({
 
   if (focus) {
     return (
-      <article className="grid gap-4 rounded-card border border-border bg-surface p-4 sm:p-5">
+      <article className="grid gap-4 border-b border-border py-5 sm:py-6">
         <div className="min-w-0">
-          <h3 className="m-0 break-words text-base font-semibold text-text-primary">{title}</h3>
+          <h3 className="m-0 break-words text-lg font-semibold tracking-tight text-text-primary sm:text-xl">
+            {title}
+          </h3>
           {instruction && (
-            <p className="mt-2 mb-0 break-words text-sm leading-6 text-text-secondary">
+            <p className="mt-2 mb-0 max-w-2xl break-words text-sm leading-6 text-text-secondary sm:text-base">
               {instruction}
             </p>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {isPinned && <Badge variant="emphasis">Prioridade alta</Badge>}
-          {task?.recurrence && <Badge>Recorrente</Badge>}
-          {completed && <Badge variant="success">Tarefa concluída</Badge>}
-          {failed && <Badge variant="danger">Falha registrada</Badge>}
-          {!completed && !failed && currentStatusText && <Badge>{currentStatusText}</Badge>}
-        </div>
+        {(isPinned || completed || failed || currentStatusText) && (
+          <p className="m-0 text-xs font-medium tracking-wide text-text-muted uppercase">
+            {completed
+              ? "Concluída"
+              : failed
+                ? "Falha registrada"
+                : currentStatusText || (isPinned ? "Prioridade alta" : "")}
+          </p>
+        )}
 
         {(canComplete || canFail) && (
-          <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:flex-wrap">
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">
             {canComplete && (
-              <Button disabled={disabled} loading={completing} onClick={onComplete}>
+              <Button
+                className="max-sm:min-h-11 sm:min-w-28"
+                disabled={disabled}
+                loading={completing}
+                onClick={onComplete}
+              >
                 Concluir
               </Button>
             )}
             {canFail && (
               <Button
+                className="max-sm:min-h-11"
                 disabled={disabled}
                 loading={failing}
-                variant="secondary"
+                variant="ghost"
                 onClick={() => onFail?.(task.id)}
               >
                 Registrar falha
