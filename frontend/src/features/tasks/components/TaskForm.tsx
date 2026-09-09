@@ -388,7 +388,7 @@ export default function TaskForm({
 
       {objectivesEnabled &&
         (lockObjetivo ? (
-          <div className="rounded-control border border-border bg-app p-3">
+          <div className="border-l-2 border-border-strong bg-surface-subtle px-3 py-2">
             <p className="m-0 text-sm font-medium text-text-primary">Objetivo vinculado</p>
             <p className="mt-1 mb-0 text-sm text-text-secondary">
               {initialObjetivoTitulo || "Objetivo selecionado"}
@@ -417,14 +417,14 @@ export default function TaskForm({
       )}
 
       {lockedInitialPrazo && (
-        <div className="rounded-control border border-border bg-app p-3">
+        <div className="border-l-2 border-border-strong bg-surface-subtle px-3 py-2">
           <p className="m-0 text-sm font-medium text-text-primary">Data definida</p>
           <p className="mt-1 mb-0 text-sm text-text-secondary">{prazoContext}</p>
         </div>
       )}
 
       {isSeriesOccurrence && (
-        <div className="rounded-control border border-border bg-app p-3">
+        <div className="border-l-2 border-border-strong bg-surface-subtle px-3 py-2">
           <p className="m-0 text-sm font-medium text-text-primary">Data da ocorrência</p>
           <p className="mt-1 mb-0 text-sm text-text-secondary">{prazoContext}</p>
           <p className="mt-2 mb-0 text-sm text-text-secondary">
@@ -447,7 +447,7 @@ export default function TaskForm({
       )}
 
       <section
-        className="grid gap-4 rounded-card border border-border p-4"
+        className="grid gap-4 border-y border-border py-4"
         aria-labelledby="recorrencia-title"
       >
         <div>

@@ -25,18 +25,23 @@ export default function StartFocusDialog({
         <p className="m-0 text-sm text-text-secondary">{formatCurrentDay(timezone)}</p>
         <p className="m-0 text-sm font-medium text-text-primary">Tarefas de hoje</p>
         {todayTasks.length > 0 ? (
-          <ul className="m-0 grid list-none gap-2 rounded-control border border-border bg-app p-3 text-sm text-text-primary">
+          <ul className="m-0 grid list-none border-y border-border text-sm text-text-primary">
             {pendingTasks.map((task) => (
-              <li key={task.id}>{task?.titulo || "Tarefa sem título"}</li>
+              <li className="border-b border-border px-1 py-2.5 last:border-b-0" key={task.id}>
+                {task?.titulo || "Tarefa sem título"}
+              </li>
             ))}
             {completedTasks.map((task) => (
-              <li className="text-text-secondary line-through" key={task.id}>
+              <li
+                className="border-b border-border px-1 py-2.5 text-text-secondary line-through last:border-b-0"
+                key={task.id}
+              >
                 {task?.titulo || "Tarefa sem título"}
               </li>
             ))}
           </ul>
         ) : (
-          <div className="rounded-control border border-border bg-app p-3 text-sm text-text-secondary">
+          <div className="border-y border-border py-3 text-sm text-text-secondary">
             Nenhuma tarefa definida para hoje
           </div>
         )}

@@ -39,15 +39,19 @@ export default function TasksPanel({
   timezone,
 }) {
   const groups = groupTasks(selectedTasks)
-  function renderTaskGroup(label, tasks) {
+  function renderTaskGroup(label, tasks, tone = "default") {
     if (tasks.length === 0) {
       return null
     }
 
     return (
-      <section className="grid gap-3">
-        <h3 className="m-0 text-base font-semibold normal-case text-text-primary">{label}</h3>
-        <div className="grid gap-3">
+      <section className="grid gap-0">
+        <h3
+          className={`m-0 border-b border-border pb-2 text-sm font-semibold normal-case ${tone === "default" ? "text-text-primary" : "text-text-secondary"}`}
+        >
+          {label}
+        </h3>
+        <div className="grid gap-0">
           {tasks.map((task) => (
             <TaskCard
               key={task.id}
@@ -62,6 +66,7 @@ export default function TasksPanel({
               onTogglePin={() => onTogglePin(task)}
               pinning={pinLoadingId === task.id}
               reopening={reopenLoadingId === task.id}
+              selectedDate={selectedDate}
               timezone={timezone}
               variant="tasks"
             />
@@ -72,8 +77,8 @@ export default function TasksPanel({
   }
 
   return (
-    <section className="grid gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="grid gap-6 pt-6">
+      <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="m-0 text-xl font-semibold normal-case text-text-primary">
             Tarefas de{" "}
@@ -84,7 +89,9 @@ export default function TasksPanel({
             })}
           </h2>
         </div>
-        <Button onClick={onCreateTask}>Nova tarefa</Button>
+        <Button className="self-start sm:self-auto" onClick={onCreateTask}>
+          Nova tarefa
+        </Button>
       </div>
 
       {loading ? (
@@ -93,10 +100,10 @@ export default function TasksPanel({
           message="Carregando tarefas do dia selecionado."
         />
       ) : selectedTasks.length > 0 ? (
-        <div className="grid gap-8">
+        <div className="grid gap-7">
           {renderTaskGroup("Tarefas abertas", groups.open)}
-          {renderTaskGroup("Concluídas", groups.completed)}
-          {renderTaskGroup("Falhas registradas", groups.failures)}
+          {renderTaskGroup("Concluídas", groups.completed, "subdued")}
+          {renderTaskGroup("Falhas registradas", groups.failures, "subdued")}
         </div>
       ) : (
         <EmptyState

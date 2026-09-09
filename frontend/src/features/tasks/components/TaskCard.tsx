@@ -82,6 +82,7 @@ export default function TaskCard({
   onTogglePin = undefined,
   pinning = false,
   reopening = false,
+  selectedDate = undefined,
   timezone = undefined,
   variant = "tasks",
 }) {
@@ -97,6 +98,11 @@ export default function TaskCard({
   const deadlineLabel = formatDeadline(task?.prazo, timezone)
   const failed = String(task?.status_code || "") === "FALHA"
   const currentStatusText = statusText(task)
+  const taskDate = parseTaskDate(task?.prazo)
+  const deadlineMatchesSelection =
+    taskDate && selectedDate && taskDate.getTime() === selectedDate.getTime()
+  const showDeadline = deadlineLabel && !deadlineMatchesSelection && deadlineLabel !== "HOJE"
+  const showMetadata = isPinned || showDeadline || Boolean(task?.recurrence)
 
   if (focus) {
     return (
@@ -142,69 +148,101 @@ export default function TaskCard({
   }
 
   return (
-    <article className="grid gap-4 rounded-card border border-border bg-surface p-4 sm:p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <article className="grid gap-3 border-b border-border px-0 py-4 transition-colors hover:bg-surface-subtle sm:px-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h3 className="m-0 text-base font-semibold normal-case text-text-primary">{title}</h3>
+          <h3
+            className={`m-0 break-words text-base font-semibold normal-case ${completed ? "text-text-secondary line-through decoration-border-strong" : "text-text-primary"}`}
+          >
+            {title}
+          </h3>
           {instruction && (
-            <p className="mt-2 mb-0 text-sm leading-6 text-text-secondary">{instruction}</p>
+            <p className="mt-1.5 mb-0 break-words text-sm leading-5 text-text-secondary">
+              {instruction}
+            </p>
           )}
         </div>
         {canTogglePin && (
           <Button
             aria-label={isPinned ? "Remover prioridade" : "Elevar prioridade"}
+            className="max-sm:min-h-11"
             disabled={disabled}
             size="small"
             variant="ghost"
             onClick={() => onTogglePin(task)}
           >
-            {isPinned ? "Prioridade alta" : "Priorizar"}
+            {isPinned ? "Remover prioridade" : "Priorizar"}
           </Button>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {isPinned && <Badge variant="emphasis">Prioridade alta</Badge>}
-        {deadlineLabel && (
-          <Badge variant="neutral">{deadlineLabel === "HOJE" ? "Hoje" : deadlineLabel}</Badge>
-        )}
-        {task?.recurrence && <Badge>Recorrente</Badge>}
-        {completed && <Badge variant="success">Concluída</Badge>}
-        {failed && <Badge variant="danger">Falha registrada</Badge>}
-        {!completed && !failed && currentStatusText && <Badge>{currentStatusText}</Badge>}
-      </div>
+      {showMetadata && (
+        <div className="flex flex-wrap items-center gap-2">
+          {isPinned && <Badge variant="emphasis">Prioridade alta</Badge>}
+          {showDeadline && <Badge variant="neutral">Prazo {deadlineLabel}</Badge>}
+          {task?.recurrence && <Badge>Recorrente</Badge>}
+        </div>
+      )}
 
-      <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-        {canComplete && (
-          <Button loading={completing} size="small" onClick={onComplete}>
-            Concluir
-          </Button>
-        )}
-        {canFail && (
-          <Button
-            loading={failing}
-            size="small"
-            variant="secondary"
-            onClick={() => onFail?.(task.id)}
-          >
-            Registrar falha
-          </Button>
-        )}
-        {can(task, "can_edit") && (
-          <Button disabled={disabled} size="small" variant="ghost" onClick={onEdit}>
-            Editar
-          </Button>
-        )}
-        {can(task, "can_delete") && (
-          <Button disabled={disabled} size="small" variant="danger" onClick={onDelete}>
-            Remover
-          </Button>
-        )}
-        {can(task, "can_reopen") && onReopen && (
-          <Button loading={reopening} size="small" variant="secondary" onClick={onReopen}>
-            Reabrir
-          </Button>
-        )}
+      <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {canComplete && (
+            <Button
+              className="max-sm:min-h-11"
+              loading={completing}
+              size="small"
+              onClick={onComplete}
+            >
+              Concluir
+            </Button>
+          )}
+          {canFail && (
+            <Button
+              loading={failing}
+              className="max-sm:min-h-11"
+              size="small"
+              variant="secondary"
+              onClick={() => onFail?.(task.id)}
+            >
+              Registrar falha
+            </Button>
+          )}
+          {can(task, "can_reopen") && onReopen && (
+            <Button
+              className="max-sm:min-h-11"
+              loading={reopening}
+              size="small"
+              variant="secondary"
+              onClick={onReopen}
+            >
+              Reabrir
+            </Button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1 sm:justify-end">
+          {can(task, "can_edit") && (
+            <Button
+              className="max-sm:min-h-11"
+              disabled={disabled}
+              size="small"
+              variant="ghost"
+              onClick={onEdit}
+            >
+              Editar
+            </Button>
+          )}
+          {can(task, "can_delete") && (
+            <Button
+              className="max-sm:min-h-11"
+              disabled={disabled}
+              size="small"
+              variant="danger"
+              onClick={onDelete}
+            >
+              Remover
+            </Button>
+          )}
+        </div>
       </div>
     </article>
   )

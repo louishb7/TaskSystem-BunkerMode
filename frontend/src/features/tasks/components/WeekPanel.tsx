@@ -13,13 +13,23 @@ export default function WeekPanel({
   weekDays,
 }) {
   return (
-    <section className="grid gap-4" aria-label="Calendário semanal">
-      <div className="flex items-center justify-between gap-3">
-        <Button aria-label="Semana anterior" variant="secondary" onClick={onPreviousWeek}>
+    <section className="grid gap-3" aria-label="Calendário semanal">
+      <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
+        <Button
+          aria-label="Semana anterior"
+          className="px-0 text-base"
+          variant="ghost"
+          onClick={onPreviousWeek}
+        >
           ←
         </Button>
-        <p className="m-0 text-center text-sm font-medium text-text-primary">{weekLabel}</p>
-        <Button aria-label="Próxima semana" variant="secondary" onClick={onNextWeek}>
+        <p className="m-0 text-center text-sm font-semibold text-text-primary">{weekLabel}</p>
+        <Button
+          aria-label="Próxima semana"
+          className="px-0 text-base"
+          variant="ghost"
+          onClick={onNextWeek}
+        >
           →
         </Button>
       </div>

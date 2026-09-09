@@ -89,10 +89,14 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
 
   return (
     <>
-      <section className="grid gap-8">
+      <section className="grid gap-6">
         <PageHeader
           actions={
-            <Button loading={modeLoading} onClick={() => setShowFocusConfirm(true)}>
+            <Button
+              loading={modeLoading}
+              variant="secondary"
+              onClick={() => setShowFocusConfirm(true)}
+            >
               Iniciar foco
             </Button>
           }
@@ -100,35 +104,39 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
           title="Tarefas"
         />
 
-        <WeekPanel
-          onNextWeek={() => setSelectedDate((current) => addDays(current, 7))}
-          onPreviousWeek={() => setSelectedDate((current) => addDays(current, -7))}
-          onSelectDate={(date) => setSelectedDate(startOfDay(date))}
-          selectedDate={selectedDate}
-          todayDate={todayDate}
-          weekLabel={weekLabel}
-          weekDays={weekDays}
-        />
+        <div className="grid gap-0">
+          <WeekPanel
+            onNextWeek={() => setSelectedDate((current) => addDays(current, 7))}
+            onPreviousWeek={() => setSelectedDate((current) => addDays(current, -7))}
+            onSelectDate={(date) => setSelectedDate(startOfDay(date))}
+            selectedDate={selectedDate}
+            todayDate={todayDate}
+            weekLabel={weekLabel}
+            weekDays={weekDays}
+          />
 
-        <StatusNotice status={board.status} />
+          <div className="pt-5">
+            <StatusNotice status={board.status} />
+          </div>
 
-        <TasksPanel
-          completeLoadingId={board.completeLoadingId}
-          failLoadingId={board.failLoadingId}
-          loading={board.taskLoading}
-          onCompleteTask={board.completeTask}
-          onCreateTask={openCreateForm}
-          onDeleteTask={setDeleteTarget}
-          onEditTask={openEditForm}
-          onFailTask={board.failTask}
-          onReopenTask={board.reopenTask}
-          onTogglePin={board.toggleTaskPin}
-          pinLoadingId={board.pinLoadingId}
-          reopenLoadingId={board.reopenLoadingId}
-          selectedDate={selectedDate}
-          selectedTasks={selectedTasks}
-          timezone={user?.timezone}
-        />
+          <TasksPanel
+            completeLoadingId={board.completeLoadingId}
+            failLoadingId={board.failLoadingId}
+            loading={board.taskLoading}
+            onCompleteTask={board.completeTask}
+            onCreateTask={openCreateForm}
+            onDeleteTask={setDeleteTarget}
+            onEditTask={openEditForm}
+            onFailTask={board.failTask}
+            onReopenTask={board.reopenTask}
+            onTogglePin={board.toggleTaskPin}
+            pinLoadingId={board.pinLoadingId}
+            reopenLoadingId={board.reopenLoadingId}
+            selectedDate={selectedDate}
+            selectedTasks={selectedTasks}
+            timezone={user?.timezone}
+          />
+        </div>
       </section>
 
       {formOpen && (
