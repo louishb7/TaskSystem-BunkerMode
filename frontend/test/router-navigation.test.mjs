@@ -159,16 +159,7 @@ test("/auth autenticado redireciona para Home", async () => {
 
 test("rota desconhecida segue fallback genérico conforme autenticação", async () => {
   assert.equal((await navigate("/desconhecida")).path, "/auth")
-  assert.equal((await navigate("/desconhecida", users.both)).path, "/")
-})
-
-test("/soldier permanece legado morto e usa exatamente o fallback genérico", async () => {
-  const anonymous = await navigate("/soldier")
-  const authenticated = await navigate("/soldier", users.both)
-  assert.equal(anonymous.path, "/auth")
+  const authenticated = await navigate("/desconhecida", users.both)
   assert.equal(authenticated.path, "/")
-  assert.equal(
-    authenticated.calls.some((call) => call.endsWith("/tarefas/foco")),
-    false
-  )
+  assert.equal(authenticated.calls.some((call) => call.endsWith("/tarefas/foco")), false)
 })

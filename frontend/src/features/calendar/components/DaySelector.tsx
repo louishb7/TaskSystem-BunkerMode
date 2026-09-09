@@ -15,7 +15,7 @@ export default function DaySelector({ onSelectDate, selectedDate, todayDate, wee
           <button
             key={apiDate}
             aria-pressed={selected}
-            className={`grid min-h-[72px] content-center justify-items-center rounded-control border text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${selected ? "border-accent bg-accent text-text-primary" : "border-border bg-surface text-text-primary hover:border-control-border"}`}
+            className={`grid min-h-[72px] content-center justify-items-center rounded-control border text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring ${selected ? "border-selection-border bg-selection text-selection-text" : "border-border bg-surface text-text-primary hover:border-control-border"}`}
             type="button"
             onClick={() => onSelectDate(date)}
           >

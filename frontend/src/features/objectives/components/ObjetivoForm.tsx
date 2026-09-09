@@ -10,7 +10,7 @@ const emptyForm = {
 }
 
 const fieldClass =
-  "min-h-11 w-full rounded-control border border-control-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-app disabled:text-text-secondary disabled:opacity-70"
+  "min-h-11 w-full rounded-control border border-control-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:bg-app disabled:text-text-secondary disabled:opacity-70"
 const labelClass = "grid gap-2 text-sm font-medium normal-case text-text-primary"
 
 export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel, onSubmit }) {
@@ -80,7 +80,7 @@ export default function ObjetivoForm({ editingObjetivo = null, loading, onCancel
         <label className="inline-flex min-h-11 items-center gap-3 text-sm font-medium normal-case text-text-primary">
           <input
             checked={form.sem_prazo}
-            className="size-5 min-h-0 w-5 accent-accent"
+            className="size-5 min-h-0 w-5 accent-selection-border"
             name="sem_prazo"
             onChange={updateField}
             type="checkbox"

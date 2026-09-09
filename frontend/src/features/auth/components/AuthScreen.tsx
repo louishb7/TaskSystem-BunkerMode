@@ -80,7 +80,7 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
               Usuário
               <input
                 autoComplete="username"
-                className="min-h-11 rounded-control border border-control-border bg-surface px-3 text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="min-h-11 rounded-control border border-control-border bg-surface px-3 text-text-primary placeholder:text-text-secondary focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                 name="usuario"
                 onChange={updateField}
                 placeholder="Seu usuário"
@@ -94,7 +94,7 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
               E-mail ou usuário
               <input
                 autoComplete="username"
-                className="min-h-11 rounded-control border border-control-border bg-surface px-3 text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="min-h-11 rounded-control border border-control-border bg-surface px-3 text-text-primary placeholder:text-text-secondary focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                 name="identificador"
                 onChange={updateField}
                 placeholder="nome@exemplo.com"
@@ -107,7 +107,7 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
               E-mail
               <input
                 autoComplete="email"
-                className="min-h-11 rounded-control border border-control-border bg-surface px-3 text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="min-h-11 rounded-control border border-control-border bg-surface px-3 text-text-primary placeholder:text-text-secondary focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                 name="email"
                 onChange={updateField}
                 placeholder="usuario@email.com"
@@ -121,7 +121,7 @@ export default function AuthScreen({ loading, onLogin, onRegister, status }) {
             Senha
             <input
               autoComplete={isLogin ? "current-password" : "new-password"}
-              className="min-h-11 rounded-control border border-control-border bg-surface px-3 text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="min-h-11 rounded-control border border-control-border bg-surface px-3 text-text-primary placeholder:text-text-secondary focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
               name="senha"
               onChange={updateField}
               placeholder="senha"

@@ -4,7 +4,7 @@ import Button from "./Button"
 import Dialog from "./Dialog"
 
 export default function ConfirmDialog({
-  cancelLabel = "CANCELAR",
+  cancelLabel = "Cancelar",
   confirmLabel,
   message,
   loading = false,
@@ -16,7 +16,7 @@ export default function ConfirmDialog({
   return (
     <Dialog closeOnBackdrop={false} onClose={onCancel} title={title}>
       <p className="m-0 text-sm leading-6 text-text-secondary">{message}</p>
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
         <Button disabled={loading} variant="secondary" onClick={onCancel}>
           {cancelLabel}
         </Button>

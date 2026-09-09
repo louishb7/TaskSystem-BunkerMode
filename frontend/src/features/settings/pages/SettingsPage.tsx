@@ -89,7 +89,7 @@ export default function SettingsPage({ onUnauthorized, onUpdateUser, token, user
                 <span className="grid shrink-0 justify-items-center gap-1 text-xs text-text-secondary">
                   <input
                     checked={enabled}
-                    className="size-5 accent-accent"
+                    className="size-5 accent-selection-border"
                     disabled={updatingKey !== null}
                     type="checkbox"
                     onChange={() => updateModule(module.key, !enabled)}

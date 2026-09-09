@@ -102,7 +102,7 @@ export default function Dialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-backdrop p-4 sm:p-6"
       onMouseDown={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) {
           onClose?.()
@@ -115,7 +115,7 @@ export default function Dialog({
         aria-label={title ? undefined : ariaLabel}
         aria-labelledby={title ? titleId : undefined}
         aria-modal="true"
-        className={`grid max-h-[calc(100dvh-2rem)] w-full max-w-lg gap-5 overflow-y-auto rounded-dialog border border-border bg-surface p-5 text-text-primary shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:p-6 ${className}`}
+        className={`grid max-h-[calc(100dvh-2rem)] w-full max-w-lg gap-5 overflow-y-auto rounded-dialog border border-border-strong bg-surface-overlay p-5 text-text-primary shadow-overlay sm:max-h-[calc(100dvh-3rem)] sm:p-6 ${className}`}
         role="dialog"
         tabIndex={-1}
       >

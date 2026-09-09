@@ -17,7 +17,7 @@ export default function HomePage({ user }) {
           </p>
         </div>
         <Link
-          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control border border-border bg-surface px-4 py-2 text-sm font-semibold text-text-primary no-underline transition-colors hover:border-control-border hover:bg-app focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control border border-border bg-surface px-4 py-2 text-sm font-semibold text-text-primary no-underline transition-colors hover:border-control-border hover:bg-app focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
           to={APP_ROUTES.SETTINGS}
         >
           Configurar módulos
@@ -29,7 +29,7 @@ export default function HomePage({ user }) {
           {enabledModules.map((module) => (
             <Link
               key={module.key}
-              className="grid min-h-40 content-between rounded-card border border-border bg-surface p-5 text-inherit no-underline transition-colors hover:border-control-border hover:bg-app focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="grid min-h-40 content-between rounded-card border border-border bg-surface p-5 text-inherit no-underline transition-colors hover:border-control-border hover:bg-app focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
               to={module.route}
             >
               <h2 className="m-0 text-lg font-semibold">{module.label}</h2>

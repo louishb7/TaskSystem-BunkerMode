@@ -1,7 +1,7 @@
 import React from "react"
 import { Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom"
 
-import BootScreen from "../components/tactical/BootScreen"
+import BootScreen from "../components/system/BootScreen"
 import AppShell from "../components/layout/AppShell"
 import ExecutionLayout from "../components/layout/ExecutionLayout"
 import { emptyStatus } from "../constants/uiState"

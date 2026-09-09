@@ -146,7 +146,7 @@ export default function ObjetivoCard({
         >
           Status
           <select
-            className="min-h-11 rounded-control border border-control-border bg-surface px-2 text-sm text-text-primary focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-app disabled:text-text-secondary disabled:opacity-70"
+            className="min-h-11 rounded-control border border-control-border bg-surface px-2 text-sm text-text-primary focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:bg-app disabled:text-text-secondary disabled:opacity-70"
             disabled={loading}
             id={`objetivo-status-${objetivo.id}`}
             value={objetivo.status}

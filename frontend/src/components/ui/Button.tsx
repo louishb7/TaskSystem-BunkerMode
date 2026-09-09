@@ -2,10 +2,13 @@ import React, { forwardRef } from "react"
 
 const variants = {
   primary:
-    "border-accent bg-accent text-text-primary hover:border-accent-hover hover:bg-accent-hover",
-  secondary: "border-border bg-surface text-text-primary hover:border-control-border hover:bg-app",
-  danger: "border-danger bg-danger text-white hover:border-danger-hover hover:bg-danger-hover",
-  ghost: "border-transparent bg-transparent text-text-primary hover:border-border hover:bg-app",
+    "border-action bg-action text-on-action enabled:hover:border-action-hover enabled:hover:bg-action-hover",
+  secondary:
+    "border-control-border bg-transparent text-text-primary enabled:hover:bg-surface-subtle",
+  danger:
+    "border-transparent bg-transparent text-danger enabled:hover:border-danger/30 enabled:hover:bg-danger-soft enabled:hover:text-danger-hover",
+  ghost:
+    "border-transparent bg-transparent text-text-secondary enabled:hover:bg-surface-subtle enabled:hover:text-text-primary",
 }
 
 const sizes = {
@@ -39,7 +42,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       {...props}
       ref={ref}
       aria-busy={loading || undefined}
-      className={`inline-flex items-center justify-center gap-2 rounded-control border font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant] || variants.primary} ${sizes[size] || sizes.default} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-control border font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant] || variants.primary} ${sizes[size] || sizes.default} ${className}`}
       disabled={isDisabled}
       type={type}
     >

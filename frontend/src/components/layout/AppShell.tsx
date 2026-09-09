@@ -18,7 +18,7 @@ function NavigationLinks({ onNavigate = undefined, user }) {
         <NavLink
           key={item.key}
           className={({ isActive }) =>
-            `flex min-h-11 items-center rounded-control border-l-4 px-3 text-sm font-medium transition-colors ${isActive ? "border-accent bg-accent-soft text-text-primary" : "border-transparent text-text-secondary hover:bg-app hover:text-text-primary"}`
+            `flex min-h-11 items-center rounded-control border-l-4 px-3 text-sm font-medium transition-colors ${isActive ? "border-selection-border bg-selection text-selection-text" : "border-transparent text-text-secondary hover:bg-app hover:text-text-primary"}`
           }
           end={item.route === APP_ROUTES.ROOT}
           onClick={onNavigate}
@@ -76,7 +76,7 @@ export default function AppShell({ children, onLogout, user }) {
   return (
     <div className="min-h-dvh bg-app text-text-primary lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-sidebar p-5 lg:flex">
-        <span className="text-lg font-semibold tracking-tight">BunkerMode</span>
+        <span className="text-lg font-semibold tracking-tight text-accent">BunkerMode</span>
         <div className="mt-8">
           <NavigationLinks user={user} />
         </div>
@@ -101,15 +101,15 @@ export default function AppShell({ children, onLogout, user }) {
       </header>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-40 bg-black/35 lg:hidden" onMouseDown={closeMenu}>
+        <div className="fixed inset-0 z-40 bg-backdrop lg:hidden" onMouseDown={closeMenu}>
           <aside
             ref={mobilePanelRef}
             aria-label="Menu"
-            className="grid h-full w-[min(280px,calc(100vw-2rem))] grid-rows-[auto_1fr_auto] bg-sidebar p-5 shadow-xl"
+            className="grid h-full w-[min(280px,calc(100vw-2rem))] grid-rows-[auto_1fr_auto] bg-sidebar p-5 shadow-overlay"
             id="mobile-navigation"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <span className="text-lg font-semibold tracking-tight">BunkerMode</span>
+            <span className="text-lg font-semibold tracking-tight text-accent">BunkerMode</span>
             <div className="mt-8">
               <NavigationLinks onNavigate={closeMenu} user={user} />
             </div>
@@ -118,7 +118,7 @@ export default function AppShell({ children, onLogout, user }) {
         </div>
       )}
 
-      <main className="min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <main className="min-w-0 bg-surface px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="mx-auto w-full max-w-[1120px]">{children}</div>
       </main>
     </div>

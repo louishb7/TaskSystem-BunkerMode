@@ -111,7 +111,7 @@ export default function TaskCard({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {isPinned && <Badge variant="warning">Prioridade alta</Badge>}
+          {isPinned && <Badge variant="emphasis">Prioridade alta</Badge>}
           {task?.recurrence && <Badge>Recorrente</Badge>}
           {completed && <Badge variant="success">Tarefa concluída</Badge>}
           {failed && <Badge variant="danger">Falha registrada</Badge>}
@@ -164,11 +164,9 @@ export default function TaskCard({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {isPinned && <Badge variant="warning">Prioridade alta</Badge>}
+        {isPinned && <Badge variant="emphasis">Prioridade alta</Badge>}
         {deadlineLabel && (
-          <Badge variant={deadlineLabel === "HOJE" ? "warning" : "neutral"}>
-            {deadlineLabel === "HOJE" ? "Hoje" : deadlineLabel}
-          </Badge>
+          <Badge variant="neutral">{deadlineLabel === "HOJE" ? "Hoje" : deadlineLabel}</Badge>
         )}
         {task?.recurrence && <Badge>Recorrente</Badge>}
         {completed && <Badge variant="success">Concluída</Badge>}
