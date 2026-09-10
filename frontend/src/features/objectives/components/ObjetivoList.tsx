@@ -30,7 +30,7 @@ export default function ObjetivoList({
   }
 
   return (
-    <div className="grid border-t border-border">
+    <div className="grid gap-5">
       {objetivos.map((objetivo, index) => (
         <ObjetivoCard
           tasksEnabled={tasksEnabled}

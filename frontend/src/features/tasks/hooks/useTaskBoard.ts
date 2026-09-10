@@ -12,7 +12,6 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
   const [pinLoadingId, setPinLoadingId] = useState(null)
   const [completeLoadingId, setCompleteLoadingId] = useState(null)
   const [reopenLoadingId, setReopenLoadingId] = useState(null)
-  const [failLoadingId, setFailLoadingId] = useState(null)
   const [status, setStatus] = useState(emptyStatus)
   const [formStatus, setFormStatus] = useState(emptyStatus)
   const loadRequestRef = useRef(0)
@@ -139,7 +138,6 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
     setPinLoadingId(null)
     setCompleteLoadingId(null)
     setReopenLoadingId(null)
-    setFailLoadingId(null)
 
     if (!authenticated) {
       setTasks([])
@@ -359,30 +357,6 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
     return refreshAfterPersistedMutation("Tarefa reaberta.")
   }
 
-  async function failTask(taskId) {
-    const currentLifecycle = lifecycleRef.current
-    setFailLoadingId(taskId)
-    setStatus(emptyStatus)
-    const result = await api.failTask(token, taskId)
-    if (currentLifecycle !== lifecycleRef.current) {
-      return false
-    }
-    setFailLoadingId(null)
-
-    if (onUnauthorized(result)) {
-      return { error: "Sessão expirada. Faça login novamente." }
-    }
-
-    if (!result.ok) {
-      const message = getErrorMessage(result, "Não foi possível registrar a falha.")
-      setStatus({ type: "error", message })
-      await reloadCurrentBoard()
-      return { error: message }
-    }
-
-    return refreshAfterPersistedMutation("Falha registrada.")
-  }
-
   return {
     actionTasks,
     completeLoadingId,
@@ -390,8 +364,6 @@ export function useTaskBoard({ authenticated, boardMode, onUnauthorized, token }
     createTask,
     dailyTasks,
     deleteTask,
-    failLoadingId,
-    failTask,
     formLoading,
     formStatus,
     taskLoading,

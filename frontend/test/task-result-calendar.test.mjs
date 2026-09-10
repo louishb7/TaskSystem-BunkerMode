@@ -9,7 +9,7 @@ vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../src/features/cale
   compilerOptions: { module: ts.ModuleKind.CommonJS },
 }).outputText, { exports, require() { return { formatDateForApi: (date) => `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}` } } })
 
-for (const field of ["completed_at", "failed_at"]) {
+for (const field of ["completed_at"]) {
   test(`${field}: seleção usa dia local do resultado e preserva prazo civil`, () => {
     const selected = new Date(2026, 8, 8)
     const onDay = (instant, timezone = "America/Recife") => exports.taskBelongsToDate({ prazo: "01-01-2026", [field]: instant }, selected, timezone)

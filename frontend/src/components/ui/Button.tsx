@@ -13,7 +13,8 @@ const variants = {
 
 const sizes = {
   default: "min-h-11 px-4 py-2 text-sm",
-  small: "min-h-9 px-3 py-1.5 text-xs",
+  small: "min-h-11 px-3 py-2 text-xs",
+  icon: "size-11 shrink-0 p-0 text-sm",
 }
 
 type ButtonProps = React.ComponentPropsWithoutRef<"button"> & {
@@ -42,7 +43,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       {...props}
       ref={ref}
       aria-busy={loading || undefined}
-      className={`inline-flex items-center justify-center gap-2 rounded-control border font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant] || variants.primary} ${sizes[size] || sizes.default} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-control border font-semibold transition-[background-color,border-color,transform] enabled:active:scale-[0.98] motion-reduce:transition-none motion-reduce:transform-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant] || variants.primary} ${sizes[size] || sizes.default} ${className}`}
       disabled={isDisabled}
       type={type}
     >
@@ -52,7 +53,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
           className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
         />
       )}
-      <span>{children}</span>
+      <span className="inline-flex items-center justify-center gap-2">{children}</span>
     </button>
   )
 })

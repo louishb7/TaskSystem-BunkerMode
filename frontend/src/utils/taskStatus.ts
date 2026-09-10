@@ -1,7 +1,7 @@
 export const TASK_STATUS = Object.freeze({
   PENDENTE: "PENDENTE",
   CONCLUIDA: "CONCLUIDA",
-  FALHA: "FALHA",
+  NAO_REALIZADA: "NAO_REALIZADA",
 })
 
 function getTaskStatusCode(task) {
@@ -26,4 +26,8 @@ export function canShowTaskEdit(task) {
 
 export function canShowTaskDelete(task) {
   return task.permissions.can_delete
+}
+
+export function isNotPerformed(task) {
+  return getTaskStatusCode(task) === TASK_STATUS.NAO_REALIZADA
 }

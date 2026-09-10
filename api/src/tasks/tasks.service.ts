@@ -145,7 +145,7 @@ function statusFromPayload(value: unknown): string | undefined {
     return TASK_STATUS.pending;
   }
   throw new HttpException(
-    "Use concluir ou falhar para registrar resultado de execução.",
+    "Use concluir para registrar a conclusão.",
     HttpStatus.BAD_REQUEST,
   );
 }
@@ -276,10 +276,12 @@ export class TasksService {
 
   async listHistorical(user: UserRecord): Promise<TaskRecord[]> {
     const tasks = await this.listAllForUser(user);
+    const today = this.today(user);
     return tasks.filter(
       (task) =>
         task.status === TASK_STATUS.completed ||
-        task.status === TASK_STATUS.failed,
+        (task.status === TASK_STATUS.pending &&
+          task.prazo !== null && task.prazo.toISOString().slice(0, 10) < today),
     );
   }
 
@@ -496,7 +498,6 @@ export class TasksService {
       if (status === TASK_STATUS.pending) {
         data.status = TASK_STATUS.pending;
         data.completed_at = null;
-        data.failed_at = null;
       }
     }
     if (hasObjetivoId) {
@@ -540,30 +541,9 @@ export class TasksService {
       data: {
         status: TASK_STATUS.completed,
         completed_at: now,
-        failed_at: null,
       },
       action: "tarefa_concluida",
       details: `Tarefa '${current.titulo}' concluída.`,
-    });
-  }
-
-  async fail(id: number, user: UserRecord): Promise<TaskRecord> {
-    const current = await this.getTaskForUser(id, user);
-    if (current.status !== TASK_STATUS.pending) {
-      throw new HttpException(
-        "Apenas tarefa pendente pode ser registrada como falha.",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    const now = new Date();
-    return this.updateExecutionState(id, user, {
-      data: {
-        status: TASK_STATUS.failed,
-        completed_at: null,
-        failed_at: now,
-      },
-      action: "tarefa_nao_realizada",
-      details: `Tarefa '${current.titulo}' registrada como falha.`,
     });
   }
 
@@ -573,7 +553,7 @@ export class TasksService {
       throw new HttpException("Apenas tarefa finalizada pode ser reaberta.", HttpStatus.BAD_REQUEST);
     }
     return this.updateExecutionState(id, user, {
-      data: { status: TASK_STATUS.pending, completed_at: null, failed_at: null },
+      data: { status: TASK_STATUS.pending, completed_at: null },
       action: "tarefa_reaberta",
       details: `Tarefa '${current.titulo}' reaberta.`,
     });
@@ -816,7 +796,7 @@ export class TasksService {
     if (isoDateFromDate(task.prazo) === isoDate) {
       return true;
     }
-    const eventDate = task.completed_at ?? task.failed_at;
+    const eventDate = task.completed_at;
     return eventDate !== null && this.calendar.currentDateFor(eventDate, timezone) === isoDate;
   }
 

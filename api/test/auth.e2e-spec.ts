@@ -158,3 +158,36 @@ describe("Auth phase 3", () => {
     expect(prisma.usuarios.update).not.toHaveBeenCalled()
   })
 })
+
+describe("Auth input boundaries", () => {
+  it.each([
+    { usuario: "ab" }, { usuario: "a".repeat(33) },
+    { email: "invalid" }, { email: `${"a".repeat(250)}@x.com` },
+    { senha: "ab123" }, { senha: "a1".repeat(65) },
+    { senha: "123456" }, { senha: "abcdef" },
+  ])("rejects invalid registration before persistence: %j", async (override) => {
+    const prisma = prismaMock()
+    const service = new AuthService(prisma as never, new TokenService())
+    await expect(service.register({ usuario: "pessoa", email: "pessoa@example.com", senha: "abc123", ...override })).rejects.toMatchObject({status: 400})
+    expect(prisma.usuarios.findUnique).not.toHaveBeenCalled()
+    expect(prisma.usuarios.create).not.toHaveBeenCalled()
+  })
+  it("accepts six characters, Unicode composition and preserves password spaces", async () => {
+    const prisma = prismaMock()
+    prisma.usuarios.create.mockResolvedValue(user())
+    const service = new AuthService(prisma as never, new TokenService())
+    await service.register({usuario: " pessoa ", email: " Pessoa@Example.com ", senha: " éé１２ "})
+    expect(verifyPassword(" éé１２ ", prisma.usuarios.create.mock.calls[0][0].data.senha_hash)).toBe(true)
+  })
+  it("authenticates existing passwords without registration composition rules", async () => {
+    const prisma = prismaMock()
+    prisma.usuarios.findUnique.mockResolvedValue(user({senha_hash: hashPassword("abc")}))
+    const service = new AuthService(prisma as never, new TokenService())
+    await expect(service.login({email:"pessoa",senha:"abc"})).resolves.toHaveProperty("access_token")
+    prisma.usuarios.findUnique.mockClear()
+    for (const payload of [{email:"a".repeat(255),senha:"abc"},{email:"pessoa",senha:"a".repeat(129)}]) {
+      await expect(service.login(payload)).rejects.toMatchObject({status:401})
+    }
+    expect(prisma.usuarios.findUnique).not.toHaveBeenCalled()
+  })
+})

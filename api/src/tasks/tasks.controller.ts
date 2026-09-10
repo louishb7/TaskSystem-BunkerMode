@@ -105,17 +105,6 @@ export class TasksController {
     return toTaskResponse(task, user);
   }
 
-  @Post("tarefas/:id/falhar")
-  @HttpCode(200)
-  async failTask(
-    @Req() request: AuthenticatedRequest,
-    @Param("id") id: string,
-  ) {
-    const user = request.currentUser!;
-    const task = await this.tasksService.fail(taskId(id), user);
-    return toTaskResponse(task, user);
-  }
-
   @Patch("tarefas/:id/toggle-pin")
   async togglePin(
     @Req() request: AuthenticatedRequest,

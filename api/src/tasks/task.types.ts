@@ -3,13 +3,11 @@ import { UserRecord } from "../auth/auth.types";
 export const TASK_STATUS = {
   pending: "PENDENTE",
   completed: "CONCLUIDA",
-  failed: "FALHA",
 } as const;
 
 export const TASK_STATUS_LABEL = {
   [TASK_STATUS.pending]: "Pendente",
   [TASK_STATUS.completed]: "Concluída",
-  [TASK_STATUS.failed]: "Falha",
 } as const;
 
 export const TASK_INSTRUCTION_MAX_LENGTH = 280;
@@ -43,7 +41,6 @@ export type TaskRecord = {
   created_at: Date;
   updated_at: Date;
   completed_at: Date | null;
-  failed_at: Date | null;
   recurrence_series_id: number | null;
   serie_recorrencia?: RecurrenceSeriesRecord | null;
   criada_por_id: number;
@@ -51,18 +48,17 @@ export type TaskRecord = {
   objetivo_id: number | null;
 };
 
-export type TaskUser = Pick<UserRecord, "usuario_id">;
+export type TaskUser = Pick<UserRecord, "usuario_id"> & Partial<Pick<UserRecord, "timezone">>;
 
 export function canReopenTask(task: TaskRecord, user: TaskUser): boolean {
   return task.responsavel_id === user.usuario_id &&
-    (task.status === TASK_STATUS.completed || task.status === TASK_STATUS.failed);
+    task.status === TASK_STATUS.completed;
 }
 
 export type TaskPermissions = {
   can_complete: boolean;
   can_edit: boolean;
   can_delete: boolean;
-  can_fail: boolean;
   can_pin: boolean;
   can_view_history: boolean;
   can_reopen: boolean;
@@ -75,13 +71,12 @@ export type TaskResponse = {
   prazo: string | null;
   instrucao: string | null;
   status: TaskStatus;
-  status_code: TaskStatus;
+  status_code: TaskStatus | "NAO_REALIZADA";
   status_label: string;
   is_pinned: boolean;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
-  failed_at: string | null;
   user_id: number;
   criada_por_id: number;
   responsavel_id: number;

@@ -1,83 +1,17 @@
 import React from "react"
-
-import Badge from "../../../components/ui/Badge"
+import { Check, Circle, Repeat2, Pin, RotateCcw } from "lucide-react"
 import Button from "../../../components/ui/Button"
-import { isCompleted } from "../../../utils/taskStatus"
-import { operationalDateFor } from "../../calendar/calendarUtils"
-
-function can(task, key) {
-  return Boolean(task?.permissions?.[key]) && task?.id !== undefined && task?.id !== null
-}
-
-function parseTaskDate(value) {
-  if (!value || typeof value !== "string") {
-    return null
-  }
-
-  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
-    const [dayRaw, monthRaw, yearRaw] = value.split("-")
-    const day = Number(dayRaw)
-    const month = Number(monthRaw)
-    const year = Number(yearRaw)
-    const parsed = new Date(year, month - 1, day)
-    return Number.isNaN(parsed.getTime()) ? null : parsed
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
-    const [yearRaw, monthRaw, dayRaw] = value.slice(0, 10).split("-")
-    const day = Number(dayRaw)
-    const month = Number(monthRaw)
-    const year = Number(yearRaw)
-    const parsed = new Date(year, month - 1, day)
-    return Number.isNaN(parsed.getTime()) ? null : parsed
-  }
-
-  return null
-}
-
-function todayStart(timezone) {
-  return operationalDateFor(timezone)
-}
-
-function formatDeadline(value, timezone) {
-  const parsed = parseTaskDate(value)
-  if (!parsed) {
-    return "SEM DATA"
-  }
-
-  const day = String(parsed.getDate()).padStart(2, "0")
-  const month = String(parsed.getMonth() + 1).padStart(2, "0")
-
-  if (parsed.getTime() === todayStart(timezone).getTime()) {
-    return "HOJE"
-  }
-
-  return `${day}/${month}`
-}
-
-function statusText(task) {
-  const compact = {
-    CONCLUIDA: "",
-    FALHA: "FALHOU",
-  }
-  const statusCode = String(task?.status_code || "").toUpperCase()
-  const fallbackLabel = String(task?.status_label || "").trim()
-
-  if (statusCode === "PENDENTE" || fallbackLabel.toUpperCase() === "PENDENTE") {
-    return ""
-  }
-
-  return compact[statusCode] || fallbackLabel || ""
-}
+import { operationalDateFor, normalizeTaskDate } from "../../calendar/calendarUtils"
+import Badge from "../../../components/ui/Badge"
+import ActionsMenu from "../../../components/ui/ActionsMenu"
+import { isCompleted, isNotPerformed } from "../../../utils/taskStatus"
 
 export default function TaskCard({
   completing = false,
-  failing = false,
   task,
   onComplete,
   onDelete = undefined,
   onEdit = undefined,
-  onFail,
   onReopen = undefined,
   onTogglePin = undefined,
   pinning = false,
@@ -86,173 +20,118 @@ export default function TaskCard({
   timezone = undefined,
   variant = "tasks",
 }) {
-  const focus = variant === "focus"
   const title = task?.titulo || "Tarefa sem título"
-  const instruction = task?.instrucao || ""
-  const isPinned = task?.is_pinned === true
-  const disabled = pinning || completing || failing || reopening
-  const canComplete = can(task, "can_complete")
-  const canFail = can(task, "can_fail")
-  const canTogglePin = !focus && can(task, "can_pin") && typeof onTogglePin === "function"
   const completed = isCompleted(task)
-  const deadlineLabel = formatDeadline(task?.prazo, timezone)
-  const failed = String(task?.status_code || "") === "FALHA"
-  const currentStatusText = statusText(task)
-  const taskDate = parseTaskDate(task?.prazo)
-  const deadlineMatchesSelection =
-    taskDate && selectedDate && taskDate.getTime() === selectedDate.getTime()
-  const showDeadline = deadlineLabel && !deadlineMatchesSelection && deadlineLabel !== "HOJE"
-  const showMetadata = isPinned || showDeadline || Boolean(task?.recurrence)
-
-  if (focus) {
-    return (
-      <article className="grid gap-4 border-b border-border py-5 sm:py-6">
-        <div className="min-w-0">
-          <h3 className="m-0 break-words text-lg font-semibold tracking-tight text-text-primary sm:text-xl">
-            {title}
-          </h3>
-          {instruction && (
-            <p className="mt-2 mb-0 max-w-2xl break-words text-sm leading-6 text-text-secondary sm:text-base">
-              {instruction}
-            </p>
-          )}
-        </div>
-
-        {(isPinned || completed || failed || currentStatusText) && (
-          <p className="m-0 text-xs font-medium tracking-wide text-text-muted uppercase">
-            {completed
-              ? "Concluída"
-              : failed
-                ? "Falha registrada"
-                : currentStatusText || (isPinned ? "Prioridade alta" : "")}
-          </p>
-        )}
-
-        {(canComplete || canFail) && (
-          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">
-            {canComplete && (
+  const notPerformed = isNotPerformed(task)
+  const permissions = task?.id !== undefined && task?.id !== null ? task.permissions || {} : {}
+  const busy = completing || pinning || reopening
+  const focus = variant === "focus"
+  const administrative = [
+    ...(permissions.can_edit && onEdit ? [{ label: "Editar", onSelect: onEdit }] : []),
+    ...(permissions.can_pin && onTogglePin
+      ? [
+          {
+            label: task.is_pinned ? "Remover prioridade" : "Priorizar",
+            onSelect: () => onTogglePin(task),
+          },
+        ]
+      : []),
+    ...(permissions.can_delete && onDelete
+      ? [{ label: "Remover", onSelect: onDelete, danger: true }]
+      : []),
+  ]
+  // O contexto de prazo continua disponível quando a tarefa aparece no dia da conclusão.
+  const deadline = normalizeTaskDate(task?.prazo).replaceAll("-", "/")
+  const selected = (selectedDate || operationalDateFor(timezone)).toLocaleDateString("pt-BR")
+  const showDeadline = deadline && selected && deadline !== selected
+  return (
+    <article
+      className={`group relative border-b border-border last:border-b-0 ${focus ? "px-5 py-6 sm:px-7" : "px-3 py-3 sm:px-5"}`}
+    >
+      <div className={`flex items-start ${focus ? "gap-4" : "gap-2 sm:gap-3"}`}>
+        {!focus && (
+          <div className="shrink-0">
+            {permissions.can_complete ? (
               <Button
-                className="max-sm:min-h-11 sm:min-w-28"
-                disabled={disabled}
+                size="icon"
+                variant="ghost"
+                aria-label={`Concluir: ${title}`}
+                title="Concluir tarefa"
+                disabled={busy}
                 loading={completing}
                 onClick={onComplete}
               >
-                Concluir
+                <Circle
+                  size={23}
+                  className="text-text-muted group-hover:text-accent"
+                  aria-hidden="true"
+                />
               </Button>
-            )}
-            {canFail && (
-              <Button
-                className="max-sm:min-h-11"
-                disabled={disabled}
-                loading={failing}
-                variant="ghost"
-                onClick={() => onFail?.(task.id)}
+            ) : (
+              <span
+                className={`grid size-11 place-items-center ${completed ? "text-success" : "text-text-muted"}`}
               >
-                Registrar falha
-              </Button>
+                {completed ? (
+                  <Check size={21} aria-hidden="true" />
+                ) : (
+                  <Circle size={21} aria-hidden="true" />
+                )}
+                <span className="sr-only">{completed ? "Concluída" : "Sem ação disponível"}</span>
+              </span>
             )}
           </div>
         )}
-      </article>
-    )
-  }
-
-  return (
-    <article className="grid gap-3 border-b border-border px-0 py-4 transition-colors hover:bg-surface-subtle sm:px-2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 pt-2">
           <h3
-            className={`m-0 break-words text-base font-semibold normal-case ${completed ? "text-text-secondary line-through decoration-border-strong" : "text-text-primary"}`}
+            className={`m-0 break-words font-semibold leading-6 ${focus ? "text-xl tracking-tight" : "text-sm sm:text-base"} ${completed ? "text-text-secondary" : "text-text-primary"}`}
           >
             {title}
           </h3>
-          {instruction && (
-            <p className="mt-1.5 mb-0 break-words text-sm leading-5 text-text-secondary">
-              {instruction}
+          {task?.instrucao && (
+            <p
+              className={`mt-1.5 mb-0 break-words leading-6 text-text-secondary ${focus ? "text-base" : "text-sm"}`}
+            >
+              {task.instrucao}
             </p>
           )}
-        </div>
-        {canTogglePin && (
-          <Button
-            aria-label={isPinned ? "Remover prioridade" : "Elevar prioridade"}
-            className="max-sm:min-h-11"
-            disabled={disabled}
-            size="small"
-            variant="ghost"
-            onClick={() => onTogglePin(task)}
-          >
-            {isPinned ? "Remover prioridade" : "Priorizar"}
-          </Button>
-        )}
-      </div>
-
-      {showMetadata && (
-        <div className="flex flex-wrap items-center gap-2">
-          {isPinned && <Badge variant="emphasis">Prioridade alta</Badge>}
-          {showDeadline && <Badge variant="neutral">Prazo {deadlineLabel}</Badge>}
-          {task?.recurrence && <Badge>Recorrente</Badge>}
-        </div>
-      )}
-
-      <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {canComplete && (
-            <Button
-              className="max-sm:min-h-11"
-              loading={completing}
-              size="small"
-              onClick={onComplete}
-            >
+          {((!focus && (task.is_pinned || task.recurrence)) ||
+            notPerformed ||
+            showDeadline ||
+            (focus && completed)) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-muted">
+              {notPerformed && <Badge>Não realizada</Badge>}
+              {focus && completed && <span className="text-success">Concluída</span>}
+              {!focus && task.is_pinned && (
+                <span className="inline-flex items-center gap-1">
+                  <Pin size={12} aria-hidden="true" />
+                  Prioridade alta
+                </span>
+              )}
+              {!focus && task.recurrence && (
+                <span className="inline-flex items-center gap-1">
+                  <Repeat2 size={13} aria-hidden="true" />
+                  Recorrente
+                </span>
+              )}
+              {showDeadline && <span>Prazo {deadline}</span>}
+            </div>
+          )}
+          {focus && permissions.can_complete && (
+            <Button className="mt-5" loading={completing} disabled={busy} onClick={onComplete}>
+              <Check size={18} aria-hidden="true" />
               Concluir
             </Button>
           )}
-          {canFail && (
-            <Button
-              loading={failing}
-              className="max-sm:min-h-11"
-              size="small"
-              variant="secondary"
-              onClick={() => onFail?.(task.id)}
-            >
-              Registrar falha
-            </Button>
-          )}
-          {can(task, "can_reopen") && onReopen && (
-            <Button
-              className="max-sm:min-h-11"
-              loading={reopening}
-              size="small"
-              variant="secondary"
-              onClick={onReopen}
-            >
+          {!focus && permissions.can_reopen && onReopen && (
+            <Button size="small" variant="ghost" loading={reopening} onClick={onReopen}>
+              <RotateCcw size={14} aria-hidden="true" />
               Reabrir
             </Button>
           )}
         </div>
-        <div className="flex flex-wrap gap-1 sm:justify-end">
-          {can(task, "can_edit") && (
-            <Button
-              className="max-sm:min-h-11"
-              disabled={disabled}
-              size="small"
-              variant="ghost"
-              onClick={onEdit}
-            >
-              Editar
-            </Button>
-          )}
-          {can(task, "can_delete") && (
-            <Button
-              className="max-sm:min-h-11"
-              disabled={disabled}
-              size="small"
-              variant="danger"
-              onClick={onDelete}
-            >
-              Remover
-            </Button>
-          )}
-        </div>
+        {!focus && administrative.length > 0 && (
+          <ActionsMenu label={`Ações da tarefa: ${title}`} disabled={busy} items={administrative} />
+        )}
       </div>
     </article>
   )

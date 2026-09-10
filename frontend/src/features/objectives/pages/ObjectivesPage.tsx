@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react"
 import React, { useState } from "react"
 
 import ConfirmDialog from "../../../components/ui/ConfirmDialog"
@@ -61,14 +62,14 @@ export default function ObjectivesPage({ onUnauthorized, token, user }) {
   }
 
   return (
-    <section className="grid gap-6">
+    <section className="mx-auto grid max-w-[820px] gap-5">
       <PageHeader
         actions={
           <Button disabled={busy} onClick={openCreateObjective}>
+            <Plus size={17} aria-hidden="true" />
             Novo objetivo
           </Button>
         }
-        description="Defina o que você quer alcançar e organize seus objetivos."
         title="Objetivos"
       />
 

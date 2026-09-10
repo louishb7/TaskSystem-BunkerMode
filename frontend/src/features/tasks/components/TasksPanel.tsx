@@ -1,35 +1,30 @@
 import React from "react"
+import { Plus } from "lucide-react"
 
 import Button from "../../../components/ui/Button"
 import EmptyState from "../../../components/ui/EmptyState"
-import { isCompleted } from "../../../utils/taskStatus"
+import { isCompleted, isNotPerformed } from "../../../utils/taskStatus"
 import TaskCard from "./TaskCard"
 
-function isFailure(task) {
-  return String(task?.status_code || "").startsWith("FALHA")
-}
-
 function groupTasks(tasks) {
-  const open = tasks.filter((task) => !isCompleted(task) && !isFailure(task))
+  const open = tasks.filter((task) => !isCompleted(task) && !isNotPerformed(task))
   return {
     open: [
       ...open.filter((task) => task?.is_pinned === true),
       ...open.filter((task) => task?.is_pinned !== true),
     ],
-    failures: tasks.filter(isFailure),
+    unperformed: tasks.filter(isNotPerformed),
     completed: tasks.filter(isCompleted),
   }
 }
 
 export default function TasksPanel({
   completeLoadingId,
-  failLoadingId,
   loading,
   onCompleteTask,
   onCreateTask,
   onDeleteTask,
   onEditTask,
-  onFailTask,
   onReopenTask,
   onTogglePin,
   pinLoadingId,
@@ -47,7 +42,7 @@ export default function TasksPanel({
     return (
       <section className="grid gap-0">
         <h3
-          className={`m-0 border-b border-border pb-2 text-sm font-semibold normal-case ${tone === "default" ? "text-text-primary" : "text-text-secondary"}`}
+          className={`m-0 bg-surface-subtle px-5 py-2 text-xs font-medium ${tone === "default" ? "text-text-primary" : "text-text-secondary"}`}
         >
           {label}
         </h3>
@@ -56,12 +51,10 @@ export default function TasksPanel({
             <TaskCard
               key={task.id}
               completing={completeLoadingId === task.id}
-              failing={failLoadingId === task.id}
               task={task}
               onComplete={() => onCompleteTask(task)}
               onDelete={() => onDeleteTask(task)}
               onEdit={() => onEditTask(task)}
-              onFail={() => onFailTask(task.id)}
               onReopen={() => onReopenTask(task)}
               onTogglePin={() => onTogglePin(task)}
               pinning={pinLoadingId === task.id}
@@ -77,36 +70,39 @@ export default function TasksPanel({
   }
 
   return (
-    <section className="grid gap-6 pt-6">
-      <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <section className="work-surface grid gap-0">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
         <div>
-          <h2 className="m-0 text-xl font-semibold normal-case text-text-primary">
-            Tarefas de{" "}
+          <h2 className="m-0 text-sm font-semibold text-text-primary">
+            <span className="sr-only">Tarefas de </span>
             {selectedDate.toLocaleDateString("pt-BR", {
-              weekday: "long",
+              weekday: "short",
               day: "2-digit",
               month: "2-digit",
             })}
           </h2>
         </div>
-        <Button className="self-start sm:self-auto" onClick={onCreateTask}>
+        <Button size="small" onClick={onCreateTask}>
+          <Plus size={17} aria-hidden="true" />
           Nova tarefa
         </Button>
       </div>
 
       {loading ? (
         <EmptyState
+          flat
           title="Sincronizando tarefas"
           message="Carregando tarefas do dia selecionado."
         />
       ) : selectedTasks.length > 0 ? (
-        <div className="grid gap-7">
-          {renderTaskGroup("Tarefas abertas", groups.open)}
+        <div className="grid">
+          {renderTaskGroup("Em aberto", groups.open)}
           {renderTaskGroup("Concluídas", groups.completed, "subdued")}
-          {renderTaskGroup("Falhas registradas", groups.failures, "subdued")}
+          {renderTaskGroup("Não realizadas", groups.unperformed, "subdued")}
         </div>
       ) : (
         <EmptyState
+          flat
           message="Nenhuma tarefa foi definida para o dia selecionado."
           title="Sem tarefas neste dia"
         />

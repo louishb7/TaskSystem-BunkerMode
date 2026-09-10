@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from "react"
 
+import { Monitor, Sun, Moon, Palette, Boxes } from "lucide-react"
+import { getThemePreference, setThemePreference } from "../../../theme/preference"
+import PageHeader from "../../../components/ui/PageHeader"
 import { getErrorMessage } from "../../../api/httpClient"
 import StatusNotice from "../../../components/ui/StatusNotice"
 import { emptyStatus } from "../../../constants/uiState"
@@ -7,6 +10,7 @@ import { getEnabledModules, MODULE_CATALOG } from "../../../modules/moduleCatalo
 import { api } from "../../../services/bunkermodeApi"
 
 export default function SettingsPage({ onUnauthorized, onUpdateUser, token, user }) {
+  const [theme, setTheme] = useState(getThemePreference)
   const [updatingKey, setUpdatingKey] = useState(null)
   const [status, setStatus] = useState(emptyStatus)
   const requestId = useRef(0)
@@ -50,51 +54,67 @@ export default function SettingsPage({ onUnauthorized, onUpdateUser, token, user
   }
 
   return (
-    <section className="grid gap-8">
-      <header>
-        <h1 className="m-0 text-3xl font-semibold tracking-tight">Configurações</h1>
-        <p className="mt-2 mb-0 text-sm text-text-secondary">
-          Escolha as ferramentas que aparecem no seu Bunker.
-        </p>
-      </header>
-
-      <section className="grid gap-4" aria-labelledby="modules-title">
-        <div>
-          <h2 className="m-0 text-xl font-semibold" id="modules-title">
-            Seus módulos
-          </h2>
-          <p className="mt-1 mb-0 text-sm text-text-secondary">
-            Desativar um módulo o remove da Home e da navegação.
-          </p>
+    <section className="mx-auto grid max-w-[720px] gap-6">
+      <PageHeader title="Configurações" />
+      <section className="work-surface p-5 sm:p-6" aria-labelledby="appearance-title">
+        <h2
+          id="appearance-title"
+          className="m-0 mb-5 flex items-center gap-3 text-base font-semibold"
+        >
+          <Palette size={19} aria-hidden="true" />
+          Aparência
+        </h2>
+        <div className="grid grid-cols-3 gap-2" role="group" aria-label="Tema">
+          {(
+            [
+              { value: "system", label: "Sistema", Icon: Monitor },
+              { value: "light", label: "Claro", Icon: Sun },
+              { value: "dark", label: "Escuro", Icon: Moon },
+            ] as const
+          ).map(({ value, label, Icon }) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={theme === value}
+              onClick={() => {
+                setTheme(value)
+                setThemePreference(value)
+              }}
+              className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border text-sm font-medium transition-colors motion-reduce:transition-none ${theme === value ? "border-selection-border bg-selection text-selection-text" : "border-border bg-surface-subtle text-text-secondary hover:border-border-strong"}`}
+            >
+              <Icon size={20} aria-hidden="true" />
+              {label}
+            </button>
+          ))}
         </div>
-
+      </section>
+      <section className="work-surface p-5 sm:p-6" aria-labelledby="modules-title">
+        <h2 className="m-0 mb-4 flex items-center gap-3 text-base font-semibold" id="modules-title">
+          <Boxes size={19} aria-hidden="true" />
+          Módulos
+        </h2>
         <StatusNotice status={status} />
-
-        <div className="grid gap-3">
+        <div className="grid">
           {MODULE_CATALOG.map((module) => {
             const enabled = enabledKeys.has(module.key)
-            const updating = updatingKey === module.key
-
             return (
               <label
                 key={module.key}
-                className="flex min-h-24 cursor-pointer items-center justify-between gap-4 rounded-card border border-border bg-surface p-4 sm:p-5"
+                className="flex min-h-20 cursor-pointer items-center justify-between gap-4 border-t border-border py-4 first:border-0"
               >
-                <span>
-                  <span className="block font-semibold text-text-primary">{module.label}</span>
-                  <span className="mt-1 block text-sm text-text-secondary">
-                    {module.description}
+                <span className="text-sm font-semibold">{module.label}</span>
+                <span className="flex items-center gap-3">
+                  <span className="text-xs text-text-secondary">
+                    {updatingKey === module.key ? "Salvando" : enabled ? "Ativo" : "Inativo"}
                   </span>
-                </span>
-                <span className="grid shrink-0 justify-items-center gap-1 text-xs text-text-secondary">
                   <input
                     checked={enabled}
                     className="size-5 accent-selection-border"
+                    aria-label={module.label}
                     disabled={updatingKey !== null}
                     type="checkbox"
                     onChange={() => updateModule(module.key, !enabled)}
                   />
-                  {updating ? "Salvando" : enabled ? "Ativo" : "Inativo"}
                 </span>
               </label>
             )

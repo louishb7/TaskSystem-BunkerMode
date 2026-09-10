@@ -43,6 +43,7 @@ function settingsHarness(api, callbacks = {}) {
       exports,
       require(path) {
         if (path === "react") return { ...react, default: react }
+        if (path.endsWith("theme/preference")) return {getThemePreference: () => "system", setThemePreference: () => {}}
         if (path.endsWith("bunkermodeApi")) return { api }
         if (path.endsWith("moduleCatalog")) {
           const modules = [{ key: "tasks" }, { key: "objectives" }]
@@ -86,7 +87,7 @@ function settingsHarness(api, callbacks = {}) {
   return {
     render,
     inputs: (props) => inputs(render(props)),
-    state: () => ({ updatingKey: values[0], status: values[1] }),
+    state: () => ({ updatingKey: values[1], status: values[2] }),
     activate(props) {
       cleanup?.()
       render(props)

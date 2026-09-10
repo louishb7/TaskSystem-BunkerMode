@@ -1,5 +1,7 @@
 import React, { useState } from "react"
 
+import { ArrowLeft } from "lucide-react"
+import Brand from "../ui/Brand"
 import Button from "../ui/Button"
 
 export default function ExecutionLayout({ children, onReturnToTasks }) {
@@ -15,8 +17,9 @@ export default function ExecutionLayout({ children, onReturnToTasks }) {
     <div className="min-h-dvh bg-canvas text-text-primary">
       <header className="border-b border-border bg-peripheral">
         <div className="mx-auto flex min-h-15 w-full max-w-[760px] items-center justify-between gap-4 px-4 sm:px-6">
-          <span className="text-base font-semibold tracking-tight text-accent">BunkerMode</span>
+          <Brand compact />
           <Button loading={returnLoading} size="small" variant="ghost" onClick={handleReturn}>
+            <ArrowLeft size={16} aria-hidden="true" />
             Voltar às tarefas
           </Button>
         </div>

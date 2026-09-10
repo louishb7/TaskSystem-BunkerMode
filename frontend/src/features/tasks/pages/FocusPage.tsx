@@ -12,12 +12,7 @@ export default function FocusPage({ actionTasks, board, dailyTasks, timezone }) 
   return (
     <section className="grid gap-7">
       <header>
-        <p className="m-0 text-xs font-semibold tracking-[0.12em] text-text-muted uppercase">
-          Execução
-        </p>
-        <h1 className="mt-2 mb-0 text-2xl font-semibold tracking-tight text-text-primary sm:text-3xl">
-          Modo Foco
-        </h1>
+        <h1 className="m-0 text-xl font-semibold tracking-tight text-text-primary">Modo Foco</h1>
         <p className="mt-2 mb-0 text-sm text-text-secondary">
           {formatCurrentDay(timezone).toLocaleLowerCase("pt-BR")}
         </p>
@@ -26,10 +21,7 @@ export default function FocusPage({ actionTasks, board, dailyTasks, timezone }) 
       <StatusNotice status={board.status} />
 
       <section className="grid gap-3" aria-labelledby="focus-tasks-title">
-        <h2
-          id="focus-tasks-title"
-          className="m-0 text-base font-semibold normal-case text-text-primary"
-        >
+        <h2 id="focus-tasks-title" className="m-0 text-sm font-medium text-text-secondary">
           Tarefas de hoje
         </h2>
 
@@ -41,15 +33,13 @@ export default function FocusPage({ actionTasks, board, dailyTasks, timezone }) 
         )}
 
         {!board.taskLoading && dailyTasks.length > 0 && (
-          <div className="grid border-t border-border">
+          <div className="work-surface grid">
             {dailyTasks.map((task) => (
               <TaskCard
                 key={task.id}
                 completing={board.completeLoadingId === task.id}
-                failing={board.failLoadingId === task.id}
                 task={task}
                 onComplete={() => board.completeTask(task)}
-                onFail={() => board.failTask(task.id)}
                 timezone={timezone}
                 variant="focus"
               />

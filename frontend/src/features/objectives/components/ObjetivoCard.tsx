@@ -1,4 +1,7 @@
 import React from "react"
+import { CalendarDays, Check, Plus, Circle, ListTodo } from "lucide-react"
+import ActionsMenu from "../../../components/ui/ActionsMenu"
+import Badge from "../../../components/ui/Badge"
 
 import Button from "../../../components/ui/Button"
 import { normalizeTaskDate } from "../../calendar/calendarUtils"
@@ -13,7 +16,7 @@ const statusLabels = {
 const taskStatus = {
   PENDENTE: { label: "Em aberto", className: "text-text-secondary" },
   CONCLUIDA: { label: "Concluída", className: "text-success" },
-  FALHA: { label: "Falha registrada", className: "text-danger" },
+  NAO_REALIZADA: { label: "Não realizada", className: "text-text-muted" },
 }
 
 function formatDateOnly(value, fallback) {
@@ -52,138 +55,130 @@ export default function ObjetivoCard({
 }) {
   const targetDate = objetivo.data_alvo ? formatDateOnly(objetivo.data_alvo, "") : ""
 
+  const menuItems = [
+    { label: "Editar objetivo", onSelect: onEdit },
+    ...(onMoveToTop ? [{ label: "Mover para o início", onSelect: onMoveToTop }] : []),
+    ...Object.entries(statusLabels)
+      .filter(([value]) => value !== objetivo.status)
+      .map(([value, label]) => ({
+        label: `Status: ${label}`,
+        onSelect: () => onUpdateStatus(value),
+      })),
+    { label: "Remover objetivo", onSelect: onDelete, danger: true },
+  ]
   return (
-    <article className="grid gap-5 border-b border-border py-6 sm:py-7">
-      <header className="grid gap-3">
-        <div className="min-w-0">
-          <h2 className="m-0 max-w-3xl break-words text-xl font-semibold leading-tight tracking-tight text-text-primary sm:text-2xl">
+    <article className="work-surface min-w-0">
+      <div className="p-5 sm:p-6">
+        <header className="flex items-start justify-between gap-3">
+          <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
+            <Badge variant={objetivo.status === "concluido" ? "success" : "neutral"}>
+              {statusLabels[objetivo.status] || objetivo.status}
+            </Badge>
+            {targetDate && (
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays size={14} aria-hidden="true" />
+                {targetDate}
+              </span>
+            )}
+          </div>
+          <ActionsMenu
+            label={`Ações do objetivo: ${objetivo.titulo}`}
+            disabled={loading}
+            items={menuItems}
+          />
+        </header>
+        <div className="mt-3 max-w-2xl">
+          <h2 className="m-0 break-words text-xl font-semibold leading-snug tracking-tight text-text-primary">
             {objetivo.titulo}
           </h2>
           {objetivo.descricao && (
-            <p className="mt-3 mb-0 max-w-3xl break-words text-sm leading-6 text-text-secondary sm:text-base">
+            <p className="mt-3 mb-0 whitespace-pre-line break-words text-sm leading-6 text-text-secondary">
               {objetivo.descricao}
             </p>
           )}
         </div>
-      </header>
-
-      <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-        <label
-          className="grid gap-1 text-xs font-medium text-text-secondary"
-          htmlFor={`objetivo-status-${objetivo.id}`}
-        >
-          Status
-          <select
-            className="min-h-9 rounded-control border border-control-border bg-surface px-2 text-sm font-medium text-text-primary focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:bg-app disabled:text-text-secondary disabled:opacity-70"
+        {objetivo.status !== "concluido" && objetivo.status !== "abandonado" && (
+          <Button
+            className="mt-4"
             disabled={loading}
-            id={`objetivo-status-${objetivo.id}`}
-            value={objetivo.status}
-            onChange={(event) => onUpdateStatus(event.target.value)}
+            size="small"
+            variant="ghost"
+            onClick={() => onUpdateStatus("concluido")}
           >
-            {Object.entries(statusLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        {targetDate && (
-          <p className="m-0 pb-2 text-sm text-text-secondary">
-            <span className="font-medium text-text-primary">Prazo </span>
-            {targetDate}
-          </p>
+            <Check size={16} aria-hidden="true" />
+            Concluir objetivo
+          </Button>
         )}
       </div>
-
       {tasksEnabled && (
         <section
-          className="grid gap-3 border-t border-border pt-5"
-          aria-labelledby={`objetivo-orders-${objetivo.id}`}
+          aria-label={`Tarefas de ${objetivo.titulo}`}
+          className="rounded-b-card border-t border-border bg-surface-subtle px-5 py-3 sm:px-6"
         >
-          <h3
-            id={`objetivo-orders-${objetivo.id}`}
-            className="m-0 text-sm font-semibold text-text-primary"
-          >
-            Tarefas vinculadas
-          </h3>
+          {tasks.length > 0 && (
+            <header className="flex items-center justify-between gap-3">
+              <h3 className="m-0 flex items-center gap-2 text-xs font-semibold text-text-secondary">
+                <ListTodo size={15} aria-hidden="true" />
+                Tarefas
+              </h3>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onCreateTask}
+                aria-label={`Adicionar tarefa a ${objetivo.titulo}`}
+                title="Adicionar tarefa"
+              >
+                <Plus size={18} aria-hidden="true" />
+              </Button>
+            </header>
+          )}
           {tasksLoading ? (
-            <p className="m-0 text-sm text-text-secondary">Carregando tarefas vinculadas…</p>
+            <p role="status" className="m-0 py-3 text-sm text-text-secondary">
+              Carregando tarefas…
+            </p>
           ) : tasksError ? (
-            <div className="grid gap-2" role="status">
-              <p className="m-0 text-sm text-text-secondary">
-                Tarefas vinculadas indisponíveis. {tasksError} Você pode continuar administrando
-                este objetivo.
-              </p>
+            <div role="status" className="grid gap-2">
+              <p className="m-0 text-sm text-text-secondary">Tarefas indisponíveis. {tasksError}</p>
               <Button variant="ghost" onClick={onRetryTasks}>
                 Tentar novamente
               </Button>
             </div>
           ) : tasks.length > 0 ? (
-            <ul className="m-0 grid list-none border-y border-border p-0">
+            <ul className="m-0 grid list-none p-0">
               {tasks.map((task) => {
                 const status = getTaskStatus(task)
-                const taskDate = task?.prazo ? formatDateOnly(task.prazo, "") : ""
                 return (
                   <li
-                    className="flex flex-col gap-1 border-b border-border py-3 last:border-b-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-5"
                     key={task.id}
+                    className="flex items-start gap-2 border-t border-border py-2.5 first:border-0"
                   >
-                    <span className="min-w-0 break-words text-sm font-medium text-text-primary">
-                      {task.titulo || "Tarefa sem título"}
+                    <span className="mt-1 text-text-muted" aria-hidden="true">
+                      {task.status_code === "CONCLUIDA" ? (
+                        <Check size={14} />
+                      ) : (
+                        <Circle size={14} />
+                      )}
                     </span>
-                    <span className="flex shrink-0 flex-wrap gap-x-3 text-xs text-text-secondary">
-                      {taskDate && <span>{taskDate}</span>}
-                      <span className={status.className}>{status.label}</span>
+                    <span className="min-w-0 flex-1 break-words text-sm leading-5 text-text-secondary">
+                      {task.titulo}
+                      <span className="sr-only"> — {status.label}</span>
                     </span>
+                    {task.status_code === "NAO_REALIZADA" && (
+                      <span className="text-xs text-text-muted">Não realizada</span>
+                    )}
                   </li>
                 )
               })}
             </ul>
-          ) : (
-            <p className="m-0 text-sm text-text-secondary">Nenhuma tarefa vinculada.</p>
+          ) : null}
+          {tasks.length === 0 && (
+            <Button size="small" variant="ghost" onClick={onCreateTask}>
+              <Plus size={16} aria-hidden="true" />
+              Adicionar tarefa
+            </Button>
           )}
-          <Button
-            className="justify-self-start"
-            size="small"
-            variant="secondary"
-            onClick={onCreateTask}
-          >
-            Nova tarefa vinculada
-          </Button>
         </section>
       )}
-
-      <div className="flex flex-wrap gap-1 border-t border-border pt-4">
-        <Button
-          className="max-sm:min-h-11"
-          disabled={loading}
-          size="small"
-          variant="ghost"
-          onClick={onEdit}
-        >
-          Editar
-        </Button>
-        {onMoveToTop && (
-          <Button
-            className="max-sm:min-h-11"
-            disabled={loading}
-            size="small"
-            variant="ghost"
-            onClick={onMoveToTop}
-          >
-            Mover para o início
-          </Button>
-        )}
-        <Button
-          className="max-sm:min-h-11"
-          disabled={loading}
-          size="small"
-          variant="danger"
-          onClick={onDelete}
-        >
-          Remover
-        </Button>
-      </div>
     </article>
   )
 }

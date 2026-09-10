@@ -15,7 +15,7 @@ export default function StatusNotice({ status }) {
   return (
     <p
       aria-live={isError ? "assertive" : "polite"}
-      className={`m-0 border-l-2 px-3 py-2 text-sm leading-6 ${variants[status.type] || "border-border-strong bg-surface-subtle text-text-secondary"}`}
+      className={`m-0 rounded-control border-l-2 px-3 py-2 text-sm leading-6 ${variants[status.type] || "border-border-strong bg-surface-subtle text-text-secondary"}`}
       role={isError ? "alert" : "status"}
     >
       {status.message}

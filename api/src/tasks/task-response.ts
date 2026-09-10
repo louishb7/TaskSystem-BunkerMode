@@ -1,3 +1,5 @@
+import { OperationalCalendarService } from "../calendar/operational-calendar.service";
+
 import { auditoria_eventos } from "@prisma/client";
 
 import {
@@ -29,10 +31,7 @@ function isPending(task: TaskRecord): boolean {
 }
 
 function isFinalized(task: TaskRecord): boolean {
-  return (
-    task.status === TASK_STATUS.completed ||
-    task.status === TASK_STATUS.failed
-  );
+  return task.status === TASK_STATUS.completed;
 }
 
 export function taskPermissions(
@@ -47,7 +46,6 @@ export function taskPermissions(
     can_complete: owned && pending,
     can_edit: owned && pending,
     can_delete: owned && pending && !recurring,
-    can_fail: owned && pending,
     can_pin: owned && pending,
     can_view_history: owned && isFinalized(task),
     can_reopen: canReopenTask(task, user),
@@ -57,8 +55,14 @@ export function taskPermissions(
 export function toTaskResponse(
   task: TaskRecord,
   user: TaskUser,
+  now = new Date(),
 ): TaskResponse {
   const status = task.status as keyof typeof TASK_STATUS_LABEL;
+  const notPerformed =
+    task.status === TASK_STATUS.pending &&
+    task.prazo !== null &&
+    task.prazo.toISOString().slice(0, 10) <
+      new OperationalCalendarService().currentDateFor(now, user.timezone);
   const recurrence = task.serie_recorrencia
     ? {
         series_id: task.serie_recorrencia.recurrence_series_id,
@@ -75,13 +79,12 @@ export function toTaskResponse(
     prazo: dateOnly(task.prazo),
     instrucao: task.instrucao,
     status: task.status as TaskResponse["status"],
-    status_code: task.status as TaskResponse["status_code"],
-    status_label: TASK_STATUS_LABEL[status] ?? task.status,
+    status_code: notPerformed ? "NAO_REALIZADA" : (task.status as TaskResponse["status_code"]),
+    status_label: notPerformed ? "Não realizada" : TASK_STATUS_LABEL[status] ?? task.status,
     is_pinned: task.is_pinned,
     created_at: task.created_at.toISOString(),
     updated_at: task.updated_at.toISOString(),
     completed_at: dateTime(task.completed_at),
-    failed_at: dateTime(task.failed_at),
     user_id: task.responsavel_id,
     criada_por_id: task.criada_por_id,
     responsavel_id: task.responsavel_id,

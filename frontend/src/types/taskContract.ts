@@ -2,7 +2,6 @@ const REQUIRED_PERMISSION_KEYS = Object.freeze([
   "can_complete",
   "can_edit",
   "can_delete",
-  "can_fail",
   "can_pin",
   "can_view_history",
   "can_reopen",
@@ -14,7 +13,7 @@ export type TaskPermissions = Record<TaskPermissionKey, boolean>
 
 export type TaskPriority = 1 | 2 | 3
 
-export type TaskStatus = "PENDENTE" | "CONCLUIDA" | "FALHA"
+export type TaskStatus = "PENDENTE" | "CONCLUIDA"
 
 export type TaskRecurrencePolicy = "sem_termino" | "ate_data" | "ate_objetivo"
 
@@ -32,13 +31,12 @@ export type Task = {
   prioridade: TaskPriority
   prazo: string | null
   status: TaskStatus
-  status_code: TaskStatus
+  status_code: TaskStatus | "NAO_REALIZADA"
   status_label: string
   is_pinned: boolean
   created_at: string
   updated_at: string
   completed_at: string | null
-  failed_at: string | null
   user_id: number
   responsavel_id: number
   criada_por_id: number
@@ -76,7 +74,7 @@ export function assertTaskContract(task: unknown): Task {
     throw buildContractError("tarefa com prioridade inválida")
   }
 
-  if (!["PENDENTE", "CONCLUIDA", "FALHA"].includes(candidate.status_code as string)) {
+  if (!["PENDENTE", "CONCLUIDA", "NAO_REALIZADA"].includes(candidate.status_code as string)) {
     throw buildContractError("tarefa com status_code inválido")
   }
 

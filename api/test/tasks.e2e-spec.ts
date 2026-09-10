@@ -32,7 +32,6 @@ function task(overrides: Partial<TaskRecord> = {}): TaskRecord {
     created_at: new Date("2026-04-24T12:00:00.000Z"),
     updated_at: new Date("2026-04-24T12:00:00.000Z"),
     completed_at: null,
-    failed_at: null,
     recurrence_series_id: null,
     criada_por_id: 7,
     responsavel_id: 7,
@@ -73,7 +72,7 @@ function prismaMock() {
 describe("Tasks clean domain", () => {
   const calendar = new OperationalCalendarService();
 
-  describe.each(["completed_at", "failed_at"] as const)("operational day of %s", (field) => {
+  describe.each(["completed_at"] as const)("operational day of %s", (field) => {
     it.each([
       ["America/Recife", "2026-09-08T15:00:00Z", "2026-09-08T16:00:00Z", true],
       ["America/Recife", "2026-09-09T01:00:00Z", "2026-09-09T02:00:00Z", true],
@@ -87,7 +86,7 @@ describe("Tasks clean domain", () => {
       try {
         const prisma = prismaMock();
         const resultTask = task({ prazo: new Date("2026-01-01T00:00:00Z"),
-          status: field === "completed_at" ? TASK_STATUS.completed : TASK_STATUS.failed,
+          status: TASK_STATUS.completed,
           [field]: new Date(event as string) });
         prisma.missoes.findMany.mockResolvedValue([resultTask]);
         const service = new TasksService(prisma as never, calendar);
@@ -115,11 +114,11 @@ describe("Tasks clean domain", () => {
     } finally { jest.useRealTimers(); }
   });
 
-  it.each([TASK_STATUS.completed, TASK_STATUS.failed])("reopens %s explicitly, preserving task data and audit history", async (status) => {
+  it.each([TASK_STATUS.completed])("reopens %s explicitly, preserving task data and audit history", async (status) => {
     const prisma = prismaMock();
     const original = task({ status, objetivo_id: 3, recurrence_series_id: 21,
-      completed_at: status === TASK_STATUS.completed ? new Date() : null,
-      failed_at: status === TASK_STATUS.failed ? new Date() : null });
+      completed_at: new Date() });
+
     prisma.missoes.findFirst.mockResolvedValue(original);
     prisma.missoes.update.mockImplementation(async ({ data }) => ({ ...original, ...data }));
     prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
@@ -128,7 +127,7 @@ describe("Tasks clean domain", () => {
     expect(toTaskResponse(original, user({ usuario_id: 99 })).permissions.can_reopen).toBe(false);
     await expect(service.update(10, { status: "PENDENTE" }, user())).rejects.toMatchObject({ status: 400 });
     const result = await service.reopen(10, user());
-    expect(result).toEqual({ ...original, status: TASK_STATUS.pending, completed_at: null, failed_at: null });
+    expect(result).toEqual({ ...original, status: TASK_STATUS.pending, completed_at: null });
     expect(toTaskResponse(result, user()).permissions.can_reopen).toBe(false);
     expect(prisma.auditoria_eventos.create).toHaveBeenCalledWith({ data: expect.objectContaining({ acao: "tarefa_reaberta", missao_id: 10, usuario_id: 7 }) });
     expect(prisma.auditoria_eventos.deleteMany).not.toHaveBeenCalled();
@@ -148,7 +147,7 @@ describe("Tasks clean domain", () => {
   });
 
   it("maps the task contract consumed by the web", () => {
-    const response = toTaskResponse(task(), user());
+    const response = toTaskResponse(task(), user(), new Date("2026-04-25T12:00:00Z"));
 
     expect(response).toMatchObject({
       id: 10,
@@ -175,7 +174,6 @@ describe("Tasks clean domain", () => {
         "created_at",
         "updated_at",
         "completed_at",
-        "failed_at",
         "user_id",
         "criada_por_id",
         "responsavel_id",
@@ -188,7 +186,6 @@ describe("Tasks clean domain", () => {
       can_complete: true,
       can_edit: true,
       can_delete: true,
-      can_fail: true,
       can_pin: true,
       can_view_history: false,
       can_reopen: false,
@@ -205,7 +202,6 @@ describe("Tasks clean domain", () => {
       can_complete: false,
       can_edit: false,
       can_delete: false,
-      can_fail: false,
       can_pin: false,
       can_view_history: false,
       can_reopen: false,
@@ -219,12 +215,11 @@ describe("Tasks clean domain", () => {
       status: TASK_STATUS.completed,
       completed_at: new Date("2026-08-13T12:00:00.000Z"),
     });
-    const failed = task({
+    const overdue = task({
       missao_id: 12,
-      status: TASK_STATUS.failed,
-      failed_at: new Date("2026-08-13T12:00:00.000Z"),
+      status: TASK_STATUS.pending,
     });
-    prisma.missoes.findMany.mockResolvedValue([task(), completed, failed]);
+    prisma.missoes.findMany.mockResolvedValue([task(), completed, overdue]);
     const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
@@ -233,7 +228,7 @@ describe("Tasks clean domain", () => {
     await expect(service.listForTasksBoard(user())).resolves.toEqual([
       task(),
       completed,
-      failed,
+      overdue,
     ]);
     expect(prisma.series_recorrencia.findMany).not.toHaveBeenCalled();
     expect(prisma.missoes.findMany).toHaveBeenCalledWith({
@@ -249,8 +244,9 @@ describe("Tasks clean domain", () => {
 
     prisma.series_recorrencia.findMany.mockClear();
     await expect(service.listHistorical(user())).resolves.toEqual([
+      task(),
       completed,
-      failed,
+      overdue,
     ]);
     expect(prisma.series_recorrencia.findMany).not.toHaveBeenCalled();
     await service.listDailyOperational(user());
@@ -578,7 +574,6 @@ describe("Tasks clean domain", () => {
     expect(secondBoard).toEqual(firstBoard);
     expect(overdue).toMatchObject({
       status: TASK_STATUS.pending,
-      failed_at: null,
     });
     expect(prisma.$transaction).not.toHaveBeenCalled();
     expect(prisma.missoes.update).not.toHaveBeenCalled();
@@ -587,11 +582,9 @@ describe("Tasks clean domain", () => {
     jest.useRealTimers();
   });
 
-  it("preserves completed and failed tasks in history by allowing delete only while pending", async () => {
+  it("preserves completed tasks in history by allowing delete only while pending", async () => {
     const prisma = prismaMock();
-    prisma.missoes.findFirst.mockResolvedValue(
-      task({ status: TASK_STATUS.failed }),
-    );
+    prisma.missoes.findFirst.mockResolvedValue(task({status:TASK_STATUS.completed}));
     const service = new TasksService(
       prisma as unknown as PrismaService,
       calendar,
@@ -794,7 +787,7 @@ describe("Tasks clean domain", () => {
     },
   );
 
-  it.each(["complete", "fail"] as const)(
+  it.each(["complete"] as const)(
     "records %s without modifying the goal or series",
     async (action) => {
       const prisma = prismaMock();
@@ -809,21 +802,35 @@ describe("Tasks clean domain", () => {
       );
       const service = new TasksService(prisma as never, calendar);
       const result = await service[action](10, user());
-      expect(result.status).toBe(action === "complete" ? "CONCLUIDA" : "FALHA");
+      expect(result.status).toBe("CONCLUIDA");
       expect(result.completed_at).toEqual(
         action === "complete" ? expect.any(Date) : null,
-      );
-      expect(result.failed_at).toEqual(
-        action === "fail" ? expect.any(Date) : null,
       );
       expect(prisma.objetivos.findFirst).not.toHaveBeenCalled();
       expect(prisma.series_recorrencia.updateMany).not.toHaveBeenCalled();
       expect(prisma.auditoria_eventos.create).toHaveBeenCalledTimes(1);
-      if (action === "fail") {
-        expect(prisma.auditoria_eventos.create).toHaveBeenCalledWith({
-          data: expect.objectContaining({ acao: "tarefa_nao_realizada" }),
-        });
-      }
     },
   );
 });
+
+describe("Derived unperformed task state", () => {
+  it.each([
+    ["2026-09-08", "PENDENTE", "NAO_REALIZADA"],
+    ["2026-09-09", "PENDENTE", "PENDENTE"],
+    ["2026-09-10", "PENDENTE", "PENDENTE"],
+    ["2026-09-08", "CONCLUIDA", "CONCLUIDA"],
+  ])("derives %s / %s without persisting a result", (date, status, expected) => {
+    const record = task({prazo: new Date(date + "T00:00:00Z"),status})
+    const response = toTaskResponse(record, user(), new Date("2026-09-09T15:00:00Z"))
+    expect(response.status_code).toBe(expected)
+    expect(record.status).toBe(status)
+    expect(response).not.toHaveProperty("failed_at")
+    expect(response.permissions).not.toHaveProperty("can_fail")
+  })
+  it("changes at local midnight and leaves undated tasks pending", () => {
+    const record = task({prazo: new Date("2026-09-08T00:00:00Z")})
+    expect(toTaskResponse(record, user(), new Date("2026-09-09T02:59:00Z")).status_code).toBe("PENDENTE")
+    expect(toTaskResponse(record, user(), new Date("2026-09-09T03:00:00Z")).status_code).toBe("NAO_REALIZADA")
+    expect(toTaskResponse(task({prazo:null}), user()).status_code).toBe("PENDENTE")
+  })
+})

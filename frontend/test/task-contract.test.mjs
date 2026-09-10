@@ -15,7 +15,7 @@ const permissions = {
   can_complete: true,
   can_edit: true,
   can_delete: true,
-  can_fail: true,
+
   can_pin: true,
   can_view_history: false,
   can_reopen: false,
@@ -35,7 +35,7 @@ function task(overrides = {}) {
     created_at: "2026-09-08T12:00:00.000Z",
     updated_at: "2026-09-08T12:00:00.000Z",
     completed_at: null,
-    failed_at: null,
+
     user_id: 1,
     criada_por_id: 1,
     responsavel_id: 1,

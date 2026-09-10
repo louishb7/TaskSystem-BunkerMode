@@ -1,3 +1,4 @@
+import { Focus } from "lucide-react"
 import React, { useMemo, useState } from "react"
 
 import ConfirmDialog from "../../../components/ui/ConfirmDialog"
@@ -89,7 +90,7 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
 
   return (
     <>
-      <section className="grid gap-6">
+      <section className="mx-auto grid max-w-[900px] gap-5">
         <PageHeader
           actions={
             <Button
@@ -97,14 +98,14 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
               variant="secondary"
               onClick={() => setShowFocusConfirm(true)}
             >
-              Iniciar foco
+              <Focus size={18} aria-hidden="true" />
+              Foco
             </Button>
           }
-          description="Planeje e organize suas tarefas."
           title="Tarefas"
         />
 
-        <div className="grid gap-0">
+        <div className="grid gap-5">
           <WeekPanel
             onNextWeek={() => setSelectedDate((current) => addDays(current, 7))}
             onPreviousWeek={() => setSelectedDate((current) => addDays(current, -7))}
@@ -115,19 +116,17 @@ export default function TasksPage({ board, onStartFocus, onUnauthorized, token, 
             weekDays={weekDays}
           />
 
-          <div className="pt-5">
+          <div className="empty:hidden">
             <StatusNotice status={board.status} />
           </div>
 
           <TasksPanel
             completeLoadingId={board.completeLoadingId}
-            failLoadingId={board.failLoadingId}
             loading={board.taskLoading}
             onCompleteTask={board.completeTask}
             onCreateTask={openCreateForm}
             onDeleteTask={setDeleteTarget}
             onEditTask={openEditForm}
-            onFailTask={board.failTask}
             onReopenTask={board.reopenTask}
             onTogglePin={board.toggleTaskPin}
             pinLoadingId={board.pinLoadingId}

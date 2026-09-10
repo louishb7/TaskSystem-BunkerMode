@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react"
+import { ArrowUpRight, ListTodo, Compass, Circle } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { getErrorMessage } from "../../../api/httpClient"
@@ -22,53 +23,59 @@ export function selectHomeObjectives(objetivos = []) {
 function CompartmentLink({ children, to }) {
   return (
     <Link
-      className="inline-flex min-h-11 items-center text-sm font-semibold text-text-primary underline decoration-border-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+      className="inline-flex min-h-11 items-center gap-2 rounded-control px-2 text-sm font-semibold text-text-primary no-underline hover:bg-surface-subtle"
       to={to}
     >
       {children}
+      <ArrowUpRight size={18} aria-hidden="true" />
     </Link>
   )
 }
-
+function PreviewState({ preview, empty }) {
+  if (preview.loading)
+    return (
+      <p role="status" className="m-0 py-5 text-sm text-text-secondary">
+        Carregando…
+      </p>
+    )
+  if (preview.error) return <StatusNotice status={{ type: "error", message: preview.error }} />
+  if (!preview.items.length) return <p className="m-0 py-5 text-sm text-text-secondary">{empty}</p>
+  return null
+}
 function TasksCompartment({ preview }) {
   return (
-    <section aria-labelledby="home-tasks-title" className="grid content-start gap-5 py-7 lg:py-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="m-0 text-xs font-semibold tracking-[0.16em] text-text-muted uppercase">
-            Tarefas
-          </p>
-          <h2 id="home-tasks-title" className="mt-2 mb-0 text-xl font-semibold tracking-tight">
-            Hoje
-          </h2>
+    <section aria-labelledby="home-tasks-title" className="work-surface p-5 sm:p-6">
+      <header className="mb-5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-peripheral text-text-primary">
+            <ListTodo size={21} aria-hidden="true" />
+          </span>
+          <div>
+            <h2 id="home-tasks-title" className="m-0 text-base font-semibold">
+              Tarefas
+            </h2>
+            <span className="text-xs text-text-secondary">Hoje</span>
+          </div>
         </div>
-        <CompartmentLink to={APP_ROUTES.TASKS}>Ver tarefas</CompartmentLink>
-      </div>
-
-      {preview.loading && (
-        <p aria-live="polite" className="m-0 py-4 text-sm text-text-secondary" role="status">
-          Carregando tarefas de hoje…
-        </p>
-      )}
-
-      {!preview.loading && preview.error && (
-        <StatusNotice status={{ type: "error", message: preview.error }} />
-      )}
-
-      {!preview.loading && !preview.error && preview.items.length === 0 && (
-        <p className="m-0 border-t border-border py-5 text-sm leading-6 text-text-secondary">
-          Nenhuma tarefa aberta para hoje.
-        </p>
-      )}
-
-      {!preview.loading && !preview.error && preview.items.length > 0 && (
-        <ul className="m-0 grid list-none border-t border-border">
+        <Link
+          to={APP_ROUTES.TASKS}
+          aria-label="Abrir Tarefas"
+          title="Abrir Tarefas"
+          className="grid size-11 place-items-center rounded-control text-text-secondary hover:bg-peripheral"
+        >
+          <ArrowUpRight size={21} aria-hidden="true" />
+        </Link>
+      </header>
+      <PreviewState preview={preview} empty="Nenhuma tarefa aberta para hoje." />
+      {!preview.loading && !preview.error && (
+        <ul className="m-0 list-none p-0">
           {preview.items.map((task) => (
             <li
-              className="border-b border-border py-3 text-sm font-medium text-text-primary"
               key={task.id}
+              className="flex items-start gap-3 border-t border-border py-4 text-sm font-medium leading-6"
             >
-              {task.titulo}
+              <Circle size={17} className="mt-1 text-text-muted" aria-hidden="true" />
+              <span className="min-w-0 break-words">{task.titulo}</span>
             </li>
           ))}
         </ul>
@@ -76,46 +83,36 @@ function TasksCompartment({ preview }) {
     </section>
   )
 }
-
 function ObjectivesCompartment({ preview }) {
   return (
-    <section
-      aria-labelledby="home-objectives-title"
-      className="grid content-start gap-6 py-7 lg:py-0"
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="m-0 text-xs font-semibold tracking-[0.16em] text-text-muted uppercase">
-            Objetivos
-          </p>
-          <h2 id="home-objectives-title" className="mt-2 mb-0 text-xl font-semibold tracking-tight">
-            Em andamento
-          </h2>
+    <section aria-labelledby="home-objectives-title" className="work-surface p-5 sm:p-6">
+      <header className="mb-5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-peripheral text-text-primary">
+            <Compass size={21} aria-hidden="true" />
+          </span>
+          <div>
+            <h2 id="home-objectives-title" className="m-0 text-base font-semibold">
+              Objetivos
+            </h2>
+            <span className="text-xs text-text-secondary">Em andamento</span>
+          </div>
         </div>
-        <CompartmentLink to={APP_ROUTES.OBJECTIVES}>Ver objetivos</CompartmentLink>
-      </div>
-
-      {preview.loading && (
-        <p aria-live="polite" className="m-0 py-4 text-sm text-text-secondary" role="status">
-          Carregando objetivos…
-        </p>
-      )}
-
-      {!preview.loading && preview.error && (
-        <StatusNotice status={{ type: "error", message: preview.error }} />
-      )}
-
-      {!preview.loading && !preview.error && preview.items.length === 0 && (
-        <p className="m-0 border-t border-border py-5 text-sm leading-6 text-text-secondary">
-          Nenhum objetivo em andamento.
-        </p>
-      )}
-
-      {!preview.loading && !preview.error && preview.items.length > 0 && (
-        <ol className="m-0 grid list-none border-t border-border">
+        <Link
+          to={APP_ROUTES.OBJECTIVES}
+          aria-label="Abrir Objetivos"
+          title="Abrir Objetivos"
+          className="grid size-11 place-items-center rounded-control text-text-secondary hover:bg-peripheral"
+        >
+          <ArrowUpRight size={21} aria-hidden="true" />
+        </Link>
+      </header>
+      <PreviewState preview={preview} empty="Nenhum objetivo em andamento." />
+      {!preview.loading && !preview.error && (
+        <ol className="m-0 grid list-none gap-5 p-0">
           {preview.items.map((objetivo) => (
-            <li className="border-b border-border py-4" key={objetivo.id}>
-              <h3 className="m-0 break-words text-base font-semibold text-text-primary">
+            <li key={objetivo.id} className="border-l-2 border-selection-border pl-4">
+              <h3 className="m-0 break-words text-lg font-semibold leading-snug tracking-tight">
                 {objetivo.titulo}
               </h3>
               {objetivo.descricao && (
@@ -224,48 +221,29 @@ export default function HomePage({ onUnauthorized, token, user }) {
   }, [objectivesEnabled, onUnauthorized, token])
 
   return (
-    <section className="grid gap-0">
-      <header className="grid gap-5 border-b border-border pb-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-        <div className="max-w-xl">
-          <h1 className="m-0 text-3xl font-semibold tracking-tight">Seu Bunker</h1>
-          <p className="mt-2 mb-0 text-base leading-6 text-text-secondary">
-            Veja o que está presente nos seus módulos.
-          </p>
-        </div>
-        {enabledModules.length > 0 && (
-          <Link
-            className="inline-flex min-h-11 items-center text-sm font-medium text-text-secondary underline decoration-border underline-offset-4 transition-colors hover:text-text-primary hover:decoration-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-            to={APP_ROUTES.SETTINGS}
-          >
-            Configurar módulos
-          </Link>
-        )}
+    <section className="grid gap-7">
+      <header className="pt-2 pb-3">
+        <p className="m-0 mb-2 text-sm text-text-secondary">{user?.usuario}</p>
+        <h1 className="m-0 text-3xl font-semibold tracking-tight">Seu Bunker</h1>
       </header>
-
       {enabledModules.length === 0 ? (
-        <section className="grid max-w-xl gap-3 py-8" aria-labelledby="home-empty-title">
-          <h2 id="home-empty-title" className="m-0 text-xl font-semibold tracking-tight">
+        <section className="work-surface grid gap-3 p-6" aria-labelledby="home-empty-title">
+          <h2 id="home-empty-title" className="m-0 text-lg font-semibold">
             Nenhuma ferramenta habilitada
           </h2>
-          <p className="m-0 text-sm leading-6 text-text-secondary">
-            Ative Tarefas ou Objetivos para começar a organizar o seu Bunker.
+          <p className="m-0 text-sm text-text-secondary">
+            Ative Tarefas ou Objetivos nas configurações do seu Bunker.
           </p>
-          <CompartmentLink to={APP_ROUTES.SETTINGS}>Abrir configurações</CompartmentLink>
+          <div>
+            <CompartmentLink to={APP_ROUTES.SETTINGS}>Configurações</CompartmentLink>
+          </div>
         </section>
       ) : (
         <div
-          className={`grid ${tasksEnabled && objectivesEnabled ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:gap-10" : "max-w-3xl"}`}
+          className={`grid items-start gap-5 ${tasksEnabled && objectivesEnabled ? "xl:grid-cols-[1fr_1.1fr]" : "max-w-2xl"}`}
         >
           {tasksEnabled && <TasksCompartment preview={tasksPreview} />}
-          {objectivesEnabled && (
-            <div
-              className={
-                tasksEnabled ? "border-t border-border lg:border-t-0 lg:border-l lg:pl-10" : ""
-              }
-            >
-              <ObjectivesCompartment preview={objectivesPreview} />
-            </div>
-          )}
+          {objectivesEnabled && <ObjectivesCompartment preview={objectivesPreview} />}
         </div>
       )}
     </section>

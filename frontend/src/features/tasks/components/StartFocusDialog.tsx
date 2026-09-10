@@ -1,4 +1,5 @@
 import React from "react"
+import { Focus } from "lucide-react"
 
 import Button from "../../../components/ui/Button"
 import Dialog from "../../../components/ui/Dialog"
@@ -16,7 +17,7 @@ export default function StartFocusDialog({
   )
   const pendingTasks = todayTasks.filter((task) => {
     const statusCode = String(task?.status_code || "").toUpperCase()
-    return !statusCode.startsWith("FALHA") && statusCode !== "CONCLUIDA"
+    return statusCode === "PENDENTE"
   })
 
   return (
@@ -50,6 +51,7 @@ export default function StartFocusDialog({
             Cancelar
           </Button>
           <Button loading={loading} onClick={onConfirm}>
+            <Focus size={17} aria-hidden="true" />
             {loading ? "Iniciando" : "Iniciar foco"}
           </Button>
         </div>

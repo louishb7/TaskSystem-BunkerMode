@@ -31,18 +31,23 @@ function requireText(value: unknown, message: string): string {
 }
 
 function normalizeEmail(value: unknown): string {
-  const email = requireText(value, "E-mail inválido.").toLowerCase()
-  if (email.length < 5 || !email.includes("@") || email.startsWith("@") || email.endsWith("@") || email.includes(" ")) {
+  const raw = requireText(value, "E-mail inválido.")
+  if (raw.length > 254) {
+    throw new HttpException("E-mail deve ter no máximo 254 caracteres.", HttpStatus.BAD_REQUEST)
+  }
+  const email = raw.toLowerCase()
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new HttpException("E-mail inválido.", HttpStatus.BAD_REQUEST)
   }
   return email
 }
 
 function normalizeUsername(value: unknown): string {
-  const usuario = requireText(value, "Usuário deve ter pelo menos 3 caracteres.").toLowerCase()
-  if (usuario.length < 3) {
-    throw new HttpException("Usuário deve ter pelo menos 3 caracteres.", HttpStatus.BAD_REQUEST)
+  const raw = requireText(value, "Usuário deve ter entre 3 e 32 caracteres.")
+  if (raw.length < 3 || raw.length > 32) {
+    throw new HttpException("Usuário deve ter entre 3 e 32 caracteres.", HttpStatus.BAD_REQUEST)
   }
+  const usuario = raw.toLowerCase()
   if (!/^[a-z0-9._-]+$/.test(usuario)) {
     throw new HttpException("Usuário deve usar apenas letras, números, ponto, hífen ou sublinhado.", HttpStatus.BAD_REQUEST)
   }
@@ -50,8 +55,11 @@ function normalizeUsername(value: unknown): string {
 }
 
 function normalizePassword(value: unknown, status = HttpStatus.BAD_REQUEST): string {
-  if (typeof value !== "string" || value.length < 8) {
-    throw new HttpException("Senha deve ter pelo menos 8 caracteres.", status)
+  if (
+    typeof value !== "string" || value.length < 6 || value.length > 128 ||
+    !/\p{L}/u.test(value) || !/\p{N}/u.test(value)
+  ) {
+    throw new HttpException("Senha deve ter de 6 a 128 caracteres, com letras e pelo menos um número.", status)
   }
   return value
 }
@@ -105,7 +113,10 @@ export class AuthService {
 
   async login(payload: LoginPayload): Promise<{ access_token: string; token_type: "bearer"; usuario: UserRecord }> {
     const identificador = requireText(payload.email, "Credenciais inválidas.")
-    const senha = normalizePassword(payload.senha, HttpStatus.UNAUTHORIZED)
+    if (identificador.length > 254 || typeof payload.senha !== "string" || payload.senha.length === 0 || payload.senha.length > 128) {
+      throw new HttpException("Credenciais inválidas.", HttpStatus.UNAUTHORIZED)
+    }
+    const senha = payload.senha
     const email = identificador.toLowerCase()
     const usuarioLogin = identificador.toLowerCase()
 

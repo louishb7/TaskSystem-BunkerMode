@@ -18,7 +18,7 @@ export default function EmptyState({
   title,
 }: EmptyStateProps) {
   return (
-    <div className={`grid justify-items-start gap-2 py-6 ${flat ? "" : "border-t border-border"}`}>
+    <div className={`grid justify-items-start gap-2 px-5 py-8 ${flat ? "" : "work-surface"}`}>
       <h3 className="m-0 text-base font-semibold text-text-primary">{title}</h3>
       <p className="m-0 max-w-lg text-sm leading-6 text-text-secondary">{message}</p>
       {actionLabel && onAction && (

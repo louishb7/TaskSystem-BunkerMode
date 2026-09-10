@@ -4,12 +4,8 @@ export function canCompleteInFocus(task) {
   return task?.status_code === TASK_STATUS.PENDENTE && task?.permissions?.can_complete === true
 }
 
-export function canFailInFocus(task) {
-  return task?.permissions?.can_fail === true
-}
-
 export function getActionTasks(tasks) {
-  return tasks.filter((task) => canCompleteInFocus(task) || canFailInFocus(task))
+  return tasks.filter((task) => canCompleteInFocus(task))
 }
 
 export function countCompletedTasks(tasks) {

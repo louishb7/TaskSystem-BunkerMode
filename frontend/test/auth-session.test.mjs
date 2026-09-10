@@ -4,6 +4,9 @@ import { test } from "node:test"
 import vm from "node:vm"
 import ts from "typescript"
 
+const validationExports = {}
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../src/features/auth/authValidation.ts", import.meta.url), "utf8"), {compilerOptions: {module: ts.ModuleKind.CommonJS}}).outputText, {exports: validationExports})
+
 function deferred() {
   let resolve
   const promise = new Promise((done) => {
@@ -61,6 +64,7 @@ function authHarness(api, stored = {}) {
       window: { localStorage, sessionStorage },
       require(path) {
         if (path === "react") return react
+        if (path.endsWith("authValidation")) return validationExports
         if (path.endsWith("bunkermodeApi")) return { api }
         if (path.endsWith("/session")) {
           return { TOKEN_KEY: "bunkermode_token", USER_KEY: "bunkermode_usuario" }

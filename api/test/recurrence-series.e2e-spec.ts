@@ -113,14 +113,14 @@ describeWithDatabase("Recurrence series persistence", () => {
     expect(currentUser.enabled_modules).toEqual(["tasks", "objectives"]);
   });
 
-  it.each(["complete", "fail"] as const)("reopens a persisted %s result without changing series identity", async (action) => {
+  it.each(["complete"] as const)("reopens a persisted %s result without changing series identity", async (action) => {
     const occurrence = await createRecurringTask();
     await tasksService[action](occurrence.missao_id, currentUser);
     const reopened = await tasksService.reopen(occurrence.missao_id, currentUser);
-    expect(reopened).toMatchObject({ status: "PENDENTE", completed_at: null, failed_at: null,
+    expect(reopened).toMatchObject({ status: "PENDENTE", completed_at: null,
       recurrence_series_id: occurrence.recurrence_series_id, prazo: occurrence.prazo });
     const history = await tasksService.taskHistory(occurrence.missao_id, currentUser);
-    expect(history.map((event) => event.acao)).toEqual(["tarefa_recorrente_criada", action === "complete" ? "tarefa_concluida" : "tarefa_nao_realizada", "tarefa_reaberta"]);
+    expect(history.map((event) => event.acao)).toEqual(["tarefa_recorrente_criada", "tarefa_concluida", "tarefa_reaberta"]);
     await tasksService.materializeRecurrences(currentUser);
     expect(await prisma.missoes.count({ where: { recurrence_series_id: occurrence.recurrence_series_id, prazo: occurrence.prazo } })).toBe(1);
   });
@@ -421,14 +421,13 @@ describeWithDatabase("Recurrence series persistence", () => {
     ).resolves.toMatchObject({ prazo: originalDate, recurrence_series_id: seriesId });
   });
 
-  it("reads explicitly materialized recurrence and retains completed and failed outcomes", async () => {
+  it("reads explicitly materialized recurrence and retains completed and pending outcomes", async () => {
     const firstOccurrence = await createRecurringTask();
-    const failedOccurrence = await tasksService.create(
-      { titulo: "Registrar falha", prazo: "2026-08-31" },
+    const pendingOccurrence = await tasksService.create(
+      { titulo: "Revisar conteúdo", prazo: "2026-08-31" },
       currentUser,
     );
     await tasksService.complete(firstOccurrence.missao_id, currentUser);
-    await tasksService.fail(failedOccurrence.missao_id, currentUser);
 
     currentDate = "2026-09-08";
     await tasksService.materializeRecurrences(currentUser);
@@ -448,8 +447,8 @@ describeWithDatabase("Recurrence series persistence", () => {
           status: TASK_STATUS.completed,
         }),
         expect.objectContaining({
-          missao_id: failedOccurrence.missao_id,
-          status: TASK_STATUS.failed,
+          missao_id: pendingOccurrence.missao_id,
+          status: TASK_STATUS.pending,
         }),
       ]),
     );
@@ -499,14 +498,13 @@ describeWithDatabase("Recurrence series persistence", () => {
     expect(finalCount).toBeGreaterThan(initialCount);
   });
 
-  it("continues materializing after one occurrence fails", async () => {
+  it("continues materializing while a previous occurrence remains pending", async () => {
     const firstOccurrence = await createRecurringTask();
     const seriesId = firstOccurrence.recurrence_series_id!;
     const initialCount = await prisma.missoes.count({
       where: { recurrence_series_id: seriesId },
     });
 
-    await tasksService.fail(firstOccurrence.missao_id, currentUser);
     currentDate = "2026-09-08";
     await tasksService.materializeRecurrences(currentUser);
 
@@ -516,7 +514,7 @@ describeWithDatabase("Recurrence series persistence", () => {
     const finalCount = await prisma.missoes.count({
       where: { recurrence_series_id: seriesId },
     });
-    expect(finalized.status).toBe(TASK_STATUS.failed);
+    expect(finalized.status).toBe(TASK_STATUS.pending);
     expect(finalCount).toBeGreaterThan(initialCount);
   });
 
@@ -586,12 +584,11 @@ describeWithDatabase("Recurrence series persistence", () => {
       { titulo: "Concluir", objetivo_id: goal.id },
       currentUser,
     );
-    const failed = await tasksService.create(
-      { titulo: "Falhar", objetivo_id: goal.id },
+    const pending = await tasksService.create(
+      { titulo: "Revisar", objetivo_id: goal.id },
       currentUser,
     );
     await tasksService.complete(completed.missao_id, currentUser);
-    await tasksService.fail(failed.missao_id, currentUser);
     await expect(
       prisma.objetivos.findUniqueOrThrow({ where: { id: goal.id } }),
     ).resolves.toMatchObject({ status: "ativo", concluded_at: null });
@@ -603,14 +600,14 @@ describeWithDatabase("Recurrence series persistence", () => {
     expect(orders).toHaveLength(2);
     expect(orders.map((task) => task.status)).toEqual([
       "CONCLUIDA",
-      "FALHA",
+      "PENDENTE",
     ]);
     expect(orders.every((task) => task.objetivo_id === null)).toBe(true);
     expect(orders[0].completed_at).not.toBeNull();
-    expect(orders[1].failed_at).not.toBeNull();
+    expect(orders[1].completed_at).toBeNull();
     expect(
       await prisma.auditoria_eventos.count({ where: { usuario_id: userId } }),
-    ).toBe(4);
+    ).toBe(3);
   });
 
   it("materializes an until-date series only through its inclusive end date", async () => {
@@ -662,9 +659,8 @@ describeWithDatabase("Recurrence series persistence", () => {
   it.each([
     { status: "invalido" },
     { status: "CONCLUIDA", completed_at: null },
-    { status: "FALHA", failed_at: null },
+    { status: "FALHA" },
     { status: "PENDENTE", completed_at: new Date() },
-    { status: "CONCLUIDA", completed_at: new Date(), failed_at: new Date() },
     { prioridade: 4 },
   ])("preserves database task state checks for %j", async (data) => {
     const order = await createTask(null, "Ordem válida");

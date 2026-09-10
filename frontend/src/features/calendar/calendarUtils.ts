@@ -58,7 +58,7 @@ export function normalizeTaskDate(value) {
 export function taskBelongsToDate(task, selectedDate, timezone) {
   const date = formatDateForApi(selectedDate)
   if (normalizeTaskDate(task?.prazo) === date) return true
-  const event = task?.completed_at ?? task?.failed_at
+  const event = task?.completed_at
   if (!event) return false
   const moment = new Date(event)
   if (Number.isNaN(moment.getTime())) return false

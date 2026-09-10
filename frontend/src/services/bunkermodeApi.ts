@@ -119,12 +119,6 @@ export const api = {
       method: "PATCH",
     })
   },
-  failTask(token, taskId) {
-    return requestTask(`/tarefas/${taskId}/falhar`, {
-      token,
-      method: "POST",
-    })
-  },
   deleteTask(token, taskId) {
     return request(`/tarefas/${taskId}`, { token, method: "DELETE" })
   },

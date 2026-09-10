@@ -1,3 +1,4 @@
+import { validateAuth } from "../authValidation"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { getErrorMessage } from "../../../api/httpClient"
@@ -154,6 +155,12 @@ export function useAuthSession() {
   }, [restoreSession, token])
 
   async function login(payload) {
+    const validation = validateAuth(payload, false)
+    if (validation) {
+      setAuthStatus({ type: "error", message: validation })
+      return
+    }
+
     if (!payload.email || !payload.senha) {
       setAuthStatus({ type: "error", message: "Preencha e-mail ou usuário e senha." })
       return
@@ -186,6 +193,12 @@ export function useAuthSession() {
   }
 
   async function register(payload) {
+    const validation = validateAuth(payload, true)
+    if (validation) {
+      setAuthStatus({ type: "error", message: validation })
+      return
+    }
+
     if (!payload.usuario || !payload.email || !payload.senha) {
       setAuthStatus({ type: "error", message: "Preencha usuário, e-mail e senha." })
       return

@@ -66,7 +66,7 @@ function taskFixture(id, titulo, status = "PENDENTE") {
     created_at: "2026-09-08T12:00:00.000Z",
     updated_at: "2026-09-08T12:00:00.000Z",
     completed_at: status === "CONCLUIDA" ? "2026-09-09T12:00:00.000Z" : null,
-    failed_at: status === "FALHA" ? "2026-09-09T12:00:00.000Z" : null,
+
     user_id: 1,
     responsavel_id: 1,
     criada_por_id: 1,
@@ -76,7 +76,7 @@ function taskFixture(id, titulo, status = "PENDENTE") {
       can_complete: true,
       can_delete: true,
       can_edit: true,
-      can_fail: true,
+
       can_pin: true,
       can_reopen: true,
       can_view_history: true,
@@ -148,16 +148,16 @@ for (const path of ["/", "/tarefas", "/tarefas/foco", "/objetivos", "/configurac
   test(`não autenticado: ${path} redireciona para /auth`, async () => {
     const result = await navigate(path)
     assert.equal(result.path, "/auth")
-    assert.match(result.rendered, /Use seus dados para continuar/)
+    assert.match(result.rendered, /Entrar no Bunker/)
   })
 }
 
 for (const [path, marker] of [
   ["/", "Seu Bunker"],
-  ["/tarefas", "Planeje e organize suas tarefas."],
+  ["/tarefas", "Nova tarefa"],
   ["/tarefas/foco", "Modo Foco"],
-  ["/objetivos", "Defina o que você quer alcançar"],
-  ["/configuracoes", "Escolha as ferramentas"],
+  ["/objetivos", "Novo objetivo"],
+  ["/configuracoes", "Aparência"],
 ]) {
   test(`autenticado com ambos: ${path} permanece acessível`, async () => {
     const result = await navigate(path, users.both)
@@ -216,8 +216,8 @@ test("Home revela recortes independentes dos módulos habilitados", async () => 
     "Construir portfólio",
     "Projetos publicados",
     "Estudar arquitetura",
-    "Ver tarefas",
-    "Ver objetivos",
+
+
   ]) {
     assert.match(result.rendered, new RegExp(marker), JSON.stringify(result.calls))
   }
@@ -244,7 +244,7 @@ test("Home consulta apenas os módulos habilitados e integra estados vazios", as
 
   const none = await navigate("/", users.none)
   assert.match(none.rendered, /Nenhuma ferramenta habilitada/)
-  assert.match(none.rendered, /Abrir configurações/)
+  assert.match(none.rendered, /Configurações/)
   assert.equal(none.calls.some((call) => call.endsWith("/tarefas/dia-operacional")), false)
   assert.equal(none.calls.some((call) => call.endsWith("/objetivos")), false)
 })
