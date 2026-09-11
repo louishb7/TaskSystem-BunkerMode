@@ -8,8 +8,8 @@ import { PrismaService } from "../src/prisma/prisma.service";
 function user(overrides: Partial<UserRecord> = {}): UserRecord {
   return {
     usuario_id: 7,
-    usuario: "general",
-    email: "general@bunker.local",
+    usuario: "usuario-teste",
+    email: "usuario-teste@bunker.local",
     senha_hash: "hash",
     ativo: true,
     enabled_modules: ["tasks", "objectives"],

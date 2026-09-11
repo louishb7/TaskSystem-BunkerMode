@@ -9,8 +9,8 @@ type UserRecord = Awaited<ReturnType<AuthService["register"]>>
 function user(overrides: Partial<UserRecord> = {}): UserRecord {
   return {
     usuario_id: 1,
-    usuario: "general",
-    email: "general@bunker.local",
+    usuario: "usuario-teste",
+    email: "usuario-teste@bunker.local",
     senha_hash: hashPassword("senha123"),
     ativo: true,
     enabled_modules: ["tasks", "objectives"],
@@ -47,21 +47,21 @@ describe("Auth phase 3", () => {
 
   it("registers a user with normalized email and default database fields", async () => {
     const prisma = prismaMock()
-    const createdUser = user({ email: "general@bunker.local" })
+    const createdUser = user({ email: "usuario-teste@bunker.local" })
     prisma.usuarios.create.mockResolvedValue(createdUser)
     const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
 
     const result = await service.register({
-      usuario: " general ",
-      email: " General@Bunker.Local ",
+      usuario: " usuario-teste ",
+      email: " Usuario-Teste@Bunker.Local ",
       senha: "senha123",
     })
 
     expect(result).toBe(createdUser)
     expect(prisma.usuarios.create).toHaveBeenCalledWith({
       data: {
-        usuario: "general",
-        email: "general@bunker.local",
+        usuario: "usuario-teste",
+        email: "usuario-teste@bunker.local",
         senha_hash: expect.stringMatching(/^scrypt\$16384\$8\$1\$/),
       },
     })
@@ -73,21 +73,21 @@ describe("Auth phase 3", () => {
     prisma.usuarios.findUnique.mockResolvedValue(existingUser)
     const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
 
-    const result = await service.login({ email: "GENERAL", senha: "senha123" })
+    const result = await service.login({ email: "USUARIO-TESTE", senha: "senha123" })
 
     expect(result.token_type).toBe("bearer")
     expect(result.access_token.split(".")).toHaveLength(3)
     expect(toUserResponse(result.usuario, false)).toEqual({
       id: 1,
-      usuario: "general",
-      email: "general@bunker.local",
+      usuario: "usuario-teste",
+      email: "usuario-teste@bunker.local",
       enabled_modules: ["tasks", "objectives"],
       timezone: "America/Recife",
       created_at: "2026-04-24T12:00:00.000Z",
       updated_at: "2026-04-24T12:00:00.000Z",
     })
     expect(prisma.usuarios.findUnique).toHaveBeenCalledWith({
-      where: { usuario: "general" },
+      where: { usuario: "usuario-teste" },
     })
   })
 
@@ -95,7 +95,7 @@ describe("Auth phase 3", () => {
     const prisma = prismaMock()
     prisma.usuarios.findUnique.mockResolvedValue(user({ ativo: false }))
     const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
-    const token = new TokenService().generate({ sub: 1, email: "general@bunker.local" })
+    const token = new TokenService().generate({ sub: 1, email: "usuario-teste@bunker.local" })
 
     await expect(service.getUserFromToken(token)).rejects.toMatchObject({ status: 401 })
   })
@@ -105,7 +105,7 @@ describe("Auth phase 3", () => {
     prisma.usuarios.findUnique.mockResolvedValue(user())
     const service = new AuthService(prisma as unknown as PrismaService, new TokenService())
 
-    await expect(service.login({ email: "general@bunker.local", senha: "errada123" })).rejects.toMatchObject({
+    await expect(service.login({ email: "usuario-teste@bunker.local", senha: "errada123" })).rejects.toMatchObject({
       status: 401,
     })
   })
@@ -113,8 +113,8 @@ describe("Auth phase 3", () => {
   it("serializes the complete public user contract", () => {
     expect(toUserResponse(user())).toEqual({
       id: 1,
-      usuario: "general",
-      email: "general@bunker.local",
+      usuario: "usuario-teste",
+      email: "usuario-teste@bunker.local",
       enabled_modules: ["tasks", "objectives"],
       timezone: "America/Recife",
       created_at: "2026-04-24T12:00:00.000Z",

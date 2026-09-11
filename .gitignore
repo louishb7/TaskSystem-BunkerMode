@@ -46,10 +46,11 @@ frontend/.vite/
 *_generated.png
 
 # Documentos locais — não publicar
-*.md
-README.md
 AGENTS.md
 DECISOES.md
 CONCEITO.md
-.codex
-.agents
+MIGRATION_AUDIT.md
+MIGRATION_CHECKLIST.md
+*.local.md
+.codex/
+.agents/

@@ -640,8 +640,8 @@ describe("HTTP application", () => {
     await request(app.getHttpServer())
       .post("/api/v2/auth/register")
       .send({
-        usuario: "general",
-        email: "general@bunker.local",
+        usuario: "usuario-teste",
+        email: "usuario-teste@bunker.local",
         senha: "senha1234",
       })
       .expect(201)
@@ -651,7 +651,7 @@ describe("HTTP application", () => {
 
     const login = await request(app.getHttpServer())
       .post("/api/v2/auth/login")
-      .send({ email: "general", senha: "senha1234" })
+      .send({ email: "usuario-teste", senha: "senha1234" })
       .expect(200);
     const token = login.body.access_token;
     expect(login.body.usuario.enabled_modules).toEqual(["tasks", "objectives"]);
@@ -664,7 +664,7 @@ describe("HTTP application", () => {
       .set("Authorization", `Bearer ${token}`)
       .expect(200)
       .expect((response) => {
-        expect(response.body.usuario).toBe("general");
+        expect(response.body.usuario).toBe("usuario-teste");
         expect(response.body.enabled_modules).toEqual(["tasks", "objectives"]);
         expect(Object.keys(response.body).sort()).toEqual(publicUserKeys);
       });
@@ -676,8 +676,8 @@ describe("HTTP application", () => {
       .expect(200)
       .expect((response) => {
         expect(response.body).toMatchObject({
-          usuario: "general",
-          email: "general@bunker.local",
+          usuario: "usuario-teste",
+          email: "usuario-teste@bunker.local",
           enabled_modules: ["tasks"],
           timezone: "America/Recife",
           ativo: true,
@@ -687,10 +687,10 @@ describe("HTTP application", () => {
     const created = await request(app.getHttpServer())
       .post("/api/v2/tarefas")
       .set("Authorization", `Bearer ${token}`)
-      .send({ titulo: "Executar ordem", prazo: "2026-08-13" })
+      .send({ titulo: "Revisar planejamento", prazo: "2026-08-13" })
       .expect(201);
     expect(created.body).toMatchObject({
-      titulo: "Executar ordem",
+      titulo: "Revisar planejamento",
       status: TASK_STATUS.pending,
     });
 
